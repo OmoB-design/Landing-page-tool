@@ -1,3 +1,159 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-/* Design tokens (@theme) arrive in B0.3 from docs/DESIGN.md §4. */
+/* Dark mode: a `dark` class on <html> (set before paint by the theme script in app/layout.tsx). */
+@custom-variant dark (&:is(.dark *));
+/* Collapsed sidebar: `data-sidebar="collapsed"` on <html> (cookie-backed, see components/app/sidebar). */
+@custom-variant sidebar-collapsed (&:is([data-sidebar="collapsed"] *));
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design tokens — docs/DESIGN.md §4. Phase 1 values; Figma replaces them in Phase 2.
+   Feature code uses these through Tailwind utilities only (bg-surface, text-fg-muted,
+   w-rail, h-row, rounded-sm, shadow-pop …). No raw colours or arbitrary values.
+   ───────────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  /* next/font sets --font-inter and --font-jetbrains-mono on <html> (app/layout.tsx). */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-mono:
+    var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@theme {
+  /* Typography */
+  --text-xs: 0.6875rem; /* 11px rail labels */
+  --text-sm: 0.8125rem; /* 13px group labels, meta */
+  --text-base: 0.875rem; /* 14px body, rows, nav */
+  --text-md: 1rem; /* 16px sidebar title */
+  --text-lg: 1.125rem; /* 18px page header */
+  --text-xl: 1.375rem; /* 22px page titles in empty states */
+
+  /* Neutrals (light) */
+  --color-canvas: #f7f7f8; /* app background, rail */
+  --color-surface: #ffffff; /* sidebar, main pane, cards */
+  --color-surface-muted: #f3f3f4; /* group bands, primary-action bg, search bg */
+  --color-surface-hover: #f0f0f1;
+  --color-surface-active: #e9e9eb;
+  --color-border: #ebebed;
+  --color-border-strong: #dcdcdf;
+  --color-fg: #1f1f22;
+  --color-fg-muted: #6b6b73;
+  --color-fg-subtle: #9a9aa2;
+
+  /* Accent and status */
+  --color-accent: #3f76ff;
+  --color-accent-soft: #e8efff;
+  --color-success: #1f9d55;
+  --color-success-soft: #e6f6ec;
+  --color-warning: #c27c0e;
+  --color-warning-soft: #fdf3e1;
+  --color-danger: #d93f3f;
+  --color-danger-soft: #fdecec;
+
+  /* Type glyph tints (template types) */
+  --color-glyph-advertorial: #f5a623;
+  --color-glyph-listicle: #6c5ce7;
+  --color-glyph-versus: #e5484d;
+  --color-glyph-comparison: #2fb36e;
+  --color-glyph-longform: #3f76ff;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Layout. DESIGN.md names these --size-*; Tailwind v4 only builds w-/h-/size- utilities from
+     the --spacing-* namespace, so they live here (w-rail, w-sidebar, h-topbar, h-row, h-nav-item). */
+  --spacing-rail: 64px;
+  --spacing-sidebar: 260px;
+  --spacing-topbar: 48px;
+  --spacing-row: 40px;
+  --spacing-nav-item: 32px;
+
+  /* Shadow (used rarely: popovers, menus, dialogs) */
+  --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
+}
+
+/* Dark theme: same token names, different values */
+.dark {
+  --color-canvas: #141416;
+  --color-surface: #1b1b1e;
+  --color-surface-muted: #222226;
+  --color-surface-hover: #26262a;
+  --color-surface-active: #2e2e33;
+  --color-border: #2a2a2f;
+  --color-border-strong: #36363c;
+  --color-fg: #ededf0;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+  --color-accent-soft: #1d2a4d;
+  /* B0.3b: the soft status backgrounds also need dark values, or chips glare on dark surfaces. */
+  --color-success-soft: #15301f;
+  --color-warning-soft: #36290f;
+  --color-danger-soft: #3a1b1c;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   shadcn variables mapped onto the design tokens (DESIGN.md §4), so shadcn components inherit
+   the style without per-component overrides. Two names collide and are resolved in favour of
+   DESIGN.md: `accent` is the blue highlight (shadcn's grey "accent" hover is remapped to
+   surface-hover in components/ui), and `border` is the design token directly.
+   ───────────────────────────────────────────────────────────────────────────── */
+:root {
+  --background: var(--color-surface);
+  --foreground: var(--color-fg);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-fg);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-fg);
+  --primary: var(--color-fg);
+  --primary-foreground: var(--color-surface);
+  --secondary: var(--color-surface-muted);
+  --secondary-foreground: var(--color-fg);
+  --muted: var(--color-surface-muted);
+  --muted-foreground: var(--color-fg-muted);
+  --destructive: var(--color-danger);
+  --border: var(--color-border);
+  --input: var(--color-border-strong);
+  --ring: var(--color-accent);
+  --radius: var(--radius-md);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  /* The root keeps the browser's 16 px so rem-based tokens (spacing, type) resolve to their
+     stated sizes; the 14 px body size is set on body, not html. */
+  html {
+    @apply bg-canvas font-sans text-fg;
+  }
+  body {
+    @apply bg-canvas text-base text-fg;
+  }
+  /* Focus ring: 2 px accent at 40 % opacity, offset 1 px, always visible on keyboard focus. */
+  :focus-visible {
+    @apply outline-2 outline-offset-1 outline-accent/40;
+  }
+}

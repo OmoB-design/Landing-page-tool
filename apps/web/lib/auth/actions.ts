@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { type AuthFlow, authErrorMessage } from "@/lib/auth/errors";
 import type { AuthFormState } from "@/lib/auth/form-state";
 import { publicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -13,6 +14,16 @@ import {
 } from "@/lib/validators/auth";
 
 const callbackUrl = `${publicEnv.appUrl}/auth/callback`;
+
+/** Logs the raw error for the server log and returns the message the form shows. */
+function failure(
+  error: unknown,
+  flow: AuthFlow,
+  values: AuthFormState["values"],
+): AuthFormState {
+  console.error(`[auth] ${flow} failed`, error);
+  return { error: authErrorMessage(error, flow), values };
+}
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -30,7 +41,7 @@ export async function signIn(
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: error.message, values };
+  if (error) return failure(error, "sign-in", values);
 
   redirect("/home");
 }
@@ -56,7 +67,7 @@ export async function signUp(
     password,
     options: { data: { full_name: fullName }, emailRedirectTo: callbackUrl },
   });
-  if (error) return { error: error.message, values };
+  if (error) return failure(error, "sign-up", values);
 
   // With email confirmation off (local default) the user is signed in straight away.
   if (data.session) redirect("/home");
@@ -78,7 +89,7 @@ export async function sendMagicLink(
     email: parsed.data.email,
     options: { shouldCreateUser: false, emailRedirectTo: callbackUrl },
   });
-  if (error) return { error: error.message, values };
+  if (error) return failure(error, "magic-link", values);
 
   return { message: "Check your email for a sign-in link.", values };
 }

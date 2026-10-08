@@ -1,50 +1,60 @@
 "use client";
 
-import { useActionState } from "react";
-
+import { FieldGroup } from "@/components/ui/field";
 import { signUp } from "@/lib/auth/actions";
 import type { AuthFormState } from "@/lib/auth/form-state";
+import { useActionForm } from "@/lib/forms/use-action-form";
+import { signUpSchema } from "@/lib/validators/auth";
 
-import { AuthField } from "./auth-field";
+import { AuthTextField } from "./auth-text-field";
+import { FormStatus, SubmitButton } from "./form-status";
 
 const initialState: AuthFormState = {};
 
 export function SignUpForm() {
-  const [state, signUpAction, signingUp] = useActionState(signUp, initialState);
+  const { form, state, pending, formProps } = useActionForm({
+    schema: signUpSchema,
+    action: signUp,
+    initialState,
+    defaultValues: { fullName: "", email: "", password: "" },
+  });
+  const { errors } = form.formState;
 
   return (
-    <form action={signUpAction} className="flex flex-col gap-4">
-      <AuthField
-        name="fullName"
-        label="Your name"
-        autoComplete="name"
-        defaultValue={state.values?.fullName}
-        errors={state.fieldErrors?.fullName}
-      />
-      <AuthField
-        name="email"
-        label="Email"
-        type="email"
-        autoComplete="email"
-        defaultValue={state.values?.email}
-        errors={state.fieldErrors?.email}
-      />
-      <AuthField
-        name="password"
-        label="Password"
-        type="password"
-        autoComplete="new-password"
-        errors={state.fieldErrors?.password}
-      />
-      {state.error ? <p role="alert">{state.error}</p> : null}
-      {state.message ? <p role="status">{state.message}</p> : null}
-      <button
-        type="submit"
-        disabled={signingUp}
-        className="rounded border px-3 py-2 font-medium"
-      >
-        {signingUp ? "Creating account…" : "Create account"}
-      </button>
+    <form {...formProps} aria-label="Create your account">
+      <FieldGroup className="gap-4">
+        <AuthTextField
+          id="fullName"
+          label="Your name"
+          autoComplete="name"
+          description="Your workspace is named after you."
+          registration={form.register("fullName")}
+          error={errors.fullName?.message ?? state.fieldErrors?.fullName?.[0]}
+        />
+        <AuthTextField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          registration={form.register("email")}
+          error={errors.email?.message ?? state.fieldErrors?.email?.[0]}
+        />
+        <AuthTextField
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          description="At least 8 characters."
+          registration={form.register("password")}
+          error={errors.password?.message ?? state.fieldErrors?.password?.[0]}
+        />
+        <FormStatus error={state.error} message={state.message} />
+        <SubmitButton
+          pending={pending}
+          label="Create account"
+          pendingLabel="Creating account…"
+        />
+      </FieldGroup>
     </form>
   );
 }

@@ -128,12 +128,13 @@ Declare in `apps/web/app/globals.css` with Tailwind v4 `@theme`. These are start
   --radius-md: 8px;
   --radius-lg: 12px;
 
-  /* Layout */
-  --size-rail: 64px;
-  --size-sidebar: 260px;
-  --size-topbar: 48px;
-  --size-row: 40px;
-  --size-nav-item: 32px;
+  /* Layout. B0.3: renamed from --size-* to --spacing-* (D36); Tailwind v4 only generates
+     w-/h-/size- utilities from the spacing namespace: w-rail, w-sidebar, h-topbar, h-row, h-nav-item. */
+  --spacing-rail: 64px;
+  --spacing-sidebar: 260px;
+  --spacing-topbar: 48px;
+  --spacing-row: 40px;
+  --spacing-nav-item: 32px;
 
   /* Shadow (used rarely: popovers, menus, dialogs) */
   --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
@@ -152,16 +153,22 @@ Declare in `apps/web/app/globals.css` with Tailwind v4 `@theme`. These are start
   --color-fg-muted: #a1a1aa;
   --color-fg-subtle: #71717a;
   --color-accent-soft: #1d2a4d;
+  --color-success-soft: #15301f; /* B0.3b */
+  --color-warning-soft: #36290f; /* B0.3b */
+  --color-danger-soft: #3a1b1c;  /* B0.3b */
 }
 ```
 
 Map shadcn's CSS variables (`--background`, `--foreground`, `--muted`, `--border`, `--ring`, `--primary`, etc.) onto these semantic tokens in `globals.css`, so shadcn components inherit the style without per-component overrides.
+
+*B0.3 note (D37):* shadcn also uses the name `accent`, for a grey hover background. Here `accent` keeps its DESIGN meaning (the blue highlight), and shadcn's hover classes in `components/ui` are remapped to `surface-hover` / `fg`. Check for this whenever `shadcn add` brings in a new component.
 
 Rules:
 - No hex values or arbitrary Tailwind values (`[#...]`, `[13px]`) in feature code.
 - Spacing on a 4 px grid.
 - Numbers in lists (keys, counts, costs) use `tabular-nums`.
 - Focus ring: 2 px `--color-accent` at 40 % opacity, offset 1 px; always visible on keyboard focus.
+- The root font size stays at the browser's 16 px, so rem-based tokens resolve to their stated sizes; the 14 px body size is set on `body`, never on `html` (B0.3b fix).
 
 ---
 
@@ -196,6 +203,12 @@ Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, She
 | `SectionRail` | Draggable section list (reorder, remove, duplicate, rename). |
 | `WizardStepper` | Step indicator for the create wizard. |
 | `EmptyState` | Illustration slot + title + body + action. |
+| `CountBadge` | Tinted count used by `ListToolbar` (B0.3b). |
+| `ToolbarButton` | Quiet icon + label button for list toolbars; icon-only on phones (B0.3b). |
+| `PersonAvatar` | Initials avatar; assignee placeholder in rows (B0.3b). |
+| `RelativeTime` | "5 minutes ago", server-rendered (B0.3b). |
+| `AuthFrame` | Signed-out pages: product mark, centred card, footer line (B0.3b). |
+| `PageStub` | `PageHeader` + `EmptyState` for screens not built yet (B0.3b). |
 
 ### 5.3 `components/features/`
 

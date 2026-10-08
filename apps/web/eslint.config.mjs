@@ -32,6 +32,11 @@ const eslintConfig = defineConfig([
               message:
                 "Import UI from @/components/ui or @/components/app (DECISIONS.md D20).",
             },
+            {
+              name: "lucide-react",
+              message:
+                "Import icons from @/components/ui/icons so the icon set can be swapped in one file.",
+            },
           ],
           patterns: [
             {

@@ -52,3 +52,37 @@ as new entries.
 - **Date:** 2026-10-08
 - **Owner confirmed:** yes. Sign-up tested in the browser and works. (Earlier "fetch failed" was Docker Desktop having quit; restarting Docker and `pnpm db:start` fixed it.)
 - **Next:** B0.3 — App shell UI
+
+### B0.3a — App shell (tokens, shadcn, navigation)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-08
+- **Summary:** DESIGN.md tokens in `globals.css` (light + dark) with shadcn mapped onto them; shadcn on Radix (Nova preset) with button, dropdown-menu, tooltip, avatar, separator, sheet, skeleton, input, collapsible, scroll-area. The signed-in shell: top bar (org switcher with real orgs, search placeholder, notifications stub, account menu with theme and sign out), icon rail, collapsible sidebar (cookie-backed; overlay sheet under 1024 px), and stub pages for Home, Pages, Templates, Brands, Library, Analytics, Settings.
+- **Key files:** `apps/web/app/globals.css`, `apps/web/app/layout.tsx`, `apps/web/app/(app)/**`, `apps/web/components/app/*`, `apps/web/components/ui/*`, `apps/web/lib/{utils.ts,preferences.ts,auth/session.ts,brands/queries.ts,orgs/actions.ts}`, `scripts/check-tokens.sh`.
+- **Schema changes:** none.
+- **Decisions:** D36 (spacing tokens), D37 (Radix/Nova, accent mapping, token-aware cn), D38 (icons file + token check), D39 (theme/sidebar applied before paint).
+- **Deviations from spec:** `motion` not installed yet (nothing animates beyond CSS transitions in B0.3a; added when first used); shadcn 4.x brings `cn` instead of `clsx` + `tailwind-merge`; sidebar primary actions and search are visible placeholders.
+- **Verification:** shell browser test 26/26 (twice in a row), screenshots light/dark/collapsed/mobile reviewed; typecheck, lint (incl. token check), tests (4 web + 1 worker) and `next build` clean. One hydration warning seen once right after a code edit while the dev server recompiled; not reproduced in two later runs.
+- **Owner actions requested:** compare the shell with the reference screenshot; note changes for Figma.
+- **Owner confirmed:** no
+- **Next:** B0.3b — page header, grouped list, auth forms, component tests
+
+### B0.3b — Page header, grouped Pages list, auth forms, component tests
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-08
+- **Summary:** `/pages` now has the page header with segmented tabs (All pages / My pages), a list toolbar with count badge, and the status-grouped list (Building, Needs review, Approved, Published, Failed) with type glyphs, keys, origin badges, residue score chips, cost, relative time, avatar, nested re-builds, a hover/keyboard row menu, collapsible groups and arrow-key navigation. The data is clearly labelled sample data until builds exist. Stub screens use the header plus an empty state that names the build that delivers them. Sign-in, sign-up and the auth error page are restyled on shadcn Field + react-hook-form, with browser-side validation and plain-language Supabase errors (no more "fetch failed"). First component tests (Testing Library + jsdom).
+- **Key files:** `apps/web/components/app/{page-header,segmented-tabs,list-toolbar,count-badge,toolbar-button,grouped-list,row-meta,type-glyph,status-glyph,empty-state,page-stub,auth-frame}.tsx`, `apps/web/components/features/pages/*`, `apps/web/components/features/auth/*`, `apps/web/lib/pages/{list,sample}.ts`, `apps/web/lib/auth/errors.ts`, `apps/web/lib/forms/use-action-form.ts`, `apps/web/app/(app)/pages/{page.tsx,[buildId]/page.tsx}`, `apps/web/components/ui/{field,label,badge,alert}.tsx` (shadcn), `apps/web/vitest.setup.ts`, 8 test files.
+- **Schema changes:** none.
+- **Decisions:** D40 (forms: RHF + Field in front of server actions; auth error mapping), D41 (residue chip bands).
+- **Fixes to B0.3a:** the root font size was 14 px (`text-base` on `html`), which shrank every rem-based size by 12.5 %; it is now on `body`, so type and spacing match DESIGN.md (14 px rows, 24 px padding). The shell looks slightly larger than at B0.3a. Dark values added for the success/warning/danger soft tokens. The B0.3a "one hydration warning" was a test artifact: Playwright screenshots put an inline caret style on inputs; screenshots now use `caret: "initial"`.
+- **Deviations from spec:** list rows use sample data (real builds arrive in B0.6/B1.4); sidebar "My pages" now opens `/pages?view=mine` (links with a query never show as active); `/pages/[buildId]` is a review-desk stub with `instant = false` (see follow-up); count badge text is 11 px (`text-xs`), not the 12 px in DESIGN.md, to stay on tokens; magic link for an unknown email says there is no account (Supabase already reveals this on sign-up).
+- **Follow-up:** before B0.5's `/brands/[brandId]`, move the shell's `usePathname` reads (NavItem, SidebarHeader, SidebarAction, IconRail) into `<Suspense>` so dynamic routes prerender a static shell, then drop `instant = false`. Status colours on their soft backgrounds are about 3:1, below AA for small text; fix in the Figma token pass.
+- **Verification:** web typecheck, lint (incl. token check, prettier), worker ruff/mypy/pytest, `next build` clean; vitest 44/44 (9 files); browser checks B0.3b 46/46 and B0.3a shell 26/26 (twice); screenshots light, dark, mobile, focus, hover, auth errors reviewed.
+- **Owner actions requested:** review /pages and the auth pages; note changes for Figma; decide on the code-first Figma workflow when ready.
+- **Owner confirmed:** no. (B0.3a was not explicitly confirmed; the owner gave the go for B0.3b on 2026-10-08.)
+- **Next:** B0.4 — Worker, job queue, providers, progress
+
+### B0.3a + B0.3b — owner confirmation
+- **Date:** 2026-10-08
+- **Owner confirmed:** yes ("I like what I see so far"). Small changes to be proposed later.
+- **Owner proposals (unscheduled):** grid view and list view for the Pages section (List/Grid toggle; the toolbar's Display button is the natural home).
+- **Next:** B0.4 — Worker, job queue, providers, progress

@@ -124,6 +124,27 @@ No invites table or invite-accept route yet. When added, invited sign-ups must s
 **D35 — Auth forms are server actions validated with zod; react-hook-form arrives with shadcn.** Default (B0.2, 2026-10-07).
 *Why:* the B0.2 forms are temporary plain HTML until B0.3 brings the shadcn Form components, which wrap react-hook-form.
 
+**D36 — Layout tokens live in Tailwind's spacing namespace.** Locked (owner approved B0.3 plan, 2026-10-08).
+`--size-rail` etc. from DESIGN.md became `--spacing-rail`, `--spacing-sidebar`, `--spacing-topbar`, `--spacing-row`, `--spacing-nav-item` (utilities `w-rail`, `h-row` …).
+*Why:* Tailwind v4 generates no utilities from `--size-*`, which would have forced arbitrary values in feature code.
+
+**D37 — shadcn on Radix, preset Nova; `accent` keeps its DESIGN meaning.** Locked (B0.3, 2026-10-08).
+shadcn 4.x defaults to Base UI; we pass `--base radix` (D18). Its variables are mapped onto DESIGN tokens in `globals.css`. Where shadcn's grey hover "accent" collides with DESIGN's blue `accent`, DESIGN wins and `components/ui` hover classes use `surface-hover`. Components import `cn` from `@/lib/utils` (token-aware), not the bare `cn` package.
+
+**D38 — Icons only through `components/ui/icons`; tokens enforced by a check.** Locked (B0.3, 2026-10-08).
+ESLint forbids `lucide-react` outside `components/ui` and `components/app`; `pnpm lint:tokens` (`scripts/check-tokens.sh`) fails on raw colours or arbitrary Tailwind values in `app/`, `components/app` and `components/features`.
+
+**D39 — Theme and sidebar state are per-browser and applied before paint.** Locked (B0.3, 2026-10-08).
+Theme (light/dark/system, default system) in `localStorage`; sidebar collapse in the `lp_sidebar` cookie (DESIGN.md §5.2). An inline script in the root layout applies both before first paint (Next's "preventing flash before hydration" pattern), so no theme package and no request-time cookie read, which would make every page dynamic.
+
+**D40 — Forms: react-hook-form + shadcn Field in front of server actions, one zod schema.** Default (B0.3b, 2026-10-08). Supersedes the "until shadcn" part of D35.
+`useActionForm` (`apps/web/lib/forms/use-action-form.ts`) validates in the browser with the server action's own zod schema, then posts the form to the action as FormData; without JavaScript the form posts natively and the action validates on the server. Fields use shadcn's `Field` components (shadcn 4.x's successor to its `Form` wrapper). Supabase Auth errors are mapped to plain messages by code (`lib/auth/errors.ts`); raw messages such as "fetch failed" are logged on the server, never shown.
+*Why:* one schema on both sides; immediate feedback; progressive enhancement kept.
+
+**D41 — Residue score chip bands.** Default (B0.3b, 2026-10-08).
+Green at or above the publish threshold (D28, 85), amber up to 15 points below it, red beneath. Shown next to cloned pages in lists.
+*Why:* the spec says green/amber/red by score but gives no amber band; this ties the bands to the gate.
+
 ## Open (ask the owner when the related build starts)
 
 - O1 — Product name and logo (placeholder "LP Platform" until then).

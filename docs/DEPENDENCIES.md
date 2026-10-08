@@ -29,7 +29,8 @@
 | `tailwindcss` (v4), `@tailwindcss/postcss` | styling with `@theme` tokens |
 | shadcn CLI (`shadcn`) + generated components | starter UI primitives |
 | Radix primitives (pulled in by shadcn) | accessible behaviour |
-| `class-variance-authority`, `clsx`, `tailwind-merge` | component variants (shadcn) |
+| `class-variance-authority`, `cn` | component variants and class merging (shadcn). B0.3: shadcn 4.x ships `cn` (by shadcn, one package replacing `clsx` + `tailwind-merge`); configured with our tokens in `lib/utils.ts` |
+| `shadcn` (runtime), `tw-animate-css` | base CSS (`shadcn/tailwind.css`: keyframes, `data-*` variants) and animation utilities imported by `globals.css` (B0.3) |
 | `lucide-react` | icons (only icon set) |
 | `motion` (import from `motion/react`) | animation; **never** `framer-motion` |
 | `@tanstack/react-query` | server state, polling |
@@ -43,6 +44,7 @@
 | `@supabase/supabase-js`, `@supabase/ssr` | auth and data |
 | `nuqs` (optional) | URL state for the wizard; propose before adding |
 | Dev: `eslint`, `eslint-config-next`, `prettier`, `prettier-plugin-tailwindcss`, `vitest`, `@testing-library/react`, `@playwright/test` | quality and tests |
+| Dev: `@testing-library/dom`, `jsdom` | B0.3b: required peer of `@testing-library/react`, and the DOM environment for component tests (`// @vitest-environment jsdom`) |
 
 ---
 

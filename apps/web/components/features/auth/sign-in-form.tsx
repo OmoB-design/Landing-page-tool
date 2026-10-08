@@ -1,70 +1,94 @@
 "use client";
 
-import { useActionState } from "react";
-
+import { FieldGroup, FieldSeparator } from "@/components/ui/field";
 import { sendMagicLink, signIn } from "@/lib/auth/actions";
 import type { AuthFormState } from "@/lib/auth/form-state";
+import { useActionForm } from "@/lib/forms/use-action-form";
+import { magicLinkSchema, signInSchema } from "@/lib/validators/auth";
 
-import { AuthField } from "./auth-field";
+import { AuthTextField } from "./auth-text-field";
+import { FormStatus, SubmitButton } from "./form-status";
 
 const initialState: AuthFormState = {};
 
 export function SignInForm() {
-  const [state, signInAction, signingIn] = useActionState(signIn, initialState);
-  const [linkState, magicLinkAction, sendingLink] = useActionState(
-    sendMagicLink,
-    initialState,
+  return (
+    <div className="flex flex-col gap-5">
+      <PasswordForm />
+      <FieldSeparator>or</FieldSeparator>
+      <MagicLinkForm />
+    </div>
   );
+}
+
+function PasswordForm() {
+  const { form, state, pending, formProps } = useActionForm({
+    schema: signInSchema,
+    action: signIn,
+    initialState,
+    defaultValues: { email: "", password: "" },
+  });
+  const { errors } = form.formState;
 
   return (
-    <div className="flex flex-col gap-8">
-      <form action={signInAction} className="flex flex-col gap-4">
-        <AuthField
-          name="email"
+    <form {...formProps} aria-label="Sign in with password">
+      <FieldGroup className="gap-4">
+        <AuthTextField
+          id="email"
           label="Email"
           type="email"
           autoComplete="email"
-          defaultValue={state.values?.email}
-          errors={state.fieldErrors?.email}
+          registration={form.register("email")}
+          error={errors.email?.message ?? state.fieldErrors?.email?.[0]}
         />
-        <AuthField
-          name="password"
+        <AuthTextField
+          id="password"
           label="Password"
           type="password"
           autoComplete="current-password"
-          errors={state.fieldErrors?.password}
+          registration={form.register("password")}
+          error={errors.password?.message ?? state.fieldErrors?.password?.[0]}
         />
-        {state.error ? <p role="alert">{state.error}</p> : null}
-        <button
-          type="submit"
-          disabled={signingIn}
-          className="rounded border px-3 py-2 font-medium"
-        >
-          {signingIn ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+        <FormStatus error={state.error} />
+        <SubmitButton
+          pending={pending}
+          label="Sign in"
+          pendingLabel="Signing in…"
+        />
+      </FieldGroup>
+    </form>
+  );
+}
 
-      <form action={magicLinkAction} className="flex flex-col gap-4">
-        <p className="font-medium">Or get a sign-in link by email</p>
-        <AuthField
-          name="email"
+function MagicLinkForm() {
+  const { form, state, pending, formProps } = useActionForm({
+    schema: magicLinkSchema,
+    action: sendMagicLink,
+    initialState,
+    defaultValues: { email: "" },
+  });
+  const { errors } = form.formState;
+
+  return (
+    <form {...formProps} aria-label="Email me a sign-in link">
+      <FieldGroup className="gap-4">
+        <AuthTextField
           id="magic-link-email"
-          label="Email"
+          label="Email me a sign-in link"
           type="email"
           autoComplete="email"
-          defaultValue={linkState.values?.email}
-          errors={linkState.fieldErrors?.email}
+          description="No password needed. The link works once."
+          registration={form.register("email")}
+          error={errors.email?.message ?? state.fieldErrors?.email?.[0]}
         />
-        {linkState.error ? <p role="alert">{linkState.error}</p> : null}
-        {linkState.message ? <p role="status">{linkState.message}</p> : null}
-        <button
-          type="submit"
-          disabled={sendingLink}
-          className="rounded border px-3 py-2 font-medium"
-        >
-          {sendingLink ? "Sending…" : "Email me a link"}
-        </button>
-      </form>
-    </div>
+        <FormStatus error={state.error} message={state.message} />
+        <SubmitButton
+          pending={pending}
+          label="Email me a link"
+          pendingLabel="Sending…"
+          variant="outline"
+        />
+      </FieldGroup>
+    </form>
   );
 }

@@ -177,15 +177,20 @@ pnpm worker:sync                 # = cd services/worker && uv sync
 # everything (repo root)
 pnpm dev                         # web (next dev, :3000) + worker API (uvicorn --reload, :8000) together
 pnpm typecheck                   # web: next typegen && tsc --noEmit · worker: mypy (strict)
-pnpm lint                        # web: eslint · prettier --check · worker: ruff check + ruff format --check
+pnpm lint                        # web: eslint · token check · prettier --check · worker: ruff check + ruff format --check
+pnpm lint:tokens                 # no raw colours / arbitrary Tailwind values outside components/ui (D38)
 pnpm test                        # web: vitest run · worker: pytest
 pnpm format                      # prettier --write · ruff check --fix · ruff format
+
+# shadcn components (run in apps/web). Radix base (D37). After adding, switch `from "cn"` to
+# `from "@/lib/utils"` and remap any `bg-accent`/`text-accent-foreground` hover classes.
+pnpm dlx shadcn@latest add <component>
 
 # web only
 pnpm --filter web dev            # Next.js on :3000 (if :3000 is taken, Next silently picks another port)
 pnpm --filter web typecheck
 pnpm --filter web lint
-pnpm --filter web test
+pnpm --filter web test           # component tests opt into the DOM with a `// @vitest-environment jsdom` first line
 
 # worker only
 cd services/worker
