@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
@@ -9,18 +8,28 @@ import {
   RAIL_SECTIONS,
   type RailSection,
   SETTINGS_SECTION,
+  type SectionId,
   sectionFor,
 } from "./navigation";
+import { WithPathname } from "./with-pathname";
 
 /** The 64 px rail of app sections (DESIGN.md §2): icon over label, active on a soft square. */
 export function IconRail() {
-  const active = sectionFor(usePathname()).id;
-
   return (
     <nav
       aria-label="Sections"
       className="flex w-rail shrink-0 flex-col items-center gap-1 py-2"
     >
+      <WithPathname fallback={<RailItems active={null} />}>
+        {(pathname) => <RailItems active={sectionFor(pathname).id} />}
+      </WithPathname>
+    </nav>
+  );
+}
+
+function RailItems({ active }: { active: SectionId | null }) {
+  return (
+    <>
       {RAIL_SECTIONS.map((section) => (
         <RailItem
           key={section.id}
@@ -32,7 +41,7 @@ export function IconRail() {
         <div role="separator" aria-hidden className="mb-1 h-px w-8 bg-border" />
         <RailItem section={SETTINGS_SECTION} active={active === "settings"} />
       </div>
-    </nav>
+    </>
   );
 }
 

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { groupPagesByStatus, type PageListItem } from "@/lib/pages/list";
+import {
+  NO_FILTERS,
+  type PageListItem,
+  activeFilterCount,
+  filterPages,
+  groupPagesByStatus,
+  pagesHref,
+  parsePageFilters,
+} from "@/lib/pages/list";
 import { samplePages } from "@/lib/pages/sample";
 
 const now = new Date("2026-10-08T12:00:00Z");
@@ -93,5 +101,55 @@ describe("samplePages", () => {
         .filter((p) => p.residueScore !== null)
         .every((p) => p.origin === "cloned"),
     ).toBe(true);
+  });
+});
+
+describe("page filters", () => {
+  const pages = samplePages(now, "Ada");
+
+  it("parses comma-separated params and ignores unknown values", () => {
+    expect(
+      parsePageFilters({
+        status: "published,nope",
+        origin: ["cloned"],
+        type: undefined,
+      }),
+    ).toEqual({ status: ["published"], origin: ["cloned"], type: [] });
+  });
+
+  it("matches any option within a group and every group together", () => {
+    const published = filterPages(pages, {
+      ...NO_FILTERS,
+      status: ["published"],
+    });
+    expect(published.map((p) => p.key).sort()).toEqual(["LUM-12", "LUM-8"]);
+
+    const clonedPublished = filterPages(pages, {
+      ...NO_FILTERS,
+      status: ["published"],
+      origin: ["cloned"],
+    });
+    expect(clonedPublished.map((p) => p.key)).toEqual(["LUM-8"]);
+  });
+
+  it("puts queued pages under Building and unknown template types under Other", () => {
+    expect(
+      filterPages(pages, { ...NO_FILTERS, status: ["building"] }).map(
+        (p) => p.key,
+      ),
+    ).toEqual(["LUM-23", "VRD-9"]);
+    expect(
+      filterPages(pages, { ...NO_FILTERS, type: ["other"] }).map((p) => p.key),
+    ).toEqual(["LUM-31"]);
+  });
+
+  it("builds /pages links that keep the view and filters", () => {
+    expect(pagesHref("all", NO_FILTERS)).toBe("/pages");
+    expect(
+      pagesHref("mine", { ...NO_FILTERS, status: ["published", "failed"] }),
+    ).toBe("/pages?view=mine&status=published%2Cfailed");
+    expect(
+      activeFilterCount({ status: ["published"], origin: ["owned"], type: [] }),
+    ).toBe(2);
   });
 });

@@ -91,7 +91,12 @@ select throws_ok($$ select count(*) from templates $$, '42501', null,
 
 -- ── The worker (service role): sees every org's rows ───────────────────────
 set local role service_role;
-select is((select count(*)::int from orgs), 2, 'the service role can read all orgs');
+-- Counts only the two test users' orgs: a local database also holds orgs from manual testing.
+select is(
+  (select count(*)::int from orgs o join org_members m on m.org_id = o.id
+   where m.user_id in ('00000000-0000-4000-8000-00000000000a',
+                       '00000000-0000-4000-8000-00000000000b')),
+  2, 'the service role can read every org');
 
 -- ── Back as the platform: Ada's data is untouched ──────────────────────────
 reset role;

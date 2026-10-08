@@ -1,101 +1,138 @@
 "use client";
 
-import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   LogOutIcon,
   MonitorIcon,
   MoonIcon,
+  SettingsIcon,
   SunIcon,
 } from "@/components/ui/icons";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ProfileMenu } from "@/components/ui/profile-menu";
 import { signOut } from "@/lib/auth/actions";
-import { isThemePreference } from "@/lib/preferences";
+import type { ThemePreference } from "@/lib/preferences";
 
+import { initials } from "./row-meta";
 import { setThemePreference, useThemePreference } from "./theme-preference";
 
-function initials(name: string) {
-  const letters = name
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase());
-  return letters.join("") || "?";
-}
+export type UserMenuSetup = {
+  done: number;
+  total: number;
+  nextLabel?: string;
+  nextHref?: string;
+};
 
-/** Avatar menu: who is signed in, light/dark/system theme, sign out. */
-export function UserMenu({ name, email }: { name: string; email: string }) {
+const THEME_ORDER: ThemePreference[] = ["system", "light", "dark"];
+const THEME_LABELS: Record<ThemePreference, string> = {
+  system: "System",
+  light: "Light",
+  dark: "Dark",
+};
+const THEME_ICONS = { system: MonitorIcon, light: SunIcon, dark: MoonIcon };
+
+/**
+ * Account menu (AffectUI profile menu in a popover): who is signed in, Settings, theme
+ * (cycles System → Light → Dark), sign out, and the workspace's getting-started progress.
+ */
+export function UserMenu({
+  name,
+  email,
+  setup,
+}: {
+  name: string;
+  email: string;
+  setup: UserMenuSetup;
+}) {
+  const router = useRouter();
   const theme = useThemePreference();
-  const [signingOut, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [, startTransition] = useTransition();
+  const ThemeIcon = THEME_ICONS[theme];
+
+  const go = (href: string) => {
+    setOpen(false);
+    router.push(href);
+  };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
         <button
           type="button"
           aria-label={`Account menu for ${name}`}
-          className="rounded-full hover:opacity-80"
+          className="flex size-7 items-center justify-center rounded-full bg-surface-active text-xs font-medium text-fg hover:opacity-80"
         >
-          <Avatar className="size-7">
-            <AvatarFallback className="bg-surface-active text-xs font-medium text-fg">
-              {initials(name)}
-            </AvatarFallback>
-          </Avatar>
+          {initials(name)}
         </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel className="flex flex-col gap-0.5">
-          <span className="truncate text-base font-medium text-fg">{name}</span>
-          <span className="truncate text-sm font-normal text-fg-muted">
-            {email}
-          </span>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-sm font-normal text-fg-muted">
-          Theme
-        </DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={theme}
-          onValueChange={(value) => {
-            if (isThemePreference(value)) setThemePreference(value);
-          }}
-        >
-          <DropdownMenuRadioItem value="light">
-            <SunIcon aria-hidden />
-            Light
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark">
-            <MoonIcon aria-hidden />
-            Dark
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system">
-            <MonitorIcon aria-hidden />
-            System
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={signingOut}
-          onSelect={() =>
-            startTransition(async () => {
-              await signOut();
-            })
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="w-80 border-0 bg-transparent p-0 shadow-pop"
+      >
+        <ProfileMenu
+          name={name}
+          email={email}
+          avatar={
+            // An SVG keeps the initials centred: the card sizes its avatar slot as a block.
+            <svg viewBox="0 0 40 40" aria-hidden>
+              <circle cx="20" cy="20" r="20" className="fill-accent-soft" />
+              <text
+                x="20"
+                y="20"
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="fill-accent text-sm font-medium"
+              >
+                {initials(name)}
+              </text>
+            </svg>
           }
-        >
-          <LogOutIcon aria-hidden />
-          Sign out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          items={[
+            {
+              id: "settings",
+              label: "Settings",
+              icon: <SettingsIcon />,
+              onSelect: () => go("/settings"),
+            },
+            {
+              id: "theme",
+              label: "Theme",
+              icon: <ThemeIcon />,
+              badge: THEME_LABELS[theme],
+              onSelect: () => {
+                const next =
+                  THEME_ORDER[
+                    (THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length
+                  ]!;
+                setThemePreference(next);
+              },
+            },
+            {
+              id: "sign-out",
+              label: "Sign out",
+              icon: <LogOutIcon />,
+              onSelect: () =>
+                startTransition(async () => {
+                  await signOut();
+                }),
+            },
+          ]}
+          setup={{
+            title: "Getting started",
+            done: setup.done,
+            total: setup.total,
+            next: setup.nextLabel,
+            onContinue: setup.nextHref ? () => go(setup.nextHref!) : undefined,
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

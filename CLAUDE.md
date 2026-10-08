@@ -175,7 +175,7 @@ pnpm install                     # JS deps for the root and apps/web
 pnpm worker:sync                 # = cd services/worker && uv sync
 
 # everything (repo root)
-pnpm dev                         # web (next dev, :3000) + worker API (uvicorn --reload, :8000) together
+pnpm dev                         # web (next dev, :3000) + worker API (uvicorn --reload, :8000) + job loop (watchfiles, restarts on code changes)
 pnpm typecheck                   # web: next typegen && tsc --noEmit · worker: mypy (strict)
 pnpm lint                        # web: eslint · token check · prettier --check · worker: ruff check + ruff format --check
 pnpm lint:tokens                 # no raw colours / arbitrary Tailwind values outside components/ui (D38)
@@ -185,6 +185,9 @@ pnpm format                      # prettier --write · ruff check --fix · ruff 
 # shadcn components (run in apps/web). Radix base (D37). After adding, switch `from "cn"` to
 # `from "@/lib/utils"` and remap any `bg-accent`/`text-accent-foreground` hover classes.
 pnpm dlx shadcn@latest add <component>
+# AffectUI (D48): pnpm dlx shadcn@latest add https://www.affectui.com/r/<name>.json, then read the
+# file, map its --ui-* colour variables to tokens in app/globals.css, note "LP changes" in its
+# header, and list it in THIRD_PARTY_NOTICES.md and DESIGN.md §5.4.
 
 # web only
 pnpm --filter web dev            # Next.js on :3000 (if :3000 is taken, Next silently picks another port)
@@ -198,13 +201,17 @@ uv sync
 uv run uvicorn app.main:app --reload --port 8000   # internal API (GET /health)
 uv run pytest -q
 uv run ruff check . && uv run ruff format --check . && uv run mypy
-# from B0.4:
-uv run python worker.py                            # job loop
+uv run python worker.py                            # job loop on its own (Ctrl+C pauses running jobs; they resume on restart)
+uv run python -m app.providers.smoke --org <uuid>  # ONE real Claude Haiku call (< $0.01) to check the key; owner's go only
+# Worker tests use the local Supabase Postgres (skipped when it is down); services/worker/.env holds
+# local keys (gitignored; recreate from .env.example + `supabase status`).
 
 # database (needs Docker Desktop running)
 pnpm db:start                    # supabase start --ignore-health-check (see note below)
 pnpm db:stop                     # supabase stop (data is kept)
-pnpm db:reset                    # re-apply migrations + seed (LOCAL ONLY; wipes local data)
+pnpm db:reset                    # re-apply migrations + seed (LOCAL ONLY; wipes local data, including accounts)
+supabase migration up --local    # apply new migrations without wiping local data
+supabase migration new <name> < /dev/null   # create an empty migration (without < /dev/null it waits for SQL on stdin)
 pnpm test:db                     # pgTAP tests in supabase/tests (tenant isolation)
 pnpm gen:types                   # regenerate apps/web/types/database.ts after schema changes
 supabase status                  # local URLs and keys

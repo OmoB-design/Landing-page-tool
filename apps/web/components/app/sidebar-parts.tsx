@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 import {
   AnalyticsIcon,
@@ -21,13 +20,17 @@ import { cn } from "@/lib/utils";
 
 import { SECTION_ACTIONS, sectionFor } from "./navigation";
 import { SidebarToggleButton } from "./sidebar-state";
+import { WithPathname } from "./with-pathname";
 
 /** Sidebar title (the active rail section) with the collapse button. */
 export function SidebarHeader() {
-  const section = sectionFor(usePathname());
   return (
     <div className="flex items-center justify-between gap-2 pl-2">
-      <h2 className="text-md font-semibold">{section.label}</h2>
+      <h2 className="text-md font-semibold">
+        <WithPathname fallback={null}>
+          {(pathname) => sectionFor(pathname).label}
+        </WithPathname>
+      </h2>
       <SidebarToggleButton action="close" />
     </div>
   );
@@ -35,7 +38,18 @@ export function SidebarHeader() {
 
 /** The section's primary action ("New page" …): a quiet full-width button, not a loud one. */
 export function SidebarAction() {
-  const label = SECTION_ACTIONS[sectionFor(usePathname()).id];
+  return (
+    <WithPathname
+      fallback={<SidebarActionButton label={SECTION_ACTIONS.pages} />}
+    >
+      {(pathname) => (
+        <SidebarActionButton label={SECTION_ACTIONS[sectionFor(pathname).id]} />
+      )}
+    </WithPathname>
+  );
+}
+
+function SidebarActionButton({ label }: { label: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -82,9 +96,28 @@ type NavItemProps = {
  * A 32 px sidebar link: icon or emoji, label; subtle grey on hover, stronger when active.
  * Links with a query (/pages?view=mine) never show as active; the page header's tabs show the view.
  */
-export function NavItem({ href, label, icon, emoji }: NavItemProps) {
-  const pathname = usePathname();
-  const active = pathname === href || pathname.startsWith(`${href}/`);
+export function NavItem(props: NavItemProps) {
+  return (
+    <WithPathname fallback={<NavLink {...props} active={false} />}>
+      {(pathname) => (
+        <NavLink
+          {...props}
+          active={
+            pathname === props.href || pathname.startsWith(`${props.href}/`)
+          }
+        />
+      )}
+    </WithPathname>
+  );
+}
+
+function NavLink({
+  href,
+  label,
+  icon,
+  emoji,
+  active,
+}: NavItemProps & { active: boolean }) {
   const ItemIcon = icon ? NAV_ICONS[icon] : undefined;
 
   return (

@@ -39,6 +39,7 @@
 | `date-fns` | dates |
 | `@dnd-kit/core`, `@dnd-kit/sortable` | section reorder |
 | `sonner` | toasts |
+| AffectUI components (shadcn registry, MIT) | B0.4c: vendored into `components/ui/` with the shadcn CLI; no npm packages (D48, `THIRD_PARTY_NOTICES.md`) |
 | `cmdk` (via shadcn Command) | command palette |
 | `recharts` | analytics charts |
 | `@supabase/supabase-js`, `@supabase/ssr` | auth and data |
@@ -56,7 +57,7 @@
 | `pydantic` (v2), `pydantic-settings` | models and config |
 | `psycopg[binary,pool]` (v3) | Postgres |
 | `langgraph`, `langgraph-checkpoint-postgres` | pipeline graph + checkpoints |
-| `anthropic` | Claude SDK |
+| `anthropic` | Claude SDK. B0.4b: 1.x, built on `httpx2` (not `httpx`); `anthropic.Timeout` etc. come from it |
 | `fal-client` | fal.ai SDK |
 | `httpx` | HTTP (Vercel, Shopify, fetch ladder) |
 | `beautifulsoup4`, `lxml` | HTML parsing and transforms |
@@ -67,6 +68,7 @@
 | `supabase` (python) or direct storage REST via httpx | storage and vault RPCs; choose one at B0.4 |
 | `tenacity` | retry policies |
 | `structlog` | structured logging |
+| `watchfiles` (comes with `uvicorn[standard]`) | B0.4a: restarts the job loop on code changes in `pnpm dev` |
 | Dev: `pytest`, `pytest-asyncio`, `ruff`, `mypy`, `respx` (httpx mocking) | quality and tests |
 
 ---
@@ -106,7 +108,6 @@ Never expose the secret (service-role) key to the web app.
 |---|---|---|
 | `SUPABASE_URL` | — | Supabase URL |
 | `SUPABASE_SECRET_KEY` | — | secret key, service-role access (worker only); replaces the legacy service_role key (D32, B0.2) |
-| `SUPABASE_JWT_SECRET` | — | verify user JWTs; may be replaced by JWKS verification at B0.4 |
 | `DATABASE_URL` | — | direct Postgres connection (queue, checkpoints) |
 | `ANTHROPIC_API_KEY` | — | Claude |
 | `FAL_KEY` | — | fal.ai |
@@ -114,15 +115,16 @@ Never expose the secret (service-role) key to the web app.
 | `LP_MODEL_VISION` | `claude-sonnet-5-5` | image plan, product fidelity, mobile AI |
 | `LP_MODEL_ANALYSIS` | `claude-sonnet-5-5` | blueprint, autofetch, enrichment, briefing, angles |
 | `LP_MODEL_AGENT` | `claude-sonnet-5-5` | edit agent |
-| `LP_MODEL_FAST` | `claude-haiku-4-5-20251001` | persona and small helper calls |
+| `LP_MODEL_FAST` | `claude-haiku-5-5` | persona and small helper calls (D42) |
 | `LP_FAL_T2I_MODEL` | `fal-ai/nano-banana-pro` | text-to-image |
 | `LP_FAL_EDIT_MODEL` | `fal-ai/nano-banana-pro/edit` | edits and compositing |
 | `LP_MOCK_IMAGES` | `1` | mock images (set `0` explicitly for real) |
-| `LP_MOCK_LLM` | `0` | optional fake LLM for UI work |
+| `LP_MOCK_LLM` | `1` | fake LLM, ledger rows at $0 (D31); set `0` explicitly for real calls |
 | `LP_FETCH_PROXY` | empty | residential proxy URL (M2, flag-gated) |
 | `LP_RESIDUE_MIN_SCORE` | `85` | publish gate threshold |
 | `LP_WORKER_CONCURRENCY` | `3` | jobs per worker process |
 | `LP_ORG_CONCURRENCY` | `2` | concurrent jobs per org |
+| `LP_PROVIDER_LOCK_MINUTES` | `10` | how long image calls stay paused after fal reports a locked / unfunded account |
 | `SHOPIFY_API_VERSION` | current stable at implementation time | Admin GraphQL version |
 | `APP_URL` | — | for OAuth redirect URIs |
 | `LOG_LEVEL` | `info` | logging |

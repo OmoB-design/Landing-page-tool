@@ -86,3 +86,52 @@ as new entries.
 - **Owner confirmed:** yes ("I like what I see so far"). Small changes to be proposed later.
 - **Owner proposals (unscheduled):** grid view and list view for the Pages section (List/Grid toggle; the toolbar's Display button is the natural home).
 - **Next:** B0.4 — Worker, job queue, providers, progress
+
+### B0.4a — Job system: worker API, queue, job loop, progress, notifications
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-08
+- **Summary:** The worker now has settings from env, a Postgres pool, JWKS-verified auth with org membership checks, and `POST /jobs` (dedupe per org). A separate job loop claims jobs (`FOR UPDATE SKIP LOCKED`, 3 per worker, 2 per org, only kinds it knows), heartbeats every 10 s, requeues jobs whose heartbeat is 90 s old, retries crashes once, fails `UserFacingError`s straight away, pauses and hands back jobs on Ctrl+C, and writes progress events and a notification per finished job. `noop_demo` reports five steps and resumes after the last finished one. The web app has React Query, `/api/jobs` (start via the worker; read via Supabase RLS), `/api/notifications`, polling hooks, a jobs tray with live toasts, a real notifications bell, and a temporary demo-job card on Home. The shell's active-link reads moved into Suspense, so dynamic routes prerender a static shell (`instant = false` removed).
+- **Key files:** `services/worker/{worker.py,app/{config,db,auth,log,notifications,main}.py,app/jobs/*}`, `services/worker/tests/{conftest,test_jobs,test_api}.py`; `apps/web/app/api/{jobs,notifications}/**`, `apps/web/lib/{api,jobs,queries}/*`, `apps/web/lib/validators/jobs.ts`, `apps/web/lib/auth/{session,api-session}.ts`, `apps/web/components/app/{job-tray,notifications-button,toaster,query-provider,with-pathname}.tsx`, `apps/web/components/features/home/demo-job-card.tsx`, root `package.json` (`dev:jobs`).
+- **Schema changes:** none.
+- **Decisions:** D42–D45 and O6 (approved with the plan), D46 (kind-filtered claims, graceful hand-back, resume).
+- **Deviations from spec:** the per-org limit is soft (two workers claiming at the same instant can exceed it by one); signed-out `/api/*` calls get a 401 JSON instead of the sign-in redirect; the demo job's steps are 2 s each.
+- **Verification:** worker ruff/mypy/pytest 28/28 (DB tests on local Supabase); web typecheck, lint, token check, vitest 52/52, `next build` clean; browser checks B0.4a 22/22 (live progress, tray, toasts, notifications, failure path, tenant isolation, graceful restart → resume), hard kill → requeued after 95 s → resumed on attempt 2; B0.3a shell 26/26 and B0.3b 46/46 after the shell change.
+- **Owner actions requested:** try the demo job on Home; create the Anthropic key before B0.4b.
+- **Owner confirmed:** no
+- **Next:** B0.4b — Providers, cost table, ledger
+
+### B0.4a — owner go for B0.4b
+- **Date:** 2026-10-08
+- **Owner:** added the Anthropic API key and asked to move on to B0.4b (B0.4a not explicitly confirmed).
+
+### B0.4b — Providers, cost table, ledger
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-08
+- **Summary:** One provider module per vendor, all recording ledger rows inside a cost context set by the job runner: Anthropic (official SDK 1.x, model by role from settings, mock by default with $0 rows, SDK retries, structured outputs and effort via `output_config`, server-side `fallbacks: "default"` for Sonnet 5.5 and other supporting models with each attempt priced at its own model's rates, refusals recorded then raised), fal (mock "MOCK IMAGE" JPEGs by default; real client wired, not exercised; locked/unfunded errors set a 10-minute org lock and later calls fail fast), Supabase Storage over REST with content-hash asset dedupe, one pricing table, and the provider lock helpers. The demo job now makes a mock AI call and a mock image saved to storage, and the Home card shows its 2 ledger rows at $0.00 and the image. One live Claude Haiku 5.5 call (owner's go) returned "LP Platform key check OK": 25 in / 11 out tokens, $0.000008, recorded in the owner's ledger.
+- **Key files:** `services/worker/app/providers/{anthropic,fal,storage,cost,ledger,locks,smoke}.py`, `app/config.py`, `app/jobs/{runner.py,kinds/noop_demo.py}`, `tests/test_providers.py`; `supabase/migrations/20261008123003_widen_cost_precision.sql`; `apps/web/components/features/home/demo-job-card.tsx`, `apps/web/lib/{validators/jobs,jobs/queries}.ts`.
+- **Schema changes:** `ledger_entries.cost_usd` and `builds.cost_usd` widened from `numeric(10,4)` to `numeric(12,6)` (found by the live check: the $0.000008 call was stored as $0).
+- **Decisions:** D47 (6-decimal costs; provider calls require a cost context; UI/demo never call paid providers).
+- **Deviations from spec:** no extra retry wrapper around the SDK (its 2 retries with backoff cover 429/5xx/connection errors; the copy pass adds its own per-chunk attempts in B0.6); fal request arguments to be checked against fal's current schema at B1.3; pgTAP test 19 now counts only its own test orgs (it assumed an empty database).
+- **Verification:** worker ruff/mypy/pytest 46/46; web typecheck, lint, token check, vitest 52/52, `next build`; pgTAP 20/20; browser check 24/24 (incl. demo ledger line and stored image); live key check passed. Not run: `supabase db reset` (would wipe the owner's local account); the migration applied cleanly with `supabase migration up --local`.
+- **Owner actions requested:** none required; optional review of the Home demo card.
+- **Owner confirmed:** no
+- **Next:** B0.5 — Brand intake and product pull
+
+### B0.4c — AffectUI components
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-08
+- **Summary:** Added five free AffectUI components (MIT, one React file each, no packages) with the shadcn CLI, reviewed their code, and mapped their colours, radii and font onto the design tokens. In use: a "Getting started" checklist on Home (five steps ticked from real data, each linking to where it's done), the account menu as AffectUI's profile card (Settings, Theme cycling System/Light/Dark, Sign out, getting-started progress with a Next shortcut), the Pages Filter menu (status, origin, template type; chips; URL state kept across tabs; "No pages match" empty state), shimmer loaders for every loading state (shadcn Skeleton removed), and a faint drifting grid behind the auth pages. The remaining useful components are mapped to the builds that need them (DESIGN.md §5.4). Also fixed: the Home demo card now shows the latest demo job after a reload (it was empty after navigating away, which is likely why the owner didn't see the B0.4b result).
+- **Key files:** `apps/web/components/ui/{progress-tracker,profile-menu,filter-menu,shimmer-loader,grid-background}.tsx`, `apps/web/app/globals.css` (AffectUI token mapping), `apps/web/lib/onboarding/{progress,setup}.ts`, `apps/web/components/features/home/getting-started.tsx`, `apps/web/components/app/user-menu.tsx`, `apps/web/components/features/pages/pages-filter.tsx`, `apps/web/lib/pages/list.ts` (filters), `THIRD_PARTY_NOTICES.md`.
+- **Schema changes:** none.
+- **Decisions:** D48. DESIGN.md §6 motion rule amended for AffectUI components (owner approved).
+- **LP changes to vendored code:** progress-tracker read-only mode with links and labelled states, title as h2; profile-menu setup title prop; strict-TypeScript guards (filter-menu, profile-menu); grid-background reveal effect without synchronous setState (React lint rule).
+- **Deviations from spec:** the account menu's theme is one item that cycles (was three radio items).
+- **Verification:** web typecheck, lint, token check, vitest 65/65, `next build`; worker 46/46; browser checks B0.4c 30/30 (checklist, profile card incl. keyboard and theme, filter URL/chips/empty state/tabs, demo result after reload, grid, mobile), B0.3a 26/26, B0.3b 46/46, B0.4a 24/24 after the change.
+- **Owner actions requested:** review Home, the account menu and Pages → Filter.
+- **Owner confirmed:** no
+- **Next:** B0.5 — Brand intake and product pull
+
+
+### B0.4a–c — owner go to commit
+- **Date:** 2026-10-08
+- **Owner:** asked to commit B0.4a–c. Feedback for later: redesign the sign-in/sign-up form ("I don't like the design"); show the demo job's steps with an AffectUI-style loader and strike-through (proposed in the B0.5 plan). Supplied B0.5 test brands: Allbirds, Graza, Topicals (with one Shopify product each).

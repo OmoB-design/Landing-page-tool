@@ -9,6 +9,7 @@
     "dev": "pnpm run \"/^dev:/\"",
     "dev:web": "pnpm --filter web dev",
     "dev:worker": "cd services/worker && uv run uvicorn app.main:app --reload --port 8000",
+    "dev:jobs": "cd services/worker && uv run watchfiles --sigint-timeout 10 \"python worker.py\" app worker.py",
     "worker:sync": "cd services/worker && uv sync",
     "typecheck": "pnpm run typecheck:web && pnpm run typecheck:worker",
     "typecheck:web": "pnpm --filter web typecheck",

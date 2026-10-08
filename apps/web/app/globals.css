@@ -157,3 +157,100 @@
     @apply outline-2 outline-offset-1 outline-accent/40;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   AffectUI components (DECISIONS.md D48). Each ships its own colour variables and dark-mode
+   overrides; these map them onto the design tokens instead, so light/dark and future Figma token
+   changes apply to them too. `:root .ui-*` outranks the components' own `.ui-*` defaults and
+   their `:where(.dark) .ui-*` overrides, whatever order the styles load in. Motion is theirs.
+   ───────────────────────────────────────────────────────────────────────────── */
+:root .ui-progress {
+  --ui-pg-card: var(--color-surface);
+  --ui-pg-line: var(--color-border);
+  --ui-pg-ink: var(--color-fg);
+  --ui-pg-muted: var(--color-fg-muted);
+  --ui-pg-ring: var(--color-border-strong);
+  --ui-pg-track: var(--color-surface-muted);
+  --ui-pg-hover: var(--color-surface-hover);
+  font-family: inherit;
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+  max-width: var(--container-xl);
+}
+:root .ui-progress__step {
+  border-radius: var(--radius-sm);
+}
+:root .ui-progress__step:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-accent) 40%, transparent);
+  outline-offset: 1px;
+}
+
+:root .ui-pm {
+  --ui-pm-card: var(--color-surface);
+  --ui-pm-line: var(--color-border);
+  --ui-pm-ink: var(--color-fg);
+  --ui-pm-text: var(--color-fg);
+  --ui-pm-muted: var(--color-fg-muted);
+  --ui-pm-icon: var(--color-fg-muted);
+  --ui-pm-hover: var(--color-surface-hover);
+  --ui-pm-off: var(--color-surface-muted);
+  --ui-pm-fill: var(--color-accent);
+  --ui-pm-badge: var(--color-fg-muted);
+  --ui-pm-badge-wash: var(--color-surface-muted);
+  --ui-pm-tray: var(--color-surface-muted);
+  font-family: inherit;
+  border-radius: var(--radius-lg);
+}
+:root .ui-pm__card {
+  border-color: var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+:root .ui-pm__item {
+  border-radius: var(--radius-sm);
+}
+:root .ui-pm__item:active {
+  background: var(--color-surface-active);
+}
+:root .ui-pm__item:focus-visible,
+:root .ui-pm__next:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-accent) 40%, transparent);
+  outline-offset: -2px;
+}
+:root .ui-pm__track {
+  background: var(--color-border);
+}
+
+:root .ui-fm {
+  --ui-fm-tray: var(--color-surface-muted);
+  --ui-fm-card: var(--color-surface);
+  --ui-fm-card-line: var(--color-border);
+  --ui-fm-ink: var(--color-fg);
+  --ui-fm-text: var(--color-fg);
+  --ui-fm-muted: var(--color-fg-muted);
+  --ui-fm-chip: var(--color-surface-muted);
+  --ui-fm-chip-hover: var(--color-surface-active);
+  --ui-fm-box: var(--color-surface-muted);
+  --ui-fm-box-line: var(--color-border-strong);
+  --ui-fm-check: var(--color-surface);
+  --ui-fm-row-hover: var(--color-surface-hover);
+  --ui-fm-kbd: var(--color-surface);
+  --ui-fm-focus: color-mix(in oklab, var(--color-accent) 40%, transparent);
+  --ui-fm-shadow: none;
+  font-family: inherit;
+  border-radius: var(--radius-lg);
+}
+:root .ui-fm__card {
+  border-radius: var(--radius-md);
+}
+
+:root .ui-shm,
+:root .ui-shm-text {
+  --ui-shm-base: var(--color-surface-active);
+  --ui-shm-text: var(--color-fg-subtle);
+  --ui-shm-text-glow: var(--color-fg);
+}
+
+:root .ui-gb {
+  --ui-gb-color: var(--color-border);
+}

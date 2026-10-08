@@ -48,6 +48,9 @@ export async function updateSession(request: NextRequest) {
   const signedIn = Boolean(data?.claims);
   const path = request.nextUrl.pathname;
 
+  // API routes answer JSON, so a signed-out call gets a 401 rather than the sign-in page.
+  if (!signedIn && path.startsWith("/api/"))
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   if (!signedIn && !matches(path, PUBLIC_PATHS))
     return redirectTo(request, response, "/sign-in");
   if (signedIn && matches(path, AUTH_PAGES))

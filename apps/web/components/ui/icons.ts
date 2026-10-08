@@ -13,6 +13,7 @@ export {
   SlidersHorizontal as DisplayIcon,
   ListFilter as FilterIcon,
   House as HomeIcon,
+  Activity as JobsIcon,
   Library as LibraryIcon,
   LoaderCircle as LoadingIcon,
   LogOut as LogOutIcon,

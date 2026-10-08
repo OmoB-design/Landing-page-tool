@@ -77,3 +77,94 @@ export function groupPagesByStatus(pages: PageListItem[]): PageGroup[] {
     return [{ id: group.id, label: group.label, count: members.length, rows }];
   });
 }
+
+// ── Filters (Pages toolbar → Filter) ─────────────────────────────────────────
+
+export const ORIGIN_OPTIONS = [
+  { id: "owned", label: "Owned" },
+  { id: "cloned", label: "Cloned" },
+] as const;
+
+/** Template types offered as filters; anything else counts as "other". */
+export const TYPE_OPTIONS = [
+  { id: "advertorial", label: "Advertorial" },
+  { id: "listicle", label: "Listicle" },
+  { id: "versus", label: "Versus" },
+  { id: "comparison", label: "Comparison" },
+  { id: "long_form", label: "Long form" },
+  { id: "other", label: "Other" },
+] as const;
+
+export type PageFilters = {
+  status: StatusGroupId[];
+  origin: Enums["template_origin"][];
+  type: string[];
+};
+
+export const NO_FILTERS: PageFilters = { status: [], origin: [], type: [] };
+
+const pick = <T extends string>(
+  raw: string | string[] | undefined,
+  allowed: readonly T[],
+): T[] => {
+  const values = (Array.isArray(raw) ? raw.join(",") : (raw ?? "")).split(",");
+  return allowed.filter((id) => values.includes(id));
+};
+
+/** Reads ?status=…&origin=…&type=… (comma-separated); unknown values are ignored. */
+export function parsePageFilters(
+  params: Record<string, string | string[] | undefined>,
+): PageFilters {
+  return {
+    status: pick(
+      params.status,
+      STATUS_GROUPS.map((group) => group.id),
+    ),
+    origin: pick(
+      params.origin,
+      ORIGIN_OPTIONS.map((option) => option.id),
+    ),
+    type: pick(
+      params.type,
+      TYPE_OPTIONS.map((option) => option.id),
+    ),
+  };
+}
+
+export function activeFilterCount(filters: PageFilters): number {
+  return filters.status.length + filters.origin.length + filters.type.length;
+}
+
+const KNOWN_TYPES = new Set<string>(TYPE_OPTIONS.map((option) => option.id));
+
+/** Pages matching every chosen group (within a group, any chosen option matches). */
+export function filterPages(
+  pages: PageListItem[],
+  filters: PageFilters,
+): PageListItem[] {
+  return pages.filter((page) => {
+    const group = STATUS_GROUPS.find((g) =>
+      g.statuses.includes(page.status),
+    )?.id;
+    const type = KNOWN_TYPES.has(page.templateType)
+      ? page.templateType
+      : "other";
+    return (
+      (filters.status.length === 0 ||
+        (group !== undefined && filters.status.includes(group))) &&
+      (filters.origin.length === 0 || filters.origin.includes(page.origin)) &&
+      (filters.type.length === 0 || filters.type.includes(type))
+    );
+  });
+}
+
+/** The /pages URL for a view and filters, e.g. /pages?view=mine&status=published. */
+export function pagesHref(view: "all" | "mine", filters: PageFilters): string {
+  const params = new URLSearchParams();
+  if (view === "mine") params.set("view", "mine");
+  for (const key of ["status", "origin", "type"] as const) {
+    if (filters[key].length > 0) params.set(key, filters[key].join(","));
+  }
+  const query = params.toString();
+  return query ? `/pages?${query}` : "/pages";
+}

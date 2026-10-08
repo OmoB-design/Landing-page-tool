@@ -198,7 +198,7 @@ Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, She
 | `ScoreChip` | Residue score with colour by threshold. |
 | `CostLabel` | `$1.84` muted. |
 | `Banner` | Red/amber/green banners on the review desk. |
-| `JobTray` | Running jobs toasts with live progress lines. |
+| `JobTray` | Running jobs toasts with live progress lines. B0.4a: top-bar button with running count + popover of recent jobs; toasts via `Toaster` (sonner, follows the theme). |
 | `PreviewFrame` | Sandboxed iframe with desktop/mobile toggle and zoom. |
 | `SectionRail` | Draggable section list (reorder, remove, duplicate, rename). |
 | `WizardStepper` | Step indicator for the create wizard. |
@@ -209,6 +209,27 @@ Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, She
 | `RelativeTime` | "5 minutes ago", server-rendered (B0.3b). |
 | `AuthFrame` | Signed-out pages: product mark, centred card, footer line (B0.3b). |
 | `PageStub` | `PageHeader` + `EmptyState` for screens not built yet (B0.3b). |
+
+### 5.4 AffectUI components (D48)
+
+Vendored from https://www.affectui.com (MIT) into `components/ui/`; colours, radii and font mapped
+to tokens in `globals.css`. Install with `pnpm dlx shadcn@latest add https://www.affectui.com/r/<name>.json`.
+
+| Component | Status | Where |
+|---|---|---|
+| `progress-tracker` | in use (B0.4c) | Home "Getting started" checklist (read-only, from real data, steps link to where they're done). Later: build progress screen, pipeline steps ticking (B1.2) |
+| `profile-menu` | in use (B0.4c) | Account menu (top right): Settings, Theme, Sign out, getting-started progress |
+| `filter-menu` | in use (B0.4c) | Pages toolbar → Filter (status, origin, template type; URL state). Later: Library filters (B1.6) |
+| `shimmer-loader` | in use (B0.4c) | All loading states (`Skeleton`, `ShimmerText`); replaces shadcn Skeleton |
+| `grid-background` | in use (B0.4c) | Sign-in / sign-up / link-error pages |
+| `smart-recommendation` | planned | B0.5 detected brand colours with confidence; B1.2 "let the desk pick" audience and angle |
+| `text-reveal` | planned | B1.2 progress screen: AI-written text arriving |
+| `decision-inbox` | planned | B1.4 review desk: quick calls ("Copy partly rewritten: Accept / Redraft") |
+| `notification-stack` | planned | B1.4 stacked review-desk notices |
+| `change-summary`, `number-ticker` | planned | B1.6 analytics: spend vs last week, headline numbers |
+| `tips-panel` | planned | B1.6 tips for new users on Home |
+| `comment-thread` | planned | B3.4 edit-agent chat |
+| `email-draft`, `reaction-bar`, `button`, illustration blocks | not used | no email/social features; would replace the app-wide button; marketing graphics with third-party logos |
 
 ### 5.3 `components/features/`
 
@@ -239,6 +260,7 @@ Interaction notes:
 - Rows open on click; `⋯` menu on hover; multi-select with checkboxes appearing on hover (M3).
 - Wizard keeps state in the URL so refresh does not lose progress.
 - Use `motion/react` for small, fast transitions only (sidebar collapse, list group expand, toasts): 150–200 ms, ease-out. No decorative animation.
+- *B0.4c (D48):* AffectUI components keep their own calm motion (CSS, roughly 0.3–1.1 s: progress fills, ticks that draw, soft fades, shimmer, a drifting grid on the auth pages). It is allowed for those components; everything else follows the rule above. All of it stops under `prefers-reduced-motion`.
 
 ---
 

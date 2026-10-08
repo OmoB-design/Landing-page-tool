@@ -1,6 +1,8 @@
 import { SearchIcon } from "@/components/ui/icons";
 import { getSessionContext } from "@/lib/auth/session";
+import { getSetupProgress } from "@/lib/onboarding/setup";
 
+import { JobTray } from "./job-tray";
 import { NotificationsButton } from "./notifications-button";
 import { OrgSwitcher } from "./org-switcher";
 import { SidebarToggleButton } from "./sidebar-state";
@@ -9,6 +11,7 @@ import { UserMenu } from "./user-menu";
 /** 48 px top bar: org switcher, centred search, notifications, account (DESIGN.md §2). */
 export async function TopBar() {
   const { user, orgs, currentOrg } = await getSessionContext();
+  const setup = await getSetupProgress(currentOrg.id);
 
   return (
     <header className="flex h-topbar shrink-0 items-center gap-2 px-3">
@@ -22,8 +25,18 @@ export async function TopBar() {
         <SearchBox orgName={currentOrg.name} />
       </div>
       <div className="ml-auto flex items-center gap-1 sm:ml-0">
+        <JobTray userId={user.id} />
         <NotificationsButton />
-        <UserMenu name={user.displayName} email={user.email} />
+        <UserMenu
+          name={user.displayName}
+          email={user.email}
+          setup={{
+            done: setup.done,
+            total: setup.total,
+            nextLabel: setup.next?.label,
+            nextHref: setup.next?.href,
+          }}
+        />
       </div>
     </header>
   );

@@ -61,7 +61,7 @@ Residue threshold and compliance scan block publish (override allowed, logged). 
 *Why:* the reference duplicated pricing tables and skipped recording several calls.
 
 **D14 — Model names in configuration.** Locked.
-Defaults: copy, vision, analysis, agent, mobile → `claude-sonnet-5-5`; cheap helper calls (persona, short classifications) → `claude-haiku-4-5-20251001`. Images: fal `fal-ai/nano-banana-pro` (text-to-image) and `fal-ai/nano-banana-pro/edit` (edits), as in the reference. All overridable by env.
+Defaults: copy, vision, analysis, agent, mobile → `claude-sonnet-5-5`; cheap helper calls (persona, short classifications) → `claude-haiku-5-5` (changed from `claude-haiku-4-5-20251001` by D42). Images: fal `fal-ai/nano-banana-pro` (text-to-image) and `fal-ai/nano-banana-pro/edit` (edits), as in the reference. All overridable by env.
 *Note to Claude Code:* verify the current model ids against provider docs at B0.4 and record what you used.
 
 **D15 — Mock mode default in dev and tests.** Locked.
@@ -145,6 +145,36 @@ Theme (light/dark/system, default system) in `localStorage`; sidebar collapse in
 Green at or above the publish threshold (D28, 85), amber up to 15 points below it, red beneath. Shown next to cloned pages in lists.
 *Why:* the spec says green/amber/red by score but gives no amber band; this ties the bands to the gate.
 
+**D42 — Cheap helper calls default to Claude Haiku 5.5.** Locked (owner approved B0.4 plan, 2026-10-08). Updates D14's default.
+`LP_MODEL_FAST` defaults to `claude-haiku-5-5` (was `claude-haiku-4-5-20251001`). Copy, vision, analysis, agent and mobile stay on `claude-sonnet-5-5`. Model ids and prices checked at B0.4 against Anthropic's current model table (2026-10-06): Sonnet 5.5 $2 / $10 per million input/output tokens; Haiku 5.5 $0.10 / $0.50 (prompts up to 100K tokens).
+*Why:* newer and about 10× cheaper than Haiku 4.5 for persona and short classification calls.
+
+**D43 — The worker verifies user JWTs with Supabase's JWKS.** Locked (B0.4, 2026-10-08).
+Supabase signs access tokens with asymmetric keys (ES256); the worker checks them against `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` (PyJWT), including audience `authenticated`, issuer and expiry, then checks `org_members` for the requested org. `SUPABASE_JWT_SECRET` is dropped.
+*Why:* no shared secret to distribute or rotate; matches how the web app's `getClaims()` verifies.
+
+**D44 — Storage over HTTP, Vault over SQL.** Locked (B0.4, 2026-10-08).
+The worker talks to Supabase Storage through its REST API with `httpx` and the secret key, and to Vault through SQL on `DATABASE_URL`. The `supabase` Python package is not used.
+*Why:* fewer dependencies; both paths are small and testable.
+
+**D45 — Server-side refusal fallback on by default for Claude calls.** Locked (owner approved B0.4 plan, 2026-10-08).
+Requests to models that support it (e.g. Claude Sonnet 5.5) send the server-side `fallbacks` option, so a safety decline is re-run on a fallback model inside the same call. The model that actually served the request and its cost are what the ledger records. The final response's `stop_reason` is still checked: a refusal from the whole chain is a copy error, not a crash.
+*Why:* a declined copy chunk would otherwise keep source text and block publish (D23); the fallback rescues most of those.
+
+**D46 — Workers claim only the job kinds they can run; stopped workers hand jobs back.** Default (B0.4a, 2026-10-08).
+`claim` filters on the worker's registered kinds, so specialised workers (e.g. Playwright-only) can share one queue later. On SIGINT/SIGTERM a worker stops claiming, and running jobs pause at their next progress step and return to the queue without using an attempt; a killed worker's jobs are requeued by any worker's reaper once their heartbeat is 90 s old. Handlers can read their last reported progress (`ctx.last_progress`) to resume instead of starting over; `noop_demo` does.
+*Why:* restarts (deploys, `pnpm dev` reloads) must not lose or duplicate work (D9).
+
+**D47 — Costs keep six decimal places; provider calls must run inside a cost context.** Locked (B0.4b, 2026-10-08).
+`ledger_entries.cost_usd` and `builds.cost_usd` are `numeric(12,6)` (migration `20261008123003`), because `numeric(10,4)` stored a Claude Haiku 5.5 call ($0.000008) as $0. Every provider call raises unless it runs inside `cost_context()` (set by the job runner; pipeline nodes add `node_context()`), so no paid call can go unrecorded. The demo job and the UI only ever use mock providers; the one live check is a CLI run on purpose (`python -m app.providers.smoke`).
+*Why:* D13 requires every call recorded; rounding small calls to zero under-reports spend.
+
+**D48 — AffectUI joins shadcn as a component source.** Locked (owner approved B0.4c plan, 2026-10-08).
+Free (MIT) components from AffectUI (https://www.affectui.com) are added with the shadcn CLI into `components/ui/`, like shadcn scaffolding: Figma replaces them later (D20). Their colour variables, radii and font are mapped onto the design tokens in `app/globals.css` (`:root .ui-*` blocks), so light/dark and future token changes apply; their own motion is kept (DESIGN.md §6). Each file's header says where it came from and lists any "LP changes"; the licence is in `THIRD_PARTY_NOTICES.md`. Components are installed when a build needs them (DESIGN.md §5.4 has the map). Not used: `email-draft`, `reaction-bar`, AffectUI `button` (would replace the app-wide button), and the illustration blocks (marketing graphics, some with third-party logos).
+*Why:* the owner wants AffectUI's calm, finished components wherever the product needs them; vendoring keeps us independent of the young upstream project.
+
+**O6 resolved — Worker runs locally for now.** Locked (owner approved B0.4 plan, 2026-10-08). Choose a host (needs Playwright Chromium) before the first deploy.
+
 ## Open (ask the owner when the related build starts)
 
 - O1 — Product name and logo (placeholder "LP Platform" until then).
@@ -152,4 +182,4 @@ Green at or above the publish threshold (D28, 85), amber up to 15 points below i
 - O3 — Which library templates ship first, and their HTML (owner designs; see `template-onboarding` skill).
 - O4 — Billing/plans: out of scope for v1 unless the owner adds it.
 - O5 — Whether "doctor/expert" author type is allowed at all, and how bylines are labelled.
-- O6 — Hosting for the worker (Railway, Fly.io, Render, or a VM). Needs Chromium; decide at B0.4.
+- O6 — Hosting for the worker (Railway, Fly.io, Render, or a VM). Needs Chromium. *Local for now (see above); decide before the first deploy.*

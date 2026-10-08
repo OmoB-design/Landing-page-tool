@@ -7,7 +7,8 @@ import {
   type PagesViewId,
 } from "@/components/features/pages/pages-view";
 import { PagesIcon } from "@/components/ui/icons";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/shimmer-loader";
+import { parsePageFilters } from "@/lib/pages/list";
 
 export const metadata: Metadata = { title: "Pages" };
 
@@ -22,9 +23,9 @@ export default function PagesPage({ searchParams }: PageProps<"/pages">) {
 async function PagesContent({
   searchParams,
 }: Pick<PageProps<"/pages">, "searchParams">) {
-  const { view } = await searchParams;
-  const viewId: PagesViewId = view === "mine" ? "mine" : "all";
-  return <PagesView view={viewId} />;
+  const params = await searchParams;
+  const viewId: PagesViewId = params.view === "mine" ? "mine" : "all";
+  return <PagesView view={viewId} filters={parsePageFilters(params)} />;
 }
 
 function PagesFallback() {
@@ -32,9 +33,9 @@ function PagesFallback() {
     <>
       <PageHeader icon={PagesIcon} title="Pages" />
       <div className="flex flex-col gap-2 px-6 py-4">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-row w-full" />
-        <Skeleton className="h-row w-full" />
+        <Skeleton height="calc(var(--spacing) * 9)" radius="var(--radius-sm)" />
+        <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
+        <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
       </div>
     </>
   );

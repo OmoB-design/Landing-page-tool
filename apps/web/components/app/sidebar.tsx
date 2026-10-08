@@ -6,7 +6,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronDownIcon } from "@/components/ui/icons";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { getOrgBrands } from "@/lib/brands/queries";
 
@@ -32,7 +32,14 @@ export function SidebarNav() {
           <NavItem href="/analytics" icon="analytics" label="Analytics" />
         </NavGroup>
         <NavGroup label="Brands">
-          <Suspense fallback={<Skeleton className="h-nav-item w-full" />}>
+          <Suspense
+            fallback={
+              <Skeleton
+                height="var(--spacing-nav-item)"
+                radius="var(--radius-sm)"
+              />
+            }
+          >
             <BrandLinks />
           </Suspense>
         </NavGroup>

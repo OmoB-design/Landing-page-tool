@@ -4,7 +4,15 @@ version = "0.1.0"
 description = "LP Platform worker: internal API and job loop"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "anthropic>=1.12.1",
+    "fal-client>=1.0.3",
     "fastapi>=0.142.2",
+    "httpx>=0.28.1",
+    "pillow>=12.3.0",
+    "psycopg[binary,pool]>=3.3.6",
+    "pydantic-settings>=2.15.0",
+    "pyjwt[crypto]>=2.15.1",
+    "structlog>=26.1.0",
     "uvicorn[standard]>=0.54.0",
 ]
 
