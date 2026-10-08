@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# env files: real values never committed; the examples are
+.env*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# tests
+coverage/
+playwright-report/
+test-results/
+
+# Supabase local state
+supabase/.temp/
+supabase/.branches/
+
+# Vercel
+.vercel
+
+# misc
+.DS_Store
+*.pem
+*.log

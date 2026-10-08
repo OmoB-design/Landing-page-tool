@@ -1,0 +1,3 @@
+-- Local development seed, applied by `supabase db reset` after the migrations.
+-- Intentionally empty for now: users and orgs are created by signing up, and library templates
+-- are seeded by scripts/seed-library (B1.1).

@@ -1,0 +1,255 @@
+# DESIGN.md — UI style, tokens and the Figma replacement process
+
+## 1. Intent
+
+A calm, dense, Notion-like workspace: neutral surfaces, hairline borders, compact type, quiet hover states, colour used sparingly for status and identity. The tool is used for hours by operators reviewing many pages, so it should feel like a productivity app, not a marketing site.
+
+The owner supplied a reference screenshot (a work-management app: icon rail, secondary sidebar, tabbed project header, grouped issue list). Copy its **structure and density**, not its brand, logo, product names or icons.
+
+**Phase 1 (now):** build with shadcn components, styled with the tokens below, so the owner can see real flows working.
+**Phase 2 (later):** the owner designs in Figma; Claude Code replaces components one by one from Figma via the Figma MCP. Figma then becomes authoritative.
+
+---
+
+## 2. Layout anatomy (from the reference)
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│ [Org ▾]                      [ 🔍 Search <Org> ]                 [🔔] [👤] │  TopBar 48px
+├──────┬──────────────────────┬─────────────────────────────────────────────┤
+│ Rail │ Sidebar              │ PageHeader: [emoji] Brand name │ Tabs …     │  48px
+│ 64px │ 260px (collapsible)  ├─────────────────────────────────────────────┤
+│      │ Section title  ⚙ ◧  │ ListToolbar: [icon] Pages  (112)            │  40px
+│ ◼    │ [+ New page]         ├─────────────────────────────────────────────┤
+│ Pages│ ⌂ Home               │ ◌ Building                       (group)    │  36px tinted band
+│ ◇    │ ⚲ Your pages         │   ☀ LUM-23  Vitamin C advertorial           │  40px row
+│ Tmpl │                      │   ✦ LUM-45  Serum listicle                  │
+│ ▣    │ Workspace ▾          │      ✦ LUM-98  (nested child row, +32px)    │
+│ Brand│   Brands             │ ○ Needs review                   (group)    │
+│      │   Templates          │   ✦ LUM-56  …                               │
+│ ⚙    │   Library            │                                             │
+│ Sett.│   Analytics          │                                             │
+│      │ Brands ▾             │                                             │
+│      │   🍋 Lumé            │                                             │
+│      │   🌿 Verdant         │                                             │
+│      │   ··· More           │                                             │
+└──────┴──────────────────────┴─────────────────────────────────────────────┘
+```
+
+**Observed details to reproduce:**
+- **Icon rail (64 px):** stacked items, each a 20 px icon with a 11 px label underneath, centred. Active item: icon on a soft filled square (radius 8). A divider separates primary items from Settings at the bottom.
+- **Top-left org switcher:** square logo mark (24 px, radius 6) + org name + chevron.
+- **Search:** centred in the top bar, pill/rounded input with a muted background and placeholder "Search <Org>".
+- **Sidebar header:** title (16 px, semibold) with two small icon buttons on the right (filter/settings, panel toggle).
+- **Primary action:** full-width button with a muted filled background and a `+` in a solid circle, left-aligned label ("New page"). Not a loud brand-coloured button.
+- **Nav items:** 32 px tall, 14 px text, 16 px outline icon, 8 px left padding, radius 6. Hover: subtle grey fill. Active: slightly stronger grey fill.
+- **Collapsible groups:** muted 13 px label with a chevron ("Workspace ▾", "Brands ▾"). Group children can use an emoji or a coloured glyph as their icon (brands get one).
+- **"··· More"** item to truncate long lists.
+- **Page header:** emoji/icon + entity name (18 px semibold), a vertical divider, then tabs as **segmented pills**: inactive tabs are plain text; the active tab has a light filled pill and a short underline accent.
+- **List toolbar:** small icon + label + **count badge** (tinted blue background, blue text, 12 px, radius 6).
+- **Group headers:** full-width tinted band (very light grey), 14 px medium label with a status glyph (dashed circle for backlog-like states, empty circle for to-do-like states).
+- **Rows:** 40 px tall, hairline separators are absent or extremely faint; a 16 px coloured type glyph in a tinted square (radius 4), the **human key** in muted grey (tabular figures), then the title in 14 px regular. Child rows indent ~32 px.
+- **Whitespace:** generous horizontal padding (24 px in main pane), tight vertical rhythm.
+- **Surfaces:** app background a near-white grey; panels white; the window has large outer radius in the screenshot (ignore that; it is a marketing frame).
+
+---
+
+## 3. Mapping the anatomy to this product
+
+| Reference | LP Platform |
+|---|---|
+| Rail: Work, Wiki, AI, Desk, Settings | Rail: **Pages**, **Templates**, **Brands**, **Library**, **Analytics**, divider, **Settings** |
+| Sidebar title "Work" | Title of the active rail section |
+| "New work item" | **New page** (opens the create wizard); on Templates: **Clone a page** / **Browse library**; on Brands: **New brand** |
+| Home / Your work | **Home** (pipeline overview, recent builds, running jobs) / **My pages** |
+| Workspace group | **Workspace**: Brands, Templates, Library, Analytics |
+| Projects group with emoji | **Brands** group, each brand with its emoji or colour glyph |
+| Project header tabs: Overview, Work items, Cycles, Modules | Brand header tabs: **Overview, Pages, Products, Templates, Brand DNA** |
+| Work items (112) | **Pages (n)** |
+| Groups Backlog / To do | Build status groups: **Building, Needs review, Approved, Published, Failed** |
+| ACME-23 + title | **LUM-23** + page title (template name · product) |
+| Type glyphs (coloured squares) | Template-type glyphs: advertorial, listicle, versus, comparison, long-form; a clone badge for `origin=cloned` |
+| Nested child rows | Re-builds / variants of the same page (same template+product) nested under the original |
+
+Right side of each row (not visible in the screenshot, add it): origin badge (Owned/Cloned), residue score chip for clones, cost, updated time (date-fns relative), assignee avatar placeholder, and a `⋯` row menu on hover.
+
+---
+
+## 4. Tokens (Phase 1 starting values)
+
+Declare in `apps/web/app/globals.css` with Tailwind v4 `@theme`. These are starting values eyeballed from the reference; **Figma replaces them in Phase 2.** Use semantic names so components never reference raw values.
+
+```css
+@import "tailwindcss";
+
+@theme {
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-xs: 0.6875rem;   /* 11px rail labels */
+  --text-sm: 0.8125rem;   /* 13px group labels, meta */
+  --text-base: 0.875rem;  /* 14px body, rows, nav */
+  --text-md: 1rem;        /* 16px sidebar title */
+  --text-lg: 1.125rem;    /* 18px page header */
+  --text-xl: 1.375rem;    /* 22px page titles in empty states */
+
+  /* Neutrals (light) */
+  --color-canvas: #f7f7f8;        /* app background, rail */
+  --color-surface: #ffffff;       /* sidebar, main pane, cards */
+  --color-surface-muted: #f3f3f4; /* group bands, primary-action bg, search bg */
+  --color-surface-hover: #f0f0f1;
+  --color-surface-active: #e9e9eb;
+  --color-border: #ebebed;
+  --color-border-strong: #dcdcdf;
+  --color-fg: #1f1f22;
+  --color-fg-muted: #6b6b73;
+  --color-fg-subtle: #9a9aa2;
+
+  /* Accent and status */
+  --color-accent: #3f76ff;
+  --color-accent-soft: #e8efff;
+  --color-success: #1f9d55;
+  --color-success-soft: #e6f6ec;
+  --color-warning: #c27c0e;
+  --color-warning-soft: #fdf3e1;
+  --color-danger: #d93f3f;
+  --color-danger-soft: #fdecec;
+
+  /* Type glyph tints (template types) */
+  --color-glyph-advertorial: #f5a623;
+  --color-glyph-listicle: #6c5ce7;
+  --color-glyph-versus: #e5484d;
+  --color-glyph-comparison: #2fb36e;
+  --color-glyph-longform: #3f76ff;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Layout */
+  --size-rail: 64px;
+  --size-sidebar: 260px;
+  --size-topbar: 48px;
+  --size-row: 40px;
+  --size-nav-item: 32px;
+
+  /* Shadow (used rarely: popovers, menus, dialogs) */
+  --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
+}
+
+/* Dark theme: same token names, different values */
+.dark {
+  --color-canvas: #141416;
+  --color-surface: #1b1b1e;
+  --color-surface-muted: #222226;
+  --color-surface-hover: #26262a;
+  --color-surface-active: #2e2e33;
+  --color-border: #2a2a2f;
+  --color-border-strong: #36363c;
+  --color-fg: #ededf0;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+  --color-accent-soft: #1d2a4d;
+}
+```
+
+Map shadcn's CSS variables (`--background`, `--foreground`, `--muted`, `--border`, `--ring`, `--primary`, etc.) onto these semantic tokens in `globals.css`, so shadcn components inherit the style without per-component overrides.
+
+Rules:
+- No hex values or arbitrary Tailwind values (`[#...]`, `[13px]`) in feature code.
+- Spacing on a 4 px grid.
+- Numbers in lists (keys, counts, costs) use `tabular-nums`.
+- Focus ring: 2 px `--color-accent` at 40 % opacity, offset 1 px; always visible on keyboard focus.
+
+---
+
+## 5. Component inventory
+
+### 5.1 `components/ui/` (shadcn primitives, Phase 1)
+
+Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, Sheet, DropdownMenu, ContextMenu, Popover, Tooltip, Command (for search and pickers), Badge, Avatar, Separator, ScrollArea, Skeleton, Progress, Toast (sonner), Collapsible, Accordion, Table, Form helpers.
+
+### 5.2 `components/app/` (app composites, built on ui/)
+
+| Component | Purpose |
+|---|---|
+| `AppShell` | Grid: TopBar, IconRail, Sidebar, main. Handles sidebar collapse (persist in a cookie, not localStorage on server). |
+| `TopBar` | Org switcher, search (Command palette ⌘K), notifications bell, user menu. |
+| `OrgSwitcher` | Logo mark + name + chevron; dropdown of orgs; "Create org". |
+| `IconRail` / `RailItem` | Icon + label, active state. |
+| `Sidebar` / `SidebarHeader` / `SidebarAction` / `NavItem` / `NavGroup` | The secondary navigation. |
+| `PageHeader` | Icon/emoji + title + divider + `SegmentedTabs`. |
+| `SegmentedTabs` | Pill tabs with active underline. |
+| `ListToolbar` | Label + `CountBadge` + filters/display options on the right. |
+| `GroupedList` / `ListGroup` / `ListRow` | Status-grouped rows, nested children, hover actions, keyboard navigation (↑/↓, Enter). |
+| `TypeGlyph` | Coloured template-type glyph in a tinted square. |
+| `KeyLabel` | Human key (`LUM-23`) in muted tabular text. |
+| `StatusGlyph` | Group/status icons (dashed circle, circle, half-filled, check, cross). |
+| `OriginBadge` | Owned / Cloned. |
+| `ScoreChip` | Residue score with colour by threshold. |
+| `CostLabel` | `$1.84` muted. |
+| `Banner` | Red/amber/green banners on the review desk. |
+| `JobTray` | Running jobs toasts with live progress lines. |
+| `PreviewFrame` | Sandboxed iframe with desktop/mobile toggle and zoom. |
+| `SectionRail` | Draggable section list (reorder, remove, duplicate, rename). |
+| `WizardStepper` | Step indicator for the create wizard. |
+| `EmptyState` | Illustration slot + title + body + action. |
+
+### 5.3 `components/features/`
+
+Feature UIs (wizard steps, review desk panels, brand DNA form, template gallery). They import only from `ui/` and `app/`.
+
+---
+
+## 6. Screen map
+
+| Route | Screen | Key components |
+|---|---|---|
+| `/home` | Pipeline overview: running jobs, needs review, recent publishes | GroupedList, JobTray |
+| `/pages` | All pages grouped by status | PageHeader, ListToolbar, GroupedList |
+| `/pages/new` | Create wizard (7 steps) | WizardStepper, cards, side "dossier" panel |
+| `/pages/[id]` | Review desk | PreviewFrame, Banner, right panel tabs |
+| `/pages/[id]/editor` | Full editor (M3) | SectionRail, canvas, image studio sheet |
+| `/templates` | Library gallery + org templates | card grid, OriginBadge, TypeGlyph |
+| `/templates/[id]` | Section editor | SectionRail, PreviewFrame |
+| `/templates/clone` | Clone a page (M2) | URL form, terms dialog, progress |
+| `/brands` | Brand list | GroupedList or table |
+| `/brands/[id]` | Brand with tabs: Overview, Pages, Products, Templates, Brand DNA | PageHeader, forms |
+| `/library` | Archive of all builds + ledger | table, filters |
+| `/analytics` | Spend roll-ups | charts (recharts), cards |
+| `/settings/*` | Org, members, integrations (Vercel, Shopify), flags | forms |
+
+Interaction notes:
+- ⌘K opens a command palette (search brands, pages, templates; quick actions).
+- Rows open on click; `⋯` menu on hover; multi-select with checkboxes appearing on hover (M3).
+- Wizard keeps state in the URL so refresh does not lose progress.
+- Use `motion/react` for small, fast transitions only (sidebar collapse, list group expand, toasts): 150–200 ms, ease-out. No decorative animation.
+
+---
+
+## 7. Phase 2 — replacing shadcn from Figma via the Figma MCP
+
+When the owner says a Figma frame or component is ready, follow this process. Do it **one component or one screen per build**, never a sweeping restyle.
+
+1. **Get the link.** The owner provides a Figma URL with a node id (frame or component). If not, ask for it.
+2. **Inspect tools.** List the Figma MCP tools available in the session (commonly: design context/code for a node, variable definitions, screenshot, metadata, Code Connect map). Use the ones present; do not assume names.
+3. **Pull tokens first.** Fetch the variable definitions for the file. Diff them against `@theme` in `globals.css`. Propose the token changes in the plan (table: token, old, new). After confirmation, update `globals.css` **once**; components follow automatically.
+4. **Pull the node.** Get the design context and a screenshot for the target node. Identify which of our components it corresponds to.
+5. **Replace in place.** Rewrite the component in `components/ui/` or `components/app/` to match Figma: structure, spacing, radius, states (hover, active, focus, disabled), sizes and variants. Keep the **same props API** unless the plan proposes a change, so feature code does not break. Remove shadcn internals that are no longer needed, but keep Radix primitives for accessibility behaviour.
+6. **Map, don't hard-code.** Every value must resolve to a token. If Figma uses a value with no token, add a token (and name it semantically) rather than inlining it.
+7. **Verify visually.** Run the app; screenshot the component/screen; compare with the Figma screenshot side by side in the Build Report. List any intentional differences.
+8. **Record.** Add a line to `docs/DESIGN_REPLACEMENTS.md`: component, Figma node URL, date, notes. When every component in a screen is replaced, mark the screen done.
+
+Figma is authoritative after replacement: if DESIGN.md and Figma disagree, Figma wins, and update DESIGN.md to match.
+
+---
+
+## 8. Accessibility baseline
+
+- All interactive elements reachable by keyboard; visible focus.
+- Colour contrast AA for text (check `--color-fg-muted` on `--color-surface-muted`).
+- Icon-only buttons have `aria-label` and a tooltip.
+- Status is never conveyed by colour alone (glyph + label).
+- Respect `prefers-reduced-motion`.

@@ -1,0 +1,13 @@
+# Project contract and handoff docs: never reformatted by tooling
+CLAUDE.md
+.claude/
+docs/
+
+# Python is formatted by ruff
+services/
+
+# Generated
+pnpm-lock.yaml
+apps/web/AGENTS.md
+apps/web/next-env.d.ts
+apps/web/types/database.ts

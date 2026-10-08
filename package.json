@@ -1,0 +1,34 @@
+{
+  "name": "lp-platform",
+  "private": true,
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm run \"/^dev:/\"",
+    "dev:web": "pnpm --filter web dev",
+    "dev:worker": "cd services/worker && uv run uvicorn app.main:app --reload --port 8000",
+    "worker:sync": "cd services/worker && uv sync",
+    "typecheck": "pnpm run typecheck:web && pnpm run typecheck:worker",
+    "typecheck:web": "pnpm --filter web typecheck",
+    "typecheck:worker": "cd services/worker && uv run mypy",
+    "lint": "pnpm run lint:web && pnpm run lint:format && pnpm run lint:worker",
+    "lint:web": "pnpm --filter web lint",
+    "lint:format": "prettier --check .",
+    "lint:worker": "cd services/worker && uv run ruff check . && uv run ruff format --check .",
+    "test": "pnpm run test:web && pnpm run test:worker",
+    "test:web": "pnpm --filter web test",
+    "test:worker": "cd services/worker && uv run pytest",
+    "format": "prettier --write . && cd services/worker && uv run ruff check --fix . && uv run ruff format .",
+    "db:start": "supabase start --ignore-health-check",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "test:db": "supabase test db",
+    "gen:types": "mkdir -p apps/web/types && supabase gen types --lang typescript --local --schema public > apps/web/types/database.ts"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "prettier-plugin-tailwindcss": "^0.8.1"
+  }
+}
