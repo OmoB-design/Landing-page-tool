@@ -5,9 +5,10 @@ import { Separator } from "@/components/ui/separator";
 
 type PageHeaderProps = {
   title: string;
-  /** An outline icon, or an emoji (brands) shown in its place. */
+  /** An outline icon, an emoji, or a custom mark (e.g. a BrandMark) shown before the title. */
   icon?: Icon;
   emoji?: string;
+  mark?: ReactNode;
   /** Usually SegmentedTabs, shown after a vertical divider. */
   tabs?: ReactNode;
   /** Right-aligned actions. */
@@ -19,13 +20,16 @@ export function PageHeader({
   title,
   icon: HeaderIcon,
   emoji,
+  mark,
   tabs,
   actions,
 }: PageHeaderProps) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-6">
       <div className="flex min-w-0 items-center gap-2">
-        {emoji ? (
+        {mark ? (
+          mark
+        ) : emoji ? (
           <span aria-hidden className="text-md">
             {emoji}
           </span>

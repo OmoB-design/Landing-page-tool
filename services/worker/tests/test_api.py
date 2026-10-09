@@ -135,3 +135,19 @@ def test_creates_a_job_for_a_member(client: TestClient, user: DbUser) -> None:
     assert job["org_id"] == str(user.org_id) and job["created_by"] == str(user.id)
     # Defaults are filled in from the payload model.
     assert job["payload"] == {"steps": 5, "step_seconds": 0.0, "fail_at": None}
+
+
+@needs_db
+def test_paid_jobs_are_not_queued_twice(client: TestClient, user: DbUser) -> None:
+    # A product that doesn't exist: if a dev worker claims the job, it fails before any AI call.
+    body = {
+        "org_id": str(user.org_id),
+        "kind": "product_briefing",
+        "payload": {"product_id": str(uuid.uuid4())},
+    }
+    first = post_job(client, token(user.id), body)
+    second = post_job(client, token(user.id), body)
+    cancel_jobs(user.org_id)
+    assert first.status_code == 201 and second.status_code == 200
+    assert second.json()["created"] is False
+    assert second.json()["job"]["id"] == first.json()["job"]["id"]

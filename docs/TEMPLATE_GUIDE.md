@@ -11,3 +11,9 @@ Seed entries carried from the reference tool:
   data-lp-price.
 - Shopify Markets localises prices to the requester's country if Accept-Language is sent; omit it
   on product pulls.
+- Bot-wall detection must not match the bare word "captcha": Shopify themes ship
+  `data-nocaptcha` in their scripts, so healthy pages (allbirds.com, graza.co, 2026-10-08) would be
+  rejected. Match the markers in the page title or visible text, or only on small pages.
+- HTML parsers lowercase SVG names (`viewBox` → `viewbox`, `linearGradient` → `lineargradient`),
+  which breaks inline SVG. Re-serialise with the camelCase names restored
+  (`engines/brand_extract.svg_markup`) before storing or re-emitting an inline SVG.

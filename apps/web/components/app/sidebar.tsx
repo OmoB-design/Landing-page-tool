@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { getOrgBrands } from "@/lib/brands/queries";
 
+import { BrandMark } from "./brand-mark";
 import { NavItem, SidebarAction, SidebarHeader } from "./sidebar-parts";
 
 const VISIBLE_BRANDS = 5;
@@ -56,7 +57,7 @@ function NavGroup({ label, children }: { label: string; children: ReactNode }) {
         {label}
         <ChevronDownIcon
           aria-hidden
-          className="size-3.5 transition-transform group-data-closed:-rotate-90 motion-reduce:transition-none"
+          className="size-3.5 transition-transform duration-150 ease-out group-data-closed:-rotate-90 motion-reduce:transition-none"
         />
       </CollapsibleTrigger>
       <CollapsibleContent className="flex flex-col gap-px">
@@ -81,7 +82,13 @@ async function BrandLinks() {
           key={brand.id}
           href={`/brands/${brand.id}`}
           label={brand.name}
-          emoji={brand.emoji ?? undefined}
+          leading={
+            <BrandMark
+              name={brand.name}
+              emoji={brand.emoji}
+              color={brand.primary}
+            />
+          }
         />
       ))}
       {brands.length > VISIBLE_BRANDS ? (

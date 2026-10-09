@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { z } from "zod";
 
+import { JobSteps } from "@/components/app/job-steps";
 import { formatCost } from "@/components/app/row-meta";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { ShimmerText } from "@/components/ui/shimmer-loader";
-import { STATUS_LABELS, isActive, progressPercent } from "@/lib/jobs/progress";
+import { STATUS_LABELS } from "@/lib/jobs/progress";
 import { useJob, useJobs, useStartJob } from "@/lib/queries/jobs";
 import type { JobDetail } from "@/lib/validators/jobs";
 
@@ -69,51 +68,25 @@ export function DemoJobCard() {
   );
 }
 
+const DEMO_STEPS = [
+  { id: "start", label: "Start the job" },
+  { id: "check-in", label: "Check in with the worker" },
+  { id: "ai", label: "Ask the AI (mock)" },
+  { id: "image", label: "Draw and save an image (mock)" },
+  { id: "finish", label: "Finish up" },
+];
+
 function JobProgress({ job }: { job: JobDetail }) {
-  const latest = job.events.at(-1) ?? null;
-  const percent = progressPercent(
-    [...job.events].reverse().find((event) => event.data?.step !== undefined) ??
-      latest,
-  );
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">{STATUS_LABELS[job.status]}</span>
         <span className="text-fg-muted tabular-nums">
           Attempt {Math.max(job.attempts, 1)} of {job.max_attempts}
         </span>
       </div>
-      {isActive(job.status) || job.status === "succeeded" ? (
-        <Progress
-          value={job.status === "succeeded" ? 100 : (percent ?? 0)}
-          aria-label="Demo job progress"
-        />
-      ) : null}
+      <JobSteps title="Demo job steps" steps={DEMO_STEPS} job={job} />
       {job.status === "succeeded" ? <DemoResult result={job.result} /> : null}
-      {job.error ? (
-        <p role="alert" className="text-sm text-danger">
-          {job.error.message}
-        </p>
-      ) : null}
-      {job.status === "queued" ? (
-        <ShimmerText className="text-sm">Waiting for the worker…</ShimmerText>
-      ) : null}
-      <ol
-        aria-live="polite"
-        className="flex flex-col gap-0.5 text-sm text-fg-muted"
-      >
-        {job.events
-          // The error is already shown above; don't repeat it as the last log line.
-          .filter(
-            (event) =>
-              !(
-                event.level === "error" && event.message === job.error?.message
-              ),
-          )
-          .map((event) => (
-            <li key={event.id}>{event.message}</li>
-          ))}
-      </ol>
     </div>
   );
 }

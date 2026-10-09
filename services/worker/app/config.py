@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     lp_mock_images: bool = True
     lp_provider_lock_minutes: float = 10.0
 
+    # Page fetching. Private and local addresses are always refused (SSRF guard), except in tests.
+    lp_allow_private_fetch: bool = False
+    lp_fetch_timeout_seconds: float = 20.0
+    lp_fetch_max_bytes: int = 6_000_000
+
     # Job loop (BUILD_SPEC §6.1)
     lp_worker_concurrency: int = 3
     lp_org_concurrency: int = 2

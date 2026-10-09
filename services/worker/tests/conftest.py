@@ -1,6 +1,13 @@
 """Shared fixtures. Database tests run against the local Supabase Postgres and are skipped when
 it is not running. Each test works in its own throwaway org and user, deleted afterwards."""
 
+import os
+
+# Tests never call live providers (D15), whatever services/worker/.env says: environment
+# variables outrank the .env file in pydantic-settings, and this runs before app.config loads.
+os.environ["LP_MOCK_LLM"] = "1"
+os.environ["LP_MOCK_IMAGES"] = "1"
+
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass

@@ -135,3 +135,47 @@ as new entries.
 ### B0.4a–c — owner go to commit
 - **Date:** 2026-10-08
 - **Owner:** asked to commit B0.4a–c. Feedback for later: redesign the sign-in/sign-up form ("I don't like the design"); show the demo job's steps with an AffectUI-style loader and strike-through (proposed in the B0.5 plan). Supplied B0.5 test brands: Allbirds, Graza, Topicals (with one Shopify product each).
+
+### B0.5a — Brands and "Fetch from URL"
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-08
+- **Summary:** Brands list, New brand (paste a URL → live fetch steps → review the draft with an AffectUI colour recommendation → save; or fill in by hand), and the brand page with Overview, Products (B0.5b), Pages and Brand DNA tabs (every field editable). The worker's `brand_autofetch` job loads the page (plain GET, then Playwright), reads it (name, tagline, logo, favicon, theme colour, language, email, buttons, text), reads the rendered page (computed colours and fonts), picks the palette (leaving out greys and third-party widget colours) and writes the profile with one AI call (mock by default). Saving queues `brand_assets`, which downloads the logo and favicon into storage. An SSRF guard covers every fetch. The demo job and brand fetch show their steps with the progress tracker (spinner and shimmer for the running step, strike-through when done, a cross and the reason when failed).
+- **Tested on the owner's sites (mock AI):** Allbirds (name, ALL, cream #ece9e2 with navy #090c43 as alternative, Geograph, logo), Graza (GRAZA, GRA, lime #d1e030, ITC Garamond Condensed / GT Alpina Typewriter, logo, email), Topicals (TOP, red #f61f1f, Chalet, inline-SVG logo).
+- **Key files:** worker `app/fetch/{safety,ladder,browser}.py`, `app/engines/{colors,brand_extract}.py`, `app/jobs/kinds/{brand_autofetch,brand_assets}.py`, `app/models/brand.py`, tests and `tests/fixtures/brand_page.html`; web `app/(app)/brands/**`, `components/features/brands/*`, `components/app/{job-steps,brand-mark}.tsx`, `lib/brands/*`, `lib/jobs/steps.ts`, `lib/validators/brand.ts`, `components/ui/{smart-recommendation,textarea}.tsx`.
+- **Schema changes:** none.
+- **Decisions:** D49 (fetching rules, SSRF guard), D50 (brand save flow, SVG logos, brand mark).
+- **Fixes found while testing:** button-text candidates skip site chrome ("Skip to content", Menu, Cart); logo fallback to the header's home link (Topicals); language codes normalised ("EN" → "en"); SVG camelCase names restored; accepting the accent colour as primary swaps them; the token check skips test files (colours there are data).
+- **Deviations from spec:** colour detection runs in mock mode with the real page and browser, only the profile text is mocked; no logo upload/replace yet (later build).
+- **Verification:** worker ruff/mypy/pytest 93/93 (incl. a real-Chromium test); web typecheck, lint, token check, vitest 90/90, `next build`; browser checks B0.5a 29/29 against allbirds.com, graza.co and mytopicals.com, B0.4c 30/30, B0.4a 24/24, B0.3b 46/46, B0.3a 26/26.
+- **Owner actions requested:** try New brand with your sites; go for the real AI run (about $0.03–0.06 for the 3 brands).
+- **Owner confirmed:** no
+- **Next:** B0.5b — Products
+
+### Motion pass — emil-design-eng skill
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-09
+- **Summary:** Applied Emil Kowalski's design-engineering skill to all UI motion: strong custom curves as tokens (`--ease-out`, `--ease-in-out`, `--ease-drawer`); buttons scale to 0.97 when pressed with named transition properties; menus and popovers 150 ms in, 100 ms out, growing from their trigger; tooltips wait 400 ms, then neighbours open instantly; sheets use the drawer curve; list groups open without a height animation; spinners turn faster (0.7 s); AffectUI components use our curve with timings cut to 300 ms or less; reduced motion is gentler, not removed.
+- **Key files:** `apps/web/app/globals.css`, `components/ui/{button,badge,dropdown-menu,popover,tooltip,sheet,progress,progress-tracker,profile-menu,filter-menu,smart-recommendation}.tsx`, `components/app/{grouped-list,sidebar}.tsx`, spinners in `job-tray`, `form-status`, `brand-form`; `.claude/skills/emil-design-eng/` and `skills-lock.json`.
+- **Decisions:** D51 (motion standard; amends D48). DESIGN.md §6 motion rules rewritten. Skill licence (MIT) in `THIRD_PARTY_NOTICES.md`.
+- **Verification:** computed styles checked in the running app (button curve and 0.97 press, popover 150 ms with the custom curve, tracker 240 ms, spinner token); vitest, lint, token check; browser suites B0.4c, B0.4a, B0.3b pass.
+- **Owner confirmed:** yes (2026-10-09, "Motion is great")
+
+### B0.5b — Products
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-09
+- **Summary:** The brand's Products tab: paste a product page and a `product_pull` job reads the store's product data (Shopify JSON, catalogue, selling plans; no Accept-Language) or, failing that, the page's JSON-LD, share tags or heading; stores up to 8 images; writes the description, selling points, specs and selling context with one AI call; and saves the product (adding it again updates it). The product page shows the price, images, options, subscriptions and an editable form, with Pull again and Remove. A `product_briefing` job writes the wizard briefing (four audiences, benefits, features, objections), cached and refreshable. Real AI is on (mock is still forced in tests).
+- **Tested on the owner's products (real AI):** Allbirds Wool Runner ($110, 7 sizes, 5 images, store data), Graza Drizzle ($21, 4 bottle options with bundle prices, 3 subscription prices at $19.95, store data), Topicals Faded serum ($38, 3 sizes from the page's product data, 2 images). Cost of the run: $0.089 (3 brand profiles $0.023, 4 product write-ups $0.038, 3 briefings $0.027).
+- **Key files:** worker `app/engines/product_extract.py`, `app/jobs/kinds/{product_pull,product_briefing}.py`, `app/models/product.py`, `app/providers/anthropic.py` (`strict_schema`), `app/jobs/registry.py` + `app/main.py` (dedupe for paid jobs), tests `test_product_engines.py`, `test_product_jobs.py` and fixtures; web `app/(app)/brands/[brandId]/products/**`, `components/features/products/*`, `lib/products/{queries,actions,form}.ts`, `lib/validators/product.ts`.
+- **Schema changes:** none.
+- **Decisions:** D52 (product pull and briefing rules).
+- **Fixes found while testing:** forms no longer show blank fields until the page's JavaScript loads (values are in the server HTML; Brand DNA too), and saving no longer resets what you type straight afterwards; brand list product counts skip removed products.
+- **Deviations from spec:** pulled products save directly (approved plan); Remove (soft delete) and Pull again added so a wrong pull can be fixed; no image upload or reorder yet; connected-store (Admin API) pulls wait for the Shopify connection (B1.5).
+- **Verification:** worker ruff, mypy, pytest 117/117; web typecheck, lint, token check, prettier, vitest 96/96; browser check B0.5b 40/42 on real sites with real AI (the 2 misses were the test typing before the form loaded, which led to the form fix; the edit flow then passed 12/12 at full speed); B0.4c, B0.4a, B0.3b pass.
+- **Owner actions requested:** try Add product in your own account; confirm B0.5a, the motion pass and B0.5b.
+- **Owner confirmed:** no
+- **Next:** B0.6 — Pipeline skeleton, one owned template, export
+
+### B0.5a–b and motion pass — owner go to commit
+- **Date:** 2026-10-09
+- **Owner:** asked to commit B0.5a, B0.5b and the motion pass. Asked whether Docker is required for local development (alternatives such as Cloudflare), and for a comparison of the previous tool's structure (screen recording) with this project.
+

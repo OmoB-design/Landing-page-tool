@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import {
   AnalyticsIcon,
@@ -40,31 +41,51 @@ export function SidebarHeader() {
 export function SidebarAction() {
   return (
     <WithPathname
-      fallback={<SidebarActionButton label={SECTION_ACTIONS.pages} />}
+      fallback={<SidebarActionButton action={SECTION_ACTIONS.pages} />}
     >
       {(pathname) => (
-        <SidebarActionButton label={SECTION_ACTIONS[sectionFor(pathname).id]} />
+        <SidebarActionButton
+          action={SECTION_ACTIONS[sectionFor(pathname).id]}
+        />
       )}
     </WithPathname>
   );
 }
 
-function SidebarActionButton({ label }: { label: string }) {
+const ACTION_CLASS =
+  "flex h-nav-item w-full items-center gap-2 rounded-sm bg-surface-muted px-2 text-base font-medium text-fg hover:bg-surface-hover aria-disabled:cursor-not-allowed";
+
+function ActionContent({ label }: { label: string }) {
+  return (
+    <>
+      <span
+        aria-hidden
+        className="flex size-4 items-center justify-center rounded-full bg-fg text-surface"
+      >
+        <PlusIcon className="size-3" />
+      </span>
+      {label}
+    </>
+  );
+}
+
+function SidebarActionButton({
+  action,
+}: {
+  action: { label: string; href?: string };
+}) {
+  if (action.href) {
+    return (
+      <Link href={action.href} className={ACTION_CLASS}>
+        <ActionContent label={action.label} />
+      </Link>
+    );
+  }
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-disabled="true"
-          className="flex h-nav-item w-full items-center gap-2 rounded-sm bg-surface-muted px-2 text-base font-medium text-fg hover:bg-surface-hover aria-disabled:cursor-not-allowed"
-        >
-          <span
-            aria-hidden
-            className="flex size-4 items-center justify-center rounded-full bg-fg text-surface"
-          >
-            <PlusIcon className="size-3" />
-          </span>
-          {label}
+        <button type="button" aria-disabled="true" className={ACTION_CLASS}>
+          <ActionContent label={action.label} />
         </button>
       </TooltipTrigger>
       <TooltipContent side="right">Not built yet</TooltipContent>
@@ -90,6 +111,8 @@ type NavItemProps = {
   label: string;
   icon?: NavIconName;
   emoji?: string;
+  /** A custom mark (e.g. a BrandMark) in place of an icon or emoji. */
+  leading?: ReactNode;
 };
 
 /**
@@ -116,6 +139,7 @@ function NavLink({
   label,
   icon,
   emoji,
+  leading,
   active,
 }: NavItemProps & { active: boolean }) {
   const ItemIcon = icon ? NAV_ICONS[icon] : undefined;
@@ -129,7 +153,9 @@ function NavLink({
         active && "bg-surface-active font-medium hover:bg-surface-active",
       )}
     >
-      {emoji ? (
+      {leading ? (
+        leading
+      ) : emoji ? (
         <span aria-hidden className="flex w-4 justify-center">
           {emoji}
         </span>

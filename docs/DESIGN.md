@@ -209,6 +209,8 @@ Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, She
 | `RelativeTime` | "5 minutes ago", server-rendered (B0.3b). |
 | `AuthFrame` | Signed-out pages: product mark, centred card, footer line (B0.3b). |
 | `PageStub` | `PageHeader` + `EmptyState` for screens not built yet (B0.3b). |
+| `JobSteps` | A job's named steps as a read-only progress tracker, raw log under "Details" (B0.5a). |
+| `BrandMark` | A brand's emoji, or its initial on its primary colour (B0.5a). |
 
 ### 5.4 AffectUI components (D48)
 
@@ -217,12 +219,12 @@ to tokens in `globals.css`. Install with `pnpm dlx shadcn@latest add https://www
 
 | Component | Status | Where |
 |---|---|---|
-| `progress-tracker` | in use (B0.4c) | Home "Getting started" checklist (read-only, from real data, steps link to where they're done). Later: build progress screen, pipeline steps ticking (B1.2) |
+| `progress-tracker` | in use (B0.4c, B0.5a) | Home "Getting started" checklist (read-only, from real data, steps link to where they're done); job steps via `JobSteps` (B0.5a: running = spinner + shimmering label, failed = cross + reason; used by the demo job and brand fetch). Later: build progress screen (B1.2) |
 | `profile-menu` | in use (B0.4c) | Account menu (top right): Settings, Theme, Sign out, getting-started progress |
 | `filter-menu` | in use (B0.4c) | Pages toolbar → Filter (status, origin, template type; URL state). Later: Library filters (B1.6) |
 | `shimmer-loader` | in use (B0.4c) | All loading states (`Skeleton`, `ShimmerText`); replaces shadcn Skeleton |
 | `grid-background` | in use (B0.4c) | Sign-in / sign-up / link-error pages |
-| `smart-recommendation` | planned | B0.5 detected brand colours with confidence; B1.2 "let the desk pick" audience and angle |
+| `smart-recommendation` | in use (B0.5a) | New brand review: detected brand colours with confidence and alternatives. Later: B1.2 "let the desk pick" audience and angle |
 | `text-reveal` | planned | B1.2 progress screen: AI-written text arriving |
 | `decision-inbox` | planned | B1.4 review desk: quick calls ("Copy partly rewritten: Accept / Redraft") |
 | `notification-stack` | planned | B1.4 stacked review-desk notices |
@@ -234,6 +236,8 @@ to tokens in `globals.css`. Install with `pnpm dlx shadcn@latest add https://www
 ### 5.3 `components/features/`
 
 Feature UIs (wizard steps, review desk panels, brand DNA form, template gallery). They import only from `ui/` and `app/`.
+
+- `products/` (B0.5b): `AddProduct` (URL field, live pull steps, result and warnings), `ProductsList` (thumbnail, name, price with the regular price struck through when on sale, option count), `ProductForm` (editable details; selling points one per line, specs as `Label: value`), `ProductImages`, `ProductOptions` (options table, subscriptions), `ProductBriefing` (four audience cards, benefits, features, objections; Write briefing / Refresh), `ProductActions` (Pull again and Remove, each confirmed in a popover).
 
 ---
 
@@ -251,6 +255,8 @@ Feature UIs (wizard steps, review desk panels, brand DNA form, template gallery)
 | `/templates/clone` | Clone a page (M2) | URL form, terms dialog, progress |
 | `/brands` | Brand list | GroupedList or table |
 | `/brands/[id]` | Brand with tabs: Overview, Pages, Products, Templates, Brand DNA | PageHeader, forms |
+| `/brands/[id]/products` | Add product (paste a product page → live steps) above the product list | AddProduct, JobSteps, ProductsList (GroupedList) |
+| `/brands/[id]/products/[productId]` | Product: summary (price, source, link), Pull again / Remove, images, editable details, options and subscriptions, briefing | ProductActions, ProductImages, ProductForm, ProductOptions, ProductBriefing |
 | `/library` | Archive of all builds + ledger | table, filters |
 | `/analytics` | Spend roll-ups | charts (recharts), cards |
 | `/settings/*` | Org, members, integrations (Vercel, Shopify), flags | forms |
@@ -259,8 +265,17 @@ Interaction notes:
 - ⌘K opens a command palette (search brands, pages, templates; quick actions).
 - Rows open on click; `⋯` menu on hover; multi-select with checkboxes appearing on hover (M3).
 - Wizard keeps state in the URL so refresh does not lose progress.
-- Use `motion/react` for small, fast transitions only (sidebar collapse, list group expand, toasts): 150–200 ms, ease-out. No decorative animation.
-- *B0.4c (D48):* AffectUI components keep their own calm motion (CSS, roughly 0.3–1.1 s: progress fills, ticks that draw, soft fades, shimmer, a drifting grid on the auth pages). It is allowed for those components; everything else follows the rule above. All of it stops under `prefers-reduced-motion`.
+- **Motion (D51, from the `emil-design-eng` skill in `.claude/skills/`).** Before animating, ask how often people will see it. Things used tens of times a day animate barely or not at all; nothing started from the keyboard animates. Every animation has a purpose (feedback, spatial continuity, state, avoiding a jarring jump).
+  - Curves are tokens in `globals.css`: `ease-out` (`cubic-bezier(0.23, 1, 0.32, 1)`) for anything entering, leaving or pressed; `ease-in-out` for things moving on screen; `ease-drawer` for sheets. Never `ease-in`.
+  - Durations: press 150 ms; tooltips and menus 150 ms in, 100 ms out (leaving is faster than arriving); sheets 300 ms in, 200 ms out; everything else in the product UI 300 ms or less. Only the auth-page grid (seen rarely) runs longer.
+  - Animate `transform` and `opacity` only, and name the properties (`transition-[color,transform]`, never `transition-all`).
+  - Buttons scale to 0.97 while pressed. Menus and popovers grow from their trigger (Radix transform origin), from 95 %, never from 0.
+  - Tooltips wait 400 ms the first time; once one is open, neighbours open instantly with no animation (`skipDelayDuration`).
+  - List groups and the sidebar open without a height animation (they are toggled often, often by keyboard); only the chevron turns.
+  - Spinners turn fast (0.7 s). Under `prefers-reduced-motion` motion gets gentler, not removed: fades stay, movement goes, spinners turn slowly (`animate-spin-slow`).
+  - AffectUI components follow the same rules: their curves map to `--ease-out` and their timings were shortened in the vendored files.
+  - `motion/react` (never `framer-motion`) is for springs and gestures CSS cannot do; prefer CSS transitions, which can be interrupted.
+  - Reviews of motion use a Before | After | Why table.
 
 ---
 
@@ -287,4 +302,4 @@ Figma is authoritative after replacement: if DESIGN.md and Figma disagree, Figma
 - Colour contrast AA for text (check `--color-fg-muted` on `--color-surface-muted`).
 - Icon-only buttons have `aria-label` and a tooltip.
 - Status is never conveyed by colour alone (glyph + label).
-- Respect `prefers-reduced-motion`.
+- Respect `prefers-reduced-motion`: gentler motion, not none (see §6).

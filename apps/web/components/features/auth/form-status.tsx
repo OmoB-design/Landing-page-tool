@@ -51,7 +51,7 @@ export function SubmitButton({
       {pending ? (
         <LoadingIcon
           aria-hidden
-          className="animate-spin motion-reduce:animate-none"
+          className="animate-spin motion-reduce:animate-spin-slow"
         />
       ) : null}
       {pending ? pendingLabel : label}

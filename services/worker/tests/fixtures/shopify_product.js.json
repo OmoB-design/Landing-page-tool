@@ -1,0 +1,55 @@
+{
+ "id": 101,
+ "handle": "glow-serum",
+ "variants": [
+  {
+   "id": 1001,
+   "price": 2400,
+   "compare_at_price": 3200,
+   "available": true,
+   "selling_plan_allocations": [
+    {
+     "selling_plan_id": 9001,
+     "selling_plan_group_id": "g1",
+     "price": 2160,
+     "compare_at_price": 2400
+    }
+   ]
+  },
+  {
+   "id": 1002,
+   "price": 3600,
+   "compare_at_price": null,
+   "available": false,
+   "selling_plan_allocations": []
+  }
+ ],
+ "selling_plan_groups": [
+  {
+   "id": "g1",
+   "name": "Subscribe & save 10%",
+   "selling_plans": [
+    {
+     "id": 9001,
+     "name": "Every month",
+     "price_adjustments": [
+      {
+       "value_type": "percentage",
+       "value": 10
+      }
+     ]
+    },
+    {
+     "id": 9002,
+     "name": "Every 2 months",
+     "price_adjustments": [
+      {
+       "value_type": "percentage",
+       "value": 10
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

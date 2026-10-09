@@ -96,11 +96,11 @@ export function ListGroup({
             </span>
             <ChevronDownIcon
               aria-hidden
-              className="size-3.5 text-fg-muted transition-transform group-data-closed:-rotate-90 motion-reduce:transition-none"
+              className="size-3.5 text-fg-muted transition-transform duration-150 ease-out group-data-closed:-rotate-90 motion-reduce:transition-none"
             />
           </CollapsibleTrigger>
         </h2>
-        <CollapsibleContent className="overflow-hidden motion-reduce:animate-none data-open:animate-collapsible-down data-closed:animate-collapsible-up">
+        <CollapsibleContent className="overflow-hidden">
           <ul role="list">{children}</ul>
         </CollapsibleContent>
       </section>

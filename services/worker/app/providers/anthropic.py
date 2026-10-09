@@ -15,6 +15,7 @@ from functools import lru_cache
 from typing import Any, Literal
 
 import anthropic
+from pydantic import BaseModel
 
 from app.config import get_settings
 from app.providers import cost, ledger
@@ -209,6 +210,36 @@ def _mock_reply(
         fell_back=False,
         mock=True,
     )
+
+
+_SCHEMA_DROP = ("title", "default", "minItems", "maxItems", "minLength", "maxLength")
+
+
+def strict_schema(model: type[BaseModel]) -> dict[str, Any]:
+    """A Pydantic model's JSON schema in the shape structured outputs accept: every object
+    closed (additionalProperties false), references inlined, titles and length limits dropped
+    (callers trim lists themselves)."""
+    schema = model.model_json_schema()
+    defs: dict[str, Any] = schema.pop("$defs", {})
+
+    def clean(node: Any) -> Any:
+        if isinstance(node, list):
+            return [clean(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        if "$ref" in node:
+            return clean(defs[str(node["$ref"]).rsplit("/", 1)[-1]])
+        out = {
+            key: clean(value)
+            for key, value in node.items()
+            if not (key in _SCHEMA_DROP and not isinstance(value, dict))
+        }
+        if out.get("type") == "object":
+            out["additionalProperties"] = False
+        return out
+
+    result: dict[str, Any] = clean(schema)
+    return result
 
 
 def mock_from_schema(schema: dict[str, Any]) -> Any:

@@ -73,6 +73,18 @@
   --spacing-row: 40px;
   --spacing-nav-item: 32px;
 
+  /* Motion (D51, DESIGN.md §6): strong custom curves; the built-in ones are too weak. */
+  --ease-out: cubic-bezier(
+    0.23,
+    1,
+    0.32,
+    1
+  ); /* enter/exit, presses, popovers */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* things moving on screen */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* sheets and drawers */
+  --animate-spin: spin 0.7s linear infinite; /* a fast spinner reads as a fast app */
+  --animate-spin-slow: spin 1.6s linear infinite; /* reduced motion: slower, not stopped */
+
   /* Shadow (used rarely: popovers, menus, dialogs) */
   --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
 }
@@ -162,7 +174,8 @@
    AffectUI components (DECISIONS.md D48). Each ships its own colour variables and dark-mode
    overrides; these map them onto the design tokens instead, so light/dark and future Figma token
    changes apply to them too. `:root .ui-*` outranks the components' own `.ui-*` defaults and
-   their `:where(.dark) .ui-*` overrides, whatever order the styles load in. Motion is theirs.
+   their `:where(.dark) .ui-*` overrides, whatever order the styles load in. Their curves map to
+   --ease-out; their durations are shortened in the vendored files (D51).
    ───────────────────────────────────────────────────────────────────────────── */
 :root .ui-progress {
   --ui-pg-card: var(--color-surface);
@@ -172,6 +185,8 @@
   --ui-pg-ring: var(--color-border-strong);
   --ui-pg-track: var(--color-surface-muted);
   --ui-pg-hover: var(--color-surface-hover);
+  --ui-pg-danger: var(--color-danger);
+  --ui-pg-ease: var(--ease-out);
   font-family: inherit;
   border-radius: var(--radius-lg);
   box-shadow: none;
@@ -186,6 +201,7 @@
 }
 
 :root .ui-pm {
+  --ui-pm-ease: var(--ease-out);
   --ui-pm-card: var(--color-surface);
   --ui-pm-line: var(--color-border);
   --ui-pm-ink: var(--color-fg);
@@ -222,6 +238,7 @@
 }
 
 :root .ui-fm {
+  --ui-fm-ease: var(--ease-out);
   --ui-fm-tray: var(--color-surface-muted);
   --ui-fm-card: var(--color-surface);
   --ui-fm-card-line: var(--color-border);
@@ -253,4 +270,38 @@
 
 :root .ui-gb {
   --ui-gb-color: var(--color-border);
+}
+
+:root .ui-sr {
+  --ui-sr-ease: var(--ease-out);
+  --ui-sr-tray: var(--color-surface-muted);
+  --ui-sr-card: var(--color-surface);
+  --ui-sr-ink: var(--color-fg);
+  --ui-sr-text: var(--color-fg);
+  --ui-sr-muted: var(--color-fg-muted);
+  --ui-sr-accent: var(--color-accent);
+  --ui-sr-ok: var(--color-success);
+  --ui-sr-accent-text: var(--color-accent);
+  --ui-sr-border: var(--color-border);
+  --ui-sr-shadow: none;
+  --ui-sr-head-hover: var(--color-surface-hover);
+  --ui-sr-pill: var(--color-accent-soft);
+  --ui-sr-pill-text: var(--color-accent);
+  --ui-sr-bar: var(--color-border-strong);
+  --ui-sr-btn: var(--color-surface);
+  --ui-sr-btn-hover: var(--color-surface-hover);
+  --ui-sr-menu: var(--color-surface);
+  --ui-sr-option-hover: var(--color-surface-hover);
+  --ui-sr-option-on: var(--color-accent-soft);
+  --ui-sr-tag: var(--color-accent-soft);
+  font-family: inherit;
+  border-radius: var(--radius-lg);
+  max-width: var(--container-xl);
+}
+:root .ui-sr__card {
+  border-radius: var(--radius-md);
+}
+:root .ui-sr button:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-accent) 40%, transparent);
+  outline-offset: 1px;
 }

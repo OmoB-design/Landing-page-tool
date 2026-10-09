@@ -17,7 +17,7 @@ import {
  *
  * From AffectUI (https://www.affectui.com, MIT – see THIRD_PARTY_NOTICES.md). Colours, radius and
  * font follow our design tokens via app/globals.css (DECISIONS.md D48). LP changes: two guards
- * for strict index checks (noUncheckedIndexedAccess).
+ * for strict index checks (noUncheckedIndexedAccess); timings shortened to 200–220 ms (D51).
  */
 
 export type FilterOption = { id: string; label: string };
@@ -388,7 +388,7 @@ const css = /* css */ `
 /* ---------- Chips ---------- */
 
 .ui-fm__chips-outer { overflow: hidden; }
-.ui-fm__chips-outer[data-smooth] { transition: height 320ms var(--ui-fm-ease); }
+.ui-fm__chips-outer[data-smooth] { transition: height 220ms var(--ui-fm-ease); }
 .ui-fm__chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 12px; }
 .ui-fm__chips:empty { padding-top: 0; }
 .ui-fm__chip {
@@ -402,7 +402,7 @@ const css = /* css */ `
   font-size: 13px;
   color: var(--ui-fm-text);
   white-space: nowrap;
-  animation: ui-fm-chip-in 260ms var(--ui-fm-ease) both;
+  animation: ui-fm-chip-in 200ms var(--ui-fm-ease) both;
 }
 .ui-fm__chip button {
   display: grid;
@@ -447,7 +447,7 @@ const css = /* css */ `
   stroke-linecap: round;
   stroke-linejoin: round;
   transform: rotate(-90deg);
-  transition: transform 260ms var(--ui-fm-ease);
+  transition: transform 200ms var(--ui-fm-ease);
 }
 .ui-fm__group[data-open] .ui-fm__chevron { transform: none; }
 .ui-fm__group-label { font-size: 14px; font-weight: 500; }
@@ -457,7 +457,7 @@ const css = /* css */ `
 .ui-fm__panel {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 320ms var(--ui-fm-ease);
+  transition: grid-template-rows 220ms var(--ui-fm-ease);
 }
 .ui-fm__group[data-open] .ui-fm__panel { grid-template-rows: 1fr; }
 .ui-fm__panel-inner {
@@ -467,7 +467,7 @@ const css = /* css */ `
   gap: 1px;
   padding: 0 0 0;
   opacity: 0;
-  transition: opacity 220ms ease, padding 320ms var(--ui-fm-ease);
+  transition: opacity 220ms ease, padding 220ms var(--ui-fm-ease);
 }
 .ui-fm__group[data-open] .ui-fm__panel-inner { opacity: 1; padding: 2px 0 6px; }
 
@@ -510,7 +510,7 @@ const css = /* css */ `
   stroke-linejoin: round;
   stroke-dasharray: 20;
   stroke-dashoffset: 20;
-  transition: stroke-dashoffset 260ms var(--ui-fm-ease);
+  transition: stroke-dashoffset 200ms var(--ui-fm-ease);
 }
 .ui-fm__option[aria-checked="true"] .ui-fm__box { background: var(--ui-fm-ink); box-shadow: inset 0 0 0 1px var(--ui-fm-ink); }
 .ui-fm__option[aria-checked="true"] .ui-fm__box svg { stroke-dashoffset: 0; }

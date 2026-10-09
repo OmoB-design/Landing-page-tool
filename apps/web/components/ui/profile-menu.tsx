@@ -14,7 +14,8 @@ import {
  *
  * From AffectUI (https://www.affectui.com, MIT – see THIRD_PARTY_NOTICES.md). Colours, radius and
  * font follow our design tokens via app/globals.css (DECISIONS.md D48).
- * LP changes: the setup progress title is a prop (`setup.title`); one guard for strict index checks.
+ * LP changes: the setup progress title is a prop (`setup.title`); one guard for strict index checks;
+ * the setup ring fills in 300 ms, not 900 ms (D51).
  */
 
 export type ProfileMenuItem = {
@@ -435,7 +436,7 @@ const css = /* css */ `
   background: var(--ui-pm-fill);
   transform-origin: left center;
   scale: 0 1;
-  transition: scale 900ms var(--ui-pm-ease) 150ms;
+  transition: scale 300ms var(--ui-pm-ease) 60ms;
 }
 .ui-pm[data-filled] .ui-pm__fill { scale: 1 1; }
 .ui-pm__next {

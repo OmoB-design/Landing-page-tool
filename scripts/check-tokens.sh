@@ -2,9 +2,10 @@
 # Fails when app code uses raw colours or arbitrary Tailwind values instead of design tokens
 # (docs/DESIGN.md §4). Checks routes (app/), app composites and feature components.
 # components/ui is exempt: it is shadcn scaffolding that Figma replaces component by component.
+# Tests are exempt too: colours there are data (e.g. a brand's palette), not styling.
 cd "$(dirname "$0")/.." || exit 1
 
-matches=$(grep -rnE --include='*.ts' --include='*.tsx' \
+matches=$(grep -rnE --include='*.ts' --include='*.tsx' --exclude='*.test.ts' --exclude='*.test.tsx' \
   -e '[a-z]-\[[^]]+\]' \
   -e '#[0-9a-fA-F]{3,8}\b' \
   -e '(rgb|rgba|hsl|hsla|oklch)\(' \

@@ -153,7 +153,7 @@ function JobStatusIcon({ status }: { status: JobStatus }) {
       return (
         <LoadingIcon
           aria-hidden
-          className="size-4 animate-spin text-accent motion-reduce:animate-none"
+          className="size-4 animate-spin text-accent motion-reduce:animate-spin-slow"
         />
       );
     case "succeeded":

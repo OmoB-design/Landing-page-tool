@@ -38,4 +38,31 @@ describe("ProgressTracker (read-only)", () => {
     expect(screen.getByText("Publish a page").closest("a")).toBeNull();
     expect(screen.queryAllByRole("checkbox")).toEqual([]);
   });
+
+  it("shows a running step with a spinner and a failed step with its reason", () => {
+    render(
+      <ProgressTracker
+        title="Fetching"
+        readOnly
+        steps={[
+          { id: "a", label: "Load the page", done: true },
+          { id: "b", label: "Read the page", status: "running" },
+          {
+            id: "c",
+            label: "Write the profile",
+            status: "failed",
+            note: "Site blocked us.",
+          },
+        ]}
+      />,
+    );
+    const running = screen.getByText("Read the page").closest("[data-status]");
+    expect(running?.getAttribute("data-status")).toBe("running");
+    expect(screen.getByText("In progress:", { exact: false })).toBeTruthy();
+    const failed = screen
+      .getByText("Write the profile")
+      .closest("[data-status]");
+    expect(failed?.getAttribute("data-status")).toBe("failed");
+    expect(screen.getByText("Site blocked us.")).toBeTruthy();
+  });
 });

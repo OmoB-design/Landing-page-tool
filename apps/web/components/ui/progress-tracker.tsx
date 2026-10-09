@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { ShimmerText } from "./shimmer-loader";
+
 /*
  * Progress Tracker – a checklist with a progress bar, in a single self-contained file.
  * The styles are injected below, so no extra files are needed.
@@ -10,7 +12,9 @@ import { useEffect, useState, type ReactNode } from "react";
  * From AffectUI (https://www.affectui.com, MIT – see THIRD_PARTY_NOTICES.md). Colours, radius and
  * font follow our design tokens via app/globals.css (DECISIONS.md D48).
  * LP changes: `readOnly` mode where steps reflect real state and link to where they are done
- * (`href`); the title is an h2.
+ * (`href`); read-only steps can also be "running" (spinner, shimmering label) or "failed" (cross
+ * and a note); the title is an h2; every timing is 300 ms or less and rows stagger 50 ms
+ * apart (D51).
  */
 
 export type ProgressStep = {
@@ -21,6 +25,10 @@ export type ProgressStep = {
   icon?: ReactNode;
   /** LP: in read-only mode the step links here (where the user does it) */
   href?: string;
+  /** LP: read-only live state; "running" shows a spinner, "failed" a cross and `note` */
+  status?: "running" | "failed";
+  /** LP: a line under the label, e.g. why the step failed */
+  note?: string;
 };
 
 export type ProgressTrackerProps = {
@@ -124,21 +132,40 @@ export function ProgressTracker({
       <ul className="ui-progress__list">
         {initial.map((step, index) => {
           const checked = doneIds.has(step.id);
+          const status = readOnly && !checked ? step.status : undefined;
+          const stateWord = checked
+            ? "Done"
+            : status === "running"
+              ? "In progress"
+              : status === "failed"
+                ? "Failed"
+                : "To do";
           const content = (
             <>
               <span className="ui-progress__check" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
-                  <path d="M6.5 12.5l3.5 3.5 7.5-8" pathLength={1} />
+                  {status === "failed" ? (
+                    <path d="M8 8l8 8M16 8l-8 8" pathLength={1} />
+                  ) : (
+                    <path d="M6.5 12.5l3.5 3.5 7.5-8" pathLength={1} />
+                  )}
                 </svg>
               </span>
               <span className="ui-progress__label">
                 {/* LP: read-only steps say their state to screen readers */}
                 {readOnly ? (
-                  <span className="sr-only">
-                    {checked ? "Done: " : "To do: "}
-                  </span>
+                  <span className="sr-only">{`${stateWord}: `}</span>
                 ) : null}
-                <span>{step.label}</span>
+                <span>
+                  {status === "running" ? (
+                    <ShimmerText>{step.label}</ShimmerText>
+                  ) : (
+                    step.label
+                  )}
+                </span>
+                {step.note ? (
+                  <span className="ui-progress__note">{step.note}</span>
+                ) : null}
               </span>
               {step.icon && (
                 <span className="ui-progress__icon" aria-hidden="true">
@@ -150,15 +177,16 @@ export function ProgressTracker({
           return (
             <li
               key={step.id}
-              style={{ animationDelay: `${180 + index * 90}ms` }}
+              style={{ animationDelay: `${60 + index * 50}ms` }}
             >
               {readOnly ? (
                 step.href ? (
                   <Link
-                    aria-label={`${checked ? "Done" : "To do"}: ${step.label}`}
+                    aria-label={`${stateWord}: ${step.label}`}
                     href={step.href}
                     className="ui-progress__step"
                     data-checked={checked || undefined}
+                    data-status={status}
                   >
                     {content}
                   </Link>
@@ -166,6 +194,7 @@ export function ProgressTracker({
                   <div
                     className="ui-progress__step"
                     data-checked={checked || undefined}
+                    data-status={status}
                   >
                     {content}
                   </div>
@@ -201,6 +230,7 @@ const css = /* css */ `
   --ui-pg-ring: #8f8f8f;
   --ui-pg-track: #f0f0f0;
   --ui-pg-hover: #f7f7f7;
+  --ui-pg-danger: #d93f3f; /* LP */
   --ui-pg-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ui-pg-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
 
@@ -246,7 +276,7 @@ const css = /* css */ `
 /* The number rolls in from below whenever it changes */
 .ui-progress__digit {
   display: inline-block;
-  animation: ui-progress-roll 560ms var(--ui-pg-ease);
+  animation: ui-progress-roll 200ms var(--ui-pg-ease);
 }
 
 .ui-progress__bar {
@@ -264,14 +294,14 @@ const css = /* css */ `
   background: var(--ui-pg-ink);
   transform-origin: 0 50%;
   overflow: hidden;
-  transition: transform 1100ms var(--ui-pg-ease);
+  transition: transform 300ms var(--ui-pg-ease);
 }
 .ui-progress__shine {
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg, transparent 30%, rgba(255, 255, 255, 0.28) 50%, transparent 70%) 0 0 / 220% 100%
     no-repeat;
-  animation: ui-progress-shine 1400ms ease-out both;
+  animation: ui-progress-shine 700ms ease-out both;
 }
 
 .ui-progress__list {
@@ -283,11 +313,11 @@ const css = /* css */ `
 }
 /* On mount the card settles in, then the rows fade up one after another */
 .ui-progress {
-  animation: ui-progress-in 520ms var(--ui-pg-ease) both;
+  animation: ui-progress-in 240ms var(--ui-pg-ease) both;
 }
 .ui-progress__list > li {
   position: relative;
-  animation: ui-progress-row-in 640ms var(--ui-pg-ease) both;
+  animation: ui-progress-row-in 240ms var(--ui-pg-ease) both;
 }
 
 .ui-progress__step {
@@ -343,18 +373,18 @@ div.ui-progress__step { cursor: default; }
   stroke-linejoin: round;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
-  transition: stroke-dashoffset 120ms ease-in;
+  transition: stroke-dashoffset 120ms var(--ui-pg-ease);
 }
 .ui-progress__step[aria-checked="true"] .ui-progress__check,
 .ui-progress__step[data-checked] .ui-progress__check {
   background: var(--ui-pg-ink);
   border-color: var(--ui-pg-ink);
-  animation: ui-progress-pop 560ms var(--ui-pg-ease);
+  animation: ui-progress-pop 240ms var(--ui-pg-ease);
 }
 .ui-progress__step[aria-checked="true"] .ui-progress__check svg,
 .ui-progress__step[data-checked] .ui-progress__check svg {
   stroke-dashoffset: 0;
-  transition: stroke-dashoffset 420ms var(--ui-pg-ease) 160ms;
+  transition: stroke-dashoffset 200ms var(--ui-pg-ease) 80ms;
 }
 
 /* Label: grays out while a line strikes through it, line by line */
@@ -364,11 +394,11 @@ div.ui-progress__step { cursor: default; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 300ms ease;
+  transition: color 200ms ease;
 }
 .ui-progress__label > span:last-child {
   background: linear-gradient(currentColor, currentColor) 0 58% / 0% 1.5px no-repeat;
-  transition: background-size 380ms var(--ui-pg-ease);
+  transition: background-size 200ms var(--ui-pg-ease);
 }
 .ui-progress__step[aria-checked="true"] .ui-progress__label,
 .ui-progress__step[data-checked] .ui-progress__label {
@@ -377,7 +407,7 @@ div.ui-progress__step { cursor: default; }
 .ui-progress__step[aria-checked="true"] .ui-progress__label > span:last-child,
 .ui-progress__step[data-checked] .ui-progress__label > span:last-child {
   background-size: 100% 1.5px;
-  transition: background-size 620ms var(--ui-pg-ease) 220ms;
+  transition: background-size 240ms var(--ui-pg-ease) 100ms;
 }
 
 .ui-progress__icon {
@@ -386,7 +416,7 @@ div.ui-progress__step { cursor: default; }
   place-items: center;
   width: 18px;
   height: 18px;
-  transition: opacity 300ms ease;
+  transition: opacity 200ms ease;
 }
 .ui-progress__icon > svg {
   width: 100%;
@@ -396,6 +426,30 @@ div.ui-progress__step { cursor: default; }
 .ui-progress__step[data-checked] .ui-progress__icon {
   opacity: 0.45;
 }
+
+/* LP: live states for read-only trackers (job steps) */
+.ui-progress__step[data-status="running"] .ui-progress__check {
+  border-color: var(--ui-pg-ink);
+  border-right-color: transparent;
+  animation: ui-progress-spin 600ms linear infinite;
+}
+.ui-progress__step[data-status="failed"] .ui-progress__check {
+  background: var(--ui-pg-danger);
+  border-color: var(--ui-pg-danger);
+}
+.ui-progress__step[data-status="failed"] .ui-progress__check svg {
+  stroke-dashoffset: 0;
+}
+.ui-progress__step[data-status="failed"] .ui-progress__label { color: var(--ui-pg-danger); }
+.ui-progress__note {
+  display: block;
+  white-space: normal;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ui-pg-muted);
+}
+.ui-progress__step[data-status="failed"] .ui-progress__note { color: var(--ui-pg-danger); }
+@keyframes ui-progress-spin { to { transform: rotate(360deg); } }
 
 @keyframes ui-progress-pop {
   0% { transform: scale(0.9); }
@@ -424,16 +478,29 @@ div.ui-progress__step { cursor: default; }
   to { background-position: -20% 0; opacity: 0; }
 }
 
+/* LP: reduced motion is gentler, not none (D51): fades stay, movement goes, and a running
+   step keeps turning slowly so it still reads as "working". */
 @media (prefers-reduced-motion: reduce) {
   .ui-progress,
-  .ui-progress *,
-  .ui-progress *::before,
-  .ui-progress *::after {
+  .ui-progress__list > li,
+  .ui-progress__digit {
+    animation-name: ui-progress-fade !important;
+  }
+  .ui-progress__shine,
+  .ui-progress__check {
     animation: none !important;
+  }
+  .ui-progress__fill,
+  .ui-progress__label > span:last-child,
+  .ui-progress__check svg {
     transition-duration: 1ms !important;
     transition-delay: 0ms !important;
   }
+  .ui-progress__step[data-status="running"] .ui-progress__check {
+    animation: ui-progress-spin 1600ms linear infinite !important;
+  }
 }
+@keyframes ui-progress-fade { from { opacity: 0; } }
 
 /* Dark mode: follows a .dark class or data-theme="dark" on any ancestor, e.g. <html> */
 :where(.dark, [data-theme="dark"]) .ui-progress {

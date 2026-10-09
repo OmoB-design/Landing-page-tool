@@ -47,7 +47,7 @@ def create_job(body: EnqueueRequest, user: CurrentUser, response: Response) -> E
         )
     require_org_member(user, body.org_id)
     try:
-        payload = kind.payload_model.model_validate(body.payload).model_dump(mode="json")
+        model = kind.payload_model.model_validate(body.payload)
     except ValidationError as exc:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, exc.errors(include_url=False)
@@ -56,8 +56,9 @@ def create_job(body: EnqueueRequest, user: CurrentUser, response: Response) -> E
     job, created = queue.enqueue(
         org_id=body.org_id,
         kind=kind.name,
-        payload=payload,
+        payload=model.model_dump(mode="json"),
         created_by=user.id,
+        dedupe_key=kind.dedupe(model) if kind.dedupe else None,
         max_attempts=kind.max_attempts,
     )
     if not created:

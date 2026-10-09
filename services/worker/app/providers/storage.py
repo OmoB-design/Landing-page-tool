@@ -20,6 +20,7 @@ EXTENSIONS = {
     "image/webp": "webp",
     "image/gif": "gif",
     "image/svg+xml": "svg",
+    "image/x-icon": "ico",
     "font/woff2": "woff2",
 }
 

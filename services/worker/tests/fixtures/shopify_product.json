@@ -1,0 +1,56 @@
+{
+ "product": {
+  "id": 101,
+  "title": "Lumé Glow Serum",
+  "handle": "glow-serum",
+  "vendor": "Lumé Skin",
+  "product_type": "Serum",
+  "body_html": "<p>A <strong>daily</strong> vitamin C serum for a brighter look.</p><script>track()</script><ul><li>30 ml</li></ul>",
+  "options": [
+   {
+    "name": "Size",
+    "position": 1,
+    "values": [
+     "30 ml",
+     "50 ml"
+    ]
+   }
+  ],
+  "variants": [
+   {
+    "id": 1001,
+    "title": "30 ml",
+    "option1": "30 ml",
+    "option2": null,
+    "option3": null,
+    "price": "24.00",
+    "compare_at_price": "32.00",
+    "price_currency": "GBP",
+    "image_id": 502
+   },
+   {
+    "id": 1002,
+    "title": "50 ml",
+    "option1": "50 ml",
+    "option2": null,
+    "option3": null,
+    "price": "36.00",
+    "compare_at_price": "",
+    "price_currency": "GBP",
+    "image_id": null
+   }
+  ],
+  "images": [
+   {
+    "id": 501,
+    "src": "https://cdn.shopify.com/s/files/1/0001/files/glow-front.png?v=1",
+    "alt": "Glow Serum bottle"
+   },
+   {
+    "id": 502,
+    "src": "//cdn.shopify.com/s/files/1/0001/files/glow-30ml.png?v=1",
+    "alt": null
+   }
+  ]
+ }
+}

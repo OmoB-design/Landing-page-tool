@@ -203,6 +203,7 @@ uv run pytest -q
 uv run ruff check . && uv run ruff format --check . && uv run mypy
 uv run python worker.py                            # job loop on its own (Ctrl+C pauses running jobs; they resume on restart)
 uv run python -m app.providers.smoke --org <uuid>  # ONE real Claude Haiku call (< $0.01) to check the key; owner's go only
+uv run playwright install chromium                 # once per machine (brand fetch, M2 cloning, QA); ~300 MB
 # Worker tests use the local Supabase Postgres (skipped when it is down); services/worker/.env holds
 # local keys (gitignored; recreate from .env.example + `supabase status`).
 

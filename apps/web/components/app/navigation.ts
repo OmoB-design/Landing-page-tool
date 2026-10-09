@@ -47,14 +47,17 @@ export const SETTINGS_SECTION: RailSection = {
 
 const ALL_SECTIONS = [...RAIL_SECTIONS, SETTINGS_SECTION];
 
-/** The sidebar's primary action per section. Placeholders until the builds that add them. */
-export const SECTION_ACTIONS: Record<SectionId, string> = {
-  pages: "New page",
-  templates: "Browse library",
-  brands: "New brand",
-  library: "New page",
-  analytics: "New page",
-  settings: "New page",
+/** The sidebar's primary action per section; `href` once the screen it opens exists. */
+export const SECTION_ACTIONS: Record<
+  SectionId,
+  { label: string; href?: string }
+> = {
+  pages: { label: "New page" },
+  templates: { label: "Browse library" },
+  brands: { label: "New brand", href: "/brands/new" },
+  library: { label: "New page" },
+  analytics: { label: "New page" },
+  settings: { label: "New page" },
 };
 
 /** Which rail section a path belongs to. Home lives under Pages, as in the reference layout. */
