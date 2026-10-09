@@ -15,6 +15,7 @@ from app.jobs.models import Job
 from app.jobs.registry import KINDS
 from app.log import configure_logging
 from app.models.build import BuildRequest
+from app.models.template import LayoutAction, TemplateEditorState
 
 configure_logging(get_settings().log_level)
 
@@ -126,3 +127,77 @@ def use_template(body: UseTemplateRequest, user: CurrentUser) -> TemplateSummary
             status.HTTP_404_NOT_FOUND, "That template isn't in the library."
         ) from exc
     return TemplateSummary.model_validate(row)
+
+
+# ── Section editor (BUILD_SPEC §8.3, B1.1b) ───────────────────────────────────
+
+CHANGED_ELSEWHERE = "This template changed in another tab or by someone else. Reload to see it."
+
+
+class TemplateEdit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    base_version: int  # the version the editor showed when the edit was made
+
+
+class LayoutEditRequest(TemplateEdit):
+    action: LayoutAction
+
+
+class RestoreRequest(TemplateEdit):
+    version: int
+
+
+def _editor_call(fn: Any, *args: Any) -> TemplateEditorState:
+    try:
+        state: TemplateEditorState = fn(*args)
+    except templates.TemplateNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "That template isn't in your workspace."
+        ) from exc
+    except templates.TemplateConflictError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, CHANGED_ELSEWHERE) from exc
+    except templates.TemplateEditError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return state
+
+
+@app.get("/templates/{template_id}/editor")
+def template_editor(template_id: UUID, org_id: UUID, user: CurrentUser) -> TemplateEditorState:
+    """The section editor's view of one of the org's templates."""
+    require_org_member(user, org_id)
+    return _editor_call(templates.editor_state, org_id, template_id)
+
+
+@app.post("/templates/{template_id}/layout")
+def edit_template_layout(
+    template_id: UUID, body: LayoutEditRequest, user: CurrentUser
+) -> TemplateEditorState:
+    """Reorders, removes, duplicates or renames a section, saving a new version."""
+    require_org_member(user, body.org_id)
+    return _editor_call(
+        templates.edit_layout, body.org_id, template_id, user.id, body.base_version, body.action
+    )
+
+
+@app.post("/templates/{template_id}/undo")
+def undo_template(template_id: UUID, body: TemplateEdit, user: CurrentUser) -> TemplateEditorState:
+    require_org_member(user, body.org_id)
+    return _editor_call(templates.step, body.org_id, template_id, body.base_version, "undo")
+
+
+@app.post("/templates/{template_id}/redo")
+def redo_template(template_id: UUID, body: TemplateEdit, user: CurrentUser) -> TemplateEditorState:
+    require_org_member(user, body.org_id)
+    return _editor_call(templates.step, body.org_id, template_id, body.base_version, "redo")
+
+
+@app.post("/templates/{template_id}/restore")
+def restore_template_version(
+    template_id: UUID, body: RestoreRequest, user: CurrentUser
+) -> TemplateEditorState:
+    require_org_member(user, body.org_id)
+    return _editor_call(
+        templates.restore, body.org_id, template_id, user.id, body.base_version, body.version
+    )

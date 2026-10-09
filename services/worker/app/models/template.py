@@ -1,7 +1,9 @@
 """Templates (BUILD_SPEC §8): the `instructions` a template carries (§8.5) and the
 `template.json` manifest of a library template folder (template-onboarding skill)."""
 
-from typing import Literal
+from datetime import datetime
+from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -69,3 +71,114 @@ class TemplateManifest(BaseModel):
     sections: list[SectionSpec] = Field(min_length=1)
     # "retired" hides a template from the gallery; builds that used it keep working.
     status: Literal["active", "retired"] = "active"
+
+
+# ── Section editor (BUILD_SPEC §8.3, B1.1b) ───────────────────────────────────
+
+
+class TextField(BaseModel):
+    """A piece of a section's text, shown read-only in the editor (words change per build)."""
+
+    label: str
+    text: str
+
+
+class SectionOutline(BaseModel):
+    """What the editor shows about one top-level section of a template's page."""
+
+    key: str
+    number: str | None = None  # the section's `data-lp-number` text, e.g. "3"
+    title: str = ""  # first heading (without its number), else the first line of text
+    fields: list[TextField] = Field(default_factory=list)
+    words: int = 0
+    images: int = 0
+    group: int = 0  # sections only reorder among those with the same group (container)
+
+
+class TemplateIssue(BaseModel):
+    severity: Literal["error", "warning", "info"]
+    message: str
+    section: str | None = None
+
+
+class TemplateColour(BaseModel):
+    name: str
+    token: str
+    value: str
+
+
+class TemplateLook(BaseModel):
+    colours: list[TemplateColour] = Field(default_factory=list)
+    heading_font: str | None = None
+    body_font: str | None = None
+
+
+class ReorderAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["reorder"]
+    keys: list[str] = Field(min_length=1, max_length=100)
+    moved: str | None = None  # the section the user moved, for the version's description
+
+
+class RemoveAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["remove"]
+    key: str
+
+
+class DuplicateAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["duplicate"]
+    key: str
+
+
+class RenameAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["rename"]
+    key: str
+    label: str = Field(min_length=1, max_length=80)
+
+
+LayoutAction = Annotated[
+    ReorderAction | RemoveAction | DuplicateAction | RenameAction, Field(discriminator="type")
+]
+
+
+class EditorTemplate(BaseModel):
+    id: UUID
+    name: str
+    description: str | None
+    type: str
+    version: int
+    parent_name: str | None
+    updated_at: datetime
+
+
+class EditorSection(SectionOutline):
+    role: SectionRole
+    label: str
+    removable: bool
+    duplicable: bool
+
+
+class EditorVersion(BaseModel):
+    version: int
+    reason: str | None
+    created_at: datetime
+    current: bool
+
+
+class TemplateEditorState(BaseModel):
+    template: EditorTemplate
+    sections: list[EditorSection]
+    versions: list[EditorVersion]  # newest first
+    can_undo: bool
+    can_redo: bool
+    issues: list[TemplateIssue]
+    look: TemplateLook
+    words: int
+    read_minutes: int

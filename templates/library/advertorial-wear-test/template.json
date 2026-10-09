@@ -74,6 +74,20 @@
       "duplicable": false
     },
     {
+      "key": "bottom-line",
+      "role": "cta",
+      "label": "The bottom line",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "shop-list",
+      "role": "cta",
+      "label": "What you get and Shop button",
+      "removable": true,
+      "duplicable": false
+    },
+    {
       "key": "faq",
       "role": "faq",
       "label": "Questions",

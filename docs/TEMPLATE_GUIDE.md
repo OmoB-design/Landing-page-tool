@@ -45,4 +45,10 @@ Seed entries carried from the reference tool:
   `instructions.notes`.
 - Item numbers ("1"…"10") and alternating photo sides go stale when sections move: mark them
   with `data-lp-number` and `data-lp-alternate` (D64) instead of numbering by hand.
+- Content left between sections can't be moved or removed with them: the molether advertorial's
+  closing "bottom line" paragraphs, benefits list and Shop button sat outside every section until
+  the editor's Issues tab flagged them (B1.1b). Wrap such blocks as their own section, or mark page
+  frame (progress bars, side rails) `data-lp-fixed`.
+- A section that sits in a different container from its neighbours can only move among the
+  sections in that container. Keep the reorderable middle of a page in one container.
 

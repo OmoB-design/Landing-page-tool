@@ -116,11 +116,12 @@ lp-platform/
 │       │   │   ├── pages/             ← builds list (grouped by status) and new-page wizard
 │       │   │   │   ├── new/           ← create wizard
 │       │   │   │   └── [buildId]/     ← review desk; /editor sub-route from M3
-│       │   │   ├── templates/         ← library gallery; [templateId] section editor
+│       │   │   ├── templates/         ← library gallery (Library / Yours)
 │       │   │   ├── brands/            ← brand list; [brandId] with tabs
 │       │   │   ├── library/           ← all builds archive + ledger
 │       │   │   ├── analytics/
 │       │   │   └── settings/          ← org, members, integrations (Vercel, Shopify)
+│       │   ├── (editor)/templates/[templateId]/ ← full-screen section editor (no workspace shell)
 │       │   ├── preview/[buildId]/route.ts ← serves built HTML into a sandboxed iframe
 │       │   └── api/                   ← thin route handlers that call the worker API
 │       ├── components/

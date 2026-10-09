@@ -53,12 +53,7 @@ def apply_layout(html: str, keys: list[str]) -> tuple[str, dict[str, object]]:
         if base is None or match is None:
             warnings.append(f"Section {key} is not in the page.")
             continue
-        clone = copy.copy(base)
-        clone["data-lp-section"] = key
-        if clone.has_attr("id"):
-            clone["id"] = f"{clone['id']}-{match.group('n')}"
-        for img in clone.select("[data-lp-img]"):
-            del img["data-lp-img"]  # image slots are numbered again later
+        clone = _copy_section(base, key)
         last = base
         for other_key, other in by_key.items():
             other_match = DUPLICATE_KEY.match(other_key)
@@ -100,6 +95,35 @@ def apply_layout(html: str, keys: list[str]) -> tuple[str, dict[str, object]]:
     stats["removed"] = removed
     stats["duplicated"] = duplicated
     return serialize(soup), stats
+
+
+def _copy_section(source: Tag, key: str) -> Tag:
+    """A copy of a section under a new key (its `id`, if any, gets the key's number)."""
+    clone = copy.copy(source)
+    clone["data-lp-section"] = key
+    if clone.has_attr("id"):
+        match = DUPLICATE_KEY.match(key)
+        clone["id"] = f"{clone['id']}-{match.group('n') if match else key}"
+    for img in clone.select("[data-lp-img]"):
+        del img["data-lp-img"]  # image slots are numbered again later
+    return clone
+
+
+def duplicate_section(html: str, key: str, new_key: str) -> str:
+    """Copies the top-level section `key` as `new_key`, right after the original
+    (BUILD_SPEC §8.3), and renumbers numbered items. Raises KeyError for an unknown key."""
+    soup = parse(html)
+    source = next((s for s in top_level_sections(soup) if s["data-lp-section"] == key), None)
+    if source is None:
+        raise KeyError(key)
+    source.insert_after(_copy_section(source, new_key))
+    renumber(soup)
+    return serialize(soup)
+
+
+def section_order(html: str) -> list[str]:
+    """The page's top-level section keys, in document order."""
+    return [str(s["data-lp-section"]) for s in top_level_sections(parse(html))]
 
 
 def renumber(soup: Tag) -> None:

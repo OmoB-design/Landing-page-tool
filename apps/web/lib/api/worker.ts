@@ -2,6 +2,11 @@ import { z } from "zod";
 
 import { type BuildCreated, buildCreatedSchema } from "@/lib/validators/build";
 import {
+  type LayoutAction,
+  type TemplateEditorState,
+  templateEditorSchema,
+} from "@/lib/validators/template";
+import {
   enqueueResponseSchema,
   type EnqueueResponse,
 } from "@/lib/validators/jobs";
@@ -37,7 +42,8 @@ function detailMessage(body: unknown): string | undefined {
   return undefined;
 }
 
-async function postToWorker<T>(
+async function callWorker<T>(
+  method: "GET" | "POST",
   path: string,
   accessToken: string,
   body: unknown,
@@ -47,12 +53,12 @@ async function postToWorker<T>(
   let response: Response;
   try {
     response = await fetch(`${workerUrl}${path}`, {
-      method: "POST",
+      method,
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
@@ -69,6 +75,16 @@ async function postToWorker<T>(
     throw new WorkerError(detailMessage(json) ?? failure, response.status);
   }
   return schema.parse(json);
+}
+
+function postToWorker<T>(
+  path: string,
+  accessToken: string,
+  body: unknown,
+  schema: z.ZodType<T>,
+  failure: string,
+): Promise<T> {
+  return callWorker("POST", path, accessToken, body, schema, failure);
 }
 
 export function startWorkerJob(
@@ -123,5 +139,71 @@ export function copyLibraryTemplate(
     body,
     templateSummarySchema,
     "Could not add the template.",
+  );
+}
+
+// ── Section editor (worker /templates/{id}/…, BUILD_SPEC §8.3) ───────────────
+
+/** Everything the section editor shows for one of the org's templates. */
+export function getTemplateEditor(
+  accessToken: string,
+  orgId: string,
+  templateId: string,
+): Promise<TemplateEditorState> {
+  return callWorker(
+    "GET",
+    `/templates/${encodeURIComponent(templateId)}/editor?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    templateEditorSchema,
+    "Could not open the template.",
+  );
+}
+
+type TemplateEditBody = { org_id: string; base_version: number };
+
+/** One section edit (reorder, remove, duplicate, rename), saved as a new version. */
+export function editTemplateLayout(
+  accessToken: string,
+  templateId: string,
+  body: TemplateEditBody & { action: LayoutAction },
+): Promise<TemplateEditorState> {
+  return postToWorker(
+    `/templates/${encodeURIComponent(templateId)}/layout`,
+    accessToken,
+    body,
+    templateEditorSchema,
+    "Could not save the change.",
+  );
+}
+
+/** Undo or redo: moves the template to the previous or next saved version. */
+export function stepTemplate(
+  accessToken: string,
+  templateId: string,
+  direction: "undo" | "redo",
+  body: TemplateEditBody,
+): Promise<TemplateEditorState> {
+  return postToWorker(
+    `/templates/${encodeURIComponent(templateId)}/${direction}`,
+    accessToken,
+    body,
+    templateEditorSchema,
+    `Could not ${direction}.`,
+  );
+}
+
+/** Makes an earlier version current again (saved as a new version). */
+export function restoreTemplateVersion(
+  accessToken: string,
+  templateId: string,
+  body: TemplateEditBody & { version: number },
+): Promise<TemplateEditorState> {
+  return postToWorker(
+    `/templates/${encodeURIComponent(templateId)}/restore`,
+    accessToken,
+    body,
+    templateEditorSchema,
+    "Could not restore that version.",
   );
 }

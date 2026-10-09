@@ -1,7 +1,13 @@
+import Link from "next/link";
+
 import { RelativeTime } from "@/components/app/row-meta";
 import { TypeGlyph, templateTypeLabel } from "@/components/app/type-glyph";
 import { Button } from "@/components/ui/button";
-import { ExternalLinkIcon, TemplatesIcon } from "@/components/ui/icons";
+import {
+  ExternalLinkIcon,
+  RenameIcon as EditIcon,
+  TemplatesIcon,
+} from "@/components/ui/icons";
 import type { TemplateCardData } from "@/lib/templates/queries";
 
 import { DeleteTemplateButton } from "./delete-template-button";
@@ -60,10 +66,19 @@ export function TemplateCard({
           {kind === "library" ? (
             <UseTemplateButton templateId={template.id} name={template.name} />
           ) : (
-            <DeleteTemplateButton
-              templateId={template.id}
-              name={template.name}
-            />
+            <>
+              <Button asChild size="sm" className="h-8">
+                <Link href={`/templates/${template.id}`}>
+                  <EditIcon aria-hidden />
+                  Edit sections
+                  <span className="sr-only"> of {template.name}</span>
+                </Link>
+              </Button>
+              <DeleteTemplateButton
+                templateId={template.id}
+                name={template.name}
+              />
+            </>
           )}
           <Button asChild variant="ghost" size="sm" className="h-8">
             <a

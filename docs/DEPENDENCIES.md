@@ -37,7 +37,7 @@
 | `zod` | validation |
 | `react-hook-form`, `@hookform/resolvers` | forms |
 | `date-fns` | dates |
-| `@dnd-kit/core`, `@dnd-kit/sortable` | section reorder |
+| `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` | section reorder. B1.1b: 6.3.1, 10.0.0, 3.2.2, wrapped in `components/app/sortable-list.tsx` (feature code doesn't import them) |
 | `sonner` | toasts |
 | AffectUI components (shadcn registry, MIT) | B0.4c: vendored into `components/ui/` with the shadcn CLI; no npm packages (D48, `THIRD_PARTY_NOTICES.md`) |
 | `cmdk` (via shadcn Command) | command palette |

@@ -32,6 +32,7 @@ Library templates are authored HTML (from the owner, or built from his Figma fra
 | `data-lp-sale-only` | any element (e.g. a sale bar) | removed when the brand has no sale (B1.1a, D64) |
 | `data-lp-number` | an item number ("1", "01") | renumbered in page order after sections are reordered, removed or duplicated; zero-padding kept (B1.1a, D64) |
 | `data-lp-alternate="<class>"` | container of numbered sections | every other numbered section gets `<class>` (alternating photo sides) (B1.1a, D64) |
+| `data-lp-fixed` | page frame outside sections (progress bar, side rail) | left outside sections on purpose; the editor's Issues tab doesn't flag it (B1.1b, D64) |
 
 Styling rules for library templates:
 - Brand colours as CSS custom properties on `:root`: `--lp-primary`, `--lp-primary-dark`, `--lp-tint`, `--lp-accent`, `--lp-heading-font`, `--lp-body-font`. Recolour becomes a variable swap.
@@ -107,6 +108,7 @@ Write or fix the Shopify editor map; run the parity check across three viewports
 
 ### 7. Sign-off
 - Library: run `pnpm seed:library <slug>` (renders the thumbnail; `--no-thumbnails` skips it); confirm it appears on Templates → Library with its thumbnail and section count, and that Preview matches the source.
+- Use template, open the copy in the section editor and check the Issues tab: no problems or warnings (notes are fine). Every block with content must sit in a section or be marked `data-lp-fixed`.
 - Record quirks in `instructions.json` `notes`, and any new hazard in `docs/TEMPLATE_GUIDE.md`.
 - Report using the `milestone-build` report structure, including the screenshots' paths and the smoke-build stats.
 

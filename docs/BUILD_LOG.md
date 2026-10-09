@@ -238,3 +238,23 @@ as new entries.
 - **Owner actions requested:** look at Templates → Library and Preview both templates; Use template on one; build a test page from each; confirm B1.1a.
 - **Owner confirmed:** no
 - **Next:** B1.1b — Section editor
+
+### B1.1a — owner go to commit; B1.1b go
+- **Date:** 2026-10-09
+- **Owner:** asked to commit B1.1a (committed `6f1b45b`, "B1.1a: template library from live sites, gallery, Use template, template picker") and to build the next phase (B1.1b, covered by the approved B1.1 plan).
+
+### B1.1b — Section editor
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-09
+- **Summary:** Your templates open in a full-screen section editor laid out like the owner's reference (it follows the app's light/dark theme). The top bar has back, the name, "Saved · version N", Undo/Redo (⌘Z, ⇧⌘Z) and Build a test page (pick a product). The left panel has four tabs. **Content:** the selected section (rename, move up/down, duplicate, remove, its words read-only) over the numbered section list (click to select, drag or keyboard to reorder). **Look:** the template's colours and fonts. **Details:** name, description and version history with Restore. **Issues:** template checks. The preview has Desktop/Phone, the section count and read time, a highlight outline on the selected section, a dashed outline on hover, and click-to-select. Every change is saved by the worker as a new version (12 kept). A second tab's stale edit is refused with a reload prompt. Builds use the arrangement. Yours cards have Edit sections.
+- **Template fixes:** the Issues tab found blocks outside sections in the advertorial (its closing "bottom line", benefits list and Shop button). They are now two sections, "The bottom line" and "What you get and Shop button" (14 sections; same rendered height). The reading progress bar and the listicle's side rail are marked `data-lp-fixed`. Both templates are re-seeded (library version 2).
+- **Key files:** worker `app/templates.py` (editor state, edit, undo/redo, restore, version pruning), `app/engines/template_outline.py` (outline, checks, look), `app/engines/sections.py` (`duplicate_section`, `section_order`), `app/models/template.py`, `app/main.py` (GET `/templates/{id}/editor`, POST `/layout`, `/undo`, `/redo`, `/restore`), tests `test_template_editor.py`; web `app/(editor)/layout.tsx`, `app/(editor)/templates/[templateId]/page.tsx`, `components/features/templates/editor/*`, `components/app/sortable-list.tsx`, `components/ui/{tabs,dialog}.tsx` (shadcn), `lib/templates/{editor,actions,queries}.ts`, `lib/validators/template.ts`, `lib/api/worker.ts`, `app/preview/template/[templateId]/route.ts` (editor mode), `app/globals.css` (highlight colour, editor panel width).
+- **Schema changes:** none.
+- **New dependencies:** `@dnd-kit/core` 6.3.1, `@dnd-kit/sortable` 10.0.0, `@dnd-kit/utilities` 3.2.2 (approved list); shadcn Tabs and Dialog (installed `radix-ui`).
+- **Decisions:** D65 (section editor rules); D64 gains `data-lp-fixed`.
+- **Fixes found while testing:** dnd-kit's accessibility ids differed between server and browser (hydration warning), so they now use a React id; the preview scrolls the selected section clear of the page's own fixed bars; sections with text only in plain elements (the sale bar) now show their lines.
+- **Deviations from spec:** the editor is full screen outside the workspace shell, as the owner's reference shows (DESIGN listed SectionRail and PreviewFrame inside the shell); a template's words are read-only (owner's answer); name and description can be edited, and that isn't versioned; your copy's gallery thumbnail stays the library's after edits.
+- **Verification:** worker ruff, mypy, pytest 208/208 (15 new: outline, checks, look, duplicate; edit, undo, redo, discarded redo, never-reused numbers, 12-version pruning and file clean-up, restore, container rule, removable and duplicable rules, stale editor, library and other-org refusal, API); pgTAP 20/20; web typecheck, lint, token check, prettier, vitest 103/103, `next build`; browser check B1.1b 42/42 in mock mode, on three runs in a row; an earlier run had one check fail that I couldn't reproduce. It covers Edit sections; list and preview selection; move, duplicate, remove, undo, redo and keyboard shortcuts; rules; rename; keyboard drag; Look, Issues, Details, rename template and Phone; a build following the arrangement; restore; the two-tab refusal; library and other-org 404; no console errors. Dark mode screenshot checked. Cost: $0 (mock copy for the test build).
+- **Owner actions requested:** use a template, open Edit sections, try the editor, build a test page from it; confirm B1.1b.
+- **Owner confirmed:** no
+- **Next:** B1.2 — Create wizard

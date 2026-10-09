@@ -156,7 +156,7 @@ def test_sale_only_elements_need_a_sale() -> None:
 def test_the_two_imported_templates_are_onboarded() -> None:
     from app.cli.seed_library import LIBRARY, load_folder
 
-    for slug, sections in (("advertorial-wear-test", 12), ("listicle-10-reasons", 16)):
+    for slug, sections in (("advertorial-wear-test", 14), ("listicle-10-reasons", 16)):
         manifest, instructions, html = load_folder(LIBRARY / slug)
         assert len(manifest.sections) == sections and manifest.status == "active"
         soup = parse(html)

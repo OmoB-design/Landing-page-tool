@@ -115,6 +115,9 @@ Declare in `apps/web/app/globals.css` with Tailwind v4 `@theme`. These are start
   --color-warning-soft: #fdf3e1;
   --color-danger: #d93f3f;
   --color-danger-soft: #fdecec;
+  /* B1.1b: section editor selection, hover outline and item numbers (owner's reference) */
+  --color-highlight: #c98a12;
+  --color-highlight-soft: #fbf1dc;
 
   /* Type glyph tints (template types) */
   --color-glyph-advertorial: #f5a623;
@@ -136,6 +139,9 @@ Declare in `apps/web/app/globals.css` with Tailwind v4 `@theme`. These are start
   --spacing-topbar: 48px;
   --spacing-row: 40px;
   --spacing-nav-item: 32px;
+  --spacing-panel: 384px;           /* B0.6a: build page right panel */
+  --spacing-preview-mobile: 390px;  /* B0.6a: phone-width preview */
+  --spacing-editor-panel: 440px;    /* B1.1b: section editor left panel */
 
   /* Shadow (used rarely: popovers, menus, dialogs) */
   --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
@@ -157,6 +163,8 @@ Declare in `apps/web/app/globals.css` with Tailwind v4 `@theme`. These are start
   --color-success-soft: #15301f; /* B0.3b */
   --color-warning-soft: #36290f; /* B0.3b */
   --color-danger-soft: #3a1b1c;  /* B0.3b */
+  --color-highlight: #e3a93b;    /* B1.1b */
+  --color-highlight-soft: #3a2c12;
 }
 ```
 
@@ -253,8 +261,8 @@ Feature UIs (wizard steps, review desk panels, brand DNA form, template gallery)
 | `/pages/new` | Create wizard (7 steps) | WizardStepper, cards, side "dossier" panel |
 | `/pages/[id]` | Review desk. *B0.6a:* the build page: header with key, title and status; sandboxed preview (Desktop / Mobile 390 px, open in a new tab) on the left; live build steps and the report (banners, facts, claims check, notes) in a 384 px right panel. *B0.6b:* Export (Export HTML → steps → Download `<KEY>.html`, Export again) above the report; the report adds copy counts, mock-copy and copy-error banners, and a folded "Copy changes" list (old line struck through, new line under it). Tabs and editing arrive in B1.4. | BuildPreview, BuildProgress (JobSteps), ExportButton, BuildReport |
 | `/pages/[id]/editor` | Full editor (M3) | SectionRail, canvas, image studio sheet |
-| `/templates` | Library gallery + org templates. *B1.1a:* header tabs **Library** / **Yours** (`?view=yours`); intro line; a card grid (1–3 columns, `PageBody` xl) of cards: 4:3 thumbnail, name, type glyph · type · section count, description (Library) or "From <library template> · Version n · <time>" (Yours), then **Use template** (Library; toast "Added … to your templates", then opens Yours) or **Delete** (Yours, confirm) and **Preview** (opens the sandboxed template page in a new tab). Empty Yours: "No templates yet" with a hint to use a library template. | TemplateCard, UseTemplateButton, DeleteTemplateButton, TypeGlyph |
-| `/templates/[id]` | Section editor | SectionRail, PreviewFrame |
+| `/templates` | Library gallery + org templates. *B1.1a:* header tabs **Library** / **Yours** (`?view=yours`); intro line; a card grid (1–3 columns, `PageBody` xl) of cards: 4:3 thumbnail, name, type glyph · type · section count, description (Library) or "From <library template> · Version n · <time>" (Yours), then **Use template** (Library; toast "Added … to your templates", then opens Yours) or **Delete** (Yours, confirm) and **Preview** (opens the sandboxed template page in a new tab). Empty Yours: "No templates yet" with a hint to use a library template. | TemplateCard, UseTemplateButton, DeleteTemplateButton, TypeGlyph. *B1.1b:* Yours cards add **Edit sections**. |
+| `/templates/[id]` | Section editor. *B1.1b (owner's reference layout, follows the app theme):* full screen, outside the workspace shell. Top bar: back, template name, "● Saved · version N" (highlight colour; "Saving…" while saving), Undo and Redo (⌘Z, ⇧⌘Z), **Build a test page** (dialog: pick a product). Left panel (440 px) with tabs **Content** (collapsible "Selected section" card: name (click to rename), "Section N of M", icon buttons move up, move down, duplicate, remove with reasons in tooltips when unavailable, type · words · images, the section's words read-only; collapsible "Whole template · N sections": rows with a drag handle on hover, type word or a highlight-coloured item number "01", and the name), **Look** (the template's colours and fonts), **Details** (name and description form; type, source, version; version history with Restore), **Issues** (template checks; count badge for problems and warnings). Right: Desktop/Phone toggle, "N sections · about X min read", the sandboxed preview with a solid highlight outline on the selected section and a dashed one on hover; clicking a section selects it. Below `lg` the panel sits above the preview. | TemplateEditor, ContentPanel, SortableList, EditorPreview, LookPanel, DetailsPanel, IssuesPanel, EditorTestBuild |
 | `/templates/clone` | Clone a page (M2) | URL form, terms dialog, progress |
 | `/brands` | Brand list | GroupedList or table |
 | `/brands/[id]` | Brand with tabs: Overview, Pages, Products, Templates, Brand DNA | PageHeader, forms |

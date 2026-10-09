@@ -1,0 +1,165 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useTransition } from "react";
+import { useForm } from "react-hook-form";
+
+import { RelativeTime } from "@/components/app/row-meta";
+import { toast } from "@/components/app/toaster";
+import { templateTypeLabel } from "@/components/app/type-glyph";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { HistoryIcon } from "@/components/ui/icons";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { saveTemplateDetails } from "@/lib/templates/actions";
+import {
+  type TemplateDetails,
+  type TemplateEditorState,
+  templateDetailsSchema,
+} from "@/lib/validators/template";
+
+/** The Details tab: name and description, where the template came from, and its saved
+ * versions (the newest 12) with Restore. */
+export function DetailsPanel({
+  state,
+  pending,
+  onRestore,
+  onSaved,
+}: {
+  state: TemplateEditorState;
+  pending: boolean;
+  onRestore: (version: number) => void;
+  onSaved: (details: TemplateDetails) => void;
+}) {
+  const { template } = state;
+  const [saving, startSaving] = useTransition();
+  const form = useForm<TemplateDetails>({
+    resolver: zodResolver(templateDetailsSchema),
+    defaultValues: {
+      name: template.name,
+      description: template.description ?? "",
+    },
+  });
+  const errors = form.formState.errors;
+  const facts = [
+    ["Type", templateTypeLabel(template.type)],
+    ["From", template.parent_name ? `${template.parent_name} (library)` : "—"],
+    ["Version", String(template.version)],
+  ] as const;
+
+  return (
+    <div className="flex flex-col gap-6 p-4">
+      <form
+        noValidate
+        className="flex flex-col gap-4"
+        onSubmit={form.handleSubmit((values) =>
+          startSaving(async () => {
+            const result = await saveTemplateDetails(template.id, values);
+            if (result.ok) {
+              onSaved(values);
+              form.reset(values);
+              toast.success("Saved the template’s details");
+            } else {
+              toast.error(result.error ?? "Couldn't save.");
+            }
+          }),
+        )}
+      >
+        <Field data-invalid={errors.name ? true : undefined}>
+          <FieldLabel htmlFor="template-name">Name</FieldLabel>
+          <Input
+            id="template-name"
+            className="h-9"
+            aria-invalid={errors.name ? true : undefined}
+            aria-describedby={errors.name ? "template-name-error" : undefined}
+            defaultValue={form.formState.defaultValues?.name ?? ""}
+            {...form.register("name")}
+          />
+          {errors.name ? (
+            <FieldError id="template-name-error">
+              {errors.name.message}
+            </FieldError>
+          ) : null}
+        </Field>
+        <Field data-invalid={errors.description ? true : undefined}>
+          <FieldLabel htmlFor="template-description">Description</FieldLabel>
+          <Textarea
+            id="template-description"
+            rows={3}
+            aria-invalid={errors.description ? true : undefined}
+            defaultValue={form.formState.defaultValues?.description ?? ""}
+            {...form.register("description")}
+          />
+          {errors.description ? (
+            <FieldError>{errors.description.message}</FieldError>
+          ) : null}
+        </Field>
+        <Button
+          type="submit"
+          size="sm"
+          className="h-8 self-start"
+          disabled={saving || !form.formState.isDirty}
+        >
+          Save details
+        </Button>
+      </form>
+
+      <dl className="flex flex-col gap-1.5">
+        {facts.map(([label, value]) => (
+          <div
+            key={label}
+            className="flex items-baseline justify-between gap-4 rounded-md bg-surface-muted px-3 py-2 text-sm"
+          >
+            <dt className="text-fg-muted">{label}</dt>
+            <dd className="truncate">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="flex items-center gap-2 text-base font-medium">
+          <HistoryIcon aria-hidden className="size-4 text-fg-muted" />
+          Version history
+        </h2>
+        <p className="text-sm text-fg-muted">
+          Every change is saved. The newest 12 versions are kept.
+        </p>
+        <ol className="flex flex-col gap-1.5">
+          {state.versions.map((version) => (
+            <li
+              key={version.version}
+              className="flex items-center gap-3 rounded-md bg-surface-muted px-3 py-2 text-sm"
+            >
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="flex items-center gap-2 font-medium">
+                  Version {version.version}
+                  {version.current ? (
+                    <Badge variant="outline">Current</Badge>
+                  ) : null}
+                </span>
+                <span className="truncate text-fg-muted">
+                  {version.reason ?? "Saved"}
+                </span>
+              </span>
+              <RelativeTime date={new Date(version.created_at)} />
+              {version.current ? null : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 shrink-0"
+                  disabled={pending}
+                  onClick={() => onRestore(version.version)}
+                >
+                  Restore
+                  <span className="sr-only"> version {version.version}</span>
+                </Button>
+              )}
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
+  );
+}
