@@ -50,6 +50,7 @@ The owner supplied a reference screenshot (a work-management app: icon rail, sec
 - **Group headers:** full-width tinted band (very light grey), 14 px medium label with a status glyph (dashed circle for backlog-like states, empty circle for to-do-like states).
 - **Rows:** 40 px tall, hairline separators are absent or extremely faint; a 16 px coloured type glyph in a tinted square (radius 4), the **human key** in muted grey (tabular figures), then the title in 14 px regular. Child rows indent ~32 px.
 - **Whitespace:** generous horizontal padding (24 px in main pane), tight vertical rhythm.
+- **Content column (owner, 2026-10-09):** page content sits in a centred column under the page header (`PageBody`: 672 px for forms, settings and Home; 768 px for detail pages such as a product), not left-aligned. Full-width lists (Pages, Brands) and the page header itself span the pane.
 - **Surfaces:** app background a near-white grey; panels white; the window has large outer radius in the screenshot (ignore that; it is a marketing frame).
 
 ---
@@ -209,6 +210,7 @@ Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, She
 | `RelativeTime` | "5 minutes ago", server-rendered (B0.3b). |
 | `AuthFrame` | Signed-out pages: product mark, centred card, footer line (B0.3b). |
 | `PageStub` | `PageHeader` + `EmptyState` for screens not built yet (B0.3b). |
+| `PageBody` | The centred content column under a page header (`md` 672 px, `lg` 768 px). |
 | `JobSteps` | A job's named steps as a read-only progress tracker, raw log under "Details" (B0.5a). |
 | `BrandMark` | A brand's emoji, or its initial on its primary colour (B0.5a). |
 
@@ -237,6 +239,7 @@ to tokens in `globals.css`. Install with `pnpm dlx shadcn@latest add https://www
 
 Feature UIs (wizard steps, review desk panels, brand DNA form, template gallery). They import only from `ui/` and `app/`.
 
+- `builds/` (B0.6a): `BuildPreview`, `BuildProgress`, `BuildReport` for the build page; `products/TestBuildButton` (temporary until the wizard).
 - `products/` (B0.5b): `AddProduct` (URL field, live pull steps, result and warnings), `ProductsList` (thumbnail, name, price with the regular price struck through when on sale, option count), `ProductForm` (editable details; selling points one per line, specs as `Label: value`), `ProductImages`, `ProductOptions` (options table, subscriptions), `ProductBriefing` (four audience cards, benefits, features, objections; Write briefing / Refresh), `ProductActions` (Pull again and Remove, each confirmed in a popover).
 
 ---
@@ -248,7 +251,7 @@ Feature UIs (wizard steps, review desk panels, brand DNA form, template gallery)
 | `/home` | Pipeline overview: running jobs, needs review, recent publishes | GroupedList, JobTray |
 | `/pages` | All pages grouped by status | PageHeader, ListToolbar, GroupedList |
 | `/pages/new` | Create wizard (7 steps) | WizardStepper, cards, side "dossier" panel |
-| `/pages/[id]` | Review desk | PreviewFrame, Banner, right panel tabs |
+| `/pages/[id]` | Review desk. *B0.6a:* the build page: header with key, title and status; sandboxed preview (Desktop / Mobile 390 px, open in a new tab) on the left; live build steps and the report (banners, facts, claims check, notes) in a 384 px right panel. Tabs and editing arrive in B1.4. | BuildPreview, BuildProgress (JobSteps), BuildReport |
 | `/pages/[id]/editor` | Full editor (M3) | SectionRail, canvas, image studio sheet |
 | `/templates` | Library gallery + org templates | card grid, OriginBadge, TypeGlyph |
 | `/templates/[id]` | Section editor | SectionRail, PreviewFrame |

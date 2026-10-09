@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { authLinkClass } from "@/components/app/auth-frame";
+import { PageBody } from "@/components/app/page-body";
 import type { getBrand } from "@/lib/brands/queries";
 
 type Brand = NonNullable<Awaited<ReturnType<typeof getBrand>>>;
@@ -20,7 +21,7 @@ export function BrandOverview({ brand }: { brand: Brand }) {
     );
 
   return (
-    <div className="flex max-w-2xl flex-col gap-8 px-6 py-6">
+    <PageBody className="gap-8">
       <section className="flex items-center gap-4">
         <div className="flex h-14 w-36 items-center justify-center rounded-md border border-border bg-surface-muted">
           {brand.logoUrl ? (
@@ -98,7 +99,7 @@ export function BrandOverview({ brand }: { brand: Brand }) {
         </Link>{" "}
         to change any of this.
       </p>
-    </div>
+    </PageBody>
   );
 }
 

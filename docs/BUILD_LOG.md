@@ -179,3 +179,24 @@ as new entries.
 - **Date:** 2026-10-09
 - **Owner:** asked to commit B0.5a, B0.5b and the motion pass. Asked whether Docker is required for local development (alternatives such as Cloudflare), and for a comparison of the previous tool's structure (screen recording) with this project.
 
+### Centred content and three new features — owner requests
+- **Date:** 2026-10-09
+- **Summary:** Page content now sits in a centred column (`components/app/page-body.tsx`) on Home, New brand, brand Overview, Brand DNA, Products and the product page; full-width lists and page headers are unchanged; trackers and recommendation cards fill the column. The owner approved three features from the previous tool: Top 5 ranking builder (D53, B2.4), per-brand monthly AI budget (D54, B1.6) and client review link (D55, B3.6), now in BUILD_SPEC §8.7, §6.5, §11.4 and MILESTONES. O10 (local database runtime) stays open.
+- **Verification:** web typecheck, lint, token check, vitest 96/96; column measured centred (equal margins) at 1440 px on all six pages, no horizontal scroll at 390 px.
+- **Owner confirmed:** no
+
+### B0.6a — Pipeline and page assembly (no AI)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-09
+- **Summary:** The build pipeline runs end to end as a LangGraph graph (owned path; clone-only nodes are stubs never reached by owned builds). From the test template it produces a page with the brand's colours and fonts, logo, product options, prices, selling points, product photos and free placeholder images, removes forbidden terms, finishes meta/share tags/favicon/emails/CTAs, and runs the claims check. Each build is checkpointed after every node and resumes after a worker restart without redoing work. Builds start from a temporary "Build a test page" button on the product page (or `pnpm smoke:build`); the build page shows live steps, a sandboxed preview (desktop / 390 px mobile) and the report. The Pages list now shows real builds; the demo-job card is gone. Content pages are centred (owner request, logged separately).
+- **Key files:** worker `app/pipeline/{graph,state,runtime,checkpoint}.py`, `app/pipeline/nodes/*` (one module per node), `app/engines/{html,sections,recolor,brand_parts,purge,images,finalize,compliance,compliance_rules,money}.py`, `app/jobs/kinds/build.py`, `app/builds.py`, `app/main.py` (POST /builds), `app/cli/{seed_library,smoke_build}.py`, `app/models/{template,build}.py`; `templates/library/advertorial-fixture/`; web `app/(app)/pages/[buildId]/page.tsx`, `app/preview/[buildId]/route.ts`, `components/features/builds/*`, `components/features/products/test-build-button.tsx`, `lib/builds/*`, `lib/validators/build.ts`, `lib/hooks/use-page-refresh.ts`.
+- **Schema changes:** migration `20261009034557_build_pipeline.sql`: private `langgraph` schema for checkpoints; trigger marking a build failed when its `build` job fails or is cancelled.
+- **New dependencies:** `langgraph` 1.2.14, `langgraph-checkpoint-postgres` 3.1.2 (already listed in DEPENDENCIES.md).
+- **Decisions:** D56 (checkpoints and page revisions), D57 (builds created by the worker; test builds use the library template directly), D58 (markup contract additions).
+- **Fixes found while testing:** sections reorder within their container (the test template wraps its middle sections in `<main>`); the hue sweep no longer tints slate text colours; a finished node is recorded even while the worker is stopping, so resume never redoes it; a discount promo (and its empty bar) goes for brands without a sale; the test template uses `--lp-on-*` tokens for text on brand colours (Allbirds' cream primary made white text unreadable).
+- **Deviations from spec:** copy is not rewritten yet (B0.6b); images are mock only, no planner (B1.3); product fidelity skipped; export moved to B0.6b; the build page is a first cut of the review desk (B1.4); library template images (relative files) aren't uploaded by the seed script yet (the test template is self-contained) — decide at B1.1.
+- **Verification:** worker ruff, mypy, pytest 166/166 (49 new: engines, pipeline incl. resume after interruption, failure trigger, POST /builds); pgTAP 20/20; web typecheck, lint, token check, prettier, vitest 98/98, `next build`; browser check B0.6a 33/33 (product → build → steps → preview → report → Pages → checklist; another org gets 404; signed-out preview redirects); product edit regression 12/12; smoke builds GRA-1 and ALL-5 via the job loop. The B0.3b and B0.4c browser scripts assumed the sample Pages data and now need real builds. Cost: $0 (no AI calls).
+- **Owner actions requested:** try "Build a test page" on one of your products; confirm the centring change and B0.6a.
+- **Owner confirmed:** no
+- **Next:** B0.6b — Copy rewrite and export
+

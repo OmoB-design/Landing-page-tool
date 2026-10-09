@@ -6,6 +6,9 @@ docs/
 # Python is formatted by ruff
 services/
 
+# Library templates are hand-authored pages: reformatting could change how they render
+templates/library/**/*.html
+
 # Generated
 pnpm-lock.yaml
 apps/web/AGENTS.md

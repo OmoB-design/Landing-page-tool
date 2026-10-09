@@ -188,6 +188,30 @@ The `emil-design-eng` skill (Emil Kowalski, MIT, installed in `.claude/skills/`)
 `product_pull` saves straight to the brand's products (the plan approved this; no draft step): one row per brand and handle, so adding the same product again, or **Pull again**, replaces the pulled details (including hand edits, which the confirm says) and brings back a removed product. Sources, best first: Shopify `/products/<handle>.json` (+ selling plans from `.js`), the `/products.json` catalogue matched by handle, then the page's JSON-LD `Product`, Open Graph tags, `<h1>` (a heading-only pull warns). `price` is the regular price and `sale_price` is set only when the compare-at price is higher; currency is the store's own (no Accept-Language). Up to 8 images are stored (Shopify CDN images at most 2048 px wide). Removing a product is a soft delete. The briefing is written on demand per product and refreshable. Paid jobs (`product_pull`, `product_briefing`) are deduplicated while one is queued or running, so a double click never pays twice.
 *Why:* products are reference data the user tidies once; a review step would add a screen without adding safety, and re-pulling stays explicit.
 
+**D53 — Top 5 ranking builder.** Locked (owner approved, 2026-10-09).
+The previous tool's guided "Top 5" page joins the plan as B2.4: the brand ranked #1 on a neutral publisher page, ranks #2 to #5 filled from four competitor product URLs, with critiques that quote the competitors' own claims and reviews. Competitor pages go through the product pull ladder. Spec: BUILD_SPEC §8.7.
+*Why:* it was one of the previous tool's working funnels, and the product pull already does most of the competitor reading.
+
+**D54 — Per-brand monthly AI budget.** Locked (owner approved, 2026-10-09).
+Each brand can have a monthly AI spending cap, enforced before paid calls using the ledger, with notices at 80 % and 100 %. Built in B1.6. Spec: BUILD_SPEC §6.5.
+*Why:* agencies run many brands; a cap stops one brand's builds running up costs unnoticed.
+
+**D55 — Client review link.** Locked (owner approved, 2026-10-09).
+Approving a page unlocks a read-only, revocable, expiring link to the approved version for the client. Built in M3 (B3.6). Spec: BUILD_SPEC §11.4.
+*Why:* clients review pages without accounts, and what they see is exactly the approved version.
+
+**D56 — Pipeline checkpoints and page revisions.** Locked (owner approved B0.6 plan, 2026-10-09).
+Each build is one LangGraph thread (`thread_id` = build id), checkpointed in Postgres after every node (`durability="sync"`) in a private `langgraph` schema that the browser API can't reach. Each node writes a new page revision to the `builds` bucket and puts its path in state, so a node re-run after a crash starts from the previous revision and never applies its change twice. A worker that is told to stop finishes recording the current node and stops at the next one; the job resumes from there. When a build finishes, its revisions and its checkpoint thread are deleted and only `working.html` stays. A `build` job that ends failed or cancelled marks its build failed (jobs trigger).
+*Why:* builds are the long, paid work; resuming instead of restarting saves money and time, and keeping only the final page keeps storage small.
+
+**D57 — Builds are created by the worker.** Locked (owner approved B0.6 plan, 2026-10-09).
+`POST /builds` (worker) checks the template, brand and product belong to the org, allocates the build key and creates the build and its `build` job in one transaction; the web app calls it from a server action. Until the wizard (B1.2) and org template copies (B1.1) exist, test builds use the library template directly (`builds.template_id` points at it). The temporary "Build a test page" button on the product page uses the `advertorial-fixture` test template.
+*Why:* only the worker may allocate keys (D27), and a build must never exist without its job.
+
+**D58 — Markup contract additions.** Default (B0.6a, 2026-10-09).
+Library templates may mark `data-lp-brand`, `data-lp-product-name`, `data-lp-compare-price`, `data-lp-usps` / `data-lp-usp-text`, `data-lp-promo`, `data-lp-sale-percent` and the variant unit parts (`data-lp-variant`, `-name`, `-price`, `-image`), and declare `--lp-on-primary`, `--lp-on-accent`, `--lp-on-dark` for text on brand colours. `data-lp-price` is the price paid now; the regular price shows only when on sale. A discount label or discount promo is removed for a brand with no sale. Sections reorder only within their container. Details in the template-onboarding skill.
+*Why:* deterministic slots make the result predictable before (and after) the AI copy pass, and never show a discount the brand doesn't offer.
+
 **O6 resolved — Worker runs locally for now.** Locked (owner approved B0.4 plan, 2026-10-08). Choose a host (needs Playwright Chromium) before the first deploy.
 
 ## Open (ask the owner when the related build starts)
@@ -198,3 +222,4 @@ The `emil-design-eng` skill (Emil Kowalski, MIT, installed in `.claude/skills/`)
 - O4 — Billing/plans: out of scope for v1 unless the owner adds it.
 - O5 — Whether "doctor/expert" author type is allowed at all, and how bylines are labelled.
 - O6 — Hosting for the worker (Railway, Fly.io, Render, or a VM). Needs Chromium. *Local for now (see above); decide before the first deploy.*
+- O10 — Local database runtime: Docker Desktop, Colima, or a Supabase Cloud dev project. *Raised 2026-10-09.*

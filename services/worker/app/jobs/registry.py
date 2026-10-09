@@ -7,7 +7,14 @@ from typing import Any
 from pydantic import BaseModel
 
 from app.jobs.context import JobContext
-from app.jobs.kinds import brand_assets, brand_autofetch, noop_demo, product_briefing, product_pull
+from app.jobs.kinds import (
+    brand_assets,
+    brand_autofetch,
+    build,
+    noop_demo,
+    product_briefing,
+    product_pull,
+)
 
 Handler = Callable[[JobContext], dict[str, Any] | None]
 
@@ -64,6 +71,14 @@ KINDS: dict[str, JobKind] = {
             payload_model=product_briefing.ProductBriefingPayload,
             user_startable=True,
             dedupe=product_briefing.dedupe_key,
+        ),
+        # Created with its build by POST /builds. Retries resume from the last checkpoint.
+        JobKind(
+            name="build",
+            title="Page build",
+            handler=build.run,
+            payload_model=build.BuildPayload,
+            max_attempts=3,
         ),
     ]
 }

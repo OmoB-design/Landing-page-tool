@@ -1,0 +1,12 @@
+{
+  "copy_rules": "First-person reader story. Short paragraphs. Keep the headline as a two-part sentence.",
+  "length_caps": [
+    { "match": "h1", "max_chars": 100 },
+    { "match": "summary", "max_chars": 60 }
+  ],
+  "image_rules": "Hero scene: a calm morning routine at home, natural light.",
+  "generic_images": [],
+  "keep_images": [],
+  "forbidden_terms": ["Sample Labs"],
+  "notes": "Made-up brand for pipeline tests. The kicker 'As seen in Sample Labs Weekly' exists to exercise purge_terms."
+}

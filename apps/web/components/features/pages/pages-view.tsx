@@ -5,14 +5,9 @@ import { ListToolbar } from "@/components/app/list-toolbar";
 import { PageHeader } from "@/components/app/page-header";
 import { SegmentedTabs } from "@/components/app/segmented-tabs";
 import { ToolbarButton } from "@/components/app/toolbar-button";
-import { Badge } from "@/components/ui/badge";
-import {
-  DisplayIcon,
-  FilterIcon,
-  PagesIcon,
-  SampleIcon,
-} from "@/components/ui/icons";
+import { DisplayIcon, FilterIcon, PagesIcon } from "@/components/ui/icons";
 import { getSessionContext } from "@/lib/auth/session";
+import { getOrgPages } from "@/lib/builds/queries";
 import {
   type PageFilters,
   NO_FILTERS,
@@ -21,7 +16,6 @@ import {
   groupPagesByStatus,
   pagesHref,
 } from "@/lib/pages/list";
-import { samplePages } from "@/lib/pages/sample";
 
 import { PagesFilter } from "./pages-filter";
 import { PagesList } from "./pages-list";
@@ -36,10 +30,12 @@ export async function PagesView({
   view: PagesViewId;
   filters?: PageFilters;
 }) {
-  const { user } = await getSessionContext();
-  const inView = samplePages(new Date(), user.displayName).filter(
-    (page) => view === "all" || page.createdBy.isMe,
-  );
+  const { user, currentOrg } = await getSessionContext();
+  const all = await getOrgPages(currentOrg.id, {
+    id: user.id,
+    name: user.displayName,
+  });
+  const inView = all.filter((page) => view === "all" || page.createdBy.isMe);
   const pages = filterPages(inView, filters);
   const filtered = activeFilterCount(filters) > 0;
   // Switching tabs keeps the filters.
@@ -56,14 +52,6 @@ export async function PagesView({
         tabs={<SegmentedTabs label="Page views" tabs={tabs} active={view} />}
       />
       <ListToolbar icon={PagesIcon} label="Pages" count={pages.length}>
-        <Badge
-          variant="outline"
-          title="Real pages replace these once builds exist (B1.4)"
-          className="h-5 rounded-xs border-warning/40 bg-warning-soft px-1.5 font-normal text-warning"
-        >
-          <SampleIcon aria-hidden />
-          Sample data
-        </Badge>
         <PagesFilter view={view} filters={filters} />
         <ToolbarButton icon={DisplayIcon} label="Display" notBuilt />
       </ListToolbar>
@@ -80,6 +68,12 @@ export async function PagesView({
             </Link>
           }
         />
+      ) : pages.length === 0 ? (
+        <EmptyState icon={PagesIcon} title="No pages yet">
+          {view === "mine"
+            ? "Pages you build appear here."
+            : "Open a product under Brands and choose Build a test page. The create wizard arrives in B1.2."}
+        </EmptyState>
       ) : (
         <PagesList groups={groupPagesByStatus(pages)} />
       )}

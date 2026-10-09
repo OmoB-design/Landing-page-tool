@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { PageBody } from "@/components/app/page-body";
 import { BrandDnaForm } from "@/components/features/brands/brand-dna-form";
 import { rowToForm } from "@/lib/brands/form";
 
@@ -12,11 +13,11 @@ export default function BrandDnaPage({
   params,
 }: PageProps<"/brands/[brandId]/dna">) {
   return (
-    <div className="px-6 py-6">
+    <PageBody>
       <Suspense>
         <Dna params={params} />
       </Suspense>
-    </div>
+    </PageBody>
   );
 }
 

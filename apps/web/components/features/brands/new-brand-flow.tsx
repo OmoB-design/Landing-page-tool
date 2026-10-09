@@ -135,7 +135,7 @@ export function NewBrandFlow() {
   const busy =
     startJob.isPending || job?.status === "queued" || job?.status === "running";
   return (
-    <div className="flex max-w-xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <form
         className="flex flex-col gap-3"
         onSubmit={(event) => {

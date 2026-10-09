@@ -61,6 +61,10 @@ def post_job(client: TestClient, bearer: str | None, body: dict[str, Any]) -> An
     return client.post("/jobs", json=body, headers=headers)
 
 
+def bearer(user: DbUser) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token(user.id)}"}
+
+
 def cancel_jobs(org_id: uuid.UUID) -> None:
     """Keep a running dev worker from picking up the jobs these tests create."""
     with transaction() as conn:
@@ -151,3 +155,103 @@ def test_paid_jobs_are_not_queued_twice(client: TestClient, user: DbUser) -> Non
     assert first.status_code == 201 and second.status_code == 200
     assert second.json()["created"] is False
     assert second.json()["job"]["id"] == first.json()["job"]["id"]
+
+
+# ── POST /builds ──────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def build_inputs(user: DbUser, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """The test template, a brand and product in the user's org, and the build job kind renamed
+    so a running dev worker never picks these jobs up."""
+    from pathlib import Path
+
+    from app.cli.seed_library import seed
+    from app.jobs.registry import KINDS, JobKind
+
+    seed(Path(__file__).resolve().parents[3] / "templates" / "library" / "advertorial-fixture")
+    real = KINDS["build"]
+    monkeypatch.setitem(
+        KINDS,  # the registry app.builds reads
+        "build",
+        JobKind("test_build", real.title, real.handler, real.payload_model, max_attempts=3),
+    )
+    with transaction() as conn:
+        template = conn.execute(
+            "select id from templates where org_id is null and slug = 'advertorial-fixture'"
+        ).fetchone()
+        brand = conn.execute(
+            "insert into brands (org_id, name, prefix) values (%(o)s, 'Lume', 'LUM') returning id",
+            {"o": user.org_id},
+        ).fetchone()
+        assert template is not None and brand is not None
+        product = conn.execute(
+            """
+            insert into products (org_id, brand_id, handle, name)
+            values (%(o)s, %(b)s, 'serum', 'Serum') returning id
+            """,
+            {"o": user.org_id, "b": brand["id"]},
+        ).fetchone()
+    assert product is not None
+    return {
+        "org_id": str(user.org_id),
+        "template_id": str(template["id"]),
+        "brand_id": str(brand["id"]),
+        "product_id": str(product["id"]),
+    }
+
+
+@needs_db
+def test_creates_a_build_and_its_job(
+    client: TestClient, user: DbUser, build_inputs: dict[str, Any]
+) -> None:
+    first = client.post("/builds", json=build_inputs, headers=bearer(user))
+    second = client.post("/builds", json=build_inputs, headers=bearer(user))
+    assert first.status_code == 201, first.text
+    body = first.json()
+    assert body["build"]["key"] == "LUM-1" and second.json()["build"]["key"] == "LUM-2"
+    assert body["build"]["status"] == "queued"
+    assert body["build"]["title"] == "Advertorial (test) · Serum"
+    assert body["job"]["kind"] == "test_build" and body["job"]["build_id"] == body["build"]["id"]
+    with transaction() as conn:
+        row = conn.execute(
+            "select wizard, origin, created_by from builds where id = %(b)s",
+            {"b": body["build"]["id"]},
+        ).fetchone()
+    assert row is not None and row["origin"] == "owned" and row["created_by"] == user.id
+    assert row["wizard"]["ai_images"] is True and row["wizard"]["author_type"] == "writer"
+
+
+@needs_db
+def test_refuses_builds_from_other_orgs_inputs(
+    client: TestClient, user: DbUser, other_org: uuid.UUID, build_inputs: dict[str, Any]
+) -> None:
+    with transaction() as conn:
+        foreign = conn.execute(
+            """
+            insert into brands (org_id, name, prefix) values (%(o)s, 'Theirs', 'THR')
+            returning id
+            """,
+            {"o": other_org},
+        ).fetchone()
+    assert foreign is not None
+    response = client.post(
+        "/builds", json={**build_inputs, "brand_id": str(foreign["id"])}, headers=bearer(user)
+    )
+    assert response.status_code == 404
+    response = client.post(
+        "/builds", json={**build_inputs, "org_id": str(other_org)}, headers=bearer(user)
+    )
+    assert response.status_code == 403
+
+
+@needs_db
+def test_rejects_an_invalid_wizard(
+    client: TestClient, user: DbUser, build_inputs: dict[str, Any]
+) -> None:
+    response = client.post(
+        "/builds",
+        json={**build_inputs, "wizard": {"author_type": "doctor"}},
+        headers=bearer(user),
+    )
+    assert response.status_code == 422

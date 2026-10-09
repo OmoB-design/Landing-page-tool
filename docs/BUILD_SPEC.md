@@ -157,6 +157,14 @@ See `docs/schema/001_init.sql`. Postgres is primary. **Change:** the reference u
 - fal "account locked / top-up required" errors set an org-scoped **circuit breaker** row (`provider_locks`: `org_id, provider, reason, until`) for 10 minutes, and subsequent image calls in any job for that org fail fast *(ref: account lock)*. **Change:** stored in the database, not a module global, and scoped per org so concurrent builds do not clear each other's lock.
 - Anthropic: retry 429/5xx with backoff (SDK built-in plus our wrapper: 3 attempts at 2 s and 6 s *(ref)*).
 
+### 6.5 Brand AI budget (B1.6, D54) *(ref)*
+
+- Each brand has an optional **monthly AI budget** in USD (empty or 0 = no cap), edited in Brand DNA.
+- Before a paid call made for a brand (brand fetch, product pull, briefing, builds), the provider layer compares the brand's spend this calendar month (UTC, from `ledger_entries`) with the budget. Over budget: the job fails with a user-facing error naming the budget and where to raise it; nothing is charged.
+- Notify the brand's org at 80 % and 100 % of the budget, once each per month.
+- The Brands list and brand Overview show this month's spend against the budget.
+- Schema (at B1.6): `brands.monthly_budget_usd`, and a brand reference on ledger rows (or a join through builds/jobs) so spend per brand is one query.
+
 ---
 
 ## 7. Stage 1: Brand intake
@@ -296,6 +304,16 @@ Validate with a Pydantic model; reject unknown keys.
 - Library templates: seeded from `templates/library/` by `scripts/seed-library`. Can be marked `retired` (hidden from the gallery, still resolvable so old builds keep working) *(ref)*.
 - Org templates: soft delete (`deleted_at`), restorable for 7 days, then purged.
 - **Change:** the reference wiped cloud-added templates on every deploy. Here templates live in the database and storage; deploys never touch them.
+
+### 8.7 Top 5 ranking builder (M2, D53) *(ref)*
+
+A guided template type, `top5_ranking`: a neutral "publisher" ranking page where the brand's product is ranked #1 and ranks #2 to #5 are four competitor products.
+
+- **Inputs:** the brand and product (as in the wizard), four competitor product page URLs, and a naming choice: real product names or neutral labels.
+- **Competitor pull:** each URL runs the product pull ladder (§7.4) plus customer reviews and ratings when the page has them (JSON-LD `Review`/`AggregateRating`). Competitor data is stored per build, not as brand products.
+- **Copy:** the #1 entry uses the brand's product data and briefing; the #2–#5 critiques quote the competitors' own claims, prices and reviews, never invented ones. Comparison data (axes, winner, table rows) is cached as `product_strategy` kind `comparison` (§7.5).
+- **Shell:** an owner-designed library template with ranked slots, onboarded like any library template.
+- **Compliance:** comparative claims must trace to pulled data; the legal desk flags unsupported superlatives. The naming default and any wording rules are confirmed with the owner when the build starts (CLAUDE.md §7).
 
 ---
 
@@ -562,6 +580,13 @@ Layout: preview iframe (desktop/mobile toggle) on the left, a right panel with t
 ### 11.3 Edit agent (M3)
 
 Claude (`LP_MODEL_AGENT`) in a tool-use loop of up to 8 turns *(ref)*, each turn a job (`agent_turn`), with tools: `edit_text(fragment_id, text)`, `replace_image(slot, prompt|asset)`, `check_policy(text)`, `recolor_page(palette)`, `remove_element(selector)`, `set_variants(...)`, `move_section(key, position)`. Conversation saved in `agent_messages`. Every mutating tool call snapshots first.
+
+### 11.4 Client review link (M3, D55) *(ref)*
+
+- **Approve** stamps the current version (a snapshot) and unlocks **Copy client link**.
+- The link (`/review/<token>`) shows that approved version read-only, desktop and mobile, with no sign-in. The token is unguessable and stored hashed.
+- Links are revocable, expire after 30 days by default, and record view counts. Editing the page after approval does not change what the link shows until it is approved again.
+- Schema (at M3): a `share_links` table (`org_id, build_id, snapshot_id, token_hash, expires_at, revoked_at, created_by, views`).
 
 ---
 

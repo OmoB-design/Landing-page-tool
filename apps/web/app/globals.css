@@ -72,6 +72,8 @@
   --spacing-topbar: 48px;
   --spacing-row: 40px;
   --spacing-nav-item: 32px;
+  --spacing-panel: 384px; /* right-hand panel on the build page (w-panel) */
+  --spacing-preview-mobile: 390px; /* phone-width page preview (w-preview-mobile) */
 
   /* Motion (D51, DESIGN.md §6): strong custom curves; the built-in ones are too weak. */
   --ease-out: cubic-bezier(
@@ -190,7 +192,6 @@
   font-family: inherit;
   border-radius: var(--radius-lg);
   box-shadow: none;
-  max-width: var(--container-xl);
 }
 :root .ui-progress__step {
   border-radius: var(--radius-sm);
@@ -296,7 +297,6 @@
   --ui-sr-tag: var(--color-accent-soft);
   font-family: inherit;
   border-radius: var(--radius-lg);
-  max-width: var(--container-xl);
 }
 :root .ui-sr__card {
   border-radius: var(--radius-md);

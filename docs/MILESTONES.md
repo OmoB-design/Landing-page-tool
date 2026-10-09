@@ -92,6 +92,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 
 ### B1.6 — Library, analytics, notifications, hardening
 - Library archive, analytics roll-ups, notifications, soft delete/restore (7 days), empty states, error states, rate limits, e2e test.
+- Per-brand monthly AI budget (BUILD_SPEC §6.5, D54).
 - **Acceptance:** a new user can sign up, create a brand, build from a library template, edit, and publish to Vercel without help.
 
 ---
@@ -109,6 +110,10 @@ Goal: the shared foundation and one owned template building end to end in mock m
 - **Acceptance:** clone fixture builds with residue score 100 in tests; real clone shows a high score; publish blocked below threshold.
 - **Owner actions:** supply 3 competitor URLs for testing; decide on proxy usage (D4).
 
+### B2.4 — Top 5 ranking builder
+- `top5_ranking` template type: four competitor URLs → competitor pulls with reviews → ranked page with the brand at #1 (BUILD_SPEC §8.7, D53).
+- **Owner actions:** design the ranking shell template; confirm naming default and comparison wording rules.
+
 ---
 
 ## M3 — Review and edit
@@ -118,6 +123,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 - B3.3 Mobile optimise + QA screenshots + OG image.
 - B3.4 Edit agent chat.
 - B3.5 Batch build (all templates for one product).
+- B3.6 Client review link (BUILD_SPEC §11.4, D55).
 
 ## M4 — Editable Shopify publish
 

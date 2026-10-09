@@ -7,12 +7,14 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app import builds
 from app.auth import CurrentUser, require_org_member
 from app.config import get_settings
 from app.jobs import queue
 from app.jobs.models import Job
 from app.jobs.registry import KINDS
 from app.log import configure_logging
+from app.models.build import BuildRequest
 
 configure_logging(get_settings().log_level)
 
@@ -64,3 +66,35 @@ def create_job(body: EnqueueRequest, user: CurrentUser, response: Response) -> E
     if not created:
         response.status_code = status.HTTP_200_OK
     return EnqueueResponse(job=job, created=created)
+
+
+class BuildSummary(BaseModel):
+    id: UUID
+    key: str
+    status: str
+    title: str
+
+
+class BuildCreated(BaseModel):
+    build: BuildSummary
+    job: Job
+
+
+@app.post("/builds", status_code=status.HTTP_201_CREATED)
+def create_build(body: BuildRequest, user: CurrentUser) -> BuildCreated:
+    """Creates a build and queues its `build` job in one transaction."""
+    require_org_member(user, body.org_id)
+    try:
+        build, job = builds.create_build(
+            org_id=body.org_id,
+            template_id=body.template_id,
+            brand_id=body.brand_id,
+            product_id=body.product_id,
+            wizard=body.wizard,
+            created_by=user.id,
+        )
+    except builds.BuildInputsMissingError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "That template, brand or product isn't available."
+        ) from exc
+    return BuildCreated(build=BuildSummary.model_validate(build), job=job)

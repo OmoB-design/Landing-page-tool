@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why people are switching to Sample Serum</title>
+<meta name="description" content="A reader story about finding a simpler daily routine.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23e5e7eb%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3EF%3C/text%3E%3C/svg%3E">
+<!-- Test template for the build pipeline (B0.6a). Made-up brand; not a real company. -->
+<style>
+:root {
+  --lp-primary: #2f6fde;
+  --lp-primary-dark: #1d4597;
+  --lp-tint: #eaf1fd;
+  --lp-accent: #f28c28;
+  --lp-on-primary: #ffffff;
+  --lp-on-accent: #ffffff;
+  --lp-on-dark: #ffffff;
+  --lp-heading-font: Georgia, "Times New Roman", serif;
+  --lp-body-font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--lp-body-font); color: #1f2937; background: #ffffff; line-height: 1.6; }
+img { max-width: 100%; display: block; }
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+h1, h2, h3 { font-family: var(--lp-heading-font); line-height: 1.2; color: #111827; }
+h1 { font-size: clamp(28px, 5vw, 40px); margin: 16px 0; }
+h2 { font-size: 26px; margin: 40px 0 12px; }
+a { color: #4a82e4; }
+.promo { background: var(--lp-primary-dark); color: var(--lp-on-dark); text-align: center; font-size: 14px; padding: 8px 12px; }
+.masthead { border-bottom: 1px solid #e5e7eb; padding: 14px 0; }
+.masthead .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.masthead img { height: 32px; width: auto; }
+.kicker { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
+.byline { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #6b7280; }
+.byline img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.hero-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; margin: 20px 0; }
+.badge { display: inline-block; background: var(--lp-primary); color: var(--lp-on-primary); font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+.callout { border-left: 4px solid #1d4597; background: #eaf1fd; padding: 14px 16px; border-radius: 0 6px 6px 0; }
+.lp-media-slot { background: #e5e7eb; width: 100%; margin: 20px 0; }
+.product { border: 2px solid var(--lp-primary); border-radius: 12px; padding: 20px; margin: 32px 0; box-shadow: 0 8px 24px rgba(47, 111, 222, 0.12); }
+.product-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 640px) { .product-grid { grid-template-columns: 220px 1fr; } }
+.product-img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--lp-tint); border-radius: 8px; }
+.price { font-size: 28px; font-weight: 700; color: #111827; }
+.compare { color: #9ca3af; margin-left: 8px; font-size: 18px; }
+.usps { list-style: none; padding: 0; margin: 12px 0; }
+.usps li { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+.usps svg { flex: none; margin-top: 4px; }
+.variants { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.variant { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+.variant:first-child { border-color: var(--lp-primary); background: var(--lp-tint); }
+.variant-price { display: block; color: #6b7280; font-size: 13px; }
+.cta { display: inline-block; background: var(--lp-accent); color: var(--lp-on-accent); font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 8px; margin-top: 8px; }
+.testimonials { display: grid; gap: 16px; }
+.testimonial { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+.testimonial header { display: flex; align-items: center; gap: 10px; }
+.testimonial img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+.stars { display: flex; gap: 2px; }
+details { border-bottom: 1px solid #e5e7eb; padding: 12px 0; }
+summary { cursor: pointer; font-weight: 600; }
+.offer { background: var(--lp-tint); border-radius: 12px; padding: 28px 20px; text-align: center; margin: 40px 0; }
+.sale { display: inline-block; background: var(--lp-accent); color: var(--lp-on-accent); font-weight: 700; border-radius: 999px; padding: 4px 12px; }
+footer { border-top: 1px solid #e5e7eb; padding: 24px 0 40px; font-size: 13px; color: #6b7280; }
+</style>
+</head>
+<body>
+<div class="promo" data-lp-section="promo-bar" data-lp-role="other">
+  <span data-lp-promo>Limited time offer: <span data-lp-sale-percent>30%</span> off today only</span>
+</div>
+
+<header class="masthead" data-lp-section="masthead" data-lp-role="other">
+  <div class="wrap">
+    <img data-lp-logo src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22140%22%20height%3D%2232%22%20viewBox%3D%220%200%20140%2032%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23e5e7eb%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ELOGO%3C/text%3E%3C/svg%3E" alt="Fixture Co logo" width="140" height="32">
+    <span class="kicker">As seen in Sample Labs Weekly</span>
+  </div>
+</header>
+
+<main>
+<section class="wrap" data-lp-section="hero" data-lp-role="hero">
+  <span class="badge">Reader story</span>
+  <h1>I tried every routine out there. <span data-lp-product-name>Sample Serum</span> is the one I kept.</h1>
+  <div class="byline">
+    <img data-lp-person src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2280%22%20height%3D%2280%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23e5e7eb%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3E%3C/text%3E%3C/svg%3E" alt="Photo of the author" width="40" height="40">
+    <span><span data-lp-lock>By Dana Wells</span> · Updated this week</span>
+  </div>
+  <img class="hero-img" data-lp-scene src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%221200%22%20height%3D%22675%22%20viewBox%3D%220%200%201200%20675%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23e5e7eb%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2284%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ESCENE%3C/text%3E%3C/svg%3E" alt="Morning routine on a bathroom shelf" width="1200" height="675">
+  <p>For years my mornings were a mess of half-used bottles. Each one promised a change, and each one ended up at the back of the cupboard.</p>
+</section>
+
+<section class="wrap" data-lp-section="problem" data-lp-role="problem">
+  <h2>The problem nobody talks about</h2>
+  <p>Most routines ask for too many steps. When something takes ten minutes, it is the first thing you skip on a busy day.</p>
+  <p>I wanted one product that fit into the time I already had, and that I would actually look forward to using.</p>
+</section>
+
+<section class="wrap" data-lp-section="mechanism" data-lp-role="mechanism">
+  <h2>Why this one is different</h2>
+  <p>The team at <span data-lp-brand>Fixture Co</span> started from the routine, not the bottle. Everything is designed around a single step that takes less than a minute.</p>
+  <div class="lp-media-slot" data-aspect="16/9" data-radius="8px"></div>
+  <p class="callout">The idea is simple: make the good habit the easy habit.</p>
+</section>
+
+<section class="wrap" data-lp-section="product" data-lp-role="offer">
+  <div class="product">
+    <div class="product-grid">
+      <img class="product-img" data-lp-product src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22440%22%20height%3D%22440%22%20viewBox%3D%220%200%20440%20440%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23e5e7eb%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2255%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3EPRODUCT%3C/text%3E%3C/svg%3E" alt="Sample Serum bottle" width="440" height="440">
+      <div>
+        <h2 style="margin-top:0"><span data-lp-product-name>Sample Serum</span></h2>
+        <div><span class="price" data-lp-price>$29.00</span><s class="compare" data-lp-compare-price>$42.00</s></div>
+        <ul class="usps" data-lp-usps>
+          <li><svg data-lp-keep viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="none" stroke="#2f6fde" stroke-width="2" d="M3 8.5l3 3 7-7"/></svg><span data-lp-usp-text>One step, under a minute</span></li>
+          <li><svg data-lp-keep viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="none" stroke="#2f6fde" stroke-width="2" d="M3 8.5l3 3 7-7"/></svg><span data-lp-usp-text>Made in small batches</span></li>
+          <li><svg data-lp-keep viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="none" stroke="#2f6fde" stroke-width="2" d="M3 8.5l3 3 7-7"/></svg><span data-lp-usp-text>Free shipping on every order</span></li>
+        </ul>
+        <div class="variants" data-lp-variants>
+          <div class="variant" data-lp-variant><span data-lp-variant-name>30 ml</span><span class="variant-price" data-lp-variant-price>$29.00</span></div>
+          <div class="variant" data-lp-variant><span data-lp-variant-name>50 ml</span><span class="variant-price" data-lp-variant-price>$39.00</span></div>
+        </div>
+        <a class="cta" data-lp-cta href="#offer">Check availability</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" data-lp-section="testimonials" data-lp-role="testimonials">
+  <h2>What readers say</h2>
+  <div class="testimonials">
+    <article class="testimonial">
+      <header><img data-lp-person src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2288%22%20height%3D%2288%22%20viewBox%3D%220%200%2088%2088%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23e5e7eb%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3E%3C/text%3E%3C/svg%3E" alt="Photo of Maria" width="44" height="44"><div><strong>Maria, 41</strong><div class="stars"><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg></div></div></header>
+      <p>I have used it every morning for two months. It is the first routine I have not dropped.</p>
+    </article>
+    <article class="testimonial">
+      <header><img data-lp-person src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2288%22%20height%3D%2288%22%20viewBox%3D%220%200%2088%2088%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23e5e7eb%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3E%3C/text%3E%3C/svg%3E" alt="Photo of James" width="44" height="44"><div><strong>James, 35</strong><div class="stars"><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg><svg data-lp-keep class="star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="#f5b301" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z"/></svg></div></div></header>
+      <p>Simple, quick and it feels good to use. My partner has started stealing it.</p>
+    </article>
+  </div>
+</section>
+
+<section class="wrap" data-lp-section="faq" data-lp-role="faq">
+  <h2>Questions readers ask</h2>
+  <details><summary>How long does it take?</summary><p>Less than a minute, once a day.</p></details>
+  <details><summary>What if it is not for me?</summary><p>You can return it within 30 days for a full refund.</p></details>
+  <details><summary>How fast is shipping?</summary><p>Most orders arrive within three to five working days.</p></details>
+</section>
+
+<section class="wrap" data-lp-section="offer" data-lp-role="cta" id="offer">
+  <div class="offer">
+    <span class="sale" data-lp-sale-percent>30% off</span>
+    <h2>Try <span data-lp-product-name>Sample Serum</span> today</h2>
+    <p><span class="price" data-lp-price>$29.00</span><s class="compare" data-lp-compare-price>$42.00</s></p>
+    <a class="cta" data-lp-cta href="#">Get yours now</a>
+    <p class="kicker">30-day returns · Secure checkout</p>
+  </div>
+</section>
+</main>
+
+<footer data-lp-section="footer" data-lp-role="other">
+  <div class="wrap">
+    <p>Questions? Write to <a href="mailto:help@fixture.example">help@fixture.example</a>.</p>
+    <p data-lp-lock>This is an advertisement and not an article. Individual experiences vary.</p>
+    <p>© <span data-lp-brand>Fixture Co</span></p>
+  </div>
+</footer>
+</body>
+</html>

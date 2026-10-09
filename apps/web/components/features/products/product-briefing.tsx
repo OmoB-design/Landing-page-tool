@@ -6,10 +6,9 @@ import { JobSteps } from "@/components/app/job-steps";
 import { RelativeTime } from "@/components/app/row-meta";
 import { Button } from "@/components/ui/button";
 import { RefreshIcon } from "@/components/ui/icons";
+import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
 import { useJob, useStartJob } from "@/lib/queries/jobs";
 import type { Briefing } from "@/lib/validators/product";
-
-import { usePageRefresh } from "./add-product";
 
 const BRIEFING_STEPS = [
   { id: "read", label: "Read the product" },

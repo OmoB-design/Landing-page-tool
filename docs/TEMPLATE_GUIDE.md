@@ -17,3 +17,12 @@ Seed entries carried from the reference tool:
 - HTML parsers lowercase SVG names (`viewBox` → `viewbox`, `linearGradient` → `lineargradient`),
   which breaks inline SVG. Re-serialise with the camelCase names restored
   (`engines/brand_extract.svg_markup`) before storing or re-emitting an inline SVG.
+- Text on a brand colour must use the `--lp-on-*` tokens, not white: Allbirds' primary is cream
+  (#ece9e2), so a badge with `color: #fff` on `--lp-primary` became unreadable (B0.6a test
+  template, 2026-10-09).
+- A promo line written around a discount ("30% off today only") reads broken once the discount is
+  removed for a brand with no sale; wrap the whole promo in `data-lp-promo` so it goes as a unit.
+- The hue sweep leaves slate and blue-grey text colours alone (saturation under 0.35), but any
+  clearly blue element in the template moves to the brand hue. Use `data-lp-keep` or a neutral for
+  colours that must not follow the brand.
+

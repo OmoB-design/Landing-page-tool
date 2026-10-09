@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { authLinkClass } from "@/components/app/auth-frame";
+import { PageBody } from "@/components/app/page-body";
 import { RelativeTime } from "@/components/app/row-meta";
 import { ProductActions } from "@/components/features/products/product-actions";
 import { ProductBriefing } from "@/components/features/products/product-briefing";
@@ -12,6 +13,7 @@ import {
   ProductImages,
   ProductOptions,
 } from "@/components/features/products/product-media";
+import { TestBuildButton } from "@/components/features/products/test-build-button";
 import { ExternalLinkIcon } from "@/components/ui/icons";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/shimmer-loader";
@@ -38,10 +40,10 @@ export default function ProductPage({
   return (
     <Suspense
       fallback={
-        <div className="flex max-w-3xl flex-col gap-3 px-6 py-6">
+        <PageBody width="lg" className="gap-3">
           <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
           <Skeleton height="12rem" radius="var(--radius-md)" />
-        </div>
+        </PageBody>
       }
     >
       <Product params={params} />
@@ -65,7 +67,7 @@ async function Product({
   const productsHref = `/brands/${brand.row.id}/products`;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8 px-6 py-6">
+    <PageBody width="lg" className="gap-8">
       <div className="flex flex-col gap-3">
         <Link href={productsHref} className={`${authLinkClass} w-fit text-sm`}>
           ← All products
@@ -114,6 +116,8 @@ async function Product({
         />
       </div>
 
+      <TestBuildButton productId={row.id} />
+
       <Section title="Images">
         <ProductImages images={product.images} />
       </Section>
@@ -141,7 +145,7 @@ async function Product({
         briefing={product.briefing?.data ?? null}
         updatedAt={product.briefing?.updatedAt ?? null}
       />
-    </div>
+    </PageBody>
   );
 }
 

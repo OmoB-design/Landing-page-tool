@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { PageBody } from "@/components/app/page-body";
 import { AddProduct } from "@/components/features/products/add-product";
 import { ProductsList } from "@/components/features/products/products-list";
 import { Skeleton } from "@/components/ui/shimmer-loader";
@@ -17,10 +18,10 @@ export default function BrandProductsPage({
   return (
     <Suspense
       fallback={
-        <div className="flex flex-col gap-2 px-6 py-6">
+        <PageBody width="lg" className="gap-2">
           <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
           <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-        </div>
+        </PageBody>
       }
     >
       <Products params={params} />
@@ -36,17 +37,17 @@ async function Products({ params }: { params: Promise<{ brandId: string }> }) {
     ? new URL(brand.row.url).origin
     : "https://brand.com";
   return (
-    <div className="flex flex-col gap-6 py-6">
-      <div className="px-6">
-        <AddProduct brandId={brand.row.id} placeholder={`${site}/products/…`} />
-      </div>
+    <PageBody width="lg">
+      <AddProduct brandId={brand.row.id} placeholder={`${site}/products/…`} />
       {products.length > 0 ? (
-        <ProductsList brandId={brand.row.id} products={products} />
+        <div className="-mx-6">
+          <ProductsList brandId={brand.row.id} products={products} />
+        </div>
       ) : (
-        <p className="px-6 text-base text-fg-muted">
+        <p className="text-base text-fg-muted">
           No products yet. Paste a product page above to add one.
         </p>
       )}
-    </div>
+    </PageBody>
   );
 }

@@ -20,13 +20,20 @@ Library templates are authored HTML (from the owner, or built from his Figma fra
 | `data-lp-scene` | lifestyle/scene `<img>` or `.lp-media-slot` | regenerated (or product photo if AI images off) |
 | `data-lp-person` | avatar/headshot `<img>` | regenerated person |
 | `data-lp-keep` | UI graphics (stars, ticks, badges) | kept as-is |
-| `data-lp-variants` | variant picker container | regenerated per product variant |
+| `data-lp-variants` | variant picker container | regenerated per product variant: its first `data-lp-variant` unit is cloned per option (up to 8), filling `data-lp-variant-name`, `data-lp-variant-price` and an optional `img[data-lp-variant-image]` |
 | `data-lp-cta` | CTA links/buttons | href set to the product/CTA URL |
 | `data-lp-lock` | any text element | protected from copy rewrite (legal lines, fixed labels) |
-| `data-lp-price`, `data-lp-sale-price` | price text | filled from product data |
+| `data-lp-price`, `data-lp-sale-price` | price text | the price the customer pays now (the sale price when on sale) |
+| `data-lp-compare-price` | struck-through price | the regular price when on sale; removed otherwise (B0.6a) |
+| `data-lp-brand`, `data-lp-product-name` | inline text | replaced with the brand / product name (B0.6a) |
+| `data-lp-usps` | list of selling points | each child is a row, cloned per product USP (up to 6); text goes in `data-lp-usp-text` if present, so icons stay (B0.6a) |
+| `data-lp-sale-percent` | discount label | the brand's sale percent; removed when the brand has none (B0.6a) |
+| `data-lp-promo` | promo line | the brand's promo text; a promo holding a `data-lp-sale-percent` is removed when there is no sale, and its section too if left empty (B0.6a) |
 
 Styling rules for library templates:
 - Brand colours as CSS custom properties on `:root`: `--lp-primary`, `--lp-primary-dark`, `--lp-tint`, `--lp-accent`, `--lp-heading-font`, `--lp-body-font`. Recolour becomes a variable swap.
+- Text on a brand colour uses `--lp-on-primary`, `--lp-on-accent` or `--lp-on-dark` (declare them on `:root`; recolour sets each to black or white, whichever reads better). Never hard-code white text on a brand colour: some brands' primary is cream.
+- Top-level sections can sit in different containers (e.g. `<main>`), but they only reorder within their container.
 - Self-contained: no external scripts. Fonts and images as relative files in the template folder (the seed script uploads them to storage).
 - Mobile-first; test at 390 px and 1280 px.
 - Plain semantic HTML; minimal JavaScript (native `<details>` for FAQ).

@@ -1,0 +1,84 @@
+{
+  "slug": "advertorial-fixture",
+  "name": "Advertorial (test)",
+  "type": "advertorial",
+  "description": "Test template for the build pipeline: reader story, problem, mechanism, product box, testimonials, FAQ, offer. Made-up brand.",
+  "source_palette": {
+    "primary": "#2f6fde",
+    "dark": "#1d4597",
+    "tint": "#eaf1fd",
+    "accent": "#f28c28"
+  },
+  "sections": [
+    {
+      "key": "promo-bar",
+      "role": "other",
+      "label": "Promo bar",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "masthead",
+      "role": "other",
+      "label": "Masthead",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "hero",
+      "role": "hero",
+      "label": "Headline and byline",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "problem",
+      "role": "problem",
+      "label": "The problem",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "mechanism",
+      "role": "mechanism",
+      "label": "Why it's different",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "product",
+      "role": "offer",
+      "label": "Product box",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "testimonials",
+      "role": "testimonials",
+      "label": "Reader reviews",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "faq",
+      "role": "faq",
+      "label": "Questions",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "offer",
+      "role": "cta",
+      "label": "Offer",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "footer",
+      "role": "other",
+      "label": "Footer",
+      "removable": false,
+      "duplicable": false
+    }
+  ]
+}

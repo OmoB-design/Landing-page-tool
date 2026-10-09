@@ -9,6 +9,7 @@ from urllib.parse import urljoin, urlsplit
 from bs4 import BeautifulSoup, Tag
 
 from app.engines.colors import css_color_counts
+from app.engines.html import restore_svg_case
 
 TITLE_SEPARATORS = re.compile(
     "\\s+[|\u2013\u2014\u2022\u00b7:]\\s+|\\s+-\\s+"
@@ -213,25 +214,9 @@ def extract_static(html: str, url: str) -> StaticSignals:
     )
 
 
-# SVG is case-sensitive, but HTML parsers lowercase names; these are the camelCase ones logos use.
-SVG_CAMEL_CASE = [
-    "viewBox", "preserveAspectRatio", "gradientUnits", "gradientTransform", "patternUnits",
-    "patternContentUnits", "patternTransform", "clipPathUnits", "maskUnits", "maskContentUnits",
-    "stdDeviation", "spreadMethod", "textLength", "lengthAdjust", "startOffset", "baseFrequency",
-    "numOctaves", "pathLength", "markerWidth", "markerHeight", "refX", "refY",
-    "linearGradient", "radialGradient", "clipPath", "textPath", "foreignObject",
-    "feGaussianBlur", "feOffset", "feBlend", "feColorMatrix", "feFlood", "feComposite",
-    "feMerge", "feMergeNode",
-]  # fmt: skip
-_SVG_NAME = re.compile(
-    r"(?<=[\s<])(/?)(" + "|".join(name.lower() for name in SVG_CAMEL_CASE) + r")(?=[\s=>/])"
-)
-_SVG_CASE = {name.lower(): name for name in SVG_CAMEL_CASE}
-
-
 def svg_markup(svg: Tag) -> str:
     """An inline <svg> as markup with its camelCase names restored (viewbox → viewBox)."""
-    return _SVG_NAME.sub(lambda m: m.group(1) + _SVG_CASE[m.group(2)], str(svg))
+    return restore_svg_case(str(svg))
 
 
 def _home_link_logo(scope: BeautifulSoup | Tag, url: str) -> tuple[list[str], str | None]:

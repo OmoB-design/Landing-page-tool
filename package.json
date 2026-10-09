@@ -27,6 +27,8 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "test:db": "supabase test db",
+    "seed:library": "cd services/worker && uv run python -m app.cli.seed_library",
+    "smoke:build": "cd services/worker && uv run python -m app.cli.smoke_build",
     "gen:types": "mkdir -p apps/web/types && supabase gen types --lang typescript --local --schema public > apps/web/types/database.ts"
   },
   "devDependencies": {

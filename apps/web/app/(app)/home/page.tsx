@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { PageBody } from "@/components/app/page-body";
 import { PageHeader } from "@/components/app/page-header";
-import { DemoJobCard } from "@/components/features/home/demo-job-card";
 import { GettingStarted } from "@/components/features/home/getting-started";
 import { HomeIcon } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
@@ -15,11 +15,11 @@ export default function HomePage() {
   return (
     <>
       <PageHeader icon={HomeIcon} title="Home" />
-      <div className="flex flex-col gap-6 px-6 py-6">
+      <PageBody>
         <Suspense
           fallback={
             <Skeleton
-              width="var(--container-xl)"
+              width="100%"
               height="calc(var(--spacing-row) * 7)"
               radius="var(--radius-lg)"
             />
@@ -27,8 +27,7 @@ export default function HomePage() {
         >
           <SetupChecklist />
         </Suspense>
-        <DemoJobCard />
-      </div>
+      </PageBody>
     </>
   );
 }

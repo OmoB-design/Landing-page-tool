@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { authLinkClass } from "@/components/app/auth-frame";
 import { JobSteps } from "@/components/app/job-steps";
@@ -16,6 +15,7 @@ import {
 } from "@/components/ui/field";
 import { AlertIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
 import { useJob, useStartJob } from "@/lib/queries/jobs";
 import {
   productPullResultSchema,
@@ -70,7 +70,7 @@ export function AddProduct({
   const busy =
     startJob.isPending || job?.status === "queued" || job?.status === "running";
   return (
-    <div className="flex max-w-xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <form
         className="flex flex-col gap-3"
         onSubmit={(event) => {
@@ -138,18 +138,6 @@ export function AddProduct({
       ) : null}
     </div>
   );
-}
-
-/** Re-renders the server components (the product list) once when a job finishes. */
-export function usePageRefresh(finishedJobId: string | null) {
-  const router = useRouter();
-  const refreshed = useRef<string | null>(null);
-  useEffect(() => {
-    if (finishedJobId && refreshed.current !== finishedJobId) {
-      refreshed.current = finishedJobId;
-      router.refresh();
-    }
-  }, [finishedJobId, router]);
 }
 
 function PullResult({

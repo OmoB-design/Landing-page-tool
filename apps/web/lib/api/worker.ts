@@ -1,12 +1,13 @@
 import { z } from "zod";
 
+import { type BuildCreated, buildCreatedSchema } from "@/lib/validators/build";
 import {
   enqueueResponseSchema,
   type EnqueueResponse,
 } from "@/lib/validators/jobs";
 
 // Server-side client for the worker's internal API (services/worker/app/main.py). Only Route
-// Handlers call it; the browser never talks to the worker directly.
+// Handlers and server actions call it; the browser never talks to the worker directly.
 
 const workerUrl = z
   .url()
@@ -36,13 +37,16 @@ function detailMessage(body: unknown): string | undefined {
   return undefined;
 }
 
-export async function startWorkerJob(
+async function postToWorker<T>(
+  path: string,
   accessToken: string,
-  body: { org_id: string; kind: string; payload: Record<string, unknown> },
-): Promise<EnqueueResponse> {
+  body: unknown,
+  schema: z.ZodType<T>,
+  failure: string,
+): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${workerUrl}/jobs`, {
+    response = await fetch(`${workerUrl}${path}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -62,10 +66,40 @@ export async function startWorkerJob(
   }
   const json: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new WorkerError(
-      detailMessage(json) ?? "Could not start the job.",
-      response.status,
-    );
+    throw new WorkerError(detailMessage(json) ?? failure, response.status);
   }
-  return enqueueResponseSchema.parse(json);
+  return schema.parse(json);
+}
+
+export function startWorkerJob(
+  accessToken: string,
+  body: { org_id: string; kind: string; payload: Record<string, unknown> },
+): Promise<EnqueueResponse> {
+  return postToWorker(
+    "/jobs",
+    accessToken,
+    body,
+    enqueueResponseSchema,
+    "Could not start the job.",
+  );
+}
+
+/** Creates a build and queues its pipeline job (worker POST /builds). */
+export function startBuild(
+  accessToken: string,
+  body: {
+    org_id: string;
+    template_id: string;
+    brand_id: string;
+    product_id: string;
+    wizard?: Record<string, unknown>;
+  },
+): Promise<BuildCreated> {
+  return postToWorker(
+    "/builds",
+    accessToken,
+    body,
+    buildCreatedSchema,
+    "Could not start the build.",
+  );
 }

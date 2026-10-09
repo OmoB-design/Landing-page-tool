@@ -56,7 +56,7 @@
 | `fastapi`, `uvicorn[standard]` | internal API |
 | `pydantic` (v2), `pydantic-settings` | models and config |
 | `psycopg[binary,pool]` (v3) | Postgres |
-| `langgraph`, `langgraph-checkpoint-postgres` | pipeline graph + checkpoints |
+| `langgraph`, `langgraph-checkpoint-postgres` | pipeline graph + checkpoints (B0.6a: langgraph 1.2, checkpoint-postgres 3.1; checkpoints in the private `langgraph` schema) |
 | `anthropic` | Claude SDK. B0.4b: 1.x, built on `httpx2` (not `httpx`); `anthropic.Timeout` etc. come from it |
 | `fal-client` | fal.ai SDK |
 | `httpx` | HTTP (Vercel, Shopify, fetch ladder) |

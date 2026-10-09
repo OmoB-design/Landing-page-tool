@@ -1,7 +1,7 @@
 import type { PageListItem } from "./list";
 
-// SAMPLE DATA for the Pages list until builds exist (they arrive with the pipeline in B0.6 and
-// the real list in B1.4). Brands and products are invented; keys follow DESIGN.md (LUM-23).
+// SAMPLE PAGES for the list tests and design reviews (the Pages list shows real builds since
+// B0.6a). Brands and products are invented; keys follow DESIGN.md (LUM-23).
 
 type SamplePage = Omit<PageListItem, "updatedAt" | "createdBy"> & {
   minutesAgo: number;

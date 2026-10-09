@@ -22,10 +22,13 @@ class JobContext:
         data: dict[str, Any] | None = None,
         node: str | None = None,
         level: EventLevel = "info",
+        check_stop: bool = True,
     ) -> None:
         """Records a progress event the UI shows live. Raises JobInterrupted if the worker is
-        stopping, so handlers stop at a clean point and the job resumes elsewhere."""
-        self.check_stopping()
+        stopping, so handlers stop at a clean point and the job resumes elsewhere. Pipeline
+        nodes pass `check_stop=False` to record a finished node, and check at the next one."""
+        if check_stop:
+            self.check_stopping()
         queue.add_event(self.job, message, level=level, node=node, data=data)
 
     def sleep(self, seconds: float) -> None:

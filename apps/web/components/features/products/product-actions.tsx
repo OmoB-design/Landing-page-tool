@@ -16,9 +16,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { removeProduct } from "@/lib/products/actions";
+import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
 import { useJob, useStartJob } from "@/lib/queries/jobs";
 
-import { PULL_STEPS, usePageRefresh } from "./add-product";
+import { PULL_STEPS } from "./add-product";
 
 /** "Pull again" (re-reads the product page, replacing the details) and "Remove". */
 export function ProductActions({

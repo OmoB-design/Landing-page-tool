@@ -29,6 +29,7 @@ export {
   PanelLeftOpen as PanelOpenIcon,
   FileText as PagesIcon,
   Plus as PlusIcon,
+  Smartphone as PhoneIcon,
   Package as ProductsIcon,
   RefreshCw as RefreshIcon,
   Trash2 as RemoveIcon,

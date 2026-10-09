@@ -7,6 +7,8 @@ Every state change after a claim is guarded by `locked_by`, so a worker that los
 from typing import Any
 from uuid import UUID
 
+from psycopg import Connection
+from psycopg.rows import DictRow
 from psycopg.types.json import Jsonb
 
 from app.db import transaction
@@ -26,9 +28,27 @@ def enqueue(
     dedupe_key: str | None = None,
     build_id: UUID | None = None,
     max_attempts: int = 2,
+    conn: Connection[DictRow] | None = None,
 ) -> tuple[Job, bool]:
     """Queues a job. If a queued or running job in the org has the same dedupe key, returns that
-    job instead (so one build is never paid for twice). Returns (job, created)."""
+    job instead (so one build is never paid for twice). Returns (job, created). With `conn`, the
+    insert joins the caller's transaction (e.g. a build and its job are created together)."""
+    if conn is not None:
+        row = conn.execute(
+            """
+            insert into jobs (org_id, kind, payload, dedupe_key, build_id, max_attempts, created_by)
+            values (%(org_id)s, %(kind)s, %(payload)s, %(dedupe_key)s, %(build_id)s,
+                    %(max_attempts)s, %(created_by)s)
+            returning *
+            """,
+            {
+                "org_id": org_id, "kind": kind, "payload": Jsonb(payload),
+                "dedupe_key": dedupe_key, "build_id": build_id,
+                "max_attempts": max_attempts, "created_by": created_by,
+            },
+        ).fetchone()  # fmt: skip
+        assert row is not None
+        return Job.model_validate(row), True
     with transaction() as conn:
         row = conn.execute(
             """

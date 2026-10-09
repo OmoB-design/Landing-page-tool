@@ -75,7 +75,8 @@ select throws_ok(
   $$ insert into org_members (org_id, user_id, role)
      select ada_org, '00000000-0000-4000-8000-00000000000b', 'owner' from ids $$,
   '42501', null, 'Bob cannot add himself to Ada''s org');
-select is((select count(*)::int from templates where org_id is null), 1,
+-- Only this test's library template is counted: a seeded library (pnpm seed:library) may also exist.
+select is((select count(*)::int from templates where org_id is null and slug = 'advertorial-classic'), 1,
           'signed-in users can see library templates');
 select throws_ok(
   $$ insert into jobs (org_id, kind) select org_id, 'build' from org_members
