@@ -14,7 +14,7 @@ const assetUrl = (asset: { bucket: string; path: string }) =>
   `${publicEnv.supabaseUrl}/storage/v1/object/public/${asset.bucket}/${asset.path}`;
 
 /** Public URLs for stored assets, by id (RLS limits them to the user's orgs). */
-async function assetUrls(ids: string[]): Promise<Map<string, string>> {
+export async function assetUrls(ids: string[]): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
   const supabase = await createClient();
   const { data, error } = await supabase

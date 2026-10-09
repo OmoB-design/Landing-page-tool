@@ -8,6 +8,7 @@ from psycopg.types.json import Jsonb
 
 from app.config import get_settings
 from app.db import transaction
+from app.engines import targeting
 from app.jobs import queue
 from app.jobs.models import Job
 from app.jobs.registry import KINDS
@@ -53,9 +54,10 @@ def create_build(
         build = conn.execute(
             """
             insert into builds (org_id, brand_id, product_id, template_id, template_version, key,
-                                origin, status, title, wizard, mock_images, created_by)
+                                origin, status, title, wizard, targeting, mock_images,
+                                created_by)
             values (%(o)s, %(b)s, %(p)s, %(t)s, %(v)s, %(key)s, %(origin)s, 'queued', %(title)s,
-                    %(wizard)s, %(mock)s, %(user)s)
+                    %(wizard)s, %(targeting)s, %(mock)s, %(user)s)
             returning id, key, status, title
             """,
             {
@@ -63,6 +65,7 @@ def create_build(
                 "v": template["version"], "key": key["key"], "origin": template["origin"],
                 "title": f"{template['name']} · {product['name']}",
                 "wizard": Jsonb(wizard.model_dump(mode="json")),
+                "targeting": Jsonb(targeting.compose(wizard.model_dump(mode="json"))),
                 "mock": get_settings().lp_mock_images, "user": created_by,
             },
         ).fetchone()  # fmt: skip

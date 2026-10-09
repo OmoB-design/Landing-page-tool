@@ -12,7 +12,7 @@ import {
 
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
-import { BackIcon, RedoIcon, UndoIcon } from "@/components/ui/icons";
+import { BackIcon, PagesIcon, RedoIcon, UndoIcon } from "@/components/ui/icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -35,7 +35,6 @@ import type {
 import { ContentPanel } from "./content-panel";
 import { DetailsPanel } from "./details-panel";
 import { EditorPreview } from "./editor-preview";
-import { EditorTestBuild, type BuildableProduct } from "./editor-test-build";
 import { IssuesPanel } from "./issues-panel";
 import { LookPanel } from "./look-panel";
 
@@ -43,17 +42,11 @@ type Tab = "content" | "look" | "details" | "issues";
 
 /**
  * The section editor (BUILD_SPEC §8.3, laid out like the owner's reference): a full-screen top
- * bar (back, name, save status, undo/redo, Build a test page), a left panel with Content, Look,
+ * bar (back, name, save status, undo/redo, Create a page), a left panel with Content, Look,
  * Details and Issues tabs, and the live preview on the right. Every change is saved by the
  * worker as a new version; the preview reloads with it.
  */
-export function TemplateEditor({
-  initial,
-  products,
-}: {
-  initial: TemplateEditorState;
-  products: BuildableProduct[];
-}) {
+export function TemplateEditor({ initial }: { initial: TemplateEditorState }) {
   const [state, setState] = useState(initial);
   const [tab, setTab] = useState<Tab>("content");
   const [selected, setSelected] = useState<string | null>(
@@ -200,7 +193,12 @@ export function TemplateEditor({
           >
             <RedoIcon aria-hidden />
           </ShortcutButton>
-          <EditorTestBuild templateId={templateId} products={products} />
+          <Button size="sm" className="ml-1" asChild>
+            <Link href={`/pages/new?template=${templateId}`}>
+              <PagesIcon aria-hidden />
+              <span className="sr-only sm:not-sr-only">Create a page</span>
+            </Link>
+          </Button>
         </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">

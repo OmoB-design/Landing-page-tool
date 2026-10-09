@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/shimmer-loader";
 import { WorkerError, getTemplateEditor } from "@/lib/api/worker";
 import { getSessionContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { getBuildableProducts } from "@/lib/templates/queries";
 
 export const metadata: Metadata = { title: "Edit template" };
 
@@ -49,15 +48,14 @@ async function Editor({ params }: { params: Promise<{ templateId: string }> }) {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session) notFound();
-  const [state, products] = await Promise.all([
-    getTemplateEditor(session.access_token, currentOrg.id, templateId).catch(
-      (cause: unknown) => {
-        if (cause instanceof WorkerError && cause.status === 404) return null;
-        throw cause;
-      },
-    ),
-    getBuildableProducts(currentOrg.id),
-  ]);
+  const state = await getTemplateEditor(
+    session.access_token,
+    currentOrg.id,
+    templateId,
+  ).catch((cause: unknown) => {
+    if (cause instanceof WorkerError && cause.status === 404) return null;
+    throw cause;
+  });
   if (!state) notFound();
-  return <TemplateEditor initial={state} products={products} />;
+  return <TemplateEditor initial={state} />;
 }

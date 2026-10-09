@@ -78,6 +78,8 @@
   --spacing-panel: 384px; /* right-hand panel on the build page (w-panel) */
   --spacing-preview-mobile: 390px; /* phone-width page preview (w-preview-mobile) */
   --spacing-editor-panel: 440px; /* section editor's left panel (w-editor-panel) */
+  --spacing-wizard-steps: 232px; /* create wizard's step list (w-wizard-steps) */
+  --spacing-wizard-dossier: 288px; /* create wizard's dossier panel (w-wizard-dossier) */
 
   /* Motion (D51, DESIGN.md §6): strong custom curves; the built-in ones are too weak. */
   --ease-out: cubic-bezier(

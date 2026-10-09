@@ -32,9 +32,33 @@ def _snippet(text: str, match: re.Match[str]) -> str:
     return ("…" if start else "") + snippet[:SNIPPET_CHARS] + ("…" if end < len(text) else "")
 
 
-def scan(html: str) -> dict[str, object]:
+# BUILD_SPEC §9: with an expert author, a credential next to an invented byline is a false claim.
+CREDENTIALS = Rule(
+    "expert_credentials",
+    "credentials",
+    "high",
+    # Abbreviations are matched in capitals only, so "md" or "rd" inside words never match.
+    r"\b(?:Dr\.|M\.?D\.?|Ph\.?D\.?|R\.?D\.?N?|(?i:board[- ]certified|licensed "
+    r"(?:nutritionist|dietitian|physician|pharmacist|dermatologist)))(?=\W|$)",
+    "The author is a fictional expert, so the page must not claim a degree, title or licence.",
+)
+EXPERT_NOTE = Finding(
+    "expert_author",
+    "credentials",
+    "low",
+    "Author: expert",
+    "page",
+    "The byline is a fictional expert's voice: check the page never claims real credentials.",
+)
+
+
+def scan(html: str, *, author_type: str | None = None) -> dict[str, object]:
+    """`author_type="expert"` also flags credentials (high) and adds a reminder note (low)."""
     soup = parse(html)
-    findings: list[Finding] = []
+    findings: list[Finding] = [EXPERT_NOTE] if author_type == "expert" else []
+    rules = _COMPILED + (
+        [(CREDENTIALS, re.compile(CREDENTIALS.pattern))] if author_type == "expert" else []
+    )
     sources: list[tuple[str, Tag]] = []
     for node in text_nodes(soup):
         parent = node.parent
@@ -50,7 +74,7 @@ def scan(html: str) -> dict[str, object]:
 
     seen: set[tuple[str, str]] = set()
     for text, element in sources:
-        for rule, pattern in _COMPILED:
+        for rule, pattern in rules:
             match = pattern.search(text)
             if not match:
                 continue

@@ -9,6 +9,8 @@ const WIDTHS = {
   lg: "max-w-3xl",
   /** Card grids (the template gallery). */
   xl: "max-w-5xl",
+  /** Three-column tools (the create wizard). */
+  "2xl": "max-w-6xl",
 };
 
 /**

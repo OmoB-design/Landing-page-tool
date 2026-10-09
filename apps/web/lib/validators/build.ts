@@ -114,3 +114,39 @@ export const buildReportSchema = z.object({
   warnings: z.array(z.string()).catch([]),
 });
 export type BuildReport = z.infer<typeof buildReportSchema>;
+
+const emphasisList = z.array(z.string().trim().min(1).max(200)).max(3);
+
+/** The create wizard's payload (BUILD_SPEC §9; worker app/models/build.py BuildRequest). */
+export const createPageSchema = z.object({
+  template_id: z.uuid(),
+  brand_id: z.uuid(),
+  product_id: z.uuid(),
+  wizard: z.object({
+    author_type: z.enum(["writer", "customer", "influencer", "expert"]),
+    ai_images: z.boolean(),
+    image_styles: z
+      .array(
+        z.enum([
+          "editorial",
+          "ugc",
+          "studio",
+          "macro",
+          "illustration",
+          "anatomical",
+          "diagram",
+          "render",
+        ]),
+      )
+      .max(8),
+    audience: z.string().trim().max(300).nullable(),
+    audience_gender: z.enum(["any", "women", "men"]),
+    audience_age: z.string().max(20).nullable(),
+    emphasis: z.object({
+      benefits: emphasisList,
+      features: emphasisList,
+      objections: emphasisList,
+    }),
+  }),
+});
+export type CreatePageInput = z.infer<typeof createPageSchema>;

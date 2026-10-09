@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.engines import targeting
 from app.engines.fragments import Fragment
 from app.models.template import LengthCap
 
@@ -167,27 +168,9 @@ class CopyBrief:
 
 
 def targeting_block(wizard: dict[str, Any]) -> str | None:
-    """The wizard's audience and emphasis as an OPERATOR TARGETING block (BUILD_SPEC §9);
+    """The wizard's audience, emphasis and author as an OPERATOR TARGETING block (BUILD_SPEC §9);
     None when the build has no targeting (test builds)."""
-    lines: list[str] = []
-    audience = wizard.get("audience")
-    if audience:
-        extra = [
-            v
-            for v in (wizard.get("audience_gender"), wizard.get("audience_age"))
-            if v and v != "any"
-        ]
-        lines.append(f"Audience: {audience}" + (f" ({', '.join(extra)})" if extra else ""))
-    emphasis = wizard.get("emphasis") or {}
-    for key, label in (
-        ("benefits", "Lead with these benefits"),
-        ("features", "Feature"),
-        ("objections", "Answer these objections"),
-    ):
-        values = [v for v in emphasis.get(key, []) if v]
-        if values:
-            lines.append(f"{label}: " + "; ".join(values))
-    return "\n".join(lines) or None
+    return targeting.brief_extra(wizard)
 
 
 def system_prompt(brief: CopyBrief) -> str:

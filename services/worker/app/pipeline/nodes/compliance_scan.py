@@ -9,7 +9,7 @@ from app.pipeline.state import BuildState
 
 @node("compliance_scan", "Checked the claims")
 def compliance_scan(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
-    result = scan(read_page(state))
+    result = scan(read_page(state), author_type=state.get("wizard", {}).get("author_type"))
     counts: dict[str, int] = result["counts"]  # type: ignore[assignment]
     message = (
         "Checked the claims: nothing flagged"

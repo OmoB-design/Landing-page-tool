@@ -72,7 +72,7 @@ export async function PagesView({
         <EmptyState icon={PagesIcon} title="No pages yet">
           {view === "mine"
             ? "Pages you build appear here."
-            : "Open a product under Brands and choose Build a test page. The create wizard arrives in B1.2."}
+            : "Choose New page to build your first page."}
         </EmptyState>
       ) : (
         <PagesList groups={groupPagesByStatus(pages)} />

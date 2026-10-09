@@ -226,11 +226,13 @@ def test_creates_a_build_and_its_job(
     assert body["job"]["kind"] == "test_build" and body["job"]["build_id"] == body["build"]["id"]
     with transaction() as conn:
         row = conn.execute(
-            "select wizard, origin, created_by from builds where id = %(b)s",
+            "select wizard, targeting, origin, created_by from builds where id = %(b)s",
             {"b": body["build"]["id"]},
         ).fetchone()
     assert row is not None and row["origin"] == "owned" and row["created_by"] == user.id
     assert row["wizard"]["ai_images"] is True and row["wizard"]["author_type"] == "writer"
+    assert row["targeting"]["author_type"] == "writer" and row["targeting"]["audience"] is None
+    assert row["targeting"]["image_prefs"] == {"ai": True, "styles": [], "audience": None}
 
 
 @needs_db

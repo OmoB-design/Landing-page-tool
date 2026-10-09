@@ -3,36 +3,20 @@
 import { WorkerError, startBuild } from "@/lib/api/worker";
 import { getSessionContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { type CreatePageInput, createPageSchema } from "@/lib/validators/build";
 
 export type StartBuildResult = { buildId?: string; error?: string };
 
-/** Temporary (B0.6a, picker B1.1a): builds a test page for a product from a chosen library or
- * org template, until the create wizard arrives (B1.2). */
-export async function startTestBuild(
-  productId: string,
-  templateId: string,
+/** The create wizard's last step (BUILD_SPEC §9): the worker creates the build with its key,
+ * the wizard payload and targeting, and queues the pipeline (D57, D66). */
+export async function createPage(
+  input: CreatePageInput,
 ): Promise<StartBuildResult> {
+  const parsed = createPageSchema.safeParse(input);
+  if (!parsed.success)
+    return { error: "Some choices are no longer valid. Check each step." };
   const { currentOrg } = await getSessionContext();
   const supabase = await createClient();
-  const [{ data: product }, { data: template }] = await Promise.all([
-    supabase
-      .from("products")
-      .select("id, brand_id")
-      .eq("id", productId)
-      .eq("org_id", currentOrg.id)
-      .is("deleted_at", null)
-      .maybeSingle(),
-    supabase
-      .from("templates")
-      .select("id")
-      .eq("id", templateId)
-      .or(`org_id.is.null,org_id.eq.${currentOrg.id}`)
-      .eq("status", "active")
-      .is("deleted_at", null)
-      .maybeSingle(),
-  ]);
-  if (!product) return { error: "That product no longer exists." };
-  if (!template) return { error: "That template isn't available any more." };
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -40,9 +24,7 @@ export async function startTestBuild(
   try {
     const { build } = await startBuild(session.access_token, {
       org_id: currentOrg.id,
-      template_id: template.id,
-      brand_id: product.brand_id,
-      product_id: product.id,
+      ...parsed.data,
     });
     return { buildId: build.id };
   } catch (cause) {

@@ -13,14 +13,13 @@ import {
   ProductImages,
   ProductOptions,
 } from "@/components/features/products/product-media";
-import { TestBuildButton } from "@/components/features/products/test-build-button";
+import { NewPageLink } from "@/components/features/products/new-page-link";
 import { ExternalLinkIcon } from "@/components/ui/icons";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { formatPrice, productRowToForm } from "@/lib/products/form";
 import { getProduct } from "@/lib/products/queries";
-import { getBuildableTemplates } from "@/lib/templates/queries";
 
 import { loadBrand } from "../../brand";
 
@@ -117,10 +116,7 @@ async function Product({
         />
       </div>
 
-      <TestBuildButton
-        productId={row.id}
-        templates={await getBuildableTemplates(currentOrg.id)}
-      />
+      <NewPageLink brandId={brand.row.id} productId={row.id} />
 
       <Section title="Images">
         <ProductImages images={product.images} />

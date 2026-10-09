@@ -114,31 +114,3 @@ export const getTemplateFiles = cache(
     return { html: { bucket: own, path: data.html_path }, thumb };
   },
 );
-
-/** Templates a test build can use: the library first, then the org's own. */
-export async function getBuildableTemplates(orgId: string) {
-  const [library, own] = await Promise.all([
-    getLibraryTemplates(),
-    getOrgTemplates(orgId),
-  ]);
-  return [
-    ...library.map((t) => ({ id: t.id, name: t.name, group: "Library" })),
-    ...own.map((t) => ({ id: t.id, name: t.name, group: "Yours" })),
-  ];
-}
-
-/** Products a test build can use, grouped by brand (the section editor's "Build a test page"). */
-export async function getBuildableProducts(orgId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("id, name, brand:brands!inner(name, deleted_at)")
-    .eq("org_id", orgId)
-    .is("deleted_at", null)
-    .is("brand.deleted_at", null)
-    .order("name");
-  if (error) throw new Error(`Could not load products: ${error.message}`);
-  return data
-    .map((p) => ({ id: p.id, name: p.name, brand: p.brand.name }))
-    .sort((a, b) => a.brand.localeCompare(b.brand));
-}

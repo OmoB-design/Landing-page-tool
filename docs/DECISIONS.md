@@ -241,6 +241,12 @@ The seed script uploads a library template's `assets/*` to `library-assets/<slug
 The editor (`/templates/[id]`, full screen) edits only the org's own templates. Each edit (reorder, remove, duplicate, rename) is a worker call that rewrites the section rows and the page HTML and saves a new version; the call carries the version the editor showed, and a different current version is refused (409, "changed in another tab… reload"). `templates.version` points at the current version: Undo and Redo move it to the previous or next kept version; a new edit after an undo discards the redo history; Restore saves an earlier version again as a new one. Version numbers are never reused, the newest 12 are kept, and page files no kept version uses are deleted (rename and restore reuse the existing file). Sections only move within the element that holds them (the UI disables those moves; the worker refuses them). A duplicate gets the key `<key>-<n>` and the label "<label> (copy)", and can always be removed. A template's words are read-only in the editor (owner, B1.1 plan: they are rewritten for every build); its name and description can be changed (not versioned). The editor's preview runs one small bridge script of ours, allowed by a nonce, for outlines and click-to-select; the template's own scripts stay blocked.
 *Why:* builds read the current rows and HTML directly, so the template is always in a buildable state; the version check stops two tabs silently overwriting each other; never reusing numbers keeps "built from version N" unambiguous.
 
+**D66 — Create wizard rules.** Locked (owner approved B1.2 plan, 2026-10-09).
+`/pages/new` follows the reference tool's layout: the step list on the left, the step in the middle with Back / Continue, the brand dossier on the right. Every choice lives in the URL (a refresh or a shared link keeps it; step changes add a browser history entry), and a step opens only when the steps before it are ready. Library templates are built from directly: no copy is made in Yours (this replaces BUILD_SPEC §8.3.5's implicit copy). When a product has no briefing, the product_briefing job starts as soon as the product is chosen. Build page hands over to the build page, which shows the live steps and then the report (the spec's "Run" step). The worker stores the wizard payload and a `targeting` record (audience, gender, age, emphasis, author, image preferences, the copywriter's targeting block) on the build. Author types: article writer, customer, influencer and expert. The expert is a voice only: the copy is told never to state or imply credentials, and the claims check flags credentials (high) and adds an "Author: expert" note (low). The temporary "Build a test page" buttons are replaced by links into the wizard (product page: product chosen; template editor: template chosen).
+*Why:* one path to a page; the URL keeps long choices safe; building straight from the library avoids filling Yours with copies nobody arranged; an invented expert with a credential would be a false claim.
+
+**O5 resolved — Expert author allowed, without credentials.** Locked (owner, B1.2, 2026-10-09). See D66.
+
 **O6 resolved — Worker runs locally for now.** Locked (owner approved B0.4 plan, 2026-10-08). Choose a host (needs Playwright Chromium) before the first deploy.
 
 ## Open (ask the owner when the related build starts)
@@ -249,6 +255,6 @@ The editor (`/templates/[id]`, full screen) edits only the org's own templates. 
 - O2 — Clone-path terms text (placeholder until legal review).
 - O3 — Which library templates ship first, and their HTML (owner designs; see `template-onboarding` skill).
 - O4 — Billing/plans: out of scope for v1 unless the owner adds it.
-- O5 — Whether "doctor/expert" author type is allowed at all, and how bylines are labelled.
+- ~~O5 — Whether "doctor/expert" author type is allowed at all, and how bylines are labelled.~~ Resolved (D66).
 - O6 — Hosting for the worker (Railway, Fly.io, Render, or a VM). Needs Chromium. *Local for now (see above); decide before the first deploy.*
 - O10 — Local database runtime: Docker Desktop, Colima, or a Supabase Cloud dev project. *Raised 2026-10-09.*

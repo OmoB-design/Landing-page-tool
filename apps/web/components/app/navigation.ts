@@ -52,12 +52,12 @@ export const SECTION_ACTIONS: Record<
   SectionId,
   { label: string; href?: string }
 > = {
-  pages: { label: "New page" },
-  templates: { label: "Browse library" },
+  pages: { label: "New page", href: "/pages/new" },
+  templates: { label: "Browse library", href: "/templates" },
   brands: { label: "New brand", href: "/brands/new" },
-  library: { label: "New page" },
-  analytics: { label: "New page" },
-  settings: { label: "New page" },
+  library: { label: "New page", href: "/pages/new" },
+  analytics: { label: "New page", href: "/pages/new" },
+  settings: { label: "New page", href: "/pages/new" },
 };
 
 /** Which rail section a path belongs to. Home lives under Pages, as in the reference layout. */

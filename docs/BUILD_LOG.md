@@ -258,3 +258,22 @@ as new entries.
 - **Owner actions requested:** use a template, open Edit sections, try the editor, build a test page from it; confirm B1.1b.
 - **Owner confirmed:** no
 - **Next:** B1.2 — Create wizard
+
+### B1.1b — owner go to commit; B1.2 plan approved
+- **Date:** 2026-10-09
+- **Owner:** asked to commit B1.1b (committed `a2c26d3`) and approved the B1.2 plan with all recommendations: hand over to the build page after Build page, build straight from library templates, offer an expert author without credentials (O5), replace the test-build buttons with links into the wizard. Asked for the layout to follow the screen recording of the previous tool (steps on the left, dossier on the right), which it now does.
+
+### B1.2 — Create wizard
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-09
+- **Summary:** `/pages/new` is the create wizard, laid out like the previous tool's "Create a funnel": steps on the left, the step in the middle (Back, progress dots, Continue), and the brand dossier on the right (product photo, price, template, briefing status and ticked facts). The six steps are Brand & product, Template, Imagery, Audience, Emphasis, and Review & build. Every choice is kept in the URL: a refresh or a shared link keeps it, the browser's Back goes back a step, and steps can't be skipped. If the product has no briefing yet, it starts writing in the background as soon as the product is chosen. Build page creates the build with the full payload and opens the build page with its live steps. The worker stores a targeting record on the build. The author voice goes into the copy instructions, and an expert author never claims credentials; the claims check flags any it finds. The sidebar's New page, "New page for this product" on the product page and "Create a page" in the template editor all open the wizard with their choice made. The temporary test-build buttons are gone.
+- **Key files:** web `app/(app)/pages/new/page.tsx`, `components/features/wizard/{create-wizard,steps,review-step,dossier,use-briefing}.tsx`, `components/app/{wizard-stepper,option-card}.tsx`, `lib/wizard/{state,queries,actions}.ts`, `lib/builds/actions.ts` (`createPage`), `lib/validators/build.ts` (`createPageSchema`), `components/features/products/new-page-link.tsx`, `components/app/navigation.ts`; worker `app/engines/targeting.py`, `app/builds.py` (targeting record), `app/engines/copy_rules.py`, `app/engines/compliance.py` + `pipeline/nodes/compliance_scan.py` (expert author), tests `test_targeting.py`.
+- **Schema changes:** none (`builds.targeting` existed).
+- **New dependencies:** none.
+- **Decisions:** D66 (create wizard rules); O5 resolved (expert author, no credentials).
+- **Fixes found while testing:** choices waited on the URL round trip and lagged a frame, so they now show at once and are mirrored to the URL; the editor check's outline test read the preview before it loaded (it now waits).
+- **Deviations from spec:** library templates are built from directly with no implicit copy in Yours (D66, replaces §8.3.5); the "Run" step is the build page itself; image styles are saved but images stay placeholders until B1.3; style cards use icons where the old tool had sample photos; "Generate all types" is M3.
+- **Verification:** worker ruff, mypy, pytest (3 new targeting tests; build creation now checks the stored targeting); web typecheck, lint, token check, prettier, vitest 112/112 (9 new: wizard state, steps); browser check B1.2 33/33 twice in mock mode. It covers the entry, the step guard, each step, URL persistence and refresh, Back/Forward, max three emphasis items and your own wording, review, the expert author, a build storing the payload and targeting, the claims-check note, prefilled links, no sideways scroll at 390 px, and no console errors. Regression: B1.1b editor check 43/43 twice, with its build now going through the wizard. Cost: $0 (mock copy).
+- **Owner actions requested:** create a page with the wizard (real mode costs about $0.04–0.12 per build in copy, plus about $0.01 for a new product's first briefing); confirm B1.2.
+- **Owner confirmed:** no
+- **Next:** B1.3 — Real images and product fidelity
