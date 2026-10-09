@@ -201,6 +201,16 @@ def finalize_common(html: str, inputs: FinalizeInputs) -> tuple[str, dict[str, o
     return serialize(soup), stats
 
 
+def fill_names(html: str, *, brand_name: str, product_name: str) -> str:
+    """`data-lp-brand` and `data-lp-product-name` slots get the real names (also done in
+    finalize; the copy pass runs this first so the model reads the sentence as it will be)."""
+    soup = parse(html)
+    for attr, value in (("data-lp-brand", brand_name), ("data-lp-product-name", product_name)):
+        for tag in soup.select(f"[{attr}]"):
+            set_text(tag, value)
+    return serialize(soup)
+
+
 def _drop_sale_promos(soup: BeautifulSoup, inputs: FinalizeInputs) -> int:
     """A promo line built around a discount (`[data-lp-promo]` holding a `[data-lp-sale-percent]`)
     can't stand without one: with no sale, the brand's own promo text replaces it, or it goes,

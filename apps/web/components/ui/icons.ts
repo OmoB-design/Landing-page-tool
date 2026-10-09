@@ -21,6 +21,7 @@ export {
   Menu as MenuIcon,
   Monitor as MonitorIcon,
   Moon as MoonIcon,
+  Download as DownloadIcon,
   Ellipsis as MoreIcon,
   ExternalLink as ExternalLinkIcon,
   Image as ImageIcon,

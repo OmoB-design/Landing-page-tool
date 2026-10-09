@@ -95,6 +95,9 @@ def load_inputs(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
             "positioning": brand["positioning"],
             "audience": brand["audience"],
             "voice": brand["voice"],
+            "brand_context": brand["brand_context"],
+            "brand_md": brand["brand_md"],
+            "voice_examples": list(brand["voice_examples"] or []),
             "language": brand["language"] or "en",
             "palette": brand["palette"] or {},
             "fonts": brand["fonts"] or {},
@@ -118,6 +121,8 @@ def load_inputs(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
             "sale_price": _money(product["sale_price"]),
             "description": product["description"],
             "usps": [u for u in product["usps"] if isinstance(u, str)],
+            "specs": [s for s in product["specs"] if isinstance(s, dict)],
+            "selling_context": product["selling_context"],
             "images": images,
             "variants": [
                 {

@@ -58,15 +58,37 @@ export const buildReportSchema = z.object({
   copy: z
     .object({
       rewritten_ratio: z.number().catch(0),
+      rewritten: z.number().catch(0),
+      eligible: z.number().catch(0),
+      failed_chunks: z.number().catch(0),
+      mock: z.boolean().catch(false),
       skipped: z.string().optional(),
       error: z.string().nullish(),
       warnings: z.array(z.string()).catch([]),
       purged_terms: z
         .array(z.object({ term: z.string(), removed: z.string() }).loose())
         .catch([]),
+      review: z
+        .array(
+          z.object({
+            original: z.string(),
+            replacement: z.string(),
+            where: z.string(),
+          }),
+        )
+        .catch([]),
     })
     .loose()
-    .catch({ rewritten_ratio: 0, warnings: [], purged_terms: [] }),
+    .catch({
+      rewritten_ratio: 0,
+      rewritten: 0,
+      eligible: 0,
+      failed_chunks: 0,
+      mock: false,
+      warnings: [],
+      purged_terms: [],
+      review: [],
+    }),
   images: z
     .object({
       plan_stats: counts,

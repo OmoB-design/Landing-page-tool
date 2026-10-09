@@ -200,3 +200,22 @@ as new entries.
 - **Owner confirmed:** no
 - **Next:** B0.6b — Copy rewrite and export
 
+### B0.6a — owner go to commit
+- **Date:** 2026-10-09
+- **Owner:** asked to commit B0.6a with the message "B0.6a: build pipeline, test template, build page and preview; centred content" (committed `6b90407`) and to go on to the next build (B0.6b, covered by the approved B0.6 plan).
+
+### B0.6b — Copy rewrite and export
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-09
+- **Summary:** The copy pass rewrites every rewritable text fragment of the page with Claude in the brand's voice (40 per call, up to 4 calls at once, 3 attempts each, up to two shortening passes for lines over their length budget, strict re-prompts for clones, drift-checked write-back). Locked slots, bylines and labels never change; a failed chunk keeps the template's text and sets a copy error that will block publish, without failing the build. The build page shows how many lines were rewritten, a "Copy changes" list, and mock/error banners. Export HTML produces one self-contained file (images, icons and CSS inlined, pipeline markers stripped) with a Download button; other orgs get 404.
+- **Key files:** worker `app/engines/{fragments,copy_rules,export}.py`, `app/pipeline/nodes/copy_rewrite.py`, `app/jobs/kinds/export.py`, `app/engines/finalize.py` (`fill_names`), `app/engines/html.py` (`style_text`); web `components/features/builds/{export-button,build-report}.tsx`, `app/api/builds/[buildId]/export/route.ts`, `lib/validators/build.ts`.
+- **Schema changes:** none.
+- **Decisions:** D59 (copy pass and export details).
+- **Fixes found while testing:** BeautifulSoup's `get_text()` returns nothing for a `<style>` whose CSS was replaced in the same pass, which emptied inlined stylesheets; styles are now read directly (`style_text`), in export and recolour. Promo lines that finalize replaces or removes are no longer rewritten.
+- **Deviations from spec:** strict mode is off for owned templates (clones only, as specified as optional); copy is checked by tests and in mock mode; the real copy run (about $0.05–0.20) waits for the owner's go.
+- **Verification:** worker ruff, mypy, pytest 181/181 (15 new: fragments, budgets, protection, reply salvage, prompt order, mock replies, export inlining; pipeline copy pass, failed chunk, shortening pass, export job); web typecheck, lint, token check, vitest 99/99; browser check B0.6b 19/19 in mock mode (dev servers run with LP_MOCK_LLM=1 so tests cost nothing). Cost: $0.
+- **Real copy run (owner's go):** GRA-3 for Graza Drizzle: 23 of 31 lines rewritten in one call to Claude Sonnet 5.5, $0.036 (4,009 tokens in, 2,801 out), no copy errors or length warnings, claims check clean. The copy used the product facts (Picual olives, October harvest, "made for eating, never heating", 1/2/6/12 bottles, subscribe and save 5%) and replaced the template's 30-day refund line, which the brand never stated. Testimonials are rewritten like the rest of the copy; the owner decided to keep it that way, without labels, and to pull real reviews later (D60).
+- **Owner actions requested:** check the GRA-3 page; confirm B0.6b.
+- **Owner confirmed:** no
+- **Next:** B1.1 — Template library and section editor
+

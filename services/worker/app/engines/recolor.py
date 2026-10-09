@@ -25,7 +25,7 @@ from app.engines.colors import (
     parse_color,
     to_hex,
 )
-from app.engines.html import ensure_head, parse, serialize
+from app.engines.html import ensure_head, parse, serialize, style_text
 
 HUE_FAMILY_DEGREES = 18
 # Only clearly coloured tones move with the hue sweep: slate and blue-grey text colours
@@ -157,7 +157,7 @@ def recolor(
         return html, stats
     soup = parse(html)
     styles = [s for s in soup.find_all("style") if isinstance(s, Tag)]
-    declared = dict(_ROOT_VAR.findall(" ".join(s.get_text() for s in styles)))
+    declared = dict(_ROOT_VAR.findall(" ".join(style_text(s) for s in styles)))
 
     source = {
         role: rgb
@@ -168,7 +168,7 @@ def recolor(
     for style in styles:
         if style.get("id") == "lp-brand-tokens":
             continue
-        style.string = worker.text(style.get_text())
+        style.string = worker.text(style_text(style))
     for tag in soup.find_all(True):
         if not isinstance(tag, Tag):
             continue

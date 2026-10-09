@@ -11,6 +11,7 @@ from app.jobs.kinds import (
     brand_assets,
     brand_autofetch,
     build,
+    export,
     noop_demo,
     product_briefing,
     product_pull,
@@ -71,6 +72,14 @@ KINDS: dict[str, JobKind] = {
             payload_model=product_briefing.ProductBriefingPayload,
             user_startable=True,
             dedupe=product_briefing.dedupe_key,
+        ),
+        JobKind(
+            name="export",
+            title="HTML export",
+            handler=export.run,
+            payload_model=export.ExportPayload,
+            user_startable=True,
+            dedupe=export.dedupe_key,
         ),
         # Created with its build by POST /builds. Retries resume from the last checkpoint.
         JobKind(

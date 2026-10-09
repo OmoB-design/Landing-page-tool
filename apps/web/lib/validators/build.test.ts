@@ -94,6 +94,29 @@ describe("build report", () => {
     expect(parsed.mock_images).toBe(true);
   });
 
+  it("reads the copy pass's counts and changes", () => {
+    const parsed = buildReportSchema.parse({
+      ...report,
+      copy: {
+        rewritten_ratio: 0.82,
+        rewritten: 27,
+        eligible: 33,
+        failed_chunks: 0,
+        error: null,
+        mock: true,
+        warnings: [],
+        purged_terms: [],
+        review: [
+          { original: "Old line", replacement: "New line", where: "p@hero" },
+        ],
+      },
+    });
+    expect(parsed.copy.rewritten).toBe(27);
+    expect(parsed.copy.mock).toBe(true);
+    expect(parsed.copy.skipped).toBeUndefined();
+    expect(parsed.copy.review[0]?.replacement).toBe("New line");
+  });
+
   it("tolerates missing or damaged sections instead of failing the page", () => {
     const parsed = buildReportSchema.parse({
       mode: "owned",

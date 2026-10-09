@@ -11,7 +11,7 @@ export const getBuild = cache(async (orgId: string, buildId: string) => {
   const { data: build, error } = await supabase
     .from("builds")
     .select(
-      "id, key, title, status, origin, cost_usd, mock_images, report, working_html_path, updated_at, brand:brands(id, name), product:products(id, name)",
+      "id, key, title, status, origin, cost_usd, mock_images, report, working_html_path, export_html_path, updated_at, brand:brands(id, name), product:products(id, name)",
     )
     .eq("id", buildId)
     .eq("org_id", orgId)

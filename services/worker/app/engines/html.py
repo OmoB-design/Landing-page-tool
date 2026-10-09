@@ -62,6 +62,12 @@ def text_nodes(root: BeautifulSoup | Tag) -> Iterator[NavigableString]:
         yield node
 
 
+def style_text(tag: Tag) -> str:
+    """The CSS inside a `<style>`. (`get_text()` skips style text that was replaced in the same
+    pass, because the replacement isn't BeautifulSoup's Stylesheet string type.)"""
+    return "".join(str(c) for c in tag.contents if isinstance(c, NavigableString))
+
+
 def set_text(tag: Tag, text: str) -> None:
     """Replaces an element's text, keeping it a single text node."""
     tag.clear()

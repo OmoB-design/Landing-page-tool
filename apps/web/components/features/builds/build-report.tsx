@@ -22,10 +22,19 @@ export function BuildReport({ report }: { report: Report }) {
             published. Real images arrive in B1.3.
           </Notice>
         ) : null}
+        {copy.error ? (
+          <Notice tone="danger" title="Some copy wasn't rewritten">
+            {copy.error}
+          </Notice>
+        ) : null}
         {copy.skipped ? (
-          <Notice tone="warning" title="Copy not rewritten yet">
-            The template&apos;s own words are still on the page. The copy
-            rewrite arrives in B0.6b.
+          <Notice tone="warning" title="Copy not rewritten">
+            {copy.skipped}
+          </Notice>
+        ) : copy.mock ? (
+          <Notice tone="warning" title="Copy written in mock mode">
+            Lines are marked [mock] instead of being rewritten, at no cost. Real
+            copy needs mock mode off.
           </Notice>
         ) : null}
         {compliance.high_risk_count > 0 ? (
@@ -39,6 +48,12 @@ export function BuildReport({ report }: { report: Report }) {
       <Facts
         rows={[
           ["Template", report.template.name],
+          [
+            "Copy",
+            copy.skipped
+              ? "not rewritten"
+              : `${copy.rewritten} of ${copy.eligible} lines rewritten`,
+          ],
           [
             "Sections",
             [
@@ -79,6 +94,24 @@ export function BuildReport({ report }: { report: Report }) {
           ["Cost", formatCost(report.cost.total_usd)],
         ]}
       />
+
+      {copy.review.length > 0 ? (
+        <details className="group flex flex-col gap-2 text-sm">
+          <summary className="w-fit cursor-pointer rounded-xs font-medium text-fg-muted hover:text-fg">
+            Copy changes ({copy.review.length})
+          </summary>
+          <ol className="mt-2 flex flex-col gap-3">
+            {copy.review.map((change, index) => (
+              <li key={index} className="flex flex-col gap-0.5">
+                <span className="text-fg-subtle line-through">
+                  {change.original}
+                </span>
+                <span>{change.replacement || "(removed)"}</span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
 
       <section aria-labelledby="claims-title" className="flex flex-col gap-2">
         <h3 id="claims-title" className="text-sm font-medium text-fg-muted">

@@ -251,7 +251,7 @@ Feature UIs (wizard steps, review desk panels, brand DNA form, template gallery)
 | `/home` | Pipeline overview: running jobs, needs review, recent publishes | GroupedList, JobTray |
 | `/pages` | All pages grouped by status | PageHeader, ListToolbar, GroupedList |
 | `/pages/new` | Create wizard (7 steps) | WizardStepper, cards, side "dossier" panel |
-| `/pages/[id]` | Review desk. *B0.6a:* the build page: header with key, title and status; sandboxed preview (Desktop / Mobile 390 px, open in a new tab) on the left; live build steps and the report (banners, facts, claims check, notes) in a 384 px right panel. Tabs and editing arrive in B1.4. | BuildPreview, BuildProgress (JobSteps), BuildReport |
+| `/pages/[id]` | Review desk. *B0.6a:* the build page: header with key, title and status; sandboxed preview (Desktop / Mobile 390 px, open in a new tab) on the left; live build steps and the report (banners, facts, claims check, notes) in a 384 px right panel. *B0.6b:* Export (Export HTML → steps → Download `<KEY>.html`, Export again) above the report; the report adds copy counts, mock-copy and copy-error banners, and a folded "Copy changes" list (old line struck through, new line under it). Tabs and editing arrive in B1.4. | BuildPreview, BuildProgress (JobSteps), ExportButton, BuildReport |
 | `/pages/[id]/editor` | Full editor (M3) | SectionRail, canvas, image studio sheet |
 | `/templates` | Library gallery + org templates | card grid, OriginBadge, TypeGlyph |
 | `/templates/[id]` | Section editor | SectionRail, PreviewFrame |

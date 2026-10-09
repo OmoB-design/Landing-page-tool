@@ -7,6 +7,7 @@ import { StatusGlyph } from "@/components/app/status-glyph";
 import { BuildPreview } from "@/components/features/builds/build-preview";
 import { BuildProgress } from "@/components/features/builds/build-progress";
 import { BuildReport } from "@/components/features/builds/build-report";
+import { ExportButton } from "@/components/features/builds/export-button";
 import { PagesIcon } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
@@ -78,6 +79,13 @@ async function Build({ params }: { params: Promise<{ buildId: string }> }) {
           className="flex w-full shrink-0 flex-col gap-6 overflow-y-auto border-t border-border p-4 lg:w-panel lg:border-t-0 lg:border-l"
         >
           <BuildProgress jobId={build.jobId} />
+          {ready ? (
+            <ExportButton
+              buildId={build.id}
+              buildKey={build.key}
+              exported={Boolean(build.export_html_path)}
+            />
+          ) : null}
           {build.report ? <BuildReport report={build.report} /> : null}
         </aside>
       </div>

@@ -19,6 +19,7 @@ from app.engines import recolor as recolor_engine
 from app.engines.html import parse
 from app.jobs import queue
 from app.jobs.kinds import build as build_kind
+from app.jobs.kinds import export as export_kind
 from app.jobs.registry import JobKind
 from app.jobs.runner import Runner
 from app.pipeline.graph import (
@@ -30,7 +31,7 @@ from app.pipeline.graph import (
     route_after_finalize,
     route_before_images,
 )
-from app.providers import storage
+from app.providers import anthropic, storage
 from tests.conftest import DbUser, job_row, needs_db
 
 FIXTURE = Path(__file__).resolve().parents[3] / "templates" / "library" / "advertorial-fixture"
@@ -190,7 +191,11 @@ def test_an_owned_build_produces_the_branded_page_and_report(
     report = build["report"]
     assert report["mode"] == "owned" and report["template"]["slug"] == "advertorial-fixture"
     assert report["nodes"] == ORDER["owned"]
-    assert report["copy"]["skipped"] and report["copy"]["purged_terms"][0]["term"] == "Sample Labs"
+    copy = report["copy"]
+    assert copy["mock"] is True and copy["error"] is None and copy["failed_chunks"] == 0
+    assert copy["rewritten"] > 10 and copy["rewritten_ratio"] > 0.5
+    assert copy["purged_terms"][0]["term"] == "Sample Labs"
+    assert copy["review"][0]["replacement"].startswith("[mock] ")
     assert report["images"]["product_photos"] == 1 and report["images"]["mock_images"] == 5
     assert report["compliance"]["clean"] is True
     assert report["cost"]["total_usd"] == 0  # mock images are free
@@ -207,6 +212,9 @@ def test_an_owned_build_produces_the_branded_page_and_report(
     ]
     assert "--lp-primary: #d1e030" in html and '"Alpina"' in html
     assert "Sample Labs" not in html and "mailto:hello@graza.test" in html
+    assert "[mock] For years my mornings" in html  # copy pass ran (mock)
+    assert "[mock]" not in soup.select_one("[data-lp-product-name]").get_text()  # type: ignore[union-attr]
+    assert soup.select_one("[data-lp-lock]").get_text() == "By Dana Wells"  # type: ignore[union-attr]
     assert soup.title is not None and soup.title.get_text() == "Drizzle | Graza Test"
     # Only the final page is kept; the checkpoints are gone.
     assert checkpoint_count(build_id) == 0
@@ -302,3 +310,124 @@ def test_a_build_job_that_ends_for_good_marks_its_build_failed(
             "update jobs set status = %(s)s where id = %(j)s", {"s": final, "j": job["id"]}
         )
     assert build_row(build_id)["status"] == "failed"
+
+
+def _run_build(
+    user: DbUser, settings: Settings, template_id: uuid.UUID, brand_id: uuid.UUID,
+    product_id: uuid.UUID,
+) -> tuple[dict[str, Any], str]:  # fmt: skip
+    build_id, job_id = new_build(user, template_id, brand_id, product_id)
+    run_once(settings)
+    job = job_row(job_id)
+    assert job["status"] == "succeeded", job["error"]
+    build = build_row(build_id)
+    html = storage.download("builds", build["working_html_path"]).decode()
+    storage.remove("builds", [build["working_html_path"]])
+    return build["report"], html
+
+
+@needs_db
+def test_a_failed_copy_chunk_keeps_the_template_text_and_blocks_publish(
+    user: DbUser,
+    fast_settings: Settings,
+    library_template: uuid.UUID,
+    brand_and_product: tuple[uuid.UUID, uuid.UUID, str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.pipeline.nodes import copy_rewrite
+
+    def failing(**_: Any) -> Any:
+        raise RuntimeError("model unavailable")
+
+    monkeypatch.setattr(anthropic, "generate", failing)
+    monkeypatch.setattr(copy_rewrite, "ATTEMPT_WAITS", (0, 0, 0))
+    brand_id, product_id, _, _ = brand_and_product
+    report, html = _run_build(user, fast_settings, library_template, brand_id, product_id)
+    copy = report["copy"]
+    assert copy["failed_chunks"] == copy["chunks"] == 1 and copy["rewritten"] == 0
+    assert "couldn't be rewritten" in copy["error"] and copy["error"] in report["warnings"]
+    assert "For years my mornings were a mess" in html  # the template's text stays
+    assert report["status"] == "needs_review"  # the build itself still finishes (D23)
+
+
+@needs_db
+def test_over_budget_lines_get_a_shortening_pass(
+    user: DbUser,
+    fast_settings: Settings,
+    library_template: uuid.UUID,
+    brand_and_product: tuple[uuid.UUID, uuid.UUID, str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import json
+
+    from app.engines import copy_rules
+    from app.providers.anthropic import LLMResult
+
+    prompts: list[str] = []
+
+    def fake(**kwargs: Any) -> Any:
+        prompt = kwargs["prompt"]
+        prompts.append(prompt)
+        items = json.loads(prompt[prompt.index("[") :])
+        if prompt.startswith("These replacements are too long"):
+            out = [{"id": i["id"], "text": "Short."} for i in items]
+        else:  # the draft: the h1 pieces come back far too long
+            out = [
+                {
+                    "id": i["id"],
+                    "text": ("Way too long " * 20) if "h1" in i["where"] else i["text"] + "!",
+                }
+                for i in items
+            ]
+        text = json.dumps({"replacements": out})
+        return LLMResult(text, "fake", "fake", 0, 0, None, "end_turn", False, True)
+
+    monkeypatch.setattr(anthropic, "generate", fake)
+    brand_id, product_id, _, _ = brand_and_product
+    report, html = _run_build(user, fast_settings, library_template, brand_id, product_id)
+    assert any(p.startswith("These replacements are too long") for p in prompts)
+    assert "Way too long" not in html and "Short." in html
+    assert report["copy"]["warnings"] == []
+    assert copy_rules.CHUNK_SIZE == 40
+
+
+EXPORT_KINDS = {
+    "test_export": JobKind("test_export", "HTML export", export_kind.run, export_kind.ExportPayload)
+}
+
+
+@needs_db
+def test_export_writes_one_self_contained_file(
+    user: DbUser,
+    fast_settings: Settings,
+    library_template: uuid.UUID,
+    brand_and_product: tuple[uuid.UUID, uuid.UUID, str, str],
+) -> None:
+    brand_id, product_id, _, photo_url = brand_and_product
+    build_id, job_id = new_build(user, library_template, brand_id, product_id)
+    run_once(fast_settings)
+    assert job_row(job_id)["status"] == "succeeded"
+    export_job, _ = queue.enqueue(
+        org_id=user.org_id, kind="test_export", payload={"build_id": str(build_id)},
+        created_by=user.id, build_id=build_id,
+    )  # fmt: skip
+    runner = Runner(fast_settings, kinds=EXPORT_KINDS, worker_id=f"test-{uuid.uuid4().hex[:6]}")
+    claimed = queue.claim(runner.worker_id, 5, ["test_export"])
+    assert claimed is not None
+    runner.execute(claimed)
+    job = job_row(export_job.id)
+    assert job["status"] == "succeeded", job["error"]
+    build = build_row(build_id)
+    assert build["export_html_path"].endswith("/export/index.html")
+    exported = storage.download("builds", build["export_html_path"]).decode()
+    import re
+
+    leftovers = [
+        exported[max(0, m.start() - 60) : m.end() + 30] for m in re.finditer("data-lp-", exported)
+    ]
+    assert leftovers == []
+    srcs = [img["src"] for img in parse(exported).find_all("img")]
+    assert photo_url not in srcs  # inlined (share-image tags keep the URL on purpose)
+    assert exported.count("data:image/png;base64,") >= 2  # logo and product photo
+    assert job["result"]["inlined"] >= 3 and job["result"]["failed"] == []
+    storage.remove("builds", [build["working_html_path"], build["export_html_path"]])

@@ -212,6 +212,14 @@ Each build is one LangGraph thread (`thread_id` = build id), checkpointed in Pos
 Library templates may mark `data-lp-brand`, `data-lp-product-name`, `data-lp-compare-price`, `data-lp-usps` / `data-lp-usp-text`, `data-lp-promo`, `data-lp-sale-percent` and the variant unit parts (`data-lp-variant`, `-name`, `-price`, `-image`), and declare `--lp-on-primary`, `--lp-on-accent`, `--lp-on-dark` for text on brand colours. `data-lp-price` is the price paid now; the regular price shows only when on sale. A discount label or discount promo is removed for a brand with no sale. Sections reorder only within their container. Details in the template-onboarding skill.
 *Why:* deterministic slots make the result predictable before (and after) the AI copy pass, and never show a discount the brand doesn't offer.
 
+**D59 — Copy pass and export details.** Default (B0.6b, 2026-10-09).
+The copy pass never touches slots the pipeline fills from data (brand and product names, prices, sale labels, variant parts, selling points when the product has some, a promo line that will be replaced or removed) or text marked `data-lp-lock`; brand and product names are filled in before the pass so the model reads sentences as they will appear. Replies use structured output (`{replacements: [{id, text}]}`), and complete pairs are salvaged from a cut-off reply. On owned templates an empty replacement keeps the original (only clones may delete navigation or UI text). Mock mode marks sentences with `[mock]` instead of rewriting them, at no cost. The export inlines only the org's own stored assets (images, icons, CSS `url()`s, linked stylesheets), keeps share-image metas as absolute URLs, and strips every `data-lp-*` marker.
+*Why:* deterministic slots must stay exact; a model must never be able to delete a library template's copy by returning nothing; exports must not leak other orgs' assets.
+
+**D60 — Testimonials are rewritten by the copy pass, with no label.** Locked (owner decision, 2026-10-09).
+Testimonial sections are rewritten like any other copy, and the report and pages do not label them as AI-written. Real customer reviews will be pulled from product pages in a later build (alongside the review pull for the Top 5 builder, D53).
+*Why:* the owner's call for now; real reviews come later.
+
 **O6 resolved — Worker runs locally for now.** Locked (owner approved B0.4 plan, 2026-10-08). Choose a host (needs Playwright Chromium) before the first deploy.
 
 ## Open (ask the owner when the related build starts)
