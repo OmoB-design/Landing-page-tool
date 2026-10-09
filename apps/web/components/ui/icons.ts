@@ -20,6 +20,7 @@ export {
   History as HistoryIcon,
   Info as InfoIcon,
   ArrowDown as MoveDownIcon,
+  ArrowRight as NextIcon,
   ArrowUp as MoveUpIcon,
   Redo2 as RedoIcon,
   Pencil as RenameIcon,

@@ -9,6 +9,8 @@ export type WizardBrand = {
   name: string;
   hasVoice: boolean;
   hasPositioning: boolean;
+  /** Primary, dark, tint and accent (hex), as set in Brand DNA. */
+  colours: string[];
 };
 
 export type WizardProduct = {
@@ -31,6 +33,14 @@ export type WizardTemplate = {
 
 const count = (value: unknown) => (Array.isArray(value) ? value.length : 0);
 
+const HEX = /^#[0-9a-f]{6}$/i;
+function paletteColours(palette: unknown): string[] {
+  const p = (palette ?? {}) as Record<string, unknown>;
+  return ["primary", "dark", "tint", "accent"]
+    .map((key) => p[key])
+    .filter((v): v is string => typeof v === "string" && HEX.test(v));
+}
+
 /** Everything the create wizard chooses from: the org's brands and products (with the facts the
  * copywriter has for each) and the templates it can build from. */
 export async function getWizardData(orgId: string) {
@@ -38,7 +48,7 @@ export async function getWizardData(orgId: string) {
   const [brands, products, library, own] = await Promise.all([
     supabase
       .from("brands")
-      .select("id, name, voice, brand_md, positioning")
+      .select("id, name, voice, brand_md, positioning, palette")
       .eq("org_id", orgId)
       .is("deleted_at", null)
       .order("name"),
@@ -73,6 +83,7 @@ export async function getWizardData(orgId: string) {
       name: b.name,
       hasVoice: Boolean(b.voice || b.brand_md),
       hasPositioning: Boolean(b.positioning),
+      colours: paletteColours(b.palette),
     })),
     products: products.data
       .filter((p) => brandIds.has(p.brand_id))

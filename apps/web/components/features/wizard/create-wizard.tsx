@@ -1,12 +1,17 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { WizardStepper } from "@/components/app/wizard-stepper";
 import { Button } from "@/components/ui/button";
-import { BackIcon } from "@/components/ui/icons";
-import { cn } from "@/lib/utils";
+import {
+  BackIcon,
+  LoadingIcon,
+  NextIcon,
+  PagesIcon,
+} from "@/components/ui/icons";
+import { createPage } from "@/lib/builds/actions";
 import type { WizardData } from "@/lib/wizard/queries";
 import {
   type StepId,
@@ -16,6 +21,7 @@ import {
   parseWizard,
   stepIndex,
   stepReady,
+  wizardPayload,
   wizardSearch,
 } from "@/lib/wizard/state";
 
@@ -80,8 +86,8 @@ function normalise(state: WizardState, data: WizardData): WizardState {
 }
 
 /**
- * The create wizard (BUILD_SPEC §9, laid out like the reference tool): the step list on the
- * left, the step in the middle with Back / Continue, and the brand dossier on the right. Every
+ * The create wizard (BUILD_SPEC §9): the step bar across the top, the step with the brand
+ * dossier beside it, and Back / Next (Build page on the last step) along the bottom. Every
  * choice lives in the URL (D66), so a refresh or a shared link keeps it.
  */
 export function CreateWizard({ data }: { data: WizardData }) {
@@ -130,14 +136,18 @@ export function CreateWizard({ data }: { data: WizardData }) {
   const index = stepIndex(state.step);
   const open = (step: StepId) => go({ step }, true);
 
-  // Move focus to the new step's heading, for keyboard and screen-reader users.
+  // A new step starts at the top of the wizard (the step bar in view), with focus on its heading
+  // for keyboard and screen-reader users.
+  const panel = useRef<HTMLDivElement>(null);
   const firstRender = useRef(true);
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
-    heading.current?.focus();
+    if ((panel.current?.getBoundingClientRect().top ?? 0) < 0)
+      panel.current?.scrollIntoView({ block: "start" });
+    heading.current?.focus({ preventScroll: true });
   }, [state.step]);
 
   const ready = stepReady(state, state.step);
@@ -145,36 +155,47 @@ export function CreateWizard({ data }: { data: WizardData }) {
   const back = WIZARD_STEPS[index - 1];
   const { title, hint } = HEADINGS[state.step];
 
+  // Build page (the last step): the worker creates the build; the build page shows its steps.
+  const router = useRouter();
+  const [building, startBuilding] = useTransition();
+  const [buildError, setBuildError] = useState<string | null>(null);
+  const build = () => {
+    const payload = wizardPayload(state, briefing.briefing);
+    if (!payload) {
+      setBuildError("Choose a brand, product and template first.");
+      return;
+    }
+    startBuilding(async () => {
+      setBuildError(null);
+      const result = await createPage(payload);
+      if (result.buildId) router.push(`/pages/${result.buildId}`);
+      else setBuildError(result.error ?? "Couldn't start the build.");
+    });
+  };
+
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-surface lg:flex-row">
-      <div className="shrink-0 border-b border-border p-4 lg:w-wizard-steps lg:border-r lg:border-b-0">
-        <p className="px-2 text-sm font-medium text-fg-subtle lg:mb-3">
-          Create a page
-          <span className="lg:hidden">
-            {" "}
-            · Step {index + 1} of {WIZARD_STEPS.length}
-          </span>
-        </p>
-        <div className="hidden lg:block">
-          <WizardStepper
-            label="Steps"
-            current={state.step}
-            onSelect={(id) => open(id as StepId)}
-            finalLabel="Build"
-            steps={WIZARD_STEPS.map((s, i) => ({
-              id: s.id,
-              label: s.label,
-              done: i < index && stepReady(state, s.id),
-              available: canOpen(state, s.id),
-            }))}
-          />
-        </div>
+    <div
+      ref={panel}
+      className="flex scroll-mt-6 flex-col overflow-hidden rounded-lg border border-border bg-surface"
+    >
+      <div className="border-b border-border px-6 py-4">
+        <WizardStepper
+          label="Steps"
+          current={state.step}
+          onSelect={(id) => open(id as StepId)}
+          steps={WIZARD_STEPS.map((s, i) => ({
+            id: s.id,
+            label: s.label,
+            done: i < index && stepReady(state, s.id),
+            available: canOpen(state, s.id),
+          }))}
+        />
       </div>
-      <section
-        aria-labelledby="wizard-step-title"
-        className="flex min-w-0 flex-1 flex-col"
-      >
-        <div className="flex flex-1 flex-col gap-5 p-6">
+      <div className="flex flex-col lg:flex-row">
+        <section
+          aria-labelledby="wizard-step-title"
+          className="flex min-w-0 flex-1 flex-col gap-5 p-6"
+        >
           <div className="flex flex-col gap-1">
             <h2
               id="wizard-step-title"
@@ -197,45 +218,49 @@ export function CreateWizard({ data }: { data: WizardData }) {
           ) : state.step === "emphasis" ? (
             <EmphasisStep state={state} update={update} briefing={briefing} />
           ) : (
-            <ReviewStep
-              data={data}
-              state={state}
-              update={update}
-              briefing={briefing.briefing}
-            />
+            <ReviewStep data={data} state={state} update={update} />
           )}
+        </section>
+        <div className="shrink-0 border-t border-border bg-canvas p-5 lg:w-wizard-dossier lg:border-t-0 lg:border-l">
+          <Dossier data={data} state={state} briefing={briefing.status} />
         </div>
-        <div className="flex items-center justify-between gap-4 border-t border-border px-6 py-3">
-          {back ? (
-            <Button variant="outline" size="sm" onClick={() => open(back.id)}>
-              <BackIcon aria-hidden />
-              Back
-            </Button>
-          ) : (
-            <span />
-          )}
-          <span aria-hidden className="flex items-center gap-1.5">
-            {WIZARD_STEPS.map((s, i) => (
-              <span
-                key={s.id}
-                className={cn(
-                  "size-1.5 rounded-full",
-                  i === index ? "bg-accent" : "bg-border-strong",
-                )}
-              />
-            ))}
-          </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 border-t border-border px-6 py-3">
+        {back ? (
+          <Button variant="outline" size="sm" onClick={() => open(back.id)}>
+            <BackIcon aria-hidden />
+            Back
+          </Button>
+        ) : null}
+        <div className="ml-auto flex items-center gap-3">
+          {buildError ? (
+            <p role="alert" className="text-sm text-danger">
+              {buildError}
+            </p>
+          ) : !next ? (
+            <p className="hidden text-sm text-fg-muted sm:block">
+              Builds in the background; you’ll see each step, then the page.
+            </p>
+          ) : null}
           {next ? (
             <Button size="sm" disabled={!ready} onClick={() => open(next.id)}>
-              Continue
+              Next
+              <NextIcon aria-hidden />
             </Button>
           ) : (
-            <span />
+            <Button size="sm" onClick={build} disabled={building}>
+              {building ? (
+                <LoadingIcon
+                  aria-hidden
+                  className="animate-spin motion-reduce:animate-spin-slow"
+                />
+              ) : (
+                <PagesIcon aria-hidden />
+              )}
+              Build page
+            </Button>
           )}
         </div>
-      </section>
-      <div className="shrink-0 border-t border-border p-5 lg:w-wizard-dossier lg:border-t-0 lg:border-l">
-        <Dossier data={data} state={state} briefing={briefing.status} />
       </div>
     </div>
   );

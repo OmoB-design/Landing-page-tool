@@ -277,3 +277,10 @@ as new entries.
 - **Owner actions requested:** create a page with the wizard (real mode costs about $0.04–0.12 per build in copy, plus about $0.01 for a new product's first briefing); confirm B1.2.
 - **Owner confirmed:** no
 - **Next:** B1.3 — Real images and product fidelity
+
+### B1.2 — owner go to commit; wizard layout revised
+- **Date:** 2026-10-09
+- **Owner:** asked to commit B1.2 (committed `2667168`), then asked for the New page wizard to use the layout first proposed in the B1.2 plan instead of the reference tool's.
+- **Changes:** a horizontal step bar across the top (compact "Step N of 6" with a progress line on narrow screens); the step with the brand dossier beside it; Back and Next (Build page on the last step) in a bottom bar. The dossier now shows brand colour swatches, the chosen template as a thumbnail row and "Your choices"; it has a canvas background. A new step scrolls the wizard's top into view. The "7 Build" item and the progress dots are gone, and "Continue" is now "Next".
+- **Verification:** web typecheck, lint, token check, prettier, vitest; browser check B1.2 33/33; B1.1b editor regression 43/43 (its build goes through the wizard); desktop and 390 px screenshots checked. Cost: $0 (mock mode).
+- **Owner confirmed:** no

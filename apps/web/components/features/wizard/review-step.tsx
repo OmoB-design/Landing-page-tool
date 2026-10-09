@@ -1,10 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-
-import { Button } from "@/components/ui/button";
-import { LoadingIcon, PagesIcon } from "@/components/ui/icons";
 import {
   Select,
   SelectContent,
@@ -12,8 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createPage } from "@/lib/builds/actions";
-import type { Briefing } from "@/lib/validators/product";
 import type { WizardData } from "@/lib/wizard/queries";
 import {
   AUTHOR_TYPES,
@@ -21,25 +14,19 @@ import {
   GENDERS,
   IMAGE_STYLES,
   type WizardState,
-  wizardPayload,
 } from "@/lib/wizard/state";
 
-/** 6. Review & build: the full order, the author, and Build page (hands over to the build page,
- * which shows the live steps and then the report; D66). */
+/** 6. Review & build: the full order and the author. Build page sits in the wizard's bottom bar
+ * and hands over to the build page (D66). */
 export function ReviewStep({
   data,
   state,
   update,
-  briefing,
 }: {
   data: WizardData;
   state: WizardState;
   update: (patch: Partial<WizardState>) => void;
-  briefing: Briefing | null;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const brand = data.brands.find((b) => b.id === state.brand);
   const product = data.products.find((p) => p.id === state.product);
   const template = data.templates.find((t) => t.id === state.template);
@@ -73,20 +60,6 @@ export function ReviewStep({
       emphasis.length > 0 ? `${emphasis.length} chosen` : "Desk’s pick",
     ],
   ];
-
-  const build = () => {
-    const payload = wizardPayload(state, briefing);
-    if (!payload) {
-      setError("Choose a brand, product and template first.");
-      return;
-    }
-    startTransition(async () => {
-      setError(null);
-      const result = await createPage(payload);
-      if (result.buildId) router.push(`/pages/${result.buildId}`);
-      else setError(result.error ?? "Couldn't start the build.");
-    });
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -130,28 +103,6 @@ export function ReviewStep({
           byline names stay.
         </span>
       </label>
-      {error ? (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : null}
-      <div className="flex flex-col items-start gap-2">
-        <Button onClick={build} disabled={pending}>
-          {pending ? (
-            <LoadingIcon
-              aria-hidden
-              className="animate-spin motion-reduce:animate-spin-slow"
-            />
-          ) : (
-            <PagesIcon aria-hidden />
-          )}
-          Build page
-        </Button>
-        <span className="text-sm text-fg-muted">
-          Builds in the background; you’ll see each step, then the finished page
-          and its report.
-        </span>
-      </div>
     </div>
   );
 }
