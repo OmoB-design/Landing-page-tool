@@ -30,15 +30,22 @@ def dedupe_key(payload: ExportPayload) -> str:
 
 
 def _resolver(org_id: UUID) -> Resolver:
-    base = storage.public_url("assets", "")  # …/object/public/assets/
+    org_assets = storage.public_url("assets", "")  # …/object/public/assets/
+    library_assets = storage.public_url("library-assets", "")
 
     def resolve(url: str) -> tuple[bytes, str] | None:
-        path = url[len(base) :].split("?", 1)[0] if url.startswith(base) else ""
-        # Only this org's own assets: their paths start with the org id (D3).
-        if not path.startswith(f"{org_id}/"):
+        clean = url.split("?", 1)[0]
+        if clean.startswith(org_assets):
+            bucket, path = "assets", clean[len(org_assets) :]
+            # Only this org's own assets: their paths start with the org id (D3).
+            if not path.startswith(f"{org_id}/"):
+                return None
+        elif clean.startswith(library_assets):
+            bucket, path = "library-assets", clean[len(library_assets) :]  # shared, public
+        else:
             return None
         try:
-            data = storage.download("assets", path)
+            data = storage.download(bucket, path)
         except StorageError:
             return None
         return data, mimetypes.guess_type(path)[0] or "application/octet-stream"

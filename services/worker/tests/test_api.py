@@ -161,15 +161,19 @@ def test_paid_jobs_are_not_queued_twice(client: TestClient, user: DbUser) -> Non
 
 
 @pytest.fixture
-def build_inputs(user: DbUser, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    """The test template, a brand and product in the user's org, and the build job kind renamed
-    so a running dev worker never picks these jobs up."""
+def build_inputs(user: DbUser, monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, Any]]:
+    """The test template (retired in the gallery, so active only during the test), a brand and
+    product in the user's org, and the build job kind renamed so a running dev worker never
+    picks these jobs up."""
     from pathlib import Path
 
     from app.cli.seed_library import seed
     from app.jobs.registry import KINDS, JobKind
 
-    seed(Path(__file__).resolve().parents[3] / "templates" / "library" / "advertorial-fixture")
+    seed(
+        Path(__file__).resolve().parents[3] / "templates" / "library" / "advertorial-fixture",
+        thumbnails=False,
+    )
     real = KINDS["build"]
     monkeypatch.setitem(
         KINDS,  # the registry app.builds reads
@@ -185,6 +189,9 @@ def build_inputs(user: DbUser, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any
             {"o": user.org_id},
         ).fetchone()
         assert template is not None and brand is not None
+        conn.execute(
+            "update templates set status = 'active' where id = %(t)s", {"t": template["id"]}
+        )
         product = conn.execute(
             """
             insert into products (org_id, brand_id, handle, name)
@@ -193,12 +200,16 @@ def build_inputs(user: DbUser, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any
             {"o": user.org_id, "b": brand["id"]},
         ).fetchone()
     assert product is not None
-    return {
+    yield {
         "org_id": str(user.org_id),
         "template_id": str(template["id"]),
         "brand_id": str(brand["id"]),
         "product_id": str(product["id"]),
     }
+    with transaction() as conn:
+        conn.execute(
+            "update templates set status = 'retired' where id = %(t)s", {"t": template["id"]}
+        )
 
 
 @needs_db

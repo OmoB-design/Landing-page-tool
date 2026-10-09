@@ -65,6 +65,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 ## M1 — Owned path (shippable product)
 
 ### B1.1 — Template library and section editor
+*Split (owner approved, 2026-10-09):* **B1.1a** library from the owner's live sites (importer, `library-assets`, thumbnails, gallery Library/Yours, Use template, preview, template picker on test builds); **B1.1b** the section editor, laid out like the owner's reference screenshot (full-screen; Content / Look / Details / Issues tabs; selected-section card with move, duplicate and remove; numbered section list; Desktop/Phone; click-to-select in the preview; undo/redo across 12 versions).
 - `templates/library/` seeding script; library gallery; "Use template" creates an org template.
 - Section editor: rail with drag reorder (`@dnd-kit`), remove, duplicate, rename; preview updates; template versions (12) with undo.
 - **Owner actions:** design and hand over the first 3–5 library templates following the `template-onboarding` skill (HTML with `data-lp-*` attributes, `template.json`, `instructions.json`, thumbnail).

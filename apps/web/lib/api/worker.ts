@@ -103,3 +103,25 @@ export function startBuild(
     "Could not start the build.",
   );
 }
+
+const templateSummarySchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  type: z.string(),
+  version: z.number(),
+});
+
+/** Copies a library template into the org (worker POST /templates/use). */
+export function copyLibraryTemplate(
+  accessToken: string,
+  body: { org_id: string; template_id: string },
+): Promise<z.infer<typeof templateSummarySchema>> {
+  return postToWorker(
+    "/templates/use",
+    accessToken,
+    body,
+    templateSummarySchema,
+    "Could not add the template.",
+  );
+}

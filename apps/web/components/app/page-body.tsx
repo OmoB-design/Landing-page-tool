@@ -7,6 +7,8 @@ const WIDTHS = {
   md: "max-w-2xl",
   /** Detail pages with media and tables (a product). */
   lg: "max-w-3xl",
+  /** Card grids (the template gallery). */
+  xl: "max-w-5xl",
 };
 
 /**

@@ -1,0 +1,98 @@
+{
+  "slug": "advertorial-wear-test",
+  "name": "Advertorial: 30-day wear test",
+  "type": "advertorial",
+  "description": "A first-person 30-day review: reader-story hero, the problem, the discovery, everyday use, craftsmanship, an honest verdict with a comparison table, FAQ, and a sticky product card.",
+  "source_palette": {
+    "primary": "#7c4a1f",
+    "dark": "#2b1d10",
+    "tint": "#e4ded3",
+    "accent": "#7c4a1f"
+  },
+  "sections": [
+    {
+      "key": "top-bar",
+      "role": "other",
+      "label": "Story bar",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "hero",
+      "role": "hero",
+      "label": "Headline and byline",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "photos",
+      "role": "other",
+      "label": "Opening photos",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "problem",
+      "role": "problem",
+      "label": "The problem",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "discovery",
+      "role": "mechanism",
+      "label": "The discovery",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "everyday",
+      "role": "benefits",
+      "label": "Everyday use",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "craftsmanship",
+      "role": "benefits",
+      "label": "Craftsmanship",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "verdict",
+      "role": "social_proof",
+      "label": "My honest take",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "comparison",
+      "role": "comparison",
+      "label": "Comparison table",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "faq",
+      "role": "faq",
+      "label": "Questions",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "product-card",
+      "role": "offer",
+      "label": "Product card",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "dock-bar",
+      "role": "cta",
+      "label": "Sticky shop bar",
+      "removable": true,
+      "duplicable": false
+    }
+  ]
+}

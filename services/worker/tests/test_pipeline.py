@@ -63,7 +63,7 @@ def _png(color: tuple[int, int, int]) -> bytes:
 
 @pytest.fixture
 def library_template() -> uuid.UUID:
-    seed(FIXTURE)
+    seed(FIXTURE, thumbnails=False)  # retired in the gallery; builds still resolve it
     with transaction() as conn:
         row = conn.execute(
             "select id from templates where org_id is null and slug = 'advertorial-fixture'"

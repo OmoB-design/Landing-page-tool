@@ -131,6 +131,10 @@ def finalize_common(html: str, inputs: FinalizeInputs) -> tuple[str, dict[str, o
     stats["usp_rows"] = _fill_usps(soup, inputs.usps)
 
     # 8. Sale labels, promo text and prices
+    sale_only = soup.select("[data-lp-sale-only]") if not inputs.sale_percent else []
+    for tag in sale_only:
+        tag.decompose()  # a sale bar, timer or "lowest price" flag needs a real sale
+    stats["sale_only_removed"] = len(sale_only)
     stats["promo_removed"] = _drop_sale_promos(soup, inputs)
     sale_tags = [t for t in soup.select("[data-lp-sale-percent]") if isinstance(t, Tag)]
     for tag in sale_tags:

@@ -1,0 +1,18 @@
+{
+  "copy_rules": "Listicle by one reader: a short reason title and two or three sentences per reason, keep the numbered structure, and end each reason with a short reason to buy.",
+  "length_caps": [
+    {
+      "match": "h2.display-md-4",
+      "max_chars": 48
+    },
+    {
+      "match": "a.button-115",
+      "max_chars": 28
+    }
+  ],
+  "image_rules": "Square lifestyle photos of women in their 30s carrying the product in city and cafe settings, warm natural light.",
+  "generic_images": [],
+  "keep_images": [],
+  "forbidden_terms": ["Molether", "MOLETHER", "Portland Leather"],
+  "notes": "Imported from https://molether-2.vercel.app/ (built with the old tool from another brand's page; original images, bundled commercial fonts and source links removed: Gilroy -> Figtree, Circular -> DM Sans). The sale bar and its countdown (which restarts every midnight and can count as fake urgency under advertising rules) only show for brands with a sale (data-lp-sale-only). 'Sell-Out Risk: High' and the influencer names are template copy the AI rewrites."
+}

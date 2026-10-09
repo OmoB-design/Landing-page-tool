@@ -93,12 +93,17 @@ def _get(client: httpx.Client, url: str, max_bytes: int) -> tuple[str, int, byte
 
 
 def fetch_page(
-    url: str, *, client: httpx.Client | None = None, use_browser: bool = True
+    url: str,
+    *,
+    client: httpx.Client | None = None,
+    use_browser: bool = True,
+    max_bytes: int | None = None,
 ) -> FetchedPage:
-    """The page's HTML, from a plain request or, if that is blocked, a real browser."""
+    """The page's HTML, from a plain request or, if that is blocked, a real browser.
+    `max_bytes` raises the size limit (template imports: page-builder exports run to 10 MB)."""
     check_public_url(url)
     host = urlsplit(url).hostname or url
-    max_bytes = get_settings().lp_fetch_max_bytes
+    max_bytes = max_bytes or get_settings().lp_fetch_max_bytes
     reason = ""
     try:
         with _client(client) as http:

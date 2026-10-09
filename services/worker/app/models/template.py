@@ -67,3 +67,5 @@ class TemplateManifest(BaseModel):
     description: str = ""
     source_palette: Palette
     sections: list[SectionSpec] = Field(min_length=1)
+    # "retired" hides a template from the gallery; builds that used it keep working.
+    status: Literal["active", "retired"] = "active"

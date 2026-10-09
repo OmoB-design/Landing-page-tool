@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { formatPrice, productRowToForm } from "@/lib/products/form";
 import { getProduct } from "@/lib/products/queries";
+import { getBuildableTemplates } from "@/lib/templates/queries";
 
 import { loadBrand } from "../../brand";
 
@@ -116,7 +117,10 @@ async function Product({
         />
       </div>
 
-      <TestBuildButton productId={row.id} />
+      <TestBuildButton
+        productId={row.id}
+        templates={await getBuildableTemplates(currentOrg.id)}
+      />
 
       <Section title="Images">
         <ProductImages images={product.images} />

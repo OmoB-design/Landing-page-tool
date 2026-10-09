@@ -1,0 +1,26 @@
+{
+  "copy_rules": "First-person, conversational 30-day review by one reader. Keep the section headings as personal statements, keep 'My Honest Take' as a balanced verdict, and keep FAQ answers short.",
+  "length_caps": [
+    {
+      "match": "h1.display-xl.ink-black.story",
+      "max_chars": 100
+    },
+    {
+      "match": "h1.display-xl.ink-black.smaller",
+      "max_chars": 70
+    },
+    {
+      "match": "summary",
+      "max_chars": 70
+    },
+    {
+      "match": "a.button",
+      "max_chars": 24
+    }
+  ],
+  "image_rules": "Warm, natural-light lifestyle photos of one woman in her 30s using the product in everyday city settings.",
+  "generic_images": [],
+  "keep_images": [],
+  "forbidden_terms": ["Molether", "Portland Leather"],
+  "notes": "Imported from https://molether-1.vercel.app/ (built with the old tool from another brand's page; original images, bundled commercial fonts and source links removed: Gilroy -> Figtree, Circular -> DM Sans). The 'Verified Lowest Price of the Year' flag only shows for brands with a sale (data-lp-sale-only)."
+}

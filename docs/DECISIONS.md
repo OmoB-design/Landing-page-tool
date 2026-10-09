@@ -220,6 +220,22 @@ The copy pass never touches slots the pipeline fills from data (brand and produc
 Testimonial sections are rewritten like any other copy, and the report and pages do not label them as AI-written. Real customer reviews will be pulled from product pages in a later build (alongside the review pull for the Top 5 builder, D53).
 *Why:* the owner's call for now; real reviews come later.
 
+**D61 — Two ways to hand over a library template: Figma or a live website.** Locked (owner, B1.1 plan, 2026-10-09).
+Figma frames are read through the Figma MCP (read-only; no Figma files are created) and built as plain HTML. A live website is imported with `app.cli.import_template <url> <slug>`, which drops scripts that track or need jQuery/Webflow, prunes unused CSS, pulls embedded and linked images into `assets/` (photos over 250 KB become JPEGs at most 1600 px wide), drops bundled commercial fonts and links free stand-ins (Gilroy → Figtree, Circular → DM Sans, Interdisplay → Inter; free families from Google Fonts), and writes draft `template.json` / `instructions.json`. The section and slot markup is then finished by hand. Imported sites the owner made are owned templates: every image becomes a slot, the source brand names go in `forbidden_terms`, and small timers (the midnight countdown) stay and are noted in `instructions.notes`.
+*Why:* the owner's first templates already exist as live sites made from the previous tool; importing them is faster and truer to the design than rebuilding them.
+
+**D62 — Library template images live in a public `library-assets` bucket.** Default (B1.1a, 2026-10-09).
+The seed script uploads a library template's `assets/*` to `library-assets/<slug>/` and points the HTML at their public URLs. Thumbnails stay in the private `library` bucket (a `thumb.png` in the folder, or an 800x600 JPEG the seed script renders with Playwright) and reach the gallery through an authenticated route. Exports inline `library-assets` images like org assets. A template's `status: "retired"` hides it from the gallery; builds made from it keep working (the B0.6 test template is retired).
+*Why:* library images are the same for every org and not secret; public URLs keep previews fast and the HTML small, and exports stay self-contained.
+
+**D63 — "Use template" copies are made by the worker.** Default (B1.1a, 2026-10-09).
+`POST /templates/use` (worker) copies a library template into the org: the HTML to `templates/<org>/<id>/v1.html`, a template row (`parent_template_id`, version 1, slug made unique as `<slug>-2`, `-3`…), its section rows, and template version 1 ("Copied from the library"), in one transaction. Test builds can start from library templates or the org's own copies; Delete is a soft delete.
+*Why:* like builds (D57), anything that writes several rows and files together runs in one place, with the service role, checked against the org.
+
+**D64 — Markup contract additions: numbered items and sale-only blocks.** Default (B1.1a, 2026-10-09).
+`data-lp-number` marks an item number (a listicle's "1"…"10", or "01"); after sections are reordered, removed or duplicated, numbered sections count up in page order, keeping zero-padding. `data-lp-alternate="<class>"` on a container gives every other numbered section that class (photos on alternating sides). `data-lp-sale-only` marks an element that is removed when the brand has no sale (a sale bar).
+*Why:* the section editor (B1.1b) reorders and duplicates sections, so numbering and alternation must follow automatically; a sale bar with no sale reads broken.
+
 **O6 resolved — Worker runs locally for now.** Locked (owner approved B0.4 plan, 2026-10-08). Choose a host (needs Playwright Chromium) before the first deploy.
 
 ## Open (ask the owner when the related build starts)

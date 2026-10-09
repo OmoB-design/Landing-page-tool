@@ -204,7 +204,11 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy
 uv run python worker.py                            # job loop on its own (Ctrl+C pauses running jobs; they resume on restart)
 uv run python -m app.providers.smoke --org <uuid>  # ONE real Claude Haiku call (< $0.01) to check the key; owner's go only
 uv run playwright install chromium                 # once per machine (brand fetch, M2 cloning, QA); ~300 MB
-uv run python -m app.cli.seed_library [slug]       # load templates/library/* into storage + DB (= pnpm seed:library)
+uv run python -m app.cli.seed_library [slug] [--no-thumbnails]
+                                                   # load templates/library/* into storage + DB, upload assets/ to the
+                                                   # public library-assets bucket, render thumbnails (= pnpm seed:library)
+uv run python -m app.cli.import_template <url> <slug> --type <type> --name "<name>"
+                                                   # import a live site as a draft library template (template-onboarding skill)
 uv run python -m app.cli.smoke_build --email <you> --brand <name> [--product <name|handle>] [--template <slug>]
                                                    # build a test page; the job loop must be running (= pnpm smoke:build ...)
 # Builds: LangGraph checkpoints live in the private `langgraph` schema, one thread per build; a

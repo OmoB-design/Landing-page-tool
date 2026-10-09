@@ -7,7 +7,9 @@ version; its section rows are replaced.
 """
 
 import argparse
+import io
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -45,8 +47,54 @@ def load_folder(folder: Path) -> tuple[TemplateManifest, TemplateInstructions, s
     return manifest, instructions, html
 
 
-def seed(folder: Path) -> str:
+ASSET_REF = re.compile(r"""(?<=["'(\s,])assets/[\w.-]+""")
+MIME = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+    ".gif": "image/gif", ".svg": "image/svg+xml", ".avif": "image/avif", ".ico": "image/x-icon",
+    ".woff2": "font/woff2", ".woff": "font/woff",
+}  # fmt: skip
+
+
+def publish_assets(folder: Path, slug: str, html: str) -> str:
+    """Uploads the template's `assets/` files to the public `library-assets` bucket and points
+    the HTML at them (the repo copy keeps relative paths so it opens in a browser as-is)."""
+    assets = folder / "assets"
+    if not assets.is_dir():
+        return html
+    for file in sorted(assets.iterdir()):
+        if file.suffix.lower() in MIME:
+            storage.upload(
+                "library-assets", f"{slug}/{file.name}", file.read_bytes(),
+                MIME[file.suffix.lower()], upsert=True,
+            )  # fmt: skip
+    return ASSET_REF.sub(
+        lambda m: storage.public_url("library-assets", f"{slug}/{m.group(0)[len('assets/') :]}"),
+        html,
+    )
+
+
+def render_thumbnail(html: str) -> bytes:
+    """An 800x600 JPEG of the top of the page at desktop width (when there's no thumb.png)."""
+    from PIL import Image
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 960})
+            page.set_content(html, wait_until="networkidle", timeout=60_000)
+            shot = page.screenshot(clip={"x": 0, "y": 0, "width": 1280, "height": 960})
+        finally:
+            browser.close()
+    image = Image.open(io.BytesIO(shot)).convert("RGB").resize((800, 600))
+    out = io.BytesIO()
+    image.save(out, format="JPEG", quality=82, optimize=True)
+    return out.getvalue()
+
+
+def seed(folder: Path, *, thumbnails: bool = True) -> str:
     manifest, instructions, html = load_folder(folder)
+    html = publish_assets(folder, manifest.slug, html)
     html_path = f"{manifest.slug}/index.html"
     try:
         current = storage.download("library", html_path).decode("utf-8")
@@ -57,12 +105,17 @@ def seed(folder: Path) -> str:
         storage.upload(
             "library", html_path, html.encode("utf-8"), "text/html; charset=utf-8", upsert=True
         )
-    thumb_path = None
+    thumb_path = f"{manifest.slug}/thumb.png"
     if (folder / "thumb.png").exists():
-        thumb_path = f"{manifest.slug}/thumb.png"
         storage.upload(
             "library", thumb_path, (folder / "thumb.png").read_bytes(), "image/png", upsert=True
         )
+    else:
+        thumb_path = f"{manifest.slug}/thumb.jpg"
+        if thumbnails and (changed or not _exists("library", thumb_path)):
+            storage.upload("library", thumb_path, render_thumbnail(html), "image/jpeg", upsert=True)
+        elif not thumbnails and not _exists("library", thumb_path):
+            thumb_path = None  # type: ignore[assignment]
 
     fields = {
         "slug": manifest.slug,
@@ -73,6 +126,7 @@ def seed(folder: Path) -> str:
         "thumb_path": thumb_path,
         "instructions": Jsonb(instructions.model_dump()),
         "source_palette": Jsonb(manifest.source_palette.model_dump(exclude_none=True)),
+        "status": manifest.status,
     }
     with transaction() as conn:
         row = conn.execute(
@@ -83,9 +137,10 @@ def seed(folder: Path) -> str:
             row = conn.execute(
                 """
                 insert into templates (org_id, origin, slug, name, type, description, html_path,
-                                       thumb_path, instructions, source_palette)
+                                       thumb_path, instructions, source_palette, status)
                 values (null, 'owned', %(slug)s, %(name)s, %(type)s, %(description)s,
-                        %(html_path)s, %(thumb_path)s, %(instructions)s, %(source_palette)s)
+                        %(html_path)s, %(thumb_path)s, %(instructions)s, %(source_palette)s,
+                        %(status)s)
                 returning id, version
                 """,
                 fields,
@@ -97,7 +152,7 @@ def seed(folder: Path) -> str:
                 update templates set name = %(name)s, type = %(type)s,
                   description = %(description)s, html_path = %(html_path)s,
                   thumb_path = %(thumb_path)s, instructions = %(instructions)s,
-                  source_palette = %(source_palette)s,
+                  source_palette = %(source_palette)s, status = %(status)s,
                   version = version + %(bump)s
                 where id = %(id)s
                 returning id, version
@@ -117,13 +172,26 @@ def seed(folder: Path) -> str:
                 """,
                 {"t": row["id"], "pos": position, **section.model_dump()},
             )
-    return f"{manifest.slug}: {state} (version {row['version']}, {len(manifest.sections)} sections)"
+    retired = " (retired)" if manifest.status == "retired" else ""
+    return (
+        f"{manifest.slug}: {state}{retired} (version {row['version']}, "
+        f"{len(manifest.sections)} sections)"
+    )
+
+
+def _exists(bucket: str, path: str) -> bool:
+    try:
+        storage.download(bucket, path)
+    except StorageError:
+        return False
+    return True
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("slugs", nargs="*", help="template folders to load (default: all)")
     parser.add_argument("--root", type=Path, default=LIBRARY)
+    parser.add_argument("--no-thumbnails", action="store_true", help="skip rendering thumbnails")
     args = parser.parse_args()
     folders = [args.root / s for s in args.slugs] or sorted(
         p for p in args.root.iterdir() if (p / "template.json").exists()
@@ -131,7 +199,7 @@ def main() -> int:
     failed = False
     for folder in folders:
         try:
-            print(seed(folder))
+            print(seed(folder, thumbnails=not args.no_thumbnails))
         except (SeedError, OSError, ValueError) as exc:
             failed = True
             print(f"{folder.name}: {exc}", file=sys.stderr)

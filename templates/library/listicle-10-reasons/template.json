@@ -1,0 +1,126 @@
+{
+  "slug": "listicle-10-reasons",
+  "name": "Listicle: 10 reasons",
+  "type": "listicle",
+  "description": "Ten numbered reasons with alternating photos, a mid-page offer box, a closing offer and a sticky shop bar. Reasons can be reordered, removed or duplicated; numbers follow.",
+  "source_palette": {
+    "primary": "#287e61",
+    "dark": "#14382c",
+    "tint": "#e2f2ec",
+    "accent": "#2c7e62"
+  },
+  "sections": [
+    {
+      "key": "sale-bar",
+      "role": "other",
+      "label": "Sale bar and countdown",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "masthead",
+      "role": "other",
+      "label": "Publication name",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "hero",
+      "role": "hero",
+      "label": "Headline and byline",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "layflat",
+      "role": "benefits",
+      "label": "It Sits Flat Against My Body",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "strapfit",
+      "role": "benefits",
+      "label": "The Strap Sits Just Right",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "daylong",
+      "role": "benefits",
+      "label": "One Bag for Every Part of My Day",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "easymove",
+      "role": "benefits",
+      "label": "Comfort You Carry All Day",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "roomyfit",
+      "role": "benefits",
+      "label": "Thirty Colors, One You.",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "offer-box",
+      "role": "offer",
+      "label": "Offer box",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "lightload",
+      "role": "benefits",
+      "label": "Leather That Gets Better With Age",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "easycare",
+      "role": "benefits",
+      "label": "Simple to Care For",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "airyfeel",
+      "role": "benefits",
+      "label": "Sits Right on Your Body",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "expertpick",
+      "role": "benefits",
+      "label": "Loved by 30,000+ Buyers",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "value",
+      "role": "benefits",
+      "label": "Worth Every Dollar at $149",
+      "removable": true,
+      "duplicable": true
+    },
+    {
+      "key": "closer",
+      "role": "cta",
+      "label": "Closing offer",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "pin-bar",
+      "role": "cta",
+      "label": "Sticky shop bar",
+      "removable": true,
+      "duplicable": false
+    }
+  ]
+}

@@ -25,4 +25,24 @@ Seed entries carried from the reference tool:
 - The hue sweep leaves slate and blue-grey text colours alone (saturation under 0.35), but any
   clearly blue element in the template moves to the brand hue. Use `data-lp-keep` or a neutral for
   colours that must not follow the brand.
+- Sites exported from site builders (Webflow and similar) embed their fonts as base64
+  `@font-face` blocks, often commercial ones (Gilroy, Circular, Interdisplay). The importer drops
+  them; it links the free families from Google Fonts and swaps the rest for free stand-ins, which
+  can shift text a few pixels (molether listicle: −19 px over the page, B1.1a).
+- Exported stylesheets carry thousands of rules for pages that don't exist (molether: a few hundred
+  KB of CSS for one page). The importer prunes rules whose selectors match nothing; it keeps
+  `@keyframes`, `@font-face` and rules with pseudo states whose base selector matches.
+- Wrapping blocks in a new element (e.g. a section wrapper) stops vertical margins collapsing
+  between siblings and inside flex columns (+50 px gaps on the molether advertorial). Only add
+  wrappers where needed, and copy the parent's layout onto them (`display:flex;
+  flex-direction:column; row-gap:inherit`).
+- White text on a brand colour is often split over two rules (`.button{color:#fff}` in one place,
+  its background in another, or a background set on a parent). `apply_template_tokens` only sees
+  colour and background in the same rule; check every brand-coloured element with a light primary
+  and fix the rest in `<style id="lp-template-fixes">`.
+- A countdown that resets at midnight is a script; the app's preview runs no scripts (sandboxed),
+  so it shows its starting text there and ticks in exports. Note such scripts in
+  `instructions.notes`.
+- Item numbers ("1"…"10") and alternating photo sides go stale when sections move: mark them
+  with `data-lp-number` and `data-lp-alternate` (D64) instead of numbering by hand.
 

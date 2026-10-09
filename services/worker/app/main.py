@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app import builds
+from app import builds, templates
 from app.auth import CurrentUser, require_org_member
 from app.config import get_settings
 from app.jobs import queue
@@ -98,3 +98,31 @@ def create_build(body: BuildRequest, user: CurrentUser) -> BuildCreated:
             status.HTTP_404_NOT_FOUND, "That template, brand or product isn't available."
         ) from exc
     return BuildCreated(build=BuildSummary.model_validate(build), job=job)
+
+
+class UseTemplateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    template_id: UUID
+
+
+class TemplateSummary(BaseModel):
+    id: UUID
+    slug: str
+    name: str
+    type: str
+    version: int
+
+
+@app.post("/templates/use", status_code=status.HTTP_201_CREATED)
+def use_template(body: UseTemplateRequest, user: CurrentUser) -> TemplateSummary:
+    """Copies a library template into the org (BUILD_SPEC §8.3, D61)."""
+    require_org_member(user, body.org_id)
+    try:
+        row = templates.use_library_template(body.org_id, body.template_id, user.id)
+    except templates.TemplateNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "That template isn't in the library."
+        ) from exc
+    return TemplateSummary.model_validate(row)

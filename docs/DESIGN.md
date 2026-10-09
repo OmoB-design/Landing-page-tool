@@ -253,13 +253,13 @@ Feature UIs (wizard steps, review desk panels, brand DNA form, template gallery)
 | `/pages/new` | Create wizard (7 steps) | WizardStepper, cards, side "dossier" panel |
 | `/pages/[id]` | Review desk. *B0.6a:* the build page: header with key, title and status; sandboxed preview (Desktop / Mobile 390 px, open in a new tab) on the left; live build steps and the report (banners, facts, claims check, notes) in a 384 px right panel. *B0.6b:* Export (Export HTML → steps → Download `<KEY>.html`, Export again) above the report; the report adds copy counts, mock-copy and copy-error banners, and a folded "Copy changes" list (old line struck through, new line under it). Tabs and editing arrive in B1.4. | BuildPreview, BuildProgress (JobSteps), ExportButton, BuildReport |
 | `/pages/[id]/editor` | Full editor (M3) | SectionRail, canvas, image studio sheet |
-| `/templates` | Library gallery + org templates | card grid, OriginBadge, TypeGlyph |
+| `/templates` | Library gallery + org templates. *B1.1a:* header tabs **Library** / **Yours** (`?view=yours`); intro line; a card grid (1–3 columns, `PageBody` xl) of cards: 4:3 thumbnail, name, type glyph · type · section count, description (Library) or "From <library template> · Version n · <time>" (Yours), then **Use template** (Library; toast "Added … to your templates", then opens Yours) or **Delete** (Yours, confirm) and **Preview** (opens the sandboxed template page in a new tab). Empty Yours: "No templates yet" with a hint to use a library template. | TemplateCard, UseTemplateButton, DeleteTemplateButton, TypeGlyph |
 | `/templates/[id]` | Section editor | SectionRail, PreviewFrame |
 | `/templates/clone` | Clone a page (M2) | URL form, terms dialog, progress |
 | `/brands` | Brand list | GroupedList or table |
 | `/brands/[id]` | Brand with tabs: Overview, Pages, Products, Templates, Brand DNA | PageHeader, forms |
 | `/brands/[id]/products` | Add product (paste a product page → live steps) above the product list | AddProduct, JobSteps, ProductsList (GroupedList) |
-| `/brands/[id]/products/[productId]` | Product: summary (price, source, link), Pull again / Remove, images, editable details, options and subscriptions, briefing | ProductActions, ProductImages, ProductForm, ProductOptions, ProductBriefing |
+| `/brands/[id]/products/[productId]` | Product: summary (price, source, link), Pull again / Remove, images, editable details, options and subscriptions, briefing. *B1.1a:* "Build a test page" has a template picker (Select, grouped Library / Yours) | ProductActions, ProductImages, ProductForm, ProductOptions, ProductBriefing, TestBuildButton |
 | `/library` | Archive of all builds + ledger | table, filters |
 | `/analytics` | Spend roll-ups | charts (recharts), cards |
 | `/settings/*` | Org, members, integrations (Vercel, Shopify), flags | forms |

@@ -7,7 +7,7 @@ import re
 
 from bs4 import Tag
 
-from app.engines.html import parse, serialize
+from app.engines.html import parse, serialize, set_text
 
 DUPLICATE_KEY = re.compile(r"^(?P<base>.+)-(?P<n>\d+)$")
 
@@ -92,6 +92,7 @@ def apply_layout(html: str, keys: list[str]) -> tuple[str, dict[str, object]]:
         warnings.append(
             "Some sections sit in different containers, so they couldn't move across them."
         )
+    renumber(soup)
     kept = [key for key in current if key not in removed]
     stats["moved"] = sum(
         1 for a, b in zip(kept, [k for k in after if k in kept], strict=False) if a != b
@@ -99,3 +100,25 @@ def apply_layout(html: str, keys: list[str]) -> tuple[str, dict[str, object]]:
     stats["removed"] = removed
     stats["duplicated"] = duplicated
     return serialize(soup), stats
+
+
+def renumber(soup: Tag) -> None:
+    """Numbered items (`data-lp-number`, e.g. a listicle's "1"…"10", or "01") count up in page
+    order, keeping zero-padding; inside a `data-lp-alternate="<class>"` container the numbered
+    items take turns having that class (alternating photo sides)."""
+    numbered = [s for s in top_level_sections(soup) if s.select_one("[data-lp-number]")]
+    for index, section in enumerate(numbered, start=1):
+        for number in section.select("[data-lp-number]"):
+            old = number.get_text(strip=True)
+            width = len(old) if old.isdigit() and old.startswith("0") else 0
+            set_text(number, str(index).zfill(width))
+    for container in soup.select("[data-lp-alternate]"):
+        name = str(container["data-lp-alternate"])
+        items = [
+            s
+            for s in container.find_all(True, recursive=False)
+            if s.has_attr("data-lp-section") and s.select_one("[data-lp-number]")
+        ]
+        for index, item in enumerate(items):
+            classes = [c for c in item.get_attribute_list("class") if c and c != name]
+            item["class"] = " ".join([*classes, name] if index % 2 else classes)

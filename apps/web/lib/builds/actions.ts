@@ -4,14 +4,13 @@ import { WorkerError, startBuild } from "@/lib/api/worker";
 import { getSessionContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
-/** The library template test builds use until the create wizard arrives (B1.2). */
-const TEST_TEMPLATE_SLUG = "advertorial-fixture";
-
 export type StartBuildResult = { buildId?: string; error?: string };
 
-/** Temporary (B0.6a): builds a test page for a product from the test template. */
+/** Temporary (B0.6a, picker B1.1a): builds a test page for a product from a chosen library or
+ * org template, until the create wizard arrives (B1.2). */
 export async function startTestBuild(
   productId: string,
+  templateId: string,
 ): Promise<StartBuildResult> {
   const { currentOrg } = await getSessionContext();
   const supabase = await createClient();
@@ -26,16 +25,14 @@ export async function startTestBuild(
     supabase
       .from("templates")
       .select("id")
-      .is("org_id", null)
-      .eq("slug", TEST_TEMPLATE_SLUG)
+      .eq("id", templateId)
+      .or(`org_id.is.null,org_id.eq.${currentOrg.id}`)
+      .eq("status", "active")
+      .is("deleted_at", null)
       .maybeSingle(),
   ]);
   if (!product) return { error: "That product no longer exists." };
-  if (!template)
-    return {
-      error:
-        "The test template isn't loaded. Run pnpm seed:library in the repo, then try again.",
-    };
+  if (!template) return { error: "That template isn't available any more." };
   const {
     data: { session },
   } = await supabase.auth.getSession();

@@ -29,12 +29,15 @@ Library templates are authored HTML (from the owner, or built from his Figma fra
 | `data-lp-usps` | list of selling points | each child is a row, cloned per product USP (up to 6); text goes in `data-lp-usp-text` if present, so icons stay (B0.6a) |
 | `data-lp-sale-percent` | discount label | the brand's sale percent; removed when the brand has none (B0.6a) |
 | `data-lp-promo` | promo line | the brand's promo text; a promo holding a `data-lp-sale-percent` is removed when there is no sale, and its section too if left empty (B0.6a) |
+| `data-lp-sale-only` | any element (e.g. a sale bar) | removed when the brand has no sale (B1.1a, D64) |
+| `data-lp-number` | an item number ("1", "01") | renumbered in page order after sections are reordered, removed or duplicated; zero-padding kept (B1.1a, D64) |
+| `data-lp-alternate="<class>"` | container of numbered sections | every other numbered section gets `<class>` (alternating photo sides) (B1.1a, D64) |
 
 Styling rules for library templates:
 - Brand colours as CSS custom properties on `:root`: `--lp-primary`, `--lp-primary-dark`, `--lp-tint`, `--lp-accent`, `--lp-heading-font`, `--lp-body-font`. Recolour becomes a variable swap.
 - Text on a brand colour uses `--lp-on-primary`, `--lp-on-accent` or `--lp-on-dark` (declare them on `:root`; recolour sets each to black or white, whichever reads better). Never hard-code white text on a brand colour: some brands' primary is cream.
 - Top-level sections can sit in different containers (e.g. `<main>`), but they only reorder within their container.
-- Self-contained: no external scripts. Fonts and images as relative files in the template folder (the seed script uploads them to storage).
+- Self-contained: no external scripts. Fonts and images as relative files in `assets/` (the seed script uploads them to the public `library-assets` bucket and rewrites the links, D62). Free fonts may be linked from Google Fonts; never ship commercial font files.
 - Mobile-first; test at 390 px and 1280 px.
 - Plain semantic HTML; minimal JavaScript (native `<details>` for FAQ).
 
@@ -45,7 +48,7 @@ templates/library/<slug>/
 ├── index.html
 ├── template.json        # name, type, description, source_palette, sections[{key, role, label, removable, duplicable}]
 ├── instructions.json    # see BUILD_SPEC §8.5
-├── thumb.png            # 800x600 gallery thumbnail
+├── thumb.png            # optional 800x600 gallery thumbnail (otherwise the seed script renders one)
 └── assets/              # images, fonts referenced relatively
 ```
 
@@ -65,6 +68,8 @@ templates/library/<slug>/
   ]
 }
 ```
+
+Add `"status": "retired"` to hide a template from the gallery without breaking builds made from it.
 
 ## Steps
 
@@ -91,7 +96,7 @@ Write `instructions.json`:
 A test (`tests/test_template_caps.py`) checks each template's own copy fits its caps.
 
 ### 4. Smoke build
-`scripts/smoke-build <slug> <test-brand> [product] --mock-images` (free) then, with the owner's go, one real-images build ($1–3).
+`pnpm smoke:build --email <you> --brand <name> --template <slug>` with the dev servers in mock mode (`LP_MOCK_LLM=1 pnpm dev`, free) then, with the owner's go, one real-images build ($1–3).
 Pass criteria: copy rewritten ≥ 80 % of eligible fragments, no copy error, no image warning, residue score 100 for clones, zero compliance high-risk findings.
 
 ### 5. Visual review
@@ -101,14 +106,24 @@ Full-page screenshots at 1280 px and 390 px (Playwright). Compare with the sourc
 Write or fix the Shopify editor map; run the parity check across three viewports.
 
 ### 7. Sign-off
-- Library: run `scripts/seed-library <slug>`; confirm it appears in the gallery with its thumbnail and sections.
+- Library: run `pnpm seed:library <slug>` (renders the thumbnail; `--no-thumbnails` skips it); confirm it appears on Templates → Library with its thumbnail and section count, and that Preview matches the source.
 - Record quirks in `instructions.json` `notes`, and any new hazard in `docs/TEMPLATE_GUIDE.md`.
 - Report using the `milestone-build` report structure, including the screenshots' paths and the smoke-build stats.
 
-## When the owner hands over a design from Figma
+## Handover option 1: a design in Figma
 
-1. Get the Figma frame URL. Pull design context and screenshot through the Figma MCP.
+1. Get the Figma frame URL. Pull design context and screenshot through the Figma MCP (read-only; never create or edit Figma files without asking).
 2. Build the template HTML to the markup contract (not as React; templates are plain HTML).
 3. Map Figma colours to the `--lp-*` variables; everything else static.
 4. Export images from Figma into `assets/`.
 5. Continue from step 1 above.
+
+## Handover option 2: a live website (D61)
+
+1. Import it (from `services/worker`): `uv run python -m app.cli.import_template <url> <slug> --type <type> --name "<name>"`. It writes `templates/library/<slug>/` with `index.html`, `assets/` and draft JSON files, and prints what it removed (CSS rules, scripts, fonts) and the page size. It refuses an existing folder.
+2. Keep a copy of the imported `index.html` (e.g. `<slug>.imported.html` in your scratchpad) so the markup step can be re-run from it.
+3. Add the markup: `data-lp-section`/`data-lp-role` on each top-level block, image slots (`data-lp-product`, `-scene`, `-person`, `-logo`, `-keep`), `data-lp-cta`, prices, brand/product name slots, numbers, sale-only blocks. Do it with a small script (BeautifulSoup) rather than by hand, so it can be re-run when the import changes.
+4. Call `engines.template_import.apply_template_tokens(html, palette=..., heading_fonts=..., body_fonts=...)` to declare the `--lp-*` tokens, point font stacks at `--lp-heading-font` / `--lp-body-font`, and turn white text on palette colours into `--lp-on-*`. Check the result for split CSS rules it can't see (see TEMPLATE_GUIDE) and fix them in `<style id="lp-template-fixes">`.
+5. Fill `template.json` (sections in page order, `source_palette`) and `instructions.json` (`forbidden_terms` with the source brand and store names; `notes` for anything like timers).
+6. Visual check: screenshot the live site and the template at 1280 px and 390 px; page heights should match within a few pixels (a stand-in font can shift text slightly).
+7. Continue from step 1 above.
