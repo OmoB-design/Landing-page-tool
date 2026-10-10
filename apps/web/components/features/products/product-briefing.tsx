@@ -45,10 +45,13 @@ export function ProductBriefing({
     <section aria-labelledby="briefing-title" className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-0.5">
-          <h2 id="briefing-title" className="text-md font-semibold">
+          <h2
+            id="briefing-title"
+            className="text-type-body-large font-semibold"
+          >
             Briefing
           </h2>
-          <p className="text-sm text-fg-muted">
+          <p className="text-type-caption-1 text-sub-text">
             {briefing && updatedAt ? (
               <>
                 Who the page can speak to, and what to say. Written{" "}
@@ -71,7 +74,7 @@ export function ProductBriefing({
         </Button>
       </div>
       {startJob.error ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-type-caption-1 text-text-danger">
           {startJob.error.message}
         </p>
       ) : null}
@@ -86,15 +89,19 @@ export function ProductBriefing({
       {briefing ? (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium text-fg-muted">Audiences</h3>
+            <h3 className="text-type-caption-1 font-medium text-sub-text">
+              Audiences
+            </h3>
             <ul className="grid gap-3 sm:grid-cols-2">
               {briefing.audiences.map((audience) => (
                 <li
                   key={audience.name}
-                  className="flex flex-col gap-1 rounded-md border border-border p-3"
+                  className="flex flex-col gap-1 rounded-md border border-stroke p-3"
                 >
-                  <span className="text-base font-medium">{audience.name}</span>
-                  <span className="text-sm text-fg-muted">
+                  <span className="text-type-body-small font-medium">
+                    {audience.name}
+                  </span>
+                  <span className="text-type-caption-1 text-sub-text">
                     {audience.description}
                   </span>
                 </li>
@@ -115,8 +122,8 @@ export function ProductBriefing({
 function BriefingList({ title, items }: { title: string; items: string[] }) {
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-medium text-fg-muted">{title}</h3>
-      <ul className="flex list-disc flex-col gap-1 pl-4 text-sm">
+      <h3 className="text-type-caption-1 font-medium text-sub-text">{title}</h3>
+      <ul className="flex list-disc flex-col gap-1 pl-4 text-type-caption-1">
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}

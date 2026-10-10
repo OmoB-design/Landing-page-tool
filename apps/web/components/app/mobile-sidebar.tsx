@@ -16,7 +16,7 @@ export function MobileSidebar({ children }: { children: ReactNode }) {
         side="left"
         showCloseButton={false}
         aria-describedby={undefined}
-        className="overflow-y-auto bg-surface p-0 lg:hidden"
+        className="overflow-y-auto bg-surface-primary p-0 lg:hidden"
       >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         {/* Close the sheet when a link inside it is followed. */}

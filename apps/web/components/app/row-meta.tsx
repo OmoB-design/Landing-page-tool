@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 /** Human key such as LUM-23, in muted tabular figures. */
 export function KeyLabel({ children }: { children: string }) {
   return (
-    <span className="min-w-16 shrink-0 text-sm text-fg-muted tabular-nums">
+    <span className="min-w-16 shrink-0 text-type-caption-1 text-sub-text tabular-nums">
       {children}
     </span>
   );
@@ -21,7 +21,7 @@ export function OriginBadge({ origin }: { origin: "owned" | "cloned" }) {
   return (
     <Badge
       variant="outline"
-      className="h-5 rounded-xs border-border px-1.5 font-normal text-fg-muted"
+      className="h-5 rounded-xsm border-stroke px-1.5 font-normal text-sub-text"
     >
       {origin === "cloned" ? <CloneIcon aria-hidden /> : null}
       {origin === "cloned" ? "Cloned" : "Owned"}
@@ -39,9 +39,9 @@ export function scoreTone(score: number, min: number): ScoreTone {
 }
 
 const TONE_CLASSES: Record<ScoreTone, string> = {
-  good: "bg-success-soft text-success",
-  fair: "bg-warning-soft text-warning",
-  poor: "bg-danger-soft text-danger",
+  good: "bg-highlight-green-50 text-text-success",
+  fair: "bg-highlight-yellow-50 text-text-warning",
+  poor: "bg-highlight-red-50 text-text-danger",
 };
 
 /** A clone's source-leak (residue) score, coloured against the publish threshold `min`. */
@@ -51,7 +51,7 @@ export function ScoreChip({ score, min }: { score: number; min: number }) {
     <Badge
       data-tone={tone}
       title={`Source-leak score ${score} (publish needs ${min}+)`}
-      className={cn("h-5 rounded-xs px-1.5 tabular-nums", TONE_CLASSES[tone])}
+      className={cn("h-5 rounded-xsm px-1.5 tabular-nums", TONE_CLASSES[tone])}
     >
       <ShieldIcon aria-hidden />
       <span className="sr-only">Source-leak score </span>
@@ -75,7 +75,7 @@ export function formatCost(costUsd: number): string {
 
 export function CostLabel({ costUsd }: { costUsd: number }) {
   return (
-    <span className="shrink-0 text-sm text-fg-muted tabular-nums">
+    <span className="shrink-0 text-type-caption-1 text-sub-text tabular-nums">
       <span className="sr-only">Cost </span>
       {formatCost(costUsd)}
     </span>
@@ -91,7 +91,7 @@ export function RelativeTime({ date }: { date: Date }) {
     <time
       dateTime={date.toISOString()}
       title={date.toLocaleString("en-GB")}
-      className="shrink-0 text-sm text-fg-muted tabular-nums"
+      className="shrink-0 text-type-caption-1 text-sub-text tabular-nums"
     >
       {formatDistanceToNowStrict(date, { addSuffix: true })}
     </time>
@@ -114,7 +114,7 @@ export function initials(name: string): string {
 export function PersonAvatar({ name }: { name: string }) {
   return (
     <Avatar size="sm" title={name} className="size-5">
-      <AvatarFallback className="text-xs">
+      <AvatarFallback className="text-type-caption-2">
         <span aria-hidden>{initials(name)}</span>
         <span className="sr-only">{name}</span>
       </AvatarFallback>

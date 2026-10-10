@@ -26,7 +26,7 @@ export function PageRowMenu({
           variant="ghost"
           size="icon-sm"
           aria-label={`Actions for ${pageKey}`}
-          className="text-fg-muted opacity-0 group-hover/row:opacity-100 hover:bg-surface-active focus-visible:opacity-100 pointer-coarse:opacity-100 data-open:opacity-100"
+          className="text-sub-text opacity-0 group-hover/row:opacity-100 hover:bg-foreground-03 focus-visible:opacity-100 pointer-coarse:opacity-100 data-open:opacity-100"
         >
           <MoreIcon aria-hidden />
         </Button>

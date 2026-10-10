@@ -81,7 +81,7 @@ export function ContentPanel({
             onEdit={onEdit}
           />
         ) : (
-          <p className="text-sm text-fg-muted">
+          <p className="text-type-caption-1 text-sub-text">
             Select a section in the list or in the preview.
           </p>
         )}
@@ -127,14 +127,14 @@ function Group({
   return (
     <Collapsible
       defaultOpen
-      className="border-t border-border pt-2 first:border-t-0 first:pt-0"
+      className="border-t border-stroke pt-2 first:border-t-0 first:pt-0"
     >
       <h2>
-        <CollapsibleTrigger className="group flex h-9 w-full items-center justify-between rounded-sm text-base font-medium outline-none hover:text-fg-muted focus-visible:ring-2 focus-visible:ring-ring">
+        <CollapsibleTrigger className="group flex h-9 w-full items-center justify-between rounded-sm text-type-body-small font-medium outline-none hover:text-sub-text focus-visible:ring-2 focus-visible:ring-ring">
           {title}
           <ChevronUpIcon
             aria-hidden
-            className="size-4 text-fg-muted transition-transform duration-150 ease-out group-data-closed:rotate-180 motion-reduce:transition-none"
+            className="size-4 text-sub-text transition-transform duration-150 ease-out group-data-closed:rotate-180 motion-reduce:transition-none"
           />
         </CollapsibleTrigger>
       </h2>
@@ -159,15 +159,15 @@ function SectionRow({
   return (
     <div
       className={cn(
-        "group/row flex h-9 items-center rounded-md bg-surface-muted",
-        selected ? "bg-surface-active" : "hover:bg-surface-hover",
+        "group/row flex h-9 items-center rounded-md bg-foreground-01",
+        selected ? "bg-foreground-03" : "hover:bg-foreground-02",
         dragging && "shadow-pop",
       )}
     >
       <span
         {...handle}
         aria-label={`Move ${section.label}`}
-        className="flex h-full w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-l-md text-fg-subtle opacity-0 outline-none group-hover/row:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+        className="flex h-full w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-l-md text-caption-1 opacity-0 outline-none group-hover/row:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
       >
         <DragIcon aria-hidden className="size-3.5" />
       </span>
@@ -175,14 +175,14 @@ function SectionRow({
         type="button"
         aria-current={selected || undefined}
         onClick={onSelect}
-        className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-r-md pr-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-r-md pr-3 text-left text-type-caption-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {section.number ? (
-          <span className="w-24 shrink-0 font-medium text-highlight tabular-nums">
+          <span className="w-24 shrink-0 font-medium text-highlight-yellow-500 tabular-nums">
             {itemNumber(section.number)}
           </span>
         ) : (
-          <span className="w-24 shrink-0 truncate text-fg-muted">
+          <span className="w-24 shrink-0 truncate text-sub-text">
             {roleLabel(section.role)}
           </span>
         )}
@@ -236,7 +236,7 @@ function SelectedSection({
               onEdit({ type: "rename", key: section.key, label })
             }
           />
-          <span className="shrink-0 text-sm text-fg-muted tabular-nums">
+          <span className="shrink-0 text-type-caption-1 text-sub-text tabular-nums">
             Section {index + 1} of {total}
           </span>
         </div>
@@ -297,19 +297,19 @@ function SelectedSection({
           />
         </div>
       </div>
-      <p className="text-sm text-fg-muted">{details.join(" · ")}</p>
+      <p className="text-type-caption-1 text-sub-text">{details.join(" · ")}</p>
       {section.fields.length > 0 ? (
         <dl className="flex flex-col gap-1.5">
           {section.fields.map((field, i) => (
             <div
               key={`${field.label}-${i}`}
               className={cn(
-                "rounded-md bg-surface-muted px-3 py-2 text-sm",
+                "rounded-md bg-foreground-01 px-3 py-2 text-type-caption-1",
                 field.text.length <= 40 &&
                   "flex items-baseline justify-between gap-4",
               )}
             >
-              <dt className="shrink-0 text-fg-muted">{field.label}</dt>
+              <dt className="shrink-0 text-sub-text">{field.label}</dt>
               <dd
                 className={cn(
                   field.text.length <= 40 ? "truncate text-right" : "mt-1",
@@ -321,7 +321,7 @@ function SelectedSection({
           ))}
         </dl>
       ) : null}
-      <p className="text-sm text-fg-subtle">
+      <p className="text-type-caption-1 text-caption-1">
         Words are rewritten for each build, so they’re read-only here.
       </p>
     </div>
@@ -376,7 +376,7 @@ function SectionName({
             setValue(label);
             setEditing(true);
           }}
-          className="min-w-0 truncate rounded-sm text-left text-base font-medium outline-none hover:underline hover:decoration-fg-subtle hover:underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-w-0 truncate rounded-sm text-left text-type-body-small font-medium outline-none hover:underline hover:decoration-caption-1 hover:underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring"
         >
           {label}
         </button>
@@ -407,7 +407,7 @@ function IconAction({
           aria-label={label}
           aria-disabled={unavailable ? true : undefined}
           onClick={unavailable ? undefined : onClick}
-          className="bg-surface-muted text-fg-muted hover:bg-surface-hover hover:text-fg aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
+          className="bg-foreground-01 text-sub-text hover:bg-foreground-02 hover:text-body aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
         >
           <ActionIcon aria-hidden />
         </Button>

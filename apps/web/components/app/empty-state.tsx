@@ -21,13 +21,15 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
       {StateIcon ? (
-        <div className="flex size-10 items-center justify-center rounded-md bg-surface-muted text-fg-muted">
+        <div className="flex size-10 items-center justify-center rounded-md bg-foreground-01 text-sub-text">
           <StateIcon aria-hidden className="size-5" />
         </div>
       ) : null}
-      <h2 className="text-xl font-semibold">{title}</h2>
+      <h2 className="text-type-h5 font-semibold">{title}</h2>
       {children ? (
-        <div className="max-w-sm text-base text-fg-muted">{children}</div>
+        <div className="max-w-sm text-type-body-small text-sub-text">
+          {children}
+        </div>
       ) : null}
       {action ? <div className="pt-1">{action}</div> : null}
     </div>

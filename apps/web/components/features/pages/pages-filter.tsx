@@ -57,14 +57,14 @@ export function PagesFilter({
           variant="ghost"
           size="sm"
           aria-label={count > 0 ? `Filter, ${count} active` : "Filter"}
-          className="text-fg-muted hover:bg-surface-hover"
+          className="text-sub-text hover:bg-foreground-02"
         >
           <FilterIcon aria-hidden />
           <span className="sr-only sm:not-sr-only">Filter</span>
           {count > 0 ? (
             <span
               aria-hidden
-              className="rounded-xs bg-accent-soft px-1 text-xs text-accent tabular-nums"
+              className="rounded-xsm bg-highlight-indigo-50 px-1 text-type-caption-2 text-text-link tabular-nums"
             >
               {count}
             </span>

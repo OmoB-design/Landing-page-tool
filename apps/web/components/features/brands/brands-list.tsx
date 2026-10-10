@@ -43,11 +43,11 @@ export function BrandsList({ brands }: { brands: BrandSummary[] }) {
             meta={
               <>
                 {brand.url ? (
-                  <span className="text-sm text-fg-muted">
+                  <span className="text-type-caption-1 text-sub-text">
                     {new URL(brand.url).hostname}
                   </span>
                 ) : null}
-                <span className="text-sm text-fg-muted tabular-nums">
+                <span className="text-type-caption-1 text-sub-text tabular-nums">
                   {brand.productCount}{" "}
                   {brand.productCount === 1 ? "product" : "products"}
                 </span>

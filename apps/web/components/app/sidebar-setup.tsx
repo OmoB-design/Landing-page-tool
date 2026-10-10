@@ -63,13 +63,13 @@ export function SidebarSetup({
     <Collapsible
       open={open}
       onOpenChange={toggle}
-      className="rounded-lg border border-border-strong bg-surface p-2 shadow-panel"
+      className="rounded-lg border border-stroke-strong bg-surface-primary p-2 shadow-panel"
     >
       <div className="flex items-start justify-between gap-2 px-1 pt-1">
         <ProgressRing done={done} total={total} />
         <CollapsibleTrigger
           aria-label={open ? "Fold getting started" : "Unfold getting started"}
-          className="-mt-1 -mr-1 flex size-7 items-center justify-center rounded-sm text-fg-muted outline-none hover:bg-surface-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-ring"
+          className="-mt-1 -mr-1 flex size-7 items-center justify-center rounded-sm text-sub-text outline-none hover:bg-foreground-02 hover:text-body focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronDownIcon
             aria-hidden
@@ -81,8 +81,8 @@ export function SidebarSetup({
         </CollapsibleTrigger>
       </div>
       <div className="flex flex-col px-1 pt-2 pb-1">
-        <h2 className="text-base font-medium">Getting started</h2>
-        <p className="text-sm text-fg-muted tabular-nums">
+        <h2 className="text-type-body-small font-medium">Getting started</h2>
+        <p className="text-type-caption-1 text-sub-text tabular-nums">
           {done}/{total} steps completed
         </p>
       </div>
@@ -92,19 +92,19 @@ export function SidebarSetup({
             <li key={step.id}>
               <Link
                 href={step.href}
-                className="flex h-nav-item items-center gap-2 rounded-sm px-1 text-base text-fg outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-nav-item items-center gap-2 rounded-sm px-1 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {step.done ? (
-                  <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-success text-white">
+                  <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-spot-500-green text-white">
                     <CheckIcon aria-hidden className="size-2.5" />
                   </span>
                 ) : (
                   <span
                     aria-hidden
-                    className="size-4 shrink-0 rounded-full border border-border-strong"
+                    className="size-4 shrink-0 rounded-full border border-stroke-strong"
                   />
                 )}
-                <span className={cn("truncate", step.done && "text-fg-muted")}>
+                <span className={cn("truncate", step.done && "text-sub-text")}>
                   {step.label}
                 </span>
                 <span className="sr-only">
@@ -138,7 +138,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
         fill="none"
         stroke="currentColor"
         strokeWidth="2.5"
-        className="text-surface-active"
+        className="text-foreground-03"
       />
       <circle
         cx="10"
@@ -150,7 +150,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
         strokeLinecap="round"
         // The arc length is data (progress), not styling.
         strokeDasharray={`${filled} ${length}`}
-        className="text-accent"
+        className="text-spot-500-indigo"
       />
     </svg>
   );

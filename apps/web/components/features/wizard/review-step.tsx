@@ -67,21 +67,21 @@ export function ReviewStep({
         {rows.map(([label, value]) => (
           <div
             key={label}
-            className="flex items-baseline justify-between gap-6 border-b border-border py-2.5 text-sm last:border-b-0"
+            className="flex items-baseline justify-between gap-6 border-b border-stroke py-2.5 text-type-caption-1 last:border-b-0"
           >
-            <dt className="shrink-0 text-fg-muted">{label}</dt>
+            <dt className="shrink-0 text-sub-text">{label}</dt>
             <dd className="text-right font-medium">{value}</dd>
           </div>
         ))}
       </dl>
       {emphasis.length > 0 ? (
-        <ul className="flex flex-col gap-1 text-sm text-fg-muted">
+        <ul className="flex flex-col gap-1 text-type-caption-1 text-sub-text">
           {emphasis.map((line) => (
             <li key={line}>· {line}</li>
           ))}
         </ul>
       ) : null}
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-type-caption-1 font-medium">
         Author
         <Select
           value={state.author}
@@ -98,7 +98,7 @@ export function ReviewStep({
             ))}
           </SelectContent>
         </Select>
-        <span className="font-normal text-fg-muted">
+        <span className="font-normal text-sub-text">
           {author?.hint} The copy is written in this voice; the template’s
           byline names stay.
         </span>

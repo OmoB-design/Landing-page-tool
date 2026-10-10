@@ -337,3 +337,43 @@ as new entries.
 - **Fixes after the owner's second look (dark-mode screenshot):** the header was 52 px with a 14 px medium title and the panel 8 px inset; now 48 px, 13 px regular, 6 px, and the sidebar's top row lines up with the title. A brand mark's letter followed the theme instead of the brand colour (a cream brand showed a blank square in dark mode); it now uses fixed on-light/on-dark tokens. The Home cards' image areas went flat black in dark mode; they now keep a dark tint of their mark colour.
 - **Owner request (third look):** the getting-started checklist moved from Home into the sidebar as a card above Settings (`components/app/sidebar-setup.tsx`: progress ring, title, "N/5 steps completed", steps as links; folds with a chevron, remembered in the browser; hidden once complete), like the reference and Notion's onboarding cards. `components/features/home/getting-started.tsx` removed.
 - **Owner confirmed:** no
+
+### T1 — Figma variables in the LP Platform file (D68)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-10
+- **Summary:** The owner's LP Platform Figma file (`WJylkbnRxmt6QfEXWQ2m2h`) now has the app's design tokens under the owner's Portfolio naming (option B: Portfolio names, today's values). **Primitives** (one mode, 138 variables, hidden from pickers): the app's colours as Base, Grey 10–950, Indigo, Green, Yellow, Red, Amber, Mark and Glyph families, Portfolio's Blue, Pink and Purple scales for tokens the app doesn't use yet, and Numbers (including the layout sizes). **Tokens** (modes Light and Dark, 112 variables): Portfolio's 77 tokens plus 35 for LP (Foreground-03, Stroke-Strong, Spot-500-Indigo, Highlight-Indigo-50, Text-Success/Warning/Danger, On-Light/On-Dark, 12 Avatar, 5 Template, 9 Size). Each has explicit scopes, a Web code syntax with its CSS variable, and a description of the code token it replaces. 40 text styles (Portfolio's Heading H1–H6, Body large/small and Caption 1/2 structure, each in Regular, Medium, Semi Bold and Bold, with the app's sizes and line heights; Inter, Crimson Pro for H3) and 4 effect styles (Shadow/Pop, Control, Edge, Panel). The Portfolio file was only read.
+- **Key files:** none in the repo (Figma only); `docs/DECISIONS.md` (D68).
+- **Schema changes:** none.
+- **Decisions:** D68.
+- **Deviations from plan:** Typography/On-Light and On-Dark added (the code's text-on-brand-colour tokens weren't in the plan's table); Portfolio's Base/Brown, Line stroke and Stroke 2 primitives left out (nothing uses them once Brown mode is dropped).
+- **Verification:** read-back audit in Figma: 2 collections, 138 + 112 variables, modes Value and Light/Dark, no variable on all scopes, every variable has code syntax; 40 text styles, 4 effect styles. All 33 tokens mapped from code resolve to exactly the code's light and dark values (compared against `apps/web/app/globals.css` by script); the three Text-* tokens are the agreed changes. Cost: $0.
+- **Owner actions requested:** open the LP file's Variables and check the names and values; confirm T1.
+- **Owner confirmed:** no
+- **Next:** T2 — rename the code tokens to match (no visual change except status text)
+
+### T1 — amendment: match Quality's full token set (owner go)
+- **Date:** 2026-10-10
+- **Owner:** compared Foreground-01 with Quality's DevTools and asked to confirm everything is set, then said go to match Quality fully.
+- **Finding:** Foreground-01 was right (`#f5f5f5` = Quality's `oklch(97% 0 0)` shadcn layer and its own `--Backgrounds-default`). Quality's stylesheet (`index-BGHD8ka6.css`) showed D67 had matched light mode but not all of dark mode, and lacked several tokens.
+- **Changes in the LP Figma file:** dark values now Quality's (Surface-Modal `#212121`, Foreground-03 `#595959`, Stroke `#2a2a2a`, Highlight-Indigo-50 `#3f3ccd`, Highlight-Green/Yellow/Red-50 `#036b26`/`#865503`/`#9e0a05`, Icon-System and Icon-Nav-Inactive `#8d8d8d`); status text uses Quality's Text-success/warning/negative (`#036b26`/`#865503`/`#9e0a05` light, `#daf1e2`/`#fdeed4`/`#e26e6a` dark) instead of my picks; Button-Primary-Disabled `#f0f0f0`/`#2a2a2a`; Spot-500-Blue and Highlight-Blue-50 are Quality's info blue. Added Text-Link (`#5c5aed`/`#c0bcf5`), Text-Info, Stroke-Input-Hover/Active/Negative, Button-Danger-Active, Button-Neutral and -Active, Avatar D/F/G/H tints, and the primitive shades they need; removed Indigo 900 (nothing used it). Now Primitives 143, Tokens 124.
+- **Verification:** read-back audit (no all-scopes variables, every variable has code syntax); all 35 mapped Quality tokens equal ours in light and dark, and all 16 avatar values match (scripted comparison against Quality's resolved CSS). Until T2 the code still has D67's dark values.
+- **Owner confirmed:** no
+
+### T2 — Code renamed to the Figma token names (D68)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-10
+- **Summary:** The web app now uses the LP Figma file's token names and values. `apps/web/app/globals.css` is generated from the Figma export (121 primitives as plain variables, 92 colour tokens with 50 dark overrides, type, radius, sizes, shadows); Tailwind's default type and radius scales are off. A script renamed 508 colour, 33 status-text, 242 type and 23 radius classes across 82 files (`bg-surface` → `bg-surface-primary`, `text-fg-muted` → `text-sub-text`, `text-sm` → `text-type-caption-1`, `rounded-xs` → `rounded-xsm` …); accent uses were assigned by role (fills, borders and focus → Spot-500-Indigo; text on the indigo tint → Text-Link; numbers on solid fills → On-Dark; primary hover → Button-Primary-Active; destructive button → Button-Danger tokens); status icons on plain surfaces use Spot colours, status text and icons on tints use Text-*; inputs focus with Stroke-Input-Active; alerts and field errors use Text-Danger. shadcn and AffectUI mappings repointed (menus and popovers on Surface-Modal). `cn()` knows the new type and radius names. `pnpm lint:tokens` now also fails on retired names (`scripts/check-token-names.mjs`), including in `components/ui`. DESIGN.md §4 rewritten with a before/after name table.
+- **Figma changes in this build:** Text-Danger dark → Red 50 (`#f9dddd`); Radius-L code syntax `var(--radius-lg)`; Base primitives' code syntax `--base-white`/`--base-black`; H4 text styles 30 px Crimson Pro; text style descriptions name their code class.
+- **Key files:** `apps/web/app/globals.css`, `apps/web/lib/utils.ts` (+ test), 80 component and route files, `scripts/check-token-names.mjs`, `scripts/check-tokens.sh`, `docs/DESIGN.md` §4, `docs/DECISIONS.md` (D68), `CLAUDE.md` §5.
+- **Schema changes:** none. **New dependencies:** none.
+- **Decisions:** D68 (T2 note).
+- **Deviations from plan:** type classes are `text-type-*` (not `text-caption-1`) and Radius-L is `--radius-lg` in code, both to avoid Tailwind name clashes; Text-Danger dark differs from Quality for readability; H4 became the 30 px serif title style (the sign-in title used Tailwind's `text-3xl`, which isn't in the Figma scale).
+- **Verification:** web typecheck, ESLint, token check and token-name check (and a probe file proving the name check fails on old names), Prettier, vitest 112/112 (one run timed out under load; the file and the full suite then passed), `next build`. Figma ↔ CSS parity script: 121 primitives and 92 colour tokens identical in light and dark. Screenshots of 24 screens in light and dark before and after, pixel-compared against the production build: light mode identical on 17 screens, under 0.2% on 7 (all status-text colour changes; Pages and sidebar differences were row times and a notification count loading); dark mode changed as planned (menus, dividers, chips, selected tints, alerts). The shared dev server kept serving stale code after a stash/restore, so the final screenshots came from a production build on :3005 (stopped afterwards). Cost: $0.
+- **Owner actions requested:** look at the app in dark mode (menus, chips, alerts) and light mode (should look the same); restart `pnpm dev` once so the dev server picks up every file; confirm T2.
+- **Owner confirmed:** no
+
+### T2 — follow-up: Caption 3 (owner request)
+- **Date:** 2026-10-10
+- **Owner:** asked to restart `pnpm dev` (done: the old process tree was stopped with no jobs running, and the new server serves the renamed classes) and to add a 10 px caption to the type scale, then commit.
+- **Changes:** Figma text styles Caption/Caption 3 (Inter 10 px, 150%, Regular/Medium/Semi Bold/Bold; 44 text styles now); `--text-type-caption-3` in `globals.css`, `cn()` knows `text-type-caption-3`, a `cn` test, DESIGN.md §4. Caption 2 stays 11 px (the badges use it). Not used by any screen yet.
+- **Owner confirmed:** yes (asked to commit T1–T2)

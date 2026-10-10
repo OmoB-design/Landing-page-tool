@@ -112,142 +112,57 @@ Right side of each row (not visible in the screenshot, add it): origin badge (Ow
 
 ---
 
-## 4. Tokens (D67: Quality's values)
+## 4. Tokens (D68: Figma names, Quality values)
 
-Declared in `apps/web/app/globals.css` with Tailwind v4 `@theme`; the block below mirrors it. Since D67 (2026-10-10) the values follow the Quality app's public design tokens (Inter and Crimson Pro, its grey scale, indigo primary, 6 px / 10 px corners, its control shadows, its dark values). **Figma replaces them when the owner provides frames.** Use semantic names so components never reference raw values. Fonts come from `next/font` (`--font-inter`, `--font-jetbrains-mono`, `--font-crimson`) and map to `font-sans`, `font-mono`, `font-serif`.
+**Source of truth: the LP Platform Figma file** (`WJylkbnRxmt6QfEXWQ2m2h`, Variables panel). Its structure and names follow the owner's Portfolio file; its values are the Quality app's (D67, read from Quality's stylesheet). Every Figma variable's Web code syntax is the CSS variable in `apps/web/app/globals.css`, so the two match name for name. **Change a value in Figma first, then in `globals.css`.**
 
-```css
-@theme {
-  /* Typography (Quality: Inter 13 px interface, Crimson Pro display) */
-  --text-xs: 0.6875rem; /* 11px badges */
-  --text-sm: 0.75rem; /* 12px group labels, meta */
-  --text-sm--line-height: 1.5;
-  --text-base: 0.8125rem; /* 13px body, rows, nav, controls */
-  --text-base--line-height: 1.5;
-  --text-md: 0.875rem; /* 14px page header titles */
-  --text-lg: 1rem; /* 16px section titles */
-  --text-xl: 1.375rem; /* 22px page titles in empty states */
-  --text-display: 2.25rem; /* 36px serif greetings */
-  --text-display--line-height: 1.15;
+**Primitives** (Figma collection *Primitives*, one mode) are plain CSS variables on `:root`: `--base-white`, `--base-black`, `--grey-10` … `--grey-950`, `--indigo-*`, `--green-*`, `--yellow-*`, `--red-*`, `--amber-*`, `--blue-*`, `--pink-*`, `--purple-*`, `--mark-*`, `--glyph-*`. Feature code never uses them directly.
 
-  /* Neutrals (light) */
-  --color-canvas: #f9f9f9; /* app background, sidebar */
-  --color-surface: #ffffff; /* the page panel, cards, menus */
-  --color-surface-muted: #f5f5f5; /* fields, bands, chips */
-  --color-surface-hover: #f0f0f0; /* hover, the current nav item */
-  --color-surface-active: #e6e6e6; /* pressed */
-  --color-border: #f0f0f0; /* dividers, panel edges */
-  --color-border-strong: #e6e6e6; /* inputs, cards, outline buttons */
-  --color-fg: #2a2a2a;
-  --color-fg-muted: #8d8d8d; /* secondary text and icons (owner chose Quality's grey) */
-  --color-fg-subtle: #b2b2b2;
+**Tokens** (Figma collection *Tokens*, modes Light and Dark) are Tailwind theme colours that point at primitives; `.dark` repoints the ones that change. Groups and their classes:
 
-  /* Accent and status */
-  --color-accent: #5c5aed; /* primary buttons, links, focus */
-  --color-accent-strong: #3f3ccd; /* primary hover */
-  --color-accent-soft: #e0e0f9;
-  --color-success: #099137;
-  --color-success-soft: #daf1e2;
-  --color-warning: #dd900d;
-  --color-warning-soft: #fdeed4;
-  --color-danger: #cb1a14;
-  --color-danger-soft: #f9dddd;
+| Figma group | Tokens (class suffix) | Used for |
+|---|---|---|
+| Surface | `dashboard`, `surface-primary`, `surface-modal`, `foreground-01/02/03`, `overlay`, `stroke`, `stroke-strong`, `stroke-input-hover/active/negative` | app background and sidebar, page panel and cards, menus and popovers, fields and bands / hover / pressed, dialog backdrop, dividers, input and card borders, input border states |
+| Button | `button-primary(-active/-disabled/-text)`, `button-secondary(-text)`, `button-neutral(-active)`, `button-danger(-active/-text)` | button fills and their text |
+| Spot | `spot-500-indigo` (accent: links, focus, selection), `spot-500-green/yellow/red/blue/pink/purple` | solid accent and status colours: icons, dots, fills, borders |
+| Highlights | `highlight-indigo-50` (selected tint), `highlight-green/yellow/red/blue-50` (status tints), `highlight-yellow-500/150` (section editor), and the other Portfolio tints | tinted backgrounds |
+| Typography | `body`, `sub-text`, `caption-1/2`, `heading-01…06`, `text-success/warning/danger/info/link`, `on-light`, `on-dark` | text colours; status text and text on tints use the `text-*` tokens |
+| Icon | `icon-nav-active/inactive`, `icon-system`, `icon-explainer`, `drawer` | icon colours (defined; components move onto them as they are redesigned) |
+| Avatar, Template | `avatar-a…h(-soft)`, `template-advertorial/listicle/versus/comparison/long-form` | workspace and people marks, template-type glyphs |
 
-  /* Marks: workspace and people avatars take one of these by name (Quality's A–H set). */
-  --color-mark-a: #216e55;
-  --color-mark-b: #0c756e;
-  --color-mark-c: #c23f09;
-  --color-mark-d: #526e0c;
-  --color-mark-e: #6d28d8;
-  --color-mark-f: #b8570b;
-  --color-mark-g: #37364f;
-  --color-mark-h: #bd0f2c;
-  --color-mark-a-soft: #c2f3e2;
-  --color-mark-b-soft: #cbfaf2;
-  --color-mark-c-soft: #ffedd5;
-  --color-mark-e-soft: #ece9fe;
-  /* Section editor: selected and hovered sections, numbered items (B1.1b, owner's reference) */
-  --color-highlight: #c98a12;
-  --color-highlight-soft: #fbf1dc;
+**Type** (Figma text styles Heading/Body/Caption): `text-type-caption-3` 10 (not used yet), `text-type-caption-2` 11, `text-type-caption-1` 12, `text-type-body-small` 13 (body), `text-type-body-large` 14, `text-type-h6` 16, `text-type-h5` 22, `text-type-h4` 30 (serif card titles), `text-type-h3` 36 (serif greetings); `h2`/`h1` exist but are unused. Weights through `font-normal/medium/semibold/bold`. The `type-` prefix keeps sizes apart from colours (Caption 1 is both a text style and a text colour). Tailwind's default type and radius scales are switched off (`--text-*: initial`, `--radius-*: initial`), so `text-sm` or `rounded-xs` produce nothing.
 
-  /* Type glyph tints (template types) */
-  --color-glyph-advertorial: #f5a623;
-  --color-glyph-listicle: #6c5ce7;
-  --color-glyph-versus: #e5484d;
-  --color-glyph-comparison: #2fb36e;
-  --color-glyph-longform: #3f76ff;
+**Radius** (Figma Radius): `rounded-xsm` 4, `rounded-sm` 6 (controls), `rounded-md` 8, `rounded-lg` 10 (panels, cards; Figma's Radius-L keeps the CSS name `--radius-lg` because Tailwind's `rounded-l` means left corners), `rounded-xl` 24, `rounded-xxl` 32, `rounded-max` 64. **Spacing** is Tailwind's 4 px scale, which equals Figma's Space scale (Space-16 = `p-4`). **Sizes** (Figma Size): `w-sidebar` 236, `h-header` 48, `h-topbar` 48, `h-row` 40, `h-nav-item` 32, `w-panel`, `w-preview-mobile`, `w-editor-panel`, `w-wizard-dossier`. **Shadows** (Figma effect styles): `shadow-pop`, `shadow-control`, `shadow-edge`, `shadow-panel`.
 
-  /* Radius (Quality: 6 px controls, 10 px panels and cards) */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+Fonts come from `next/font` (`--font-inter`, `--font-jetbrains-mono`, `--font-crimson`) and map to `font-sans`, `font-mono`, `font-serif`.
 
-  /* Layout. DESIGN.md names these --size-*; Tailwind v4 only builds w-/h-/size- utilities from
-     the --spacing-* namespace, so they live here (w-rail, w-sidebar, h-topbar, h-row, h-nav-item). */
-  --spacing-sidebar: 248px;
-  --spacing-topbar: 48px; /* the section editor's own top bar */
-  --spacing-header: 52px; /* page header inside the panel (h-header) */
-  --spacing-row: 40px;
-  --spacing-nav-item: 32px;
-  --spacing-panel: 384px; /* right-hand panel on the build page (w-panel) */
-  --spacing-preview-mobile: 390px; /* phone-width page preview (w-preview-mobile) */
-  --spacing-editor-panel: 440px; /* section editor's left panel (w-editor-panel) */
-  --spacing-wizard-dossier: 300px; /* create wizard's dossier panel (w-wizard-dossier) */
+**Renamed in D68** (T2, 2026-10-10):
 
-  /* Motion (D51, DESIGN.md §6): strong custom curves; the built-in ones are too weak. */
-  --ease-out: cubic-bezier(
-    0.23,
-    1,
-    0.32,
-    1
-  ); /* enter/exit, presses, popovers */
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* things moving on screen */
-  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* sheets and drawers */
-  --animate-spin: spin 0.7s linear infinite; /* a fast spinner reads as a fast app */
-  --animate-spin-slow: spin 1.6s linear infinite; /* reduced motion: slower, not stopped */
+| Before | Now |
+|---|---|
+| `canvas`, `surface`, `surface-muted`, `surface-hover`, `surface-active` | `dashboard`, `surface-primary`, `foreground-01`, `foreground-02`, `foreground-03` |
+| `border`, `border-strong` | `stroke`, `stroke-strong` |
+| `fg`, `fg-muted`, `fg-subtle` | `body`, `sub-text`, `caption-1` |
+| `accent`, `accent-strong`, `accent-soft` | `spot-500-indigo` (or `button-primary`), `button-primary-active`, `highlight-indigo-50` (text on it: `text-text-link`) |
+| `success`/`warning`/`danger` (fills, icons) | `spot-500-green/yellow/red` |
+| `text-success`/`text-warning`/`text-danger` | `text-text-success/warning/danger` |
+| `*-soft` status tints | `highlight-green/yellow/red-50` |
+| `highlight`, `highlight-soft` | `highlight-yellow-500`, `highlight-yellow-150` |
+| `mark-*`, `glyph-*` | `avatar-*`, `template-*` (`glyph-longform` → `template-long-form`) |
+| `text-xs/sm/base/md/lg/xl/3xl/display` | `text-type-caption-2/caption-1/body-small/body-large/h6/h5/h4/h3` |
+| `rounded-xs` | `rounded-xsm` |
 
-  /* Shadow (Quality): outline buttons get a soft lift; primary buttons an inner bottom edge. */
-  --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
-  --shadow-control:
-    0 0 0 0.5px rgb(61 59 53 / 0.1), 0 1px 1px rgb(0 0 0 / 0.1),
-    0 1px 5px rgb(61 59 53 / 0.05);
-  --shadow-edge: inset 0 -0.5px 0 0.3px rgb(0 0 0 / 0.15);
-  --shadow-panel: 0 0 0 0.5px rgb(61 59 53 / 0.04), 0 1px 2px rgb(0 0 0 / 0.03);
-}
-.dark {
-  /* Quality's dark values. */
-  --color-canvas: #090909;
-  --color-surface: #121212;
-  --color-surface-muted: #212121;
-  --color-surface-hover: #2a2a2a;
-  --color-surface-active: #3d3d3d;
-  --color-border: #212121;
-  --color-border-strong: #2a2a2a;
-  --color-fg: #f5f5f5;
-  --color-fg-muted: #b2b2b2;
-  --color-fg-subtle: #595959;
-  --color-accent: #615cf5;
-  --color-accent-strong: #3f3ccd;
-  --color-accent-soft: #24224f;
-  /* B0.3b: the soft status backgrounds also need dark values, or chips glare on dark surfaces. */
-  --color-success-soft: #13301d;
-  --color-warning-soft: #36290f;
-  --color-danger-soft: #3a1b1c;
-  --color-highlight: #e3a93b;
-  --color-highlight-soft: #3a2c12;
-}```
+`pnpm lint:tokens` fails on any of the old names (`scripts/check-token-names.mjs`), including in `components/ui`.
 
-Map shadcn's CSS variables (`--background`, `--foreground`, `--muted`, `--border`, `--ring`, `--primary`, etc.) onto these semantic tokens in `globals.css`, so shadcn components inherit the style without per-component overrides.
-
-*B0.3 note (D37):* shadcn also uses the name `accent`, for a grey hover background. Here `accent` keeps its DESIGN meaning (the blue highlight), and shadcn's hover classes in `components/ui` are remapped to `surface-hover` / `fg`. Check for this whenever `shadcn add` brings in a new component.
+shadcn's CSS variables (`--background`, `--foreground`, `--popover`, `--muted`, `--border`, `--input`, `--ring`, `--primary`, `--destructive` …) are mapped onto these tokens in `globals.css`, so shadcn components inherit the style without per-component overrides; components in `components/ui` keep shadcn's class names until Figma replaces them.
 
 Rules:
-- No hex values or arbitrary Tailwind values (`[#...]`, `[13px]`) in feature code.
+- No hex values or arbitrary Tailwind values (`[#...]`, `[13px]`) in feature code; no primitives in feature code.
 - Spacing on a 4 px grid.
 - Numbers in lists (keys, counts, costs) use `tabular-nums`.
-- Focus ring: 2 px `--color-accent` at 40 % opacity, offset 1 px; always visible on keyboard focus.
-- The root font size stays at the browser's 16 px, so rem-based tokens resolve to their stated sizes; the 13 px body size (D67; 14 px before) is set on `body`, never on `html` (B0.3b fix).
+- Focus ring: 2 px `spot-500-indigo` at 40 % opacity, offset 1 px; always visible on keyboard focus.
+- Text on a tint uses the matching `text-*` token (`text-text-link` on `highlight-indigo-50`, `text-text-danger` on `highlight-red-50`); icons on plain surfaces use the `spot-500-*` colours; text and numbers on a solid colour use `text-on-dark`.
+- The root font size stays at the browser's 16 px, so rem-based tokens resolve to their stated sizes; the 13 px body size is set on `body`, never on `html` (B0.3b fix).
 - `font-serif` (Crimson Pro) is for page greetings and big titles only (Home's "Welcome", the sign-in card); everything else is Inter.
 
 ---

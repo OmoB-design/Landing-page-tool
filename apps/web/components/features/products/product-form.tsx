@@ -125,10 +125,10 @@ export function ProductForm({
       {rootError ? (
         <Alert
           variant="destructive"
-          className="border-danger/30 bg-danger-soft"
+          className="border-spot-500-red/30 bg-highlight-red-50"
         >
           <AlertIcon aria-hidden />
-          <AlertDescription className="text-danger">
+          <AlertDescription className="text-text-danger">
             {rootError}
           </AlertDescription>
         </Alert>

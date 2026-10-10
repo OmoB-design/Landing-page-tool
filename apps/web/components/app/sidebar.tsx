@@ -97,7 +97,7 @@ export async function SidebarNav() {
 function NavGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Collapsible defaultOpen className="flex flex-col gap-px">
-      <CollapsibleTrigger className="group flex h-7 items-center gap-1.5 self-start rounded-sm px-2 text-sm text-fg-muted hover:text-fg">
+      <CollapsibleTrigger className="group flex h-7 items-center gap-1.5 self-start rounded-sm px-2 text-type-caption-1 text-sub-text hover:text-body">
         {label}
         <CaretIcon
           aria-hidden
@@ -117,7 +117,11 @@ async function BrandLinks() {
   const brands = await getOrgBrands(currentOrg.id);
 
   if (brands.length === 0) {
-    return <p className="px-2 py-1 text-base text-fg-muted">No brands yet.</p>;
+    return (
+      <p className="px-2 py-1 text-type-body-small text-sub-text">
+        No brands yet.
+      </p>
+    );
   }
   return (
     <>

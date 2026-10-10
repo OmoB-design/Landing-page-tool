@@ -38,7 +38,7 @@ export function EditorPreview({
   const send = useCallback(
     (scroll: boolean, instant: boolean) => {
       const colour = getComputedStyle(document.documentElement)
-        .getPropertyValue("--color-highlight")
+        .getPropertyValue("--color-highlight-yellow-500")
         .trim();
       // The frame has an opaque origin, so "*" is the only target; nothing sensitive is sent.
       frame.current?.contentWindow?.postMessage(
@@ -77,7 +77,7 @@ export function EditorPreview({
         <div
           role="group"
           aria-label="Preview width"
-          className="flex items-center gap-0.5 rounded-md bg-surface-muted p-0.5"
+          className="flex items-center gap-0.5 rounded-md bg-foreground-01 p-0.5"
         >
           {(
             [
@@ -91,19 +91,19 @@ export function EditorPreview({
               size="sm"
               aria-pressed={viewport === id}
               onClick={() => setViewport(id)}
-              className="h-7 text-fg-muted hover:bg-transparent hover:text-fg aria-pressed:bg-surface aria-pressed:text-fg aria-pressed:shadow-sm"
+              className="h-7 text-sub-text hover:bg-transparent hover:text-body aria-pressed:bg-surface-primary aria-pressed:text-body aria-pressed:shadow-sm"
             >
               <ViewIcon aria-hidden />
               {label}
             </Button>
           ))}
         </div>
-        <p className="text-sm text-fg-muted tabular-nums">
+        <p className="text-type-caption-1 text-sub-text tabular-nums">
           {sections} {sections === 1 ? "section" : "sections"} · about {minutes}{" "}
           min read
         </p>
       </div>
-      <div className="flex min-h-0 flex-1 justify-center overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="flex min-h-0 flex-1 justify-center overflow-hidden rounded-lg border border-stroke bg-surface-primary">
         <iframe
           ref={frame}
           key={src}
@@ -111,9 +111,9 @@ export function EditorPreview({
           title="Template preview"
           sandbox="allow-scripts"
           className={cn(
-            "h-full border-0 bg-surface",
+            "h-full border-0 bg-surface-primary",
             viewport === "phone"
-              ? "w-preview-mobile border-x border-border"
+              ? "w-preview-mobile border-x border-stroke"
               : "w-full",
           )}
         />

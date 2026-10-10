@@ -23,7 +23,7 @@ export function BrandOverview({ brand }: { brand: Brand }) {
   return (
     <PageBody className="gap-8">
       <section className="flex items-center gap-4">
-        <div className="flex h-14 w-36 items-center justify-center rounded-md border border-border bg-surface-muted">
+        <div className="flex h-14 w-36 items-center justify-center rounded-md border border-stroke bg-foreground-01">
           {brand.logoUrl ? (
             // Brand logos are stored in the public assets bucket.
             // eslint-disable-next-line @next/next/no-img-element
@@ -33,20 +33,22 @@ export function BrandOverview({ brand }: { brand: Brand }) {
               className="max-h-11 max-w-32 object-contain"
             />
           ) : (
-            <span className="text-sm text-fg-subtle">No logo yet</span>
+            <span className="text-type-caption-1 text-caption-1">
+              No logo yet
+            </span>
           )}
         </div>
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="text-md font-semibold">{row.name}</p>
+          <p className="text-type-body-large font-semibold">{row.name}</p>
           {row.tagline ? (
-            <p className="text-base text-fg-muted">{row.tagline}</p>
+            <p className="text-type-body-small text-sub-text">{row.tagline}</p>
           ) : null}
           {row.url ? (
             <a
               href={row.url}
               target="_blank"
               rel="noreferrer"
-              className={`${authLinkClass} text-sm`}
+              className={`${authLinkClass} text-type-caption-1`}
             >
               {new URL(row.url).hostname}
             </a>
@@ -58,24 +60,27 @@ export function BrandOverview({ brand }: { brand: Brand }) {
         {swatches.length > 0 ? (
           <ul className="flex flex-wrap gap-3">
             {swatches.map((swatch) => (
-              <li key={swatch.name} className="flex items-center gap-2 text-sm">
+              <li
+                key={swatch.name}
+                className="flex items-center gap-2 text-type-caption-1"
+              >
                 <span
                   aria-hidden
                   style={{ backgroundColor: swatch.hex }}
-                  className="size-6 rounded-xs border border-border"
+                  className="size-6 rounded-xsm border border-stroke"
                 />
-                <span className="text-fg-muted capitalize">{swatch.name}</span>
+                <span className="text-sub-text capitalize">{swatch.name}</span>
                 <span className="font-mono">{swatch.hex}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-fg-muted">No colours yet.</p>
+          <p className="text-type-caption-1 text-sub-text">No colours yet.</p>
         )}
       </Detail>
 
       <Detail title="Fonts">
-        <p className="text-base">
+        <p className="text-type-body-small">
           {fonts.heading || fonts.body
             ? `${fonts.heading ?? "—"} for headings · ${fonts.body ?? "—"} for text`
             : "No fonts yet."}
@@ -83,9 +88,11 @@ export function BrandOverview({ brand }: { brand: Brand }) {
       </Detail>
 
       <Detail title="Voice">
-        <p className="text-base">{row.voice ?? "Not written yet."}</p>
+        <p className="text-type-body-small">
+          {row.voice ?? "Not written yet."}
+        </p>
         {row.voice_examples.length > 0 ? (
-          <ul className="mt-2 flex flex-col gap-1 text-sm text-fg-muted">
+          <ul className="mt-2 flex flex-col gap-1 text-type-caption-1 text-sub-text">
             {row.voice_examples.map((line) => (
               <li key={line}>“{line}”</li>
             ))}
@@ -93,7 +100,7 @@ export function BrandOverview({ brand }: { brand: Brand }) {
         ) : null}
       </Detail>
 
-      <p className="text-sm text-fg-muted">
+      <p className="text-type-caption-1 text-sub-text">
         <Link href={`/brands/${row.id}/dna`} className={authLinkClass}>
           Edit Brand DNA
         </Link>{" "}
@@ -112,7 +119,7 @@ function Detail({
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium text-fg-muted">{title}</h2>
+      <h2 className="text-type-caption-1 font-medium text-sub-text">{title}</h2>
       {children}
     </section>
   );

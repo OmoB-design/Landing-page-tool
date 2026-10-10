@@ -40,7 +40,7 @@ export function BuildPreview({
             size="sm"
             aria-pressed={viewport === id}
             onClick={() => setViewport(id)}
-            className="h-8 text-fg-muted aria-pressed:bg-surface-active aria-pressed:text-fg"
+            className="h-8 text-sub-text aria-pressed:bg-foreground-03 aria-pressed:text-body"
           >
             <ViewIcon aria-hidden />
             {label}
@@ -53,16 +53,16 @@ export function BuildPreview({
           </a>
         </Button>
       </div>
-      <div className="flex min-h-0 flex-1 justify-center overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="flex min-h-0 flex-1 justify-center overflow-hidden rounded-lg border border-stroke bg-surface-primary">
         <iframe
           key={src}
           src={src}
           title="Page preview"
           sandbox=""
           className={cn(
-            "h-full border-0 bg-surface",
+            "h-full border-0 bg-surface-primary",
             viewport === "mobile"
-              ? "w-preview-mobile border-x border-border"
+              ? "w-preview-mobile border-x border-stroke"
               : "w-full",
           )}
         />

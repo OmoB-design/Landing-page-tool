@@ -64,7 +64,7 @@ async function Templates({
         }
       />
       <PageBody width="xl">
-        <p className="text-base text-fg-muted">
+        <p className="text-type-body-small text-sub-text">
           {view === "library"
             ? "Proven page designs. Use one to make it yours; every page built from it is rewritten for your brand and product."
             : "Your copies of library templates. Open one to rearrange its sections; builds use your arrangement."}

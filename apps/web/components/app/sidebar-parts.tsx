@@ -39,7 +39,7 @@ const NAV_ICONS = {
 export type NavIconName = keyof typeof NAV_ICONS;
 
 const ITEM_CLASS =
-  "flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-base text-fg outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring";
+  "flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring";
 
 type NavItemProps = {
   href: string;
@@ -87,7 +87,7 @@ function NavLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={cn(ITEM_CLASS, active && "bg-surface-hover")}
+      className={cn(ITEM_CLASS, active && "bg-foreground-02")}
     >
       {leading ? (
         leading
@@ -96,7 +96,7 @@ function NavLink({
           {emoji}
         </span>
       ) : ItemIcon ? (
-        <ItemIcon aria-hidden className="size-4 shrink-0 text-fg-muted" />
+        <ItemIcon aria-hidden className="size-4 shrink-0 text-sub-text" />
       ) : (
         <span aria-hidden className="w-4" />
       )}
@@ -115,9 +115,11 @@ export function SearchItem() {
           aria-disabled="true"
           className={cn(ITEM_CLASS, "cursor-not-allowed")}
         >
-          <SearchIcon aria-hidden className="size-4 shrink-0 text-fg-muted" />
+          <SearchIcon aria-hidden className="size-4 shrink-0 text-sub-text" />
           <span className="truncate">Search</span>
-          <kbd className="ml-auto font-sans text-sm text-fg-subtle">⌘K</kbd>
+          <kbd className="ml-auto font-sans text-type-caption-1 text-caption-1">
+            ⌘K
+          </kbd>
         </button>
       </TooltipTrigger>
       <TooltipContent side="right">Not built yet</TooltipContent>

@@ -44,7 +44,7 @@ async function Products({ params }: { params: Promise<{ brandId: string }> }) {
           <ProductsList brandId={brand.row.id} products={products} />
         </div>
       ) : (
-        <p className="text-base text-fg-muted">
+        <p className="text-type-body-small text-sub-text">
           No products yet. Paste a product page above to add one.
         </p>
       )}

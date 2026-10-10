@@ -44,14 +44,14 @@ export function NotificationsButton({
         <button
           type="button"
           aria-label={label}
-          className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-base text-fg outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-surface-hover"
+          className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-foreground-02"
         >
-          <BellIcon aria-hidden className="size-4 shrink-0 text-fg-muted" />
+          <BellIcon aria-hidden className="size-4 shrink-0 text-sub-text" />
           <span className="truncate">Notifications</span>
           {unread > 0 ? (
             <span
               aria-hidden
-              className="ml-auto rounded-xs bg-surface-hover px-1.5 text-sm text-fg-muted tabular-nums"
+              className="ml-auto rounded-xsm bg-foreground-02 px-1.5 text-type-caption-1 text-sub-text tabular-nums"
             >
               {unread}
             </span>
@@ -72,7 +72,7 @@ export function NotificationsButton({
               {unread > 0 ? (
                 <span
                   aria-hidden
-                  className="absolute top-1 right-1 size-2 rounded-full bg-accent ring-2 ring-canvas"
+                  className="absolute top-1 right-1 size-2 rounded-full bg-spot-500-indigo ring-2 ring-dashboard"
                 />
               ) : null}
             </Button>
@@ -106,7 +106,7 @@ export function NotificationsButton({
             />
           </div>
         ) : notifications.length === 0 ? (
-          <p className="px-2 py-6 text-center text-sm text-fg-muted">
+          <p className="px-2 py-6 text-center text-type-caption-1 text-sub-text">
             No notifications yet
           </p>
         ) : (
@@ -124,22 +124,29 @@ export function NotificationsButton({
                   aria-hidden
                   className={cn(
                     "mt-1.5 size-2 shrink-0 rounded-full",
-                    isUnread ? "bg-accent" : "bg-transparent",
+                    isUnread ? "bg-spot-500-indigo" : "bg-transparent",
                   )}
                 />
                 <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className={cn("text-base", isUnread && "font-medium")}>
+                  <span
+                    className={cn(
+                      "text-type-body-small",
+                      isUnread && "font-medium",
+                    )}
+                  >
                     {isUnread ? (
                       <span className="sr-only">Unread: </span>
                     ) : null}
                     {note.title}
                   </span>
                   {note.body ? (
-                    <span className="text-sm text-fg-muted">{note.body}</span>
+                    <span className="text-type-caption-1 text-sub-text">
+                      {note.body}
+                    </span>
                   ) : null}
                   <time
                     dateTime={note.created_at}
-                    className="text-xs text-fg-subtle"
+                    className="text-type-caption-2 text-caption-1"
                   >
                     {formatDistanceToNowStrict(new Date(note.created_at), {
                       addSuffix: true,

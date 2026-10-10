@@ -179,7 +179,7 @@ pnpm worker:sync                 # = cd services/worker && uv sync
 pnpm dev                         # web (next dev, :3000) + worker API (uvicorn --reload, :8000) + job loop (watchfiles, restarts on code changes)
 pnpm typecheck                   # web: next typegen && tsc --noEmit · worker: mypy (strict)
 pnpm lint                        # web: eslint · token check · prettier --check · worker: ruff check + ruff format --check
-pnpm lint:tokens                 # no raw colours / arbitrary Tailwind values outside components/ui (D38)
+pnpm lint:tokens                 # no raw colours / arbitrary Tailwind values outside components/ui (D38); no retired token names anywhere (D68)
 pnpm test                        # web: vitest run · worker: pytest
 pnpm format                      # prettier --write · ruff check --fix · ruff format
 

@@ -17,3 +17,4 @@ if [ -n "$matches" ]; then
   exit 1
 fi
 echo "Token check passed."
+node scripts/check-token-names.mjs || exit 1

@@ -15,27 +15,27 @@ const GLYPHS: Record<string, GlyphStyle> = {
   advertorial: {
     icon: TypeAdvertorialIcon,
     label: "Advertorial",
-    className: "bg-glyph-advertorial/15 text-glyph-advertorial",
+    className: "bg-template-advertorial/15 text-template-advertorial",
   },
   listicle: {
     icon: TypeListicleIcon,
     label: "Listicle",
-    className: "bg-glyph-listicle/15 text-glyph-listicle",
+    className: "bg-template-listicle/15 text-template-listicle",
   },
   versus: {
     icon: TypeVersusIcon,
     label: "Versus",
-    className: "bg-glyph-versus/15 text-glyph-versus",
+    className: "bg-template-versus/15 text-template-versus",
   },
   comparison: {
     icon: TypeComparisonIcon,
     label: "Comparison",
-    className: "bg-glyph-comparison/15 text-glyph-comparison",
+    className: "bg-template-comparison/15 text-template-comparison",
   },
   long_form: {
     icon: TypeLongFormIcon,
     label: "Long form",
-    className: "bg-glyph-longform/15 text-glyph-longform",
+    className: "bg-template-long-form/15 text-template-long-form",
   },
 };
 
@@ -56,8 +56,8 @@ export function TypeGlyph({ type }: { type: string }) {
     <span
       title={label}
       className={cn(
-        "flex size-5 shrink-0 items-center justify-center rounded-xs",
-        glyph?.className ?? "bg-surface-muted text-fg-muted",
+        "flex size-5 shrink-0 items-center justify-center rounded-xsm",
+        glyph?.className ?? "bg-foreground-01 text-sub-text",
       )}
     >
       <GlyphIcon aria-hidden className="size-3.5" />

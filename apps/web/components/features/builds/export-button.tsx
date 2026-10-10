@@ -33,7 +33,10 @@ export function ExportButton({
 
   return (
     <section aria-labelledby="export-title" className="flex flex-col gap-3">
-      <h3 id="export-title" className="text-sm font-medium text-fg-muted">
+      <h3
+        id="export-title"
+        className="text-type-caption-1 font-medium text-sub-text"
+      >
         Export
       </h3>
       <div className="flex flex-wrap gap-2">
@@ -60,11 +63,11 @@ export function ExportButton({
           {exported ? "Export again" : "Export HTML"}
         </Button>
       </div>
-      <p className="text-sm text-fg-muted">
+      <p className="text-type-caption-1 text-sub-text">
         One self-contained file with its images inside, for hosting anywhere.
       </p>
       {startJob.error ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-type-caption-1 text-text-danger">
           {startJob.error.message}
         </p>
       ) : null}

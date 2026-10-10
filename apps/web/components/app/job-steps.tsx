@@ -38,8 +38,8 @@ export function JobSteps({
         steps={jobStepStates(steps, job)}
       />
       {events.length > 0 ? (
-        <details className="group max-w-xl text-sm text-fg-muted">
-          <summary className="w-fit cursor-pointer rounded-xs px-1 hover:text-fg">
+        <details className="group max-w-xl text-type-caption-1 text-sub-text">
+          <summary className="w-fit cursor-pointer rounded-xsm px-1 hover:text-body">
             Details
           </summary>
           <ol

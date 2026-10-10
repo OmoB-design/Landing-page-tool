@@ -30,16 +30,16 @@ export function WizardStepper({
   return (
     <nav aria-label={label} className="@container">
       <div className="flex flex-col gap-2 @2xl:hidden">
-        <p className="text-sm text-fg-muted">
+        <p className="text-type-caption-1 text-sub-text">
           Step {index + 1} of {steps.length} ·{" "}
-          <span className="font-medium text-fg">{steps[index]?.label}</span>
+          <span className="font-medium text-body">{steps[index]?.label}</span>
         </p>
         <div
           aria-hidden
-          className="h-1 overflow-hidden rounded-full bg-surface-muted"
+          className="h-1 overflow-hidden rounded-full bg-foreground-01"
         >
           <div
-            className="h-full rounded-full bg-accent"
+            className="h-full rounded-full bg-spot-500-indigo"
             // Progress through the steps (data, not styling).
             style={{ width: `${((index + 1) / steps.length) * 100}%` }}
           />
@@ -59,12 +59,12 @@ export function WizardStepper({
                 aria-current={active ? "step" : undefined}
                 onClick={() => onSelect(step.id)}
                 className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-md px-1.5 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
+                  "flex shrink-0 items-center gap-2 rounded-md px-1.5 py-1 text-type-caption-1 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
                   active
-                    ? "font-medium text-fg"
+                    ? "font-medium text-body"
                     : step.done
-                      ? "text-fg enabled:hover:bg-surface-hover"
-                      : "text-fg-subtle enabled:hover:bg-surface-hover enabled:hover:text-fg",
+                      ? "text-body enabled:hover:bg-foreground-02"
+                      : "text-caption-1 enabled:hover:bg-foreground-02 enabled:hover:text-body",
                 )}
               >
                 <StepMark index={i} active={active} done={step.done} />
@@ -80,7 +80,7 @@ export function WizardStepper({
                   aria-hidden
                   className={cn(
                     "mx-2 h-px min-w-4 flex-1",
-                    step.done ? "bg-success" : "bg-border-strong",
+                    step.done ? "bg-spot-500-green" : "bg-stroke-strong",
                   )}
                 />
               ) : null}
@@ -103,18 +103,18 @@ function StepMark({
 }) {
   if (active)
     return (
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-surface tabular-nums">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-spot-500-indigo text-type-caption-1 font-medium text-on-dark tabular-nums">
         {index + 1}
       </span>
     );
   if (done)
     return (
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-success text-surface">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-spot-500-green text-on-dark">
         <CheckIcon aria-hidden className="size-3.5" />
       </span>
     );
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border-strong text-sm tabular-nums">
+    <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-stroke-strong text-type-caption-1 tabular-nums">
       {index + 1}
     </span>
   );

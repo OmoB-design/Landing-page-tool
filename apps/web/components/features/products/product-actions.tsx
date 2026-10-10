@@ -97,7 +97,7 @@ export function ProductActions({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-fg-muted"
+              className="h-8 text-sub-text"
               disabled={removing}
             >
               <RemoveIcon aria-hidden />
@@ -125,12 +125,12 @@ export function ProductActions({
         </Popover>
       </div>
       {removeError ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-type-caption-1 text-text-danger">
           {removeError}
         </p>
       ) : null}
       {startJob.error ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-type-caption-1 text-text-danger">
           {startJob.error.message}
         </p>
       ) : null}

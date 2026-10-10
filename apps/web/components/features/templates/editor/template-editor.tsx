@@ -159,21 +159,24 @@ export function TemplateEditor({ initial }: { initial: TemplateEditorState }) {
   };
 
   return (
-    <div className="flex h-dvh flex-col bg-canvas text-fg">
-      <header className="flex h-topbar shrink-0 items-center gap-3 border-b border-border bg-surface px-3 sm:px-4">
+    <div className="flex h-dvh flex-col bg-dashboard text-body">
+      <header className="flex h-topbar shrink-0 items-center gap-3 border-b border-stroke bg-surface-primary px-3 sm:px-4">
         <Button variant="ghost" size="icon-sm" asChild>
           <Link href="/templates?view=yours" aria-label="Back to templates">
             <BackIcon aria-hidden />
           </Link>
         </Button>
-        <h1 className="min-w-0 truncate text-base font-semibold">
+        <h1 className="min-w-0 truncate text-type-body-small font-semibold">
           {state.template.name}
         </h1>
         <p
           role="status"
-          className="hidden shrink-0 items-center gap-1.5 text-sm text-highlight sm:flex"
+          className="hidden shrink-0 items-center gap-1.5 text-type-caption-1 text-highlight-yellow-500 sm:flex"
         >
-          <span aria-hidden className="size-1.5 rounded-full bg-highlight" />
+          <span
+            aria-hidden
+            className="size-1.5 rounded-full bg-highlight-yellow-500"
+          />
           {pending ? "Saving…" : `Saved · version ${version}`}
         </p>
         <div className="ml-auto flex items-center gap-1">
@@ -205,11 +208,11 @@ export function TemplateEditor({ initial }: { initial: TemplateEditorState }) {
         <Tabs
           value={tab}
           onValueChange={(value) => setTab(value as Tab)}
-          className="h-1/2 shrink-0 border-b border-border bg-surface lg:h-auto lg:w-editor-panel lg:border-r lg:border-b-0"
+          className="h-1/2 shrink-0 border-b border-stroke bg-surface-primary lg:h-auto lg:w-editor-panel lg:border-r lg:border-b-0"
         >
           <TabsList
             aria-label="Editor panels"
-            className="shrink-0 border-b border-border px-4 py-2.5"
+            className="shrink-0 border-b border-stroke px-4 py-2.5"
           >
             <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="look">Look</TabsTrigger>
@@ -217,7 +220,7 @@ export function TemplateEditor({ initial }: { initial: TemplateEditorState }) {
             <TabsTrigger value="issues">
               Issues
               {problems > 0 ? (
-                <span className="rounded-full bg-warning-soft px-1.5 text-sm text-warning tabular-nums">
+                <span className="rounded-full bg-highlight-yellow-50 px-1.5 text-type-caption-1 text-text-warning tabular-nums">
                   {problems}
                 </span>
               ) : null}
@@ -294,14 +297,14 @@ function ShortcutButton({
           aria-disabled={disabled || undefined}
           aria-keyshortcuts={shortcut === "⌘Z" ? "Meta+Z" : "Meta+Shift+Z"}
           onClick={disabled ? undefined : onClick}
-          className="text-fg-muted aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+          className="text-sub-text aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
         >
           {children}
           <span className="sr-only sm:not-sr-only">{label}</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        {label} <kbd className="font-sans text-fg-subtle">{shortcut}</kbd>
+        {label} <kbd className="font-sans text-caption-1">{shortcut}</kbd>
       </TooltipContent>
     </Tooltip>
   );

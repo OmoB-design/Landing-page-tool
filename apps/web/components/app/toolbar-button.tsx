@@ -30,7 +30,7 @@ export function ToolbarButton({
       size="sm"
       aria-disabled={notBuilt || undefined}
       onClick={notBuilt ? undefined : onClick}
-      className="text-fg-muted hover:bg-surface-hover aria-disabled:cursor-not-allowed"
+      className="text-sub-text hover:bg-foreground-02 aria-disabled:cursor-not-allowed"
     >
       <ButtonIcon aria-hidden />
       {/* Icon-only on phones so the toolbar fits; the label stays for screen readers. */}

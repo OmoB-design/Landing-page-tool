@@ -16,7 +16,8 @@ export function BrandMark({
   color?: string | null;
   size?: "sm" | "md";
 }) {
-  const box = size === "md" ? "size-6 text-sm" : "size-4 text-xs";
+  const box =
+    size === "md" ? "size-6 text-type-caption-1" : "size-4 text-type-caption-2";
   if (emoji) {
     return (
       <span
@@ -32,9 +33,9 @@ export function BrandMark({
       aria-hidden
       style={color ? { backgroundColor: color } : undefined}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-xs font-semibold",
+        "flex shrink-0 items-center justify-center rounded-xsm font-semibold",
         box,
-        !color && "bg-surface-active",
+        !color && "bg-foreground-03",
         // The letter follows the brand colour, not the theme: a cream brand needs a dark letter
         // in dark mode too.
         readableOn(color) === "light" ? "text-on-dark" : "text-on-light",

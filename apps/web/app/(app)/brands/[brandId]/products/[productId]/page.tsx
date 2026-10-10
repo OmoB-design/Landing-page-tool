@@ -69,22 +69,25 @@ async function Product({
   return (
     <PageBody width="lg" className="gap-8">
       <div className="flex flex-col gap-3">
-        <Link href={productsHref} className={`${authLinkClass} w-fit text-sm`}>
+        <Link
+          href={productsHref}
+          className={`${authLinkClass} w-fit text-type-caption-1`}
+        >
           ← All products
         </Link>
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold">{row.name}</h2>
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
+          <h2 className="text-type-h5 font-semibold">{row.name}</h2>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-type-caption-1 text-sub-text">
             {sale ? (
-              <span className="text-fg tabular-nums">
+              <span className="text-body tabular-nums">
                 {sale}{" "}
-                <s className="text-fg-subtle">
+                <s className="text-caption-1">
                   <span className="sr-only">was </span>
                   {regular}
                 </s>
               </span>
             ) : regular ? (
-              <span className="text-fg tabular-nums">{regular}</span>
+              <span className="text-body tabular-nums">{regular}</span>
             ) : (
               <span>No price yet</span>
             )}
@@ -158,7 +161,7 @@ function Section({
 }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-md font-semibold">{title}</h2>
+      <h2 className="text-type-body-large font-semibold">{title}</h2>
       {children}
     </section>
   );

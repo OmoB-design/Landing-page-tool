@@ -32,9 +32,9 @@ export function SegmentedTabs({ label, tabs, active }: SegmentedTabsProps) {
                 href={tab.href}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "relative flex h-7 items-center rounded-sm px-2.5 text-base whitespace-nowrap text-fg-muted hover:bg-surface-hover hover:text-fg",
+                  "relative flex h-7 items-center rounded-sm px-2.5 text-type-body-small whitespace-nowrap text-sub-text hover:bg-foreground-02 hover:text-body",
                   current &&
-                    "bg-surface-muted font-medium text-fg after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-4 after:-translate-x-1/2 after:rounded-full after:bg-accent",
+                    "bg-foreground-01 font-medium text-body after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-4 after:-translate-x-1/2 after:rounded-full after:bg-spot-500-indigo",
                 )}
               >
                 {tab.label}

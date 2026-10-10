@@ -173,10 +173,10 @@ export function BrandForm({
       {rootError ? (
         <Alert
           variant="destructive"
-          className="border-danger/30 bg-danger-soft"
+          className="border-spot-500-red/30 bg-highlight-red-50"
         >
           <AlertIcon aria-hidden />
-          <AlertDescription className="text-danger">
+          <AlertDescription className="text-text-danger">
             {rootError}
           </AlertDescription>
         </Alert>
@@ -205,7 +205,7 @@ function Section({
 }) {
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-md font-semibold">{title}</h2>
+      <h2 className="text-type-body-large font-semibold">{title}</h2>
       {children}
     </section>
   );
@@ -292,7 +292,7 @@ function ColorField({
           aria-label={`${label} picker`}
           value={/^#[0-9a-f]{6}$/i.test(value) ? value : EMPTY_SWATCH}
           onChange={(event) => set(event.target.value)}
-          className="size-9 shrink-0 cursor-pointer rounded-sm border border-input bg-surface p-0.5"
+          className="size-9 shrink-0 cursor-pointer rounded-sm border border-input bg-surface-primary p-0.5"
         />
         <Input
           id={id}

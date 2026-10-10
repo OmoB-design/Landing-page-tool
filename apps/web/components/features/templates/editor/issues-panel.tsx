@@ -8,9 +8,13 @@ import {
 import type { TemplateIssue } from "@/lib/validators/template";
 
 const SEVERITY = {
-  error: { icon: AlertIcon, label: "Problem", tone: "text-danger" },
-  warning: { icon: WarningIcon, label: "Warning", tone: "text-warning" },
-  info: { icon: InfoIcon, label: "Note", tone: "text-fg-subtle" },
+  error: { icon: AlertIcon, label: "Problem", tone: "text-spot-500-red" },
+  warning: {
+    icon: WarningIcon,
+    label: "Warning",
+    tone: "text-spot-500-yellow",
+  },
+  info: { icon: InfoIcon, label: "Note", tone: "text-caption-1" },
 } as const;
 
 /** The Issues tab: template checks (blocks outside sections, missing slots, outside links). */
@@ -23,8 +27,8 @@ export function IssuesPanel({
 }) {
   if (issues.length === 0) {
     return (
-      <p className="flex items-center gap-2 p-4 text-sm text-fg-muted">
-        <CheckIcon aria-hidden className="size-4 text-success" />
+      <p className="flex items-center gap-2 p-4 text-type-caption-1 text-sub-text">
+        <CheckIcon aria-hidden className="size-4 text-spot-500-green" />
         No issues found in this template.
       </p>
     );
@@ -36,7 +40,7 @@ export function IssuesPanel({
         return (
           <li
             key={`${issue.severity}-${i}`}
-            className="flex items-start gap-2.5 rounded-md bg-surface-muted px-3 py-2 text-sm"
+            className="flex items-start gap-2.5 rounded-md bg-foreground-01 px-3 py-2 text-type-caption-1"
           >
             <SeverityIcon
               aria-hidden

@@ -172,7 +172,7 @@ export function NewBrandFlow() {
           )}
         </Field>
         {startJob.error ? (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-type-caption-1 text-text-danger">
             {startJob.error.message}
           </p>
         ) : null}
@@ -196,7 +196,7 @@ export function NewBrandFlow() {
           </Button>
         </div>
       ) : (
-        <p className="text-sm text-fg-muted">
+        <p className="text-type-caption-1 text-sub-text">
           No website, or prefer to type it?{" "}
           <button
             type="button"
@@ -229,7 +229,7 @@ function ReviewNotes({
   return (
     <div className="flex max-w-2xl flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
-        <p className="text-base text-fg-muted">
+        <p className="text-type-body-small text-sub-text">
           {draft
             ? `Here's what we found on ${new URL(draft.url).hostname}. Check it, change anything, then save.`
             : "Fill in what you know; you can change it any time."}
@@ -239,9 +239,12 @@ function ReviewNotes({
         </Button>
       </div>
       {notes.map((note) => (
-        <Alert key={note} className="border-warning/30 bg-warning-soft">
-          <AlertIcon aria-hidden className="text-warning" />
-          <AlertDescription className="text-fg">{note}</AlertDescription>
+        <Alert
+          key={note}
+          className="border-spot-500-yellow/30 bg-highlight-yellow-50"
+        >
+          <AlertIcon aria-hidden className="text-text-warning" />
+          <AlertDescription className="text-body">{note}</AlertDescription>
         </Alert>
       ))}
     </div>
@@ -255,8 +258,8 @@ function LogoPreview({ draft }: { draft: BrandDraft }) {
       ? `data:image/svg+xml;utf8,${encodeURIComponent(draft.logo_svg)}`
       : null;
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-border p-3">
-      <div className="flex h-12 w-32 items-center justify-center rounded-sm bg-surface-muted">
+    <div className="flex items-center gap-4 rounded-lg border border-stroke p-3">
+      <div className="flex h-12 w-32 items-center justify-center rounded-sm bg-foreground-01">
         {src ? (
           // The logo is shown from the brand's own site until the brand is saved.
           // eslint-disable-next-line @next/next/no-img-element
@@ -266,10 +269,12 @@ function LogoPreview({ draft }: { draft: BrandDraft }) {
             className="max-h-10 max-w-28 object-contain"
           />
         ) : (
-          <span className="text-sm text-fg-subtle">No logo found</span>
+          <span className="text-type-caption-1 text-caption-1">
+            No logo found
+          </span>
         )}
       </div>
-      <p className="text-sm text-fg-muted">
+      <p className="text-type-caption-1 text-sub-text">
         {src
           ? "This logo is saved with the brand. You can replace it later."
           : "You can add a logo later."}{" "}

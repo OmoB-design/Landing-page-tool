@@ -64,7 +64,7 @@ export function ProductStep({
   const products = data.products.filter((p) => p.brandId === state.brand);
   if (data.brands.length === 0) {
     return (
-      <p className="text-sm text-fg-muted">
+      <p className="text-type-caption-1 text-sub-text">
         Add a brand first:{" "}
         <Link href="/brands/new" className="underline underline-offset-4">
           New brand
@@ -75,7 +75,7 @@ export function ProductStep({
   }
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-type-caption-1 font-medium">
         Brand
         <Select
           value={state.brand ?? ""}
@@ -93,7 +93,7 @@ export function ProductStep({
           </SelectContent>
         </Select>
       </label>
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-type-caption-1 font-medium">
         Product
         <Select
           value={state.product ?? ""}
@@ -119,7 +119,7 @@ export function ProductStep({
         </Select>
       </label>
       {state.brand && products.length === 0 ? (
-        <p className="text-sm text-fg-muted sm:col-span-2">
+        <p className="text-type-caption-1 text-sub-text sm:col-span-2">
           This brand has no products yet.{" "}
           <Link
             href={`/brands/${state.brand}/products`}
@@ -150,7 +150,7 @@ export function TemplateStep({
   );
   if (groups.length === 0)
     return (
-      <p className="text-sm text-fg-muted">
+      <p className="text-type-caption-1 text-sub-text">
         No templates yet: load the library with pnpm seed:library.
       </p>
     );
@@ -162,7 +162,9 @@ export function TemplateStep({
     >
       {groups.map((group) => (
         <section key={group} className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium text-fg-muted">{group}</h3>
+          <h3 className="text-type-caption-1 font-medium text-sub-text">
+            {group}
+          </h3>
           <div className="grid gap-3 sm:grid-cols-2">
             {data.templates
               .filter((t) => t.group === group)
@@ -175,10 +177,10 @@ export function TemplateStep({
                   checked={state.template === t.id}
                   onChange={() => update({ template: t.id })}
                 >
-                  <span className="relative aspect-4/3 overflow-hidden border-b border-border bg-surface-muted">
+                  <span className="relative aspect-4/3 overflow-hidden border-b border-stroke bg-foreground-01">
                     <TemplatesIcon
                       aria-hidden
-                      className="absolute inset-0 m-auto size-6 text-fg-subtle"
+                      className="absolute inset-0 m-auto size-6 text-caption-1"
                     />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -189,8 +191,10 @@ export function TemplateStep({
                     />
                   </span>
                   <span className="flex flex-col gap-1 p-3">
-                    <span className="text-base font-medium">{t.name}</span>
-                    <span className="flex items-center gap-2 text-sm text-fg-muted">
+                    <span className="text-type-body-small font-medium">
+                      {t.name}
+                    </span>
+                    <span className="flex items-center gap-2 text-type-caption-1 text-sub-text">
                       <TypeGlyph type={t.type} />
                       {templateTypeLabel(t.type)} · {t.sections} sections
                     </span>
@@ -258,11 +262,11 @@ export function ImageryStep({
           >
             <OptionIcon
               aria-hidden
-              className="mt-0.5 size-4 shrink-0 text-fg-muted"
+              className="mt-0.5 size-4 shrink-0 text-sub-text"
             />
             <span className="flex flex-col gap-0.5">
-              <span className="text-base font-medium">{title}</span>
-              <span className="text-sm text-fg-muted">{hint}</span>
+              <span className="text-type-body-small font-medium">{title}</span>
+              <span className="text-type-caption-1 text-sub-text">{hint}</span>
             </span>
           </OptionCard>
         ))}
@@ -270,8 +274,10 @@ export function ImageryStep({
       {state.ai ? (
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-0.5">
-            <h3 className="text-base font-medium">Image styles · pick any</h3>
-            <p className="text-sm text-fg-muted">
+            <h3 className="text-type-body-small font-medium">
+              Image styles · pick any
+            </h3>
+            <p className="text-type-caption-1 text-sub-text">
               The desk picks the best style for each image and favours yours.
               Until image generation is switched on, pages get placeholder
               images; your picks are saved with the page.
@@ -297,15 +303,19 @@ export function ImageryStep({
                   }
                   className="gap-2 p-3"
                 >
-                  <span className="flex size-9 items-center justify-center rounded-md bg-surface-muted text-fg-muted">
+                  <span className="flex size-9 items-center justify-center rounded-md bg-foreground-01 text-sub-text">
                     <StyleIcon aria-hidden className="size-4" />
                   </span>
-                  <span className="text-base font-medium">{style.label}</span>
-                  <span className="text-sm text-fg-muted">{style.hint}</span>
+                  <span className="text-type-body-small font-medium">
+                    {style.label}
+                  </span>
+                  <span className="text-type-caption-1 text-sub-text">
+                    {style.hint}
+                  </span>
                   {checked ? (
                     <CheckIcon
                       aria-hidden
-                      className="absolute top-3 right-3 size-4 text-accent"
+                      className="absolute top-3 right-3 size-4 text-spot-500-indigo"
                     />
                   ) : null}
                 </OptionCard>
@@ -331,11 +341,16 @@ function BriefingWait({
   briefing: ReturnType<typeof useBriefing>;
 }) {
   if (briefing.status === "loading")
-    return <p className="text-sm text-fg-muted">Loading the briefing…</p>;
+    return (
+      <p className="text-type-caption-1 text-sub-text">Loading the briefing…</p>
+    );
   if (briefing.status === "failed")
     return (
-      <div role="alert" className="flex flex-col items-start gap-2 text-sm">
-        <p className="text-danger">
+      <div
+        role="alert"
+        className="flex flex-col items-start gap-2 text-type-caption-1"
+      >
+        <p className="text-text-danger">
           {briefing.error ?? "Couldn't write the briefing."}
         </p>
         <Button
@@ -350,7 +365,7 @@ function BriefingWait({
     );
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm text-fg-muted">
+      <p className="text-type-caption-1 text-sub-text">
         Writing this product’s briefing (about 15 seconds, once per product).
         You can continue with the desk’s pick in the meantime.
       </p>
@@ -397,11 +412,11 @@ export function AudienceStep({
           onChange={() => update({ audience: null })}
           className="gap-1 p-3"
         >
-          <span className="flex items-center gap-2 text-base font-medium">
-            <SparklesIcon aria-hidden className="size-4 text-fg-muted" />
+          <span className="flex items-center gap-2 text-type-body-small font-medium">
+            <SparklesIcon aria-hidden className="size-4 text-sub-text" />
             Let the desk pick
           </span>
-          <span className="text-sm text-fg-muted">
+          <span className="text-type-caption-1 text-sub-text">
             Writes for the brand’s usual audience.
           </span>
         </OptionCard>
@@ -415,8 +430,10 @@ export function AudienceStep({
             onChange={() => update({ audience: a.name })}
             className="gap-1 p-3"
           >
-            <span className="text-base font-medium">{a.name}</span>
-            <span className="text-sm text-fg-muted">{a.description}</span>
+            <span className="text-type-body-small font-medium">{a.name}</span>
+            <span className="text-type-caption-1 text-sub-text">
+              {a.description}
+            </span>
           </OptionCard>
         ))}
       </div>
@@ -425,14 +442,14 @@ export function AudienceStep({
       ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1.5 text-sm font-medium">
+          <legend className="mb-1.5 text-type-caption-1 font-medium">
             Gender (optional)
           </legend>
-          <div className="flex gap-1 rounded-md bg-surface-muted p-0.5">
+          <div className="flex gap-1 rounded-md bg-foreground-01 p-0.5">
             {GENDERS.map((g) => (
               <label
                 key={g.id}
-                className="flex h-8 flex-1 cursor-pointer items-center justify-center rounded-sm text-sm text-fg-muted has-checked:bg-surface has-checked:font-medium has-checked:text-fg has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring"
+                className="flex h-8 flex-1 cursor-pointer items-center justify-center rounded-sm text-type-caption-1 text-sub-text has-checked:bg-surface-primary has-checked:font-medium has-checked:text-body has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring"
               >
                 <input
                   type="radio"
@@ -447,7 +464,7 @@ export function AudienceStep({
             ))}
           </div>
         </fieldset>
-        <label className="flex flex-col gap-1.5 text-sm font-medium">
+        <label className="flex flex-col gap-1.5 text-type-caption-1 font-medium">
           Age (optional)
           <Select
             value={state.age ?? "any"}
@@ -537,8 +554,8 @@ function EmphasisGroup({
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="flex w-full items-baseline justify-between gap-3">
-        <span className="text-base font-medium">{title}</span>
-        <span className="text-sm text-fg-muted tabular-nums">
+        <span className="text-type-body-small font-medium">{title}</span>
+        <span className="text-type-caption-1 text-sub-text tabular-nums">
           {chosen.length} of {MAX_EMPHASIS} · {hint}
         </span>
       </legend>
@@ -549,7 +566,7 @@ function EmphasisGroup({
             <label
               key={option}
               className={cn(
-                "flex cursor-pointer items-start gap-2.5 rounded-md bg-surface-muted px-3 py-2 text-sm hover:bg-surface-hover has-checked:bg-accent-soft has-focus-visible:ring-2 has-focus-visible:ring-ring",
+                "flex cursor-pointer items-start gap-2.5 rounded-md bg-foreground-01 px-3 py-2 text-type-caption-1 hover:bg-foreground-02 has-checked:bg-highlight-indigo-50 has-focus-visible:ring-2 has-focus-visible:ring-ring",
                 !checked && full && "cursor-not-allowed opacity-50",
               )}
             >
@@ -566,11 +583,11 @@ function EmphasisGroup({
                       : chosen.filter((v) => v !== option),
                   )
                 }
-                className="mt-0.5 size-4 shrink-0 accent-accent"
+                className="mt-0.5 size-4 shrink-0 accent-spot-500-indigo"
               />
               <span className="min-w-0 flex-1">{option}</span>
               {own.includes(option) ? (
-                <span className="shrink-0 text-fg-subtle">Yours</span>
+                <span className="shrink-0 text-caption-1">Yours</span>
               ) : null}
             </label>
           );

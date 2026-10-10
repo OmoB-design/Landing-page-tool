@@ -110,7 +110,7 @@ export function AddProduct({
           )}
         </Field>
         {startJob.error ? (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-type-caption-1 text-text-danger">
             {startJob.error.message}
           </p>
         ) : null}
@@ -155,7 +155,7 @@ function PullResult({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p role="status" className="text-base">
+      <p role="status" className="text-type-body-small">
         {created ? "Added" : "Updated"} {name}.{" "}
         <Link
           href={`/brands/${brandId}/products/${productId}`}
@@ -165,9 +165,12 @@ function PullResult({
         </Link>
       </p>
       {notes.map((note) => (
-        <Alert key={note} className="border-warning/30 bg-warning-soft">
-          <AlertIcon aria-hidden className="text-warning" />
-          <AlertDescription className="text-fg">{note}</AlertDescription>
+        <Alert
+          key={note}
+          className="border-spot-500-yellow/30 bg-highlight-yellow-50"
+        >
+          <AlertIcon aria-hidden className="text-text-warning" />
+          <AlertDescription className="text-body">{note}</AlertDescription>
         </Alert>
       ))}
     </div>

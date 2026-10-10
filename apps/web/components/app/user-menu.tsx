@@ -72,7 +72,7 @@ export function UserMenu({
           <button
             type="button"
             aria-label={`Account menu for ${name}`}
-            className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-base text-fg outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring"
           >
             <PersonMark name={name} className="size-5" />
             <span className="truncate">{name}</span>
@@ -81,7 +81,7 @@ export function UserMenu({
           <button
             type="button"
             aria-label={`Account menu for ${name}`}
-            className="flex size-7 items-center justify-center rounded-full bg-surface-active text-xs font-medium text-fg hover:opacity-80"
+            className="flex size-7 items-center justify-center rounded-full bg-foreground-03 text-type-caption-2 font-medium text-body hover:opacity-80"
           >
             {initials(name)}
           </button>
@@ -98,13 +98,18 @@ export function UserMenu({
           avatar={
             // An SVG keeps the initials centred: the card sizes its avatar slot as a block.
             <svg viewBox="0 0 40 40" aria-hidden>
-              <circle cx="20" cy="20" r="20" className="fill-accent-soft" />
+              <circle
+                cx="20"
+                cy="20"
+                r="20"
+                className="fill-highlight-indigo-50"
+              />
               <text
                 x="20"
                 y="20"
                 textAnchor="middle"
                 dominantBaseline="central"
-                className="fill-accent text-sm font-medium"
+                className="fill-text-link text-type-caption-1 font-medium"
               >
                 {initials(name)}
               </text>

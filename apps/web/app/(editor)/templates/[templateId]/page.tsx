@@ -17,10 +17,10 @@ export default function TemplateEditorPage({
   return (
     <Suspense
       fallback={
-        <div className="flex h-dvh flex-col bg-canvas">
-          <div className="h-topbar shrink-0 border-b border-border bg-surface" />
+        <div className="flex h-dvh flex-col bg-dashboard">
+          <div className="h-topbar shrink-0 border-b border-stroke bg-surface-primary" />
           <div className="flex min-h-0 flex-1">
-            <div className="hidden w-editor-panel shrink-0 flex-col gap-2 border-r border-border bg-surface p-4 lg:flex">
+            <div className="hidden w-editor-panel shrink-0 flex-col gap-2 border-r border-stroke bg-surface-primary p-4 lg:flex">
               <Skeleton height="var(--spacing-row)" radius="var(--radius-md)" />
               <Skeleton
                 height="calc(var(--spacing-row) * 6)"

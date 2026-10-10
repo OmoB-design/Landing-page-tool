@@ -20,9 +20,9 @@ export function ListToolbar({
   children,
 }: ListToolbarProps) {
   return (
-    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-6">
-      <ToolbarIcon aria-hidden className="size-4 text-fg-muted" />
-      <span className="text-base font-medium">{label}</span>
+    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-stroke px-6">
+      <ToolbarIcon aria-hidden className="size-4 text-sub-text" />
+      <span className="text-type-body-small font-medium">{label}</span>
       <CountBadge count={count} noun={label.toLowerCase()} />
       {children ? (
         <div className="ml-auto flex items-center gap-1">{children}</div>

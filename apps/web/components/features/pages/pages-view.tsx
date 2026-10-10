@@ -62,7 +62,7 @@ export async function PagesView({
           action={
             <Link
               href={pagesHref(view, NO_FILTERS)}
-              className="text-base font-medium text-fg underline underline-offset-4 hover:text-fg-muted"
+              className="text-type-body-small font-medium text-body underline underline-offset-4 hover:text-sub-text"
             >
               Clear filters
             </Link>

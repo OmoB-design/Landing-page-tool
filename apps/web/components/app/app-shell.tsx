@@ -20,11 +20,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-sm focus:bg-surface focus:px-3 focus:py-2"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-sm focus:bg-surface-primary focus:px-3 focus:py-2"
       >
         Skip to content
       </a>
-      <div className="flex h-dvh bg-canvas text-fg">
+      <div className="flex h-dvh bg-dashboard text-body">
         <aside
           aria-label="Sidebar"
           className="hidden w-sidebar shrink-0 lg:flex lg:sidebar-collapsed:hidden"
@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 flex-1 p-1.5 lg:pl-0 lg:sidebar-collapsed:pl-1.5">
           <main
             id="main"
-            className="min-w-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface shadow-panel"
+            className="min-w-0 flex-1 overflow-y-auto rounded-lg border border-stroke bg-surface-primary shadow-panel"
           >
             {children}
           </main>

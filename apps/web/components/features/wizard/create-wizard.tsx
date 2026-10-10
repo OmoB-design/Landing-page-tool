@@ -176,9 +176,9 @@ export function CreateWizard({ data }: { data: WizardData }) {
   return (
     <div
       ref={panel}
-      className="flex scroll-mt-6 flex-col overflow-hidden rounded-lg border border-border bg-surface"
+      className="flex scroll-mt-6 flex-col overflow-hidden rounded-lg border border-stroke bg-surface-primary"
     >
-      <div className="border-b border-border px-6 py-4">
+      <div className="border-b border-stroke px-6 py-4">
         <WizardStepper
           label="Steps"
           current={state.step}
@@ -201,11 +201,11 @@ export function CreateWizard({ data }: { data: WizardData }) {
               id="wizard-step-title"
               ref={heading}
               tabIndex={-1}
-              className="text-lg font-semibold outline-none"
+              className="text-type-h6 font-semibold outline-none"
             >
               {title}
             </h2>
-            <p className="text-sm text-fg-muted">{hint}</p>
+            <p className="text-type-caption-1 text-sub-text">{hint}</p>
           </div>
           {state.step === "product" ? (
             <ProductStep data={data} state={state} update={update} />
@@ -221,11 +221,11 @@ export function CreateWizard({ data }: { data: WizardData }) {
             <ReviewStep data={data} state={state} update={update} />
           )}
         </section>
-        <div className="shrink-0 border-t border-border bg-canvas p-5 lg:w-wizard-dossier lg:border-t-0 lg:border-l">
+        <div className="shrink-0 border-t border-stroke bg-dashboard p-5 lg:w-wizard-dossier lg:border-t-0 lg:border-l">
           <Dossier data={data} state={state} briefing={briefing.status} />
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-3 border-t border-border px-6 py-3">
+      <div className="flex flex-wrap items-center gap-3 border-t border-stroke px-6 py-3">
         {back ? (
           <Button variant="outline" size="sm" onClick={() => open(back.id)}>
             <BackIcon aria-hidden />
@@ -234,11 +234,11 @@ export function CreateWizard({ data }: { data: WizardData }) {
         ) : null}
         <div className="ml-auto flex items-center gap-3">
           {buildError ? (
-            <p role="alert" className="text-sm text-danger">
+            <p role="alert" className="text-type-caption-1 text-text-danger">
               {buildError}
             </p>
           ) : !next ? (
-            <p className="hidden text-sm text-fg-muted sm:block">
+            <p className="hidden text-type-caption-1 text-sub-text sm:block">
               Builds in the background; you’ll see each step, then the page.
             </p>
           ) : null}

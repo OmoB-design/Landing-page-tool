@@ -5,14 +5,16 @@ import type { ProductDetail } from "@/lib/products/queries";
 /** The product's stored images (from the pull); replacing them comes with the editor. */
 export function ProductImages({ images }: { images: ProductDetail["images"] }) {
   if (images.length === 0) {
-    return <p className="text-sm text-fg-muted">No images found.</p>;
+    return (
+      <p className="text-type-caption-1 text-sub-text">No images found.</p>
+    );
   }
   return (
     <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
       {images.map((image, index) => (
         <li
           key={image.source_url}
-          className="flex aspect-square items-center justify-center overflow-hidden rounded-md border border-border bg-surface-muted"
+          className="flex aspect-square items-center justify-center overflow-hidden rounded-md border border-stroke bg-foreground-01"
         >
           {image.url ? (
             // Product images are stored in the public assets bucket.
@@ -23,7 +25,7 @@ export function ProductImages({ images }: { images: ProductDetail["images"] }) {
               className="size-full object-contain"
             />
           ) : (
-            <span className="flex flex-col items-center gap-1 p-2 text-center text-xs text-fg-subtle">
+            <span className="flex flex-col items-center gap-1 p-2 text-center text-type-caption-2 text-caption-1">
               <ImageIcon aria-hidden className="size-4" />
               Not downloaded
             </span>
@@ -46,7 +48,7 @@ export function ProductOptions({
 }) {
   if (variants.length === 0 && pricingLines.length === 0) {
     return (
-      <p className="text-sm text-fg-muted">
+      <p className="text-type-caption-1 text-sub-text">
         One option, no subscriptions found.
       </p>
     );
@@ -54,10 +56,10 @@ export function ProductOptions({
   return (
     <div className="flex flex-col gap-4">
       {variants.length > 0 ? (
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-type-caption-1">
           <caption className="sr-only">Options</caption>
-          <thead className="text-fg-muted">
-            <tr className="border-b border-border">
+          <thead className="text-sub-text">
+            <tr className="border-b border-stroke">
               <th scope="col" className="py-1.5 pr-3 font-medium">
                 Option
               </th>
@@ -79,19 +81,19 @@ export function ProductOptions({
               return (
                 <tr
                   key={`${variant.name}-${variant.price}`}
-                  className="border-b border-border last:border-0"
+                  className="border-b border-stroke last:border-0"
                 >
                   <td className="py-1.5 pr-3">{variant.name}</td>
                   <td className="py-1.5 pr-3 tabular-nums">
                     {price ?? "—"}
                     {onSale ? (
-                      <s className="ml-2 text-fg-subtle">
+                      <s className="ml-2 text-caption-1">
                         <span className="sr-only">was </span>
                         {was}
                       </s>
                     ) : null}
                   </td>
-                  <td className="py-1.5 text-fg-muted">
+                  <td className="py-1.5 text-sub-text">
                     {variant.available === null
                       ? "—"
                       : variant.available
@@ -106,8 +108,10 @@ export function ProductOptions({
       ) : null}
       {pricingLines.length > 0 ? (
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-sm font-medium text-fg-muted">Subscriptions</h3>
-          <ul className="flex flex-col gap-1 text-sm">
+          <h3 className="text-type-caption-1 font-medium text-sub-text">
+            Subscriptions
+          </h3>
+          <ul className="flex flex-col gap-1 text-type-caption-1">
             {pricingLines.map((line) => (
               <li key={line.label} className="flex justify-between gap-4">
                 <span>{line.label}</span>

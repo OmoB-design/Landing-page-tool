@@ -27,7 +27,7 @@ export function PalettePicker({
             <span
               aria-hidden
               style={{ backgroundColor: candidate.hex }}
-              className="size-4 shrink-0 rounded-xs border border-border"
+              className="size-4 shrink-0 rounded-xsm border border-stroke"
             />
             <span>Found as: {candidate.reason}.</span>
           </span>

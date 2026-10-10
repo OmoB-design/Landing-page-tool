@@ -5,9 +5,9 @@ import { AlertIcon } from "@/components/ui/icons";
 import type { BuildReport as Report } from "@/lib/validators/build";
 
 const SEVERITY_CLASS = {
-  high: "border-danger/30 bg-danger-soft text-danger",
-  medium: "border-warning/30 bg-warning-soft text-warning",
-  low: "border-border bg-surface-muted text-fg-muted",
+  high: "border-spot-500-red/30 bg-highlight-red-50 text-text-danger",
+  medium: "border-spot-500-yellow/30 bg-highlight-yellow-50 text-text-warning",
+  low: "border-stroke bg-foreground-01 text-sub-text",
 } as const;
 
 /** What the pipeline did and what needs attention (BUILD_SPEC §10.6, §11.1 banners). */
@@ -96,14 +96,14 @@ export function BuildReport({ report }: { report: Report }) {
       />
 
       {copy.review.length > 0 ? (
-        <details className="group flex flex-col gap-2 text-sm">
-          <summary className="w-fit cursor-pointer rounded-xs font-medium text-fg-muted hover:text-fg">
+        <details className="group flex flex-col gap-2 text-type-caption-1">
+          <summary className="w-fit cursor-pointer rounded-xsm font-medium text-sub-text hover:text-body">
             Copy changes ({copy.review.length})
           </summary>
           <ol className="mt-2 flex flex-col gap-3">
             {copy.review.map((change, index) => (
               <li key={index} className="flex flex-col gap-0.5">
-                <span className="text-fg-subtle line-through">
+                <span className="text-caption-1 line-through">
                   {change.original}
                 </span>
                 <span>{change.replacement || "(removed)"}</span>
@@ -114,29 +114,32 @@ export function BuildReport({ report }: { report: Report }) {
       ) : null}
 
       <section aria-labelledby="claims-title" className="flex flex-col gap-2">
-        <h3 id="claims-title" className="text-sm font-medium text-fg-muted">
+        <h3
+          id="claims-title"
+          className="text-type-caption-1 font-medium text-sub-text"
+        >
           Claims check
         </h3>
         {compliance.findings.length === 0 ? (
-          <p className="text-sm">Nothing flagged.</p>
+          <p className="text-type-caption-1">Nothing flagged.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {compliance.findings.map((finding) => (
               <li
                 key={`${finding.rule}-${finding.location}-${finding.text}`}
-                className="flex flex-col gap-1 text-sm"
+                className="flex flex-col gap-1 text-type-caption-1"
               >
                 <span className="flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className={`h-5 rounded-xs px-1.5 font-normal capitalize ${SEVERITY_CLASS[finding.severity]}`}
+                    className={`h-5 rounded-xsm px-1.5 font-normal capitalize ${SEVERITY_CLASS[finding.severity]}`}
                   >
                     {finding.severity}
                   </Badge>
-                  <span className="text-fg-muted">{finding.location}</span>
+                  <span className="text-sub-text">{finding.location}</span>
                 </span>
                 <span>“{finding.text}”</span>
-                <span className="text-fg-muted">{finding.reason}</span>
+                <span className="text-sub-text">{finding.reason}</span>
               </li>
             ))}
           </ul>
@@ -145,10 +148,13 @@ export function BuildReport({ report }: { report: Report }) {
 
       {report.warnings.length > 0 ? (
         <section aria-labelledby="notes-title" className="flex flex-col gap-2">
-          <h3 id="notes-title" className="text-sm font-medium text-fg-muted">
+          <h3
+            id="notes-title"
+            className="text-type-caption-1 font-medium text-sub-text"
+          >
             Notes
           </h3>
-          <ul className="flex list-disc flex-col gap-1 pl-4 text-sm">
+          <ul className="flex list-disc flex-col gap-1 pl-4 text-type-caption-1">
             {report.warnings.map((warning) => (
               <li key={warning}>{warning}</li>
             ))}
@@ -172,26 +178,26 @@ function Notice({
     <Alert
       className={
         tone === "danger"
-          ? "border-danger/30 bg-danger-soft"
-          : "border-warning/30 bg-warning-soft"
+          ? "border-spot-500-red/30 bg-highlight-red-50"
+          : "border-spot-500-yellow/30 bg-highlight-yellow-50"
       }
     >
       <AlertIcon
         aria-hidden
-        className={tone === "danger" ? "text-danger" : "text-warning"}
+        className={tone === "danger" ? "text-text-danger" : "text-text-warning"}
       />
-      <AlertTitle className="text-fg">{title}</AlertTitle>
-      <AlertDescription className="text-fg-muted">{children}</AlertDescription>
+      <AlertTitle className="text-body">{title}</AlertTitle>
+      <AlertDescription className="text-sub-text">{children}</AlertDescription>
     </Alert>
   );
 }
 
 function Facts({ rows }: { rows: [string, string][] }) {
   return (
-    <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
+    <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-type-caption-1">
       {rows.map(([label, value]) => (
         <div key={label} className="contents">
-          <dt className="text-fg-muted">{label}</dt>
+          <dt className="text-sub-text">{label}</dt>
           <dd className="col-span-2">{value}</dd>
         </div>
       ))}

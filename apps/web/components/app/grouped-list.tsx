@@ -87,16 +87,16 @@ export function ListGroup({
         <h2>
           <CollapsibleTrigger
             data-list-nav=""
-            className="group flex h-9 w-full items-center gap-2 bg-surface-muted px-6 text-left text-base font-medium -outline-offset-2 hover:bg-surface-hover"
+            className="group flex h-9 w-full items-center gap-2 bg-foreground-01 px-6 text-left text-type-body-small font-medium -outline-offset-2 hover:bg-foreground-02"
           >
             {glyph}
             <span>{label}</span>
-            <span className="text-sm font-normal text-fg-muted tabular-nums">
+            <span className="text-type-caption-1 font-normal text-sub-text tabular-nums">
               {count}
             </span>
             <ChevronDownIcon
               aria-hidden
-              className="size-3.5 text-fg-muted transition-transform duration-150 ease-out group-data-closed:-rotate-90 motion-reduce:transition-none"
+              className="size-3.5 text-sub-text transition-transform duration-150 ease-out group-data-closed:-rotate-90 motion-reduce:transition-none"
             />
           </CollapsibleTrigger>
         </h2>
@@ -135,7 +135,7 @@ export function ListRow({
 }: ListRowProps) {
   return (
     <li>
-      <div className="group/row flex h-row items-center gap-1 pr-4 hover:bg-surface-hover">
+      <div className="group/row flex h-row items-center gap-1 pr-4 hover:bg-foreground-02">
         <Link
           href={href}
           data-list-nav=""
@@ -145,7 +145,9 @@ export function ListRow({
           )}
         >
           {leading}
-          <span className="min-w-0 flex-1 truncate text-base">{title}</span>
+          <span className="min-w-0 flex-1 truncate text-type-body-small">
+            {title}
+          </span>
           {meta ? (
             <span className="hidden shrink-0 items-center gap-3 md:flex">
               {meta}

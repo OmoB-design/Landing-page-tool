@@ -18,7 +18,7 @@ export default function NewPage() {
     <>
       <PageHeader icon={PagesIcon} title="New page" />
       <PageBody width="2xl">
-        <p className="text-sm text-fg-muted">
+        <p className="text-type-caption-1 text-sub-text">
           Rebrand a proven template for a brand and product. It ends on the
           page’s build screen, then its review.
         </p>

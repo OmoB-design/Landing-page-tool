@@ -25,13 +25,13 @@ export function TemplateCard({
   return (
     <article
       aria-labelledby={titleId}
-      className="flex flex-col overflow-hidden rounded-lg border border-border bg-surface"
+      className="flex flex-col overflow-hidden rounded-lg border border-stroke bg-surface-primary"
     >
-      <div className="relative aspect-4/3 overflow-hidden border-b border-border bg-surface-muted">
+      <div className="relative aspect-4/3 overflow-hidden border-b border-stroke bg-foreground-01">
         {/* Shows while the thumbnail loads, or if there isn't one; the image paints over it. */}
         <TemplatesIcon
           aria-hidden
-          className="absolute inset-0 m-auto size-6 text-fg-subtle"
+          className="absolute inset-0 m-auto size-6 text-caption-1"
         />
         {/* Thumbnails come from private storage through an authenticated route. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -43,22 +43,22 @@ export function TemplateCard({
         />
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 id={titleId} className="text-base font-semibold">
+        <h3 id={titleId} className="text-type-body-small font-semibold">
           {template.name}
         </h3>
-        <p className="flex items-center gap-2 text-sm text-fg-muted">
+        <p className="flex items-center gap-2 text-type-caption-1 text-sub-text">
           <TypeGlyph type={template.type} />
           {templateTypeLabel(template.type)} · {template.sections}{" "}
           {template.sections === 1 ? "section" : "sections"}
         </p>
         {kind === "yours" ? (
-          <p className="text-sm text-fg-muted">
+          <p className="text-type-caption-1 text-sub-text">
             {template.parentName ? `From ${template.parentName} · ` : ""}
             Version {template.version} ·{" "}
             <RelativeTime date={template.updatedAt} />
           </p>
         ) : template.description ? (
-          <p className="line-clamp-2 text-sm text-fg-muted">
+          <p className="line-clamp-2 text-type-caption-1 text-sub-text">
             {template.description}
           </p>
         ) : null}

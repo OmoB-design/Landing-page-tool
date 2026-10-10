@@ -29,7 +29,7 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <header className="flex h-header shrink-0 items-center gap-3 border-b border-border px-5">
+    <header className="flex h-header shrink-0 items-center gap-3 border-b border-stroke px-5">
       <SidebarToggleButton
         action="open"
         className="-ml-1.5 lg:hidden lg:sidebar-collapsed:inline-flex"
@@ -38,11 +38,11 @@ export function PageHeader({
         {mark ? (
           mark
         ) : emoji ? (
-          <span aria-hidden className="text-md">
+          <span aria-hidden className="text-type-body-large">
             {emoji}
           </span>
         ) : null}
-        <h1 className="truncate text-base font-normal">{title}</h1>
+        <h1 className="truncate text-type-body-small font-normal">{title}</h1>
       </div>
       {tabs ? (
         <>

@@ -3,14 +3,14 @@ import { cn } from "@/lib/utils";
 // Workspace and people marks (D67): a letter on one of eight colours, picked from the name so
 // the same name always gets the same colour.
 const MARKS = [
-  "bg-mark-a",
-  "bg-mark-b",
-  "bg-mark-c",
-  "bg-mark-d",
-  "bg-mark-e",
-  "bg-mark-f",
-  "bg-mark-g",
-  "bg-mark-h",
+  "bg-avatar-a",
+  "bg-avatar-b",
+  "bg-avatar-c",
+  "bg-avatar-d",
+  "bg-avatar-e",
+  "bg-avatar-f",
+  "bg-avatar-g",
+  "bg-avatar-h",
 ] as const;
 
 export function markColour(name: string): (typeof MARKS)[number] {
@@ -31,7 +31,7 @@ export function WorkspaceMark({
     <span
       aria-hidden
       className={cn(
-        "flex size-5 shrink-0 items-center justify-center rounded-xs text-xs font-semibold text-white",
+        "flex size-5 shrink-0 items-center justify-center rounded-xsm text-type-caption-2 font-semibold text-white",
         markColour(name),
         className,
       )}
@@ -53,7 +53,7 @@ export function PersonMark({
     <span
       aria-hidden
       className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium text-white",
+        "flex size-6 shrink-0 items-center justify-center rounded-full text-type-caption-2 font-medium text-white",
         markColour(name),
         className,
       )}

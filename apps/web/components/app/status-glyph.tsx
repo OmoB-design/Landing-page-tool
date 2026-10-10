@@ -12,11 +12,11 @@ export type StatusGlyphKind =
   "building" | "needs_review" | "approved" | "published" | "failed";
 
 const GLYPHS: Record<StatusGlyphKind, { icon: Icon; className: string }> = {
-  building: { icon: StatusBuildingIcon, className: "text-fg-muted" },
-  needs_review: { icon: StatusReviewIcon, className: "text-warning" },
-  approved: { icon: StatusApprovedIcon, className: "text-accent" },
-  published: { icon: StatusPublishedIcon, className: "text-success" },
-  failed: { icon: StatusFailedIcon, className: "text-danger" },
+  building: { icon: StatusBuildingIcon, className: "text-sub-text" },
+  needs_review: { icon: StatusReviewIcon, className: "text-spot-500-yellow" },
+  approved: { icon: StatusApprovedIcon, className: "text-spot-500-indigo" },
+  published: { icon: StatusPublishedIcon, className: "text-spot-500-green" },
+  failed: { icon: StatusFailedIcon, className: "text-spot-500-red" },
 };
 
 /**

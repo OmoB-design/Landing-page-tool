@@ -55,7 +55,7 @@ async function Build({ params }: { params: Promise<{ buildId: string }> }) {
         title={`${build.key} · ${build.title}`}
         actions={
           group ? (
-            <span className="flex items-center gap-1.5 text-sm text-fg-muted">
+            <span className="flex items-center gap-1.5 text-type-caption-1 text-sub-text">
               <StatusGlyph status={group.id} />
               {group.label}
             </span>
@@ -63,11 +63,11 @@ async function Build({ params }: { params: Promise<{ buildId: string }> }) {
         }
       />
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="h-screen min-w-0 flex-1 bg-canvas p-4 lg:h-auto lg:p-6">
+        <div className="h-screen min-w-0 flex-1 bg-dashboard p-4 lg:h-auto lg:p-6">
           {ready ? (
             <BuildPreview buildId={build.id} version={build.updated_at} />
           ) : (
-            <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border-strong text-base text-fg-muted">
+            <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-stroke-strong text-type-body-small text-sub-text">
               {build.status === "failed"
                 ? "This build failed. The steps on the right say where."
                 : "The preview appears when the build finishes."}
@@ -76,7 +76,7 @@ async function Build({ params }: { params: Promise<{ buildId: string }> }) {
         </div>
         <aside
           aria-label="Build details"
-          className="flex w-full shrink-0 flex-col gap-6 overflow-y-auto border-t border-border p-4 lg:w-panel lg:border-t-0 lg:border-l"
+          className="flex w-full shrink-0 flex-col gap-6 overflow-y-auto border-t border-stroke p-4 lg:w-panel lg:border-t-0 lg:border-l"
         >
           <BuildProgress jobId={build.jobId} />
           {ready ? (

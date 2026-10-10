@@ -28,7 +28,7 @@ export function OptionCard({
   return (
     <label
       className={cn(
-        "relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-border bg-surface text-left hover:border-border-strong has-checked:border-accent has-checked:ring-1 has-checked:ring-accent has-focus-visible:ring-2 has-focus-visible:ring-ring has-disabled:cursor-not-allowed has-disabled:opacity-50",
+        "relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-stroke bg-surface-primary text-left hover:border-stroke-strong has-checked:border-spot-500-indigo has-checked:ring-1 has-checked:ring-spot-500-indigo has-focus-visible:ring-2 has-focus-visible:ring-ring has-disabled:cursor-not-allowed has-disabled:opacity-50",
         className,
       )}
     >

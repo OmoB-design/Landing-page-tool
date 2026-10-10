@@ -72,20 +72,20 @@ export function JobTray({
           <button
             type="button"
             aria-label={label}
-            className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-base text-fg outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-surface-hover"
+            className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-foreground-02"
           >
             <JobsIcon
               aria-hidden
               className={cn(
                 "size-4 shrink-0",
-                running > 0 ? "text-accent" : "text-fg-muted",
+                running > 0 ? "text-spot-500-indigo" : "text-sub-text",
               )}
             />
             <span className="truncate">Jobs</span>
             {running > 0 ? (
               <span
                 aria-hidden
-                className="ml-auto rounded-xs bg-surface-hover px-1.5 text-sm text-fg-muted tabular-nums"
+                className="ml-auto rounded-xsm bg-foreground-02 px-1.5 text-type-caption-1 text-sub-text tabular-nums"
               >
                 {running}
               </span>
@@ -109,12 +109,12 @@ export function JobTray({
             >
               <JobsIcon
                 aria-hidden
-                className={cn(running > 0 && "text-accent")}
+                className={cn(running > 0 && "text-spot-500-indigo")}
               />
               {running > 0 ? (
                 <span
                   aria-hidden
-                  className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-accent text-xs font-medium text-surface tabular-nums"
+                  className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-spot-500-indigo text-type-caption-2 font-medium text-on-dark tabular-nums"
                 >
                   {running}
                 </span>
@@ -139,7 +139,7 @@ function JobList({
 }) {
   return (
     <>
-      <h2 className="border-b border-border px-3 py-2 text-sm font-medium">
+      <h2 className="border-b border-stroke px-3 py-2 text-type-caption-1 font-medium">
         Jobs
       </h2>
       {isPending ? (
@@ -148,7 +148,7 @@ function JobList({
           <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
         </div>
       ) : jobs.length === 0 ? (
-        <p className="px-3 py-6 text-center text-sm text-fg-muted">
+        <p className="px-3 py-6 text-center text-type-caption-1 text-sub-text">
           No jobs yet
         </p>
       ) : (
@@ -169,19 +169,21 @@ function JobItem({ job }: { job: JobSummary }) {
       ? job.error?.message
       : (job.latest?.message ?? <ShimmerText>Waiting to start…</ShimmerText>);
   return (
-    <li className="flex flex-col gap-1.5 border-b border-border px-3 py-2.5 last:border-b-0">
+    <li className="flex flex-col gap-1.5 border-b border-stroke px-3 py-2.5 last:border-b-0">
       <div className="flex items-center gap-2">
         <JobStatusIcon status={job.status} />
-        <span className="text-base font-medium">{jobTitle(job.kind)}</span>
-        <span className="ml-auto text-xs text-fg-muted">
+        <span className="text-type-body-small font-medium">
+          {jobTitle(job.kind)}
+        </span>
+        <span className="ml-auto text-type-caption-2 text-sub-text">
           {STATUS_LABELS[job.status]}
         </span>
       </div>
       {line ? (
         <p
           className={cn(
-            "truncate text-sm text-fg-muted",
-            job.status === "failed" && "text-danger",
+            "truncate text-type-caption-1 text-sub-text",
+            job.status === "failed" && "text-text-danger",
           )}
         >
           {line}
@@ -193,7 +195,10 @@ function JobItem({ job }: { job: JobSummary }) {
           aria-label={`${jobTitle(job.kind)} progress`}
         />
       ) : null}
-      <time dateTime={job.created_at} className="text-xs text-fg-subtle">
+      <time
+        dateTime={job.created_at}
+        className="text-type-caption-2 text-caption-1"
+      >
         Started{" "}
         {formatDistanceToNowStrict(new Date(job.created_at), {
           addSuffix: true,
@@ -207,19 +212,21 @@ function JobStatusIcon({ status }: { status: JobStatus }) {
   switch (status) {
     case "queued":
       return (
-        <StatusBuildingIcon aria-hidden className="size-4 text-fg-muted" />
+        <StatusBuildingIcon aria-hidden className="size-4 text-sub-text" />
       );
     case "running":
       return (
         <LoadingIcon
           aria-hidden
-          className="size-4 animate-spin text-accent motion-reduce:animate-spin-slow"
+          className="size-4 animate-spin text-spot-500-indigo motion-reduce:animate-spin-slow"
         />
       );
     case "succeeded":
-      return <CheckIcon aria-hidden className="size-4 text-success" />;
+      return <CheckIcon aria-hidden className="size-4 text-spot-500-green" />;
     default:
-      return <StatusFailedIcon aria-hidden className="size-4 text-danger" />;
+      return (
+        <StatusFailedIcon aria-hidden className="size-4 text-spot-500-red" />
+      );
   }
 }
 

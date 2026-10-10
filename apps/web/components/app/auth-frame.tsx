@@ -19,31 +19,35 @@ export function AuthFrame({
   footer,
 }: AuthFrameProps) {
   return (
-    <GridBackground className="min-h-dvh bg-canvas">
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-12 text-fg">
+    <GridBackground className="min-h-dvh bg-dashboard">
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-12 text-body">
         {/* Placeholder name and mark until the product is named (DECISIONS.md O1). */}
         <div className="flex items-center gap-2">
           <span
             aria-hidden
-            className="flex size-6 items-center justify-center rounded-sm bg-fg text-xs font-semibold text-surface"
+            className="flex size-6 items-center justify-center rounded-sm bg-body text-type-caption-2 font-semibold text-surface-primary"
           >
             LP
           </span>
-          <span className="text-md font-semibold">LP Platform</span>
+          <span className="text-type-body-large font-semibold">
+            LP Platform
+          </span>
         </div>
-        <div className="flex w-full max-w-sm flex-col gap-5 rounded-lg border border-border bg-surface p-6">
+        <div className="flex w-full max-w-sm flex-col gap-5 rounded-lg border border-stroke bg-surface-primary p-6">
           <div className="flex flex-col gap-1">
-            <h1 className="font-serif text-3xl font-normal tracking-tight">
+            <h1 className="font-serif text-type-h4 font-normal tracking-tight">
               {title}
             </h1>
             {description ? (
-              <p className="text-base text-fg-muted">{description}</p>
+              <p className="text-type-body-small text-sub-text">
+                {description}
+              </p>
             ) : null}
           </div>
           {children}
         </div>
         {footer ? (
-          <div className="text-base text-fg-muted">{footer}</div>
+          <div className="text-type-body-small text-sub-text">{footer}</div>
         ) : null}
       </main>
     </GridBackground>
@@ -52,4 +56,4 @@ export function AuthFrame({
 
 /** An underlined text link for auth footers and messages. */
 export const authLinkClass =
-  "font-medium text-fg underline underline-offset-4 hover:text-fg-muted";
+  "font-medium text-body underline underline-offset-4 hover:text-sub-text";

@@ -12,17 +12,25 @@ export function FormStatus({
 }) {
   if (error) {
     return (
-      <Alert variant="destructive" className="border-danger/30 bg-danger-soft">
+      <Alert
+        variant="destructive"
+        className="border-spot-500-red/30 bg-highlight-red-50"
+      >
         <AlertIcon aria-hidden />
-        <AlertDescription className="text-danger">{error}</AlertDescription>
+        <AlertDescription className="text-text-danger">
+          {error}
+        </AlertDescription>
       </Alert>
     );
   }
   if (message) {
     return (
-      <Alert role="status" className="border-success/30 bg-success-soft">
-        <MailIcon aria-hidden className="text-success" />
-        <AlertDescription className="text-fg">{message}</AlertDescription>
+      <Alert
+        role="status"
+        className="border-spot-500-green/30 bg-highlight-green-50"
+      >
+        <MailIcon aria-hidden className="text-text-success" />
+        <AlertDescription className="text-body">{message}</AlertDescription>
       </Alert>
     );
   }

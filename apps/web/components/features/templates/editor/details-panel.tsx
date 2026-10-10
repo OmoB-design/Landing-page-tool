@@ -110,27 +110,27 @@ export function DetailsPanel({
         {facts.map(([label, value]) => (
           <div
             key={label}
-            className="flex items-baseline justify-between gap-4 rounded-md bg-surface-muted px-3 py-2 text-sm"
+            className="flex items-baseline justify-between gap-4 rounded-md bg-foreground-01 px-3 py-2 text-type-caption-1"
           >
-            <dt className="text-fg-muted">{label}</dt>
+            <dt className="text-sub-text">{label}</dt>
             <dd className="truncate">{value}</dd>
           </div>
         ))}
       </dl>
 
       <section className="flex flex-col gap-3">
-        <h2 className="flex items-center gap-2 text-base font-medium">
-          <HistoryIcon aria-hidden className="size-4 text-fg-muted" />
+        <h2 className="flex items-center gap-2 text-type-body-small font-medium">
+          <HistoryIcon aria-hidden className="size-4 text-sub-text" />
           Version history
         </h2>
-        <p className="text-sm text-fg-muted">
+        <p className="text-type-caption-1 text-sub-text">
           Every change is saved. The newest 12 versions are kept.
         </p>
         <ol className="flex flex-col gap-1.5">
           {state.versions.map((version) => (
             <li
               key={version.version}
-              className="flex items-center gap-3 rounded-md bg-surface-muted px-3 py-2 text-sm"
+              className="flex items-center gap-3 rounded-md bg-foreground-01 px-3 py-2 text-type-caption-1"
             >
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex items-center gap-2 font-medium">
@@ -139,7 +139,7 @@ export function DetailsPanel({
                     <Badge variant="outline">Current</Badge>
                   ) : null}
                 </span>
-                <span className="truncate text-fg-muted">
+                <span className="truncate text-sub-text">
                   {version.reason ?? "Saved"}
                 </span>
               </span>

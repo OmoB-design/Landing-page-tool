@@ -27,18 +27,20 @@ export function ProductsList({
               meta={
                 <>
                   {sale ? (
-                    <span className="text-sm tabular-nums">
+                    <span className="text-type-caption-1 tabular-nums">
                       {sale}{" "}
-                      <s className="text-fg-subtle">
+                      <s className="text-caption-1">
                         <span className="sr-only">was </span>
                         {regular}
                       </s>
                     </span>
                   ) : regular ? (
-                    <span className="text-sm tabular-nums">{regular}</span>
+                    <span className="text-type-caption-1 tabular-nums">
+                      {regular}
+                    </span>
                   ) : null}
                   {product.variantCount > 0 ? (
-                    <span className="text-sm text-fg-muted tabular-nums">
+                    <span className="text-type-caption-1 text-sub-text tabular-nums">
                       {product.variantCount}{" "}
                       {product.variantCount === 1 ? "option" : "options"}
                     </span>
@@ -56,13 +58,13 @@ export function ProductsList({
 
 function Thumbnail({ src }: { src: string | null }) {
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-xs border border-border bg-surface-muted">
+    <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-xsm border border-stroke bg-foreground-01">
       {src ? (
         // Product images are stored in the public assets bucket.
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" className="size-full object-cover" />
       ) : (
-        <ImageIcon aria-hidden className="size-3.5 text-fg-subtle" />
+        <ImageIcon aria-hidden className="size-3.5 text-caption-1" />
       )}
     </span>
   );

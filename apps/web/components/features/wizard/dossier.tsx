@@ -24,9 +24,9 @@ function Rows({ rows }: { rows: [string, string][] }) {
       {rows.map(([label, value]) => (
         <div
           key={label}
-          className="flex items-baseline justify-between gap-4 border-b border-border py-2 text-sm last:border-b-0"
+          className="flex items-baseline justify-between gap-4 border-b border-stroke py-2 text-type-caption-1 last:border-b-0"
         >
-          <dt className="shrink-0 text-fg-muted">{label}</dt>
+          <dt className="shrink-0 text-sub-text">{label}</dt>
           <dd className="truncate text-right font-medium">{value}</dd>
         </div>
       ))}
@@ -94,11 +94,11 @@ export function Dossier({
 
   return (
     <aside aria-labelledby="dossier-title" className="flex flex-col gap-5">
-      <h2 id="dossier-title" className="text-base font-semibold">
+      <h2 id="dossier-title" className="text-type-body-small font-semibold">
         Brand dossier
       </h2>
       {!product ? (
-        <p className="text-sm text-fg-muted">
+        <p className="text-type-caption-1 text-sub-text">
           Choose a brand and product to see what the copywriter will work from.
         </p>
       ) : (
@@ -109,30 +109,30 @@ export function Dossier({
               <img
                 src={product.imageUrl}
                 alt=""
-                className="size-16 shrink-0 rounded-md border border-border bg-surface object-contain"
+                className="size-16 shrink-0 rounded-md border border-stroke bg-surface-primary object-contain"
               />
             ) : null}
             <div className="flex min-w-0 flex-col">
-              <span className="truncate text-sm text-fg-muted">
+              <span className="truncate text-type-caption-1 text-sub-text">
                 {brand?.name}
               </span>
-              <span className="truncate text-base font-medium">
+              <span className="truncate text-type-body-small font-medium">
                 {product.name}
               </span>
-              <span className="text-sm text-fg-muted tabular-nums">
+              <span className="text-type-caption-1 text-sub-text tabular-nums">
                 {product.price ?? "No price"}
               </span>
             </div>
           </div>
           {brand && brand.colours.length > 0 ? (
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="text-fg-muted">Brand colours</span>
+            <div className="flex items-center justify-between gap-3 text-type-caption-1">
+              <span className="text-sub-text">Brand colours</span>
               <span className="flex items-center gap-1">
                 {brand.colours.map((colour) => (
                   <span
                     key={colour}
                     title={colour}
-                    className="size-5 rounded-full border border-border"
+                    className="size-5 rounded-full border border-stroke"
                     // The brand's own colour (data, not app styling).
                     style={{ backgroundColor: colour }}
                   />
@@ -149,10 +149,10 @@ export function Dossier({
                 <li
                   key={label}
                   className={cn(
-                    "flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-sm",
+                    "flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-type-caption-1",
                     has
-                      ? "border-success text-success"
-                      : "border-border text-fg-subtle line-through",
+                      ? "border-spot-500-green text-text-success"
+                      : "border-stroke text-caption-1 line-through",
                   )}
                 >
                   {has ? (
@@ -165,9 +165,9 @@ export function Dossier({
                 </li>
               ))}
             </ul>
-            <p className="text-sm text-fg-muted">
+            <p className="text-type-caption-1 text-sub-text">
               The copywriter writes from these facts. Briefing:{" "}
-              <span className="font-medium text-fg">
+              <span className="font-medium text-body">
                 {BRIEFING_LABEL[briefing]}
               </span>
             </p>
@@ -176,12 +176,12 @@ export function Dossier({
       )}
       {template ? (
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm text-fg-muted">Template</h3>
+          <h3 className="text-type-caption-1 text-sub-text">Template</h3>
           <div className="flex items-center gap-3">
-            <span className="relative block h-12 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-surface-muted">
+            <span className="relative block h-12 w-16 shrink-0 overflow-hidden rounded-md border border-stroke bg-foreground-01">
               <TemplatesIcon
                 aria-hidden
-                className="absolute inset-0 m-auto size-4 text-fg-subtle"
+                className="absolute inset-0 m-auto size-4 text-caption-1"
               />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -190,7 +190,7 @@ export function Dossier({
                 className="relative size-full object-cover object-top"
               />
             </span>
-            <span className="min-w-0 truncate text-sm font-medium">
+            <span className="min-w-0 truncate text-type-caption-1 font-medium">
               {template.name}
             </span>
           </div>
@@ -198,7 +198,7 @@ export function Dossier({
       ) : null}
       {choices.length > 0 ? (
         <div className="flex flex-col gap-1">
-          <h3 className="text-sm text-fg-muted">Your choices</h3>
+          <h3 className="text-type-caption-1 text-sub-text">Your choices</h3>
           <Rows rows={choices} />
         </div>
       ) : null}

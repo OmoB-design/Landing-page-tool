@@ -32,13 +32,13 @@ export function OrgSwitcher({
         <button
           type="button"
           aria-label={`Organisation: ${currentOrg.name}. Switch organisation`}
-          className="flex h-8 min-w-0 items-center gap-2 rounded-sm px-1.5 text-md font-medium hover:bg-surface-hover"
+          className="flex h-8 min-w-0 items-center gap-2 rounded-sm px-1.5 text-type-body-large font-medium hover:bg-foreground-02"
         >
           <WorkspaceMark name={currentOrg.name} />
           <span className="truncate">{currentOrg.name}</span>
           <ChevronDownIcon
             aria-hidden
-            className="size-3.5 shrink-0 text-fg-muted"
+            className="size-3.5 shrink-0 text-sub-text"
           />
         </button>
       </DropdownMenuTrigger>
