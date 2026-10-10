@@ -2,6 +2,8 @@
 
 ## 1. Intent
 
+**D67 (2026-10-10, owner):** the app now takes the look and layout of the Quality app (usequality.app; not the owner's product, so its look is matched but not its name, logo, wording or artwork). One sidebar on a light grey canvas, the page in a floating white panel with a 48 px text header, Inter at 13 px with Crimson Pro serif greetings, Quality's greys (including its `#8d8d8d` secondary text, the owner's choice), an indigo primary, 6 px controls and 10 px panels. The Notion-like description below is the original intent (D19) and is kept for history; the anatomy in §2 starts with the current layout.
+
 A calm, dense, Notion-like workspace: neutral surfaces, hairline borders, compact type, quiet hover states, colour used sparingly for status and identity. The tool is used for hours by operators reviewing many pages, so it should feel like a productivity app, not a marketing site.
 
 The owner supplied a reference screenshot (a work-management app: icon rail, secondary sidebar, tabbed project header, grouped issue list). Copy its **structure and density**, not its brand, logo, product names or icons.
@@ -11,7 +13,41 @@ The owner supplied a reference screenshot (a work-management app: icon rail, sec
 
 ---
 
-## 2. Layout anatomy (from the reference)
+## 2. Layout anatomy
+
+**Current (D67):**
+```
+┌──────────────┬──────────────────────────────────────────────────┐
+│ [B] Org ▾  ◧ │ ╭──────────────────────────────────────────────╮ │  canvas #f9f9f9
+│              │ │ Page title  │ Tabs …                Actions │ │  PageHeader 48px
+│ ⌂ Home       │ ├──────────────────────────────────────────────┤ │
+│ + New page   │ │                                              │ │
+│ ⌕ Search  ⌘K │ │  page content (centred column or full width) │ │
+│ 🔔 Notifications 43                                           │ │
+│ ⟳ Jobs       │ │                                              │ │
+│ Workspace ▾  │ │                                              │ │
+│  Pages       │ │                                              │ │
+│  Templates   │ │                                              │ │
+│  Brands      │ │                                              │ │
+│  Library     │ │                                              │ │
+│  Analytics   │ │                                              │ │
+│ Your brands ▾│ │                                              │ │
+│  ■ Allbirds  │ │                                              │ │
+│ ╭──────────╮ │ │                                              │ │
+│ │◔ Getting │ │ │                                              │ │
+│ │  started │ │ │                                              │ │
+│ │○ steps … │ │ │                                              │ │
+│ ╰──────────╯ │ │                                              │ │
+│ ⚙ Settings   │ │                                              │ │
+│ (B) Account  │ ╰──────────────────────────────────────────────╯ │  white panel, 6px inset,
+└──────────────┴──────────────────────────────────────────────────┘  10px corners
+  sidebar 236px
+```
+- **Sidebar** (on the canvas): the workspace menu (coloured letter mark, name, chevron; lists orgs) and the collapse button; Home, New page, Search (⌘K, not built), Notifications and Jobs rows with counts (popovers open to the right); collapsible **Workspace** and **Your brands** groups with a small filled caret; the **getting-started card** (`SidebarSetup`: a progress ring, "Getting started", "N/5 steps completed", the five steps as links with a circle that becomes a tick; the chevron folds it, remembered in the browser; gone once every step is done), then Settings and the account row (avatar and name; the account menu opens upward) at the bottom. Current item and hover: `surface-hover`.
+- **Page panel:** white, 6 px from the window edges, 10 px corners, a hairline border. Each page starts with `PageHeader` (48 px: a mark if any, the title in 13 px regular, a divider, tabs, actions on the right; no section icons). These sizes were measured from the owner's Quality screenshots. On small screens, or with the sidebar collapsed, the header shows the open-sidebar button.
+- **No icon rail and no top bar** (removed in D67).
+
+**Before D67 (the original reference):**
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
@@ -76,46 +112,61 @@ Right side of each row (not visible in the screenshot, add it): origin badge (Ow
 
 ---
 
-## 4. Tokens (Phase 1 starting values)
+## 4. Tokens (D67: Quality's values)
 
-Declare in `apps/web/app/globals.css` with Tailwind v4 `@theme`. These are starting values eyeballed from the reference; **Figma replaces them in Phase 2.** Use semantic names so components never reference raw values.
+Declared in `apps/web/app/globals.css` with Tailwind v4 `@theme`; the block below mirrors it. Since D67 (2026-10-10) the values follow the Quality app's public design tokens (Inter and Crimson Pro, its grey scale, indigo primary, 6 px / 10 px corners, its control shadows, its dark values). **Figma replaces them when the owner provides frames.** Use semantic names so components never reference raw values. Fonts come from `next/font` (`--font-inter`, `--font-jetbrains-mono`, `--font-crimson`) and map to `font-sans`, `font-mono`, `font-serif`.
 
 ```css
-@import "tailwindcss";
-
 @theme {
-  /* Typography */
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --text-xs: 0.6875rem;   /* 11px rail labels */
-  --text-sm: 0.8125rem;   /* 13px group labels, meta */
-  --text-base: 0.875rem;  /* 14px body, rows, nav */
-  --text-md: 1rem;        /* 16px sidebar title */
-  --text-lg: 1.125rem;    /* 18px page header */
-  --text-xl: 1.375rem;    /* 22px page titles in empty states */
+  /* Typography (Quality: Inter 13 px interface, Crimson Pro display) */
+  --text-xs: 0.6875rem; /* 11px badges */
+  --text-sm: 0.75rem; /* 12px group labels, meta */
+  --text-sm--line-height: 1.5;
+  --text-base: 0.8125rem; /* 13px body, rows, nav, controls */
+  --text-base--line-height: 1.5;
+  --text-md: 0.875rem; /* 14px page header titles */
+  --text-lg: 1rem; /* 16px section titles */
+  --text-xl: 1.375rem; /* 22px page titles in empty states */
+  --text-display: 2.25rem; /* 36px serif greetings */
+  --text-display--line-height: 1.15;
 
   /* Neutrals (light) */
-  --color-canvas: #f7f7f8;        /* app background, rail */
-  --color-surface: #ffffff;       /* sidebar, main pane, cards */
-  --color-surface-muted: #f3f3f4; /* group bands, primary-action bg, search bg */
-  --color-surface-hover: #f0f0f1;
-  --color-surface-active: #e9e9eb;
-  --color-border: #ebebed;
-  --color-border-strong: #dcdcdf;
-  --color-fg: #1f1f22;
-  --color-fg-muted: #6b6b73;
-  --color-fg-subtle: #9a9aa2;
+  --color-canvas: #f9f9f9; /* app background, sidebar */
+  --color-surface: #ffffff; /* the page panel, cards, menus */
+  --color-surface-muted: #f5f5f5; /* fields, bands, chips */
+  --color-surface-hover: #f0f0f0; /* hover, the current nav item */
+  --color-surface-active: #e6e6e6; /* pressed */
+  --color-border: #f0f0f0; /* dividers, panel edges */
+  --color-border-strong: #e6e6e6; /* inputs, cards, outline buttons */
+  --color-fg: #2a2a2a;
+  --color-fg-muted: #8d8d8d; /* secondary text and icons (owner chose Quality's grey) */
+  --color-fg-subtle: #b2b2b2;
 
   /* Accent and status */
-  --color-accent: #3f76ff;
-  --color-accent-soft: #e8efff;
-  --color-success: #1f9d55;
-  --color-success-soft: #e6f6ec;
-  --color-warning: #c27c0e;
-  --color-warning-soft: #fdf3e1;
-  --color-danger: #d93f3f;
-  --color-danger-soft: #fdecec;
-  /* B1.1b: section editor selection, hover outline and item numbers (owner's reference) */
+  --color-accent: #5c5aed; /* primary buttons, links, focus */
+  --color-accent-strong: #3f3ccd; /* primary hover */
+  --color-accent-soft: #e0e0f9;
+  --color-success: #099137;
+  --color-success-soft: #daf1e2;
+  --color-warning: #dd900d;
+  --color-warning-soft: #fdeed4;
+  --color-danger: #cb1a14;
+  --color-danger-soft: #f9dddd;
+
+  /* Marks: workspace and people avatars take one of these by name (Quality's A–H set). */
+  --color-mark-a: #216e55;
+  --color-mark-b: #0c756e;
+  --color-mark-c: #c23f09;
+  --color-mark-d: #526e0c;
+  --color-mark-e: #6d28d8;
+  --color-mark-f: #b8570b;
+  --color-mark-g: #37364f;
+  --color-mark-h: #bd0f2c;
+  --color-mark-a-soft: #c2f3e2;
+  --color-mark-b-soft: #cbfaf2;
+  --color-mark-c-soft: #ffedd5;
+  --color-mark-e-soft: #ece9fe;
+  /* Section editor: selected and hovered sections, numbered items (B1.1b, owner's reference) */
   --color-highlight: #c98a12;
   --color-highlight-soft: #fbf1dc;
 
@@ -126,48 +177,66 @@ Declare in `apps/web/app/globals.css` with Tailwind v4 `@theme`. These are start
   --color-glyph-comparison: #2fb36e;
   --color-glyph-longform: #3f76ff;
 
-  /* Radius */
+  /* Radius (Quality: 6 px controls, 10 px panels and cards) */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-lg: 10px;
 
-  /* Layout. B0.3: renamed from --size-* to --spacing-* (D36); Tailwind v4 only generates
-     w-/h-/size- utilities from the spacing namespace: w-rail, w-sidebar, h-topbar, h-row, h-nav-item. */
-  --spacing-rail: 64px;
-  --spacing-sidebar: 260px;
-  --spacing-topbar: 48px;
+  /* Layout. DESIGN.md names these --size-*; Tailwind v4 only builds w-/h-/size- utilities from
+     the --spacing-* namespace, so they live here (w-rail, w-sidebar, h-topbar, h-row, h-nav-item). */
+  --spacing-sidebar: 248px;
+  --spacing-topbar: 48px; /* the section editor's own top bar */
+  --spacing-header: 52px; /* page header inside the panel (h-header) */
   --spacing-row: 40px;
   --spacing-nav-item: 32px;
-  --spacing-panel: 384px;           /* B0.6a: build page right panel */
-  --spacing-preview-mobile: 390px;  /* B0.6a: phone-width preview */
-  --spacing-editor-panel: 440px;    /* B1.1b: section editor left panel */
-  --spacing-wizard-dossier: 300px;  /* B1.2: create wizard dossier */
+  --spacing-panel: 384px; /* right-hand panel on the build page (w-panel) */
+  --spacing-preview-mobile: 390px; /* phone-width page preview (w-preview-mobile) */
+  --spacing-editor-panel: 440px; /* section editor's left panel (w-editor-panel) */
+  --spacing-wizard-dossier: 300px; /* create wizard's dossier panel (w-wizard-dossier) */
 
-  /* Shadow (used rarely: popovers, menus, dialogs) */
+  /* Motion (D51, DESIGN.md §6): strong custom curves; the built-in ones are too weak. */
+  --ease-out: cubic-bezier(
+    0.23,
+    1,
+    0.32,
+    1
+  ); /* enter/exit, presses, popovers */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* things moving on screen */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* sheets and drawers */
+  --animate-spin: spin 0.7s linear infinite; /* a fast spinner reads as a fast app */
+  --animate-spin-slow: spin 1.6s linear infinite; /* reduced motion: slower, not stopped */
+
+  /* Shadow (Quality): outline buttons get a soft lift; primary buttons an inner bottom edge. */
   --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
+  --shadow-control:
+    0 0 0 0.5px rgb(61 59 53 / 0.1), 0 1px 1px rgb(0 0 0 / 0.1),
+    0 1px 5px rgb(61 59 53 / 0.05);
+  --shadow-edge: inset 0 -0.5px 0 0.3px rgb(0 0 0 / 0.15);
+  --shadow-panel: 0 0 0 0.5px rgb(61 59 53 / 0.04), 0 1px 2px rgb(0 0 0 / 0.03);
 }
-
-/* Dark theme: same token names, different values */
 .dark {
-  --color-canvas: #141416;
-  --color-surface: #1b1b1e;
-  --color-surface-muted: #222226;
-  --color-surface-hover: #26262a;
-  --color-surface-active: #2e2e33;
-  --color-border: #2a2a2f;
-  --color-border-strong: #36363c;
-  --color-fg: #ededf0;
-  --color-fg-muted: #a1a1aa;
-  --color-fg-subtle: #71717a;
-  --color-accent-soft: #1d2a4d;
-  --color-success-soft: #15301f; /* B0.3b */
-  --color-warning-soft: #36290f; /* B0.3b */
-  --color-danger-soft: #3a1b1c;  /* B0.3b */
-  --color-highlight: #e3a93b;    /* B1.1b */
+  /* Quality's dark values. */
+  --color-canvas: #090909;
+  --color-surface: #121212;
+  --color-surface-muted: #212121;
+  --color-surface-hover: #2a2a2a;
+  --color-surface-active: #3d3d3d;
+  --color-border: #212121;
+  --color-border-strong: #2a2a2a;
+  --color-fg: #f5f5f5;
+  --color-fg-muted: #b2b2b2;
+  --color-fg-subtle: #595959;
+  --color-accent: #615cf5;
+  --color-accent-strong: #3f3ccd;
+  --color-accent-soft: #24224f;
+  /* B0.3b: the soft status backgrounds also need dark values, or chips glare on dark surfaces. */
+  --color-success-soft: #13301d;
+  --color-warning-soft: #36290f;
+  --color-danger-soft: #3a1b1c;
+  --color-highlight: #e3a93b;
   --color-highlight-soft: #3a2c12;
-}
-```
+}```
 
 Map shadcn's CSS variables (`--background`, `--foreground`, `--muted`, `--border`, `--ring`, `--primary`, etc.) onto these semantic tokens in `globals.css`, so shadcn components inherit the style without per-component overrides.
 
@@ -178,7 +247,8 @@ Rules:
 - Spacing on a 4 px grid.
 - Numbers in lists (keys, counts, costs) use `tabular-nums`.
 - Focus ring: 2 px `--color-accent` at 40 % opacity, offset 1 px; always visible on keyboard focus.
-- The root font size stays at the browser's 16 px, so rem-based tokens resolve to their stated sizes; the 14 px body size is set on `body`, never on `html` (B0.3b fix).
+- The root font size stays at the browser's 16 px, so rem-based tokens resolve to their stated sizes; the 13 px body size (D67; 14 px before) is set on `body`, never on `html` (B0.3b fix).
+- `font-serif` (Crimson Pro) is for page greetings and big titles only (Home's "Welcome", the sign-in card); everything else is Inter.
 
 ---
 
@@ -192,10 +262,11 @@ Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, She
 
 | Component | Purpose |
 |---|---|
-| `AppShell` | Grid: TopBar, IconRail, Sidebar, main. Handles sidebar collapse (persist in a cookie, not localStorage on server). |
-| `TopBar` | Org switcher, search (Command palette ⌘K), notifications bell, user menu. |
-| `OrgSwitcher` | Logo mark + name + chevron; dropdown of orgs; "Create org". |
-| `IconRail` / `RailItem` | Icon + label, active state. |
+| `AppShell` | *D67:* the sidebar on the canvas and the page in a floating white panel (`main`). Handles sidebar collapse (persisted in a cookie) and the mobile sheet. |
+| `SidebarNav` | *D67:* workspace menu and collapse; Home, New page, Search, Notifications and Jobs rows; Workspace and Your brands groups; Settings and the account row. |
+| `OrgSwitcher` | Coloured letter mark (`WorkspaceMark`) + name + chevron; dropdown of orgs. |
+| `WorkspaceMark` / `PersonMark` | *D67:* a letter on one of eight colours picked from the name (`components/app/mark.tsx`). |
+| ~~`TopBar`~~, ~~`IconRail`~~ | Removed in D67. |
 | `Sidebar` / `SidebarHeader` / `SidebarAction` / `NavItem` / `NavGroup` | The secondary navigation. |
 | `PageHeader` | Icon/emoji + title + divider + `SegmentedTabs`. |
 | `SegmentedTabs` | Pill tabs with active underline. |
@@ -208,7 +279,7 @@ Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, She
 | `ScoreChip` | Residue score with colour by threshold. |
 | `CostLabel` | `$1.84` muted. |
 | `Banner` | Red/amber/green banners on the review desk. |
-| `JobTray` | Running jobs toasts with live progress lines. B0.4a: top-bar button with running count + popover of recent jobs; toasts via `Toaster` (sonner, follows the theme). |
+| `JobTray` | Running jobs toasts with live progress lines. B0.4a: button with running count + popover of recent jobs; toasts via `Toaster` (sonner, follows the theme). *D67:* a sidebar row ("Jobs" with the running count; popover opens to the right). `NotificationsButton` likewise ("Notifications" with the unread count). |
 | `PreviewFrame` | Sandboxed iframe with desktop/mobile toggle and zoom. |
 | `SectionRail` | Draggable section list (reorder, remove, duplicate, rename). |
 | `WizardStepper` | Step indicator for the create wizard. *B1.2:* horizontal step bar (number, tick when done, current step filled, joining lines, unavailable steps disabled; compact "Step N of M" with a progress line when narrow), `components/app/wizard-stepper.tsx`. |
@@ -258,7 +329,7 @@ Feature UIs (wizard steps, review desk panels, brand DNA form, template gallery)
 
 | Route | Screen | Key components |
 |---|---|---|
-| `/home` | Pipeline overview: running jobs, needs review, recent publishes | GroupedList, JobTray |
+| `/home` | *D67:* the person's mark, a serif "Welcome, <first name>", three getting-started cards (Add a brand, Pick a template, Create a page; each with a drawing of our own screens on a soft tint, a Done badge once its step is done). The getting-started checklist lives in the sidebar. A pipeline overview (running, needs review, recent publishes) is still to come. | Welcome |
 | `/pages` | All pages grouped by status | PageHeader, ListToolbar, GroupedList |
 | `/pages/new` | Create wizard. *B1.2 (D66):* page header "New page", an intro line, then one bordered panel in a 1152 px column. **Top:** the step bar (numbered steps joined by lines, ticks when done, current step filled; labels show when the bar is at least 896 px wide; under 672 px it becomes "Step N of 6 · Label" with a progress line). **Middle:** the step (heading, hint, content) and, beside it, the "Brand dossier" (300 px, canvas background: product photo, brand, name, price, brand colour swatches, ticked fact chips with the briefing status, the chosen template as a thumbnail row, and "Your choices" once made). **Bottom bar:** Back on the left; Next, or **Build page** on the last step, on the right. Steps: **Brand & product** (two selects); **Template** (Library and Yours card grids with thumbnails); **Imagery** (Generate images / Product photos only, then eight style cards with icons, multi-select); **Audience** (Let the desk pick plus the briefing's four audiences as cards, gender segmented control, age select; briefing progress and Try again while it's written); **Emphasis** (benefits, features, objections as checklists, up to 3 each, with "Add your own"); **Review & build** (summary rows and the Author select). Below `lg` the dossier sits under the step. A new step scrolls the panel's top into view and focuses its heading. | WizardStepper, OptionCard, CreateWizard, Dossier, steps |
 | `/pages/[id]` | Review desk. *B0.6a:* the build page: header with key, title and status; sandboxed preview (Desktop / Mobile 390 px, open in a new tab) on the left; live build steps and the report (banners, facts, claims check, notes) in a 384 px right panel. *B0.6b:* Export (Export HTML → steps → Download `<KEY>.html`, Export again) above the report; the report adds copy counts, mock-copy and copy-error banners, and a folded "Copy changes" list (old line struck through, new line under it). Tabs and editing arrive in B1.4. | BuildPreview, BuildProgress (JobSteps), ExportButton, BuildReport |

@@ -38,17 +38,64 @@ import type { JobStatus, JobSummary } from "@/lib/validators/jobs";
 import { toast } from "./toaster";
 
 /**
- * Top-bar jobs tray (DESIGN.md §5.2 JobTray): a button with the number of running jobs and a
- * popover of recent jobs with live progress. Your own running jobs also show as toasts whose
- * progress line updates live and turns into a done/failed toast when they finish.
+ * Jobs tray (DESIGN.md §5.2 JobTray): a button with the number of running jobs and a popover of
+ * recent jobs with live progress. Your own running jobs also show as toasts whose progress line
+ * updates live and turns into a done/failed toast when they finish. `variant="row"` is the
+ * sidebar row (D67): icon, "Jobs" and the running count.
  */
-export function JobTray({ userId }: { userId: string }) {
+export function JobTray({
+  userId,
+  variant = "icon",
+}: {
+  userId: string;
+  variant?: "icon" | "row";
+}) {
   const { data, isPending } = useJobs();
   const jobs = data?.jobs ?? [];
   const running = jobs.filter((job) => isActive(job.status)).length;
   useJobToasts(jobs, userId);
 
   const label = running > 0 ? `Jobs, ${running} running` : "Jobs";
+  const content = (
+    <PopoverContent
+      side={variant === "row" ? "right" : "bottom"}
+      align="start"
+      className="w-80 gap-0 p-0"
+    >
+      <JobList jobs={jobs} isPending={isPending} />
+    </PopoverContent>
+  );
+  if (variant === "row") {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={label}
+            className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-base text-fg outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-surface-hover"
+          >
+            <JobsIcon
+              aria-hidden
+              className={cn(
+                "size-4 shrink-0",
+                running > 0 ? "text-accent" : "text-fg-muted",
+              )}
+            />
+            <span className="truncate">Jobs</span>
+            {running > 0 ? (
+              <span
+                aria-hidden
+                className="ml-auto rounded-xs bg-surface-hover px-1.5 text-sm text-fg-muted tabular-nums"
+              >
+                {running}
+              </span>
+            ) : null}
+          </button>
+        </PopoverTrigger>
+        {content}
+      </Popover>
+    );
+  }
   return (
     <Popover>
       <Tooltip>
@@ -77,28 +124,41 @@ export function JobTray({ userId }: { userId: string }) {
         </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" className="w-80 gap-0 p-0">
-        <h2 className="border-b border-border px-3 py-2 text-sm font-medium">
-          Jobs
-        </h2>
-        {isPending ? (
-          <div className="flex flex-col gap-2 p-3" aria-label="Loading jobs">
-            <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-            <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-          </div>
-        ) : jobs.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-fg-muted">
-            No jobs yet
-          </p>
-        ) : (
-          <ul className="max-h-96 overflow-y-auto" aria-live="polite">
-            {jobs.map((job) => (
-              <JobItem key={job.id} job={job} />
-            ))}
-          </ul>
-        )}
-      </PopoverContent>
+      {content}
     </Popover>
+  );
+}
+
+/** The tray's popover: recent jobs with live progress. */
+function JobList({
+  jobs,
+  isPending,
+}: {
+  jobs: JobSummary[];
+  isPending: boolean;
+}) {
+  return (
+    <>
+      <h2 className="border-b border-border px-3 py-2 text-sm font-medium">
+        Jobs
+      </h2>
+      {isPending ? (
+        <div className="flex flex-col gap-2 p-3" aria-label="Loading jobs">
+          <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
+          <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
+        </div>
+      ) : jobs.length === 0 ? (
+        <p className="px-3 py-6 text-center text-sm text-fg-muted">
+          No jobs yet
+        </p>
+      ) : (
+        <ul className="max-h-96 overflow-y-auto" aria-live="polite">
+          {jobs.map((job) => (
+            <JobItem key={job.id} job={job} />
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 

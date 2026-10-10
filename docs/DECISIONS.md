@@ -76,7 +76,7 @@ Defaults: copy, vision, analysis, agent, mobile → `claude-sonnet-5-5`; cheap h
 
 **D18 — Stack.** Locked. Next.js App Router, TypeScript strict, Tailwind v4 (`@theme` tokens in `globals.css`), shadcn (Radix), React Query, zod, react-hook-form, date-fns, lucide-react, `motion/react` (never `framer-motion`), `@dnd-kit` for drag and drop, `sonner` for toasts.
 
-**D19 — UI style: Notion-like workspace.** Locked. See DESIGN.md.
+**D19 — UI style: Notion-like workspace.** Superseded by D67 (2026-10-10). See DESIGN.md.
 
 **D20 — shadcn is scaffolding; Figma replaces it via the Figma MCP.** Locked.
 Feature code imports only from `@/components/ui` and `@/components/app`. Once frames exist, Figma is authoritative for tokens and components.
@@ -244,6 +244,10 @@ The editor (`/templates/[id]`, full screen) edits only the org's own templates. 
 **D66 — Create wizard rules.** Locked (owner approved B1.2 plan, 2026-10-09).
 `/pages/new` has a step bar across the top, the step with the brand dossier beside it, and Back / Next (Build page on the last step) along the bottom (owner's choice after first trying the reference tool's left-hand step list, 2026-10-09). Every choice lives in the URL (a refresh or a shared link keeps it; step changes add a browser history entry), and a step opens only when the steps before it are ready. Library templates are built from directly: no copy is made in Yours (this replaces BUILD_SPEC §8.3.5's implicit copy). When a product has no briefing, the product_briefing job starts as soon as the product is chosen. Build page hands over to the build page, which shows the live steps and then the report (the spec's "Run" step). The worker stores the wizard payload and a `targeting` record (audience, gender, age, emphasis, author, image preferences, the copywriter's targeting block) on the build. Author types: article writer, customer, influencer and expert. The expert is a voice only: the copy is told never to state or imply credentials, and the claims check flags credentials (high) and adds an "Author: expert" note (low). The temporary "Build a test page" buttons are replaced by links into the wizard (product page: product chosen; template editor: template chosen).
 *Why:* one path to a page; the URL keeps long choices safe; building straight from the library avoids filling Yours with copies nobody arranged; an invented expert with a credential would be a false claim.
+
+**D67 — The app takes the Quality app's look and layout.** Locked (owner, 2026-10-10). Replaces D19's Notion-like style.
+Layout: one sidebar on a light grey canvas (workspace menu and collapse; Home, New page, Search, Notifications and Jobs; Workspace and Your brands groups; Settings and the account at the bottom) and the page in a floating white panel with a 48 px text header (13 px regular title; sizes measured from the owner's screenshots); no icon rail or top bar. Look: Quality's public design tokens — Inter at 13 px for the interface, Crimson Pro serif for greetings and big titles, its grey scale (including `#8d8d8d` secondary text, the owner's choice over a darker accessible grey), an indigo primary (`#5c5aed`), 6 px controls and 10 px panels and cards, its soft shadow on outline buttons and inner edge on primary buttons, and its dark values. Workspace and people marks use its eight mark colours. Home opens with a serif welcome and three getting-started cards. Quality is not the owner's product: its look and layout are matched, but not its name, logo, wording, artwork or code. D20 still holds: Figma frames, when provided, become the source for tokens and components.
+*Why:* the owner prefers this look for the dashboard.
 
 **O5 resolved — Expert author allowed, without credentials.** Locked (owner, B1.2, 2026-10-09). See D66.
 

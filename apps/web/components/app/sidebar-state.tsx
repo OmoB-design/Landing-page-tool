@@ -61,7 +61,8 @@ export function useSidebar(): SidebarState {
   return context;
 }
 
-/** Icon button that collapses (in the sidebar header) or opens (in the top bar) the sidebar. */
+/** Icon button that collapses (in the sidebar) or opens (in a page header) the sidebar. Renders
+ * nothing outside the app shell (e.g. a page header in a component test). */
 export function SidebarToggleButton({
   action,
   className,
@@ -69,7 +70,9 @@ export function SidebarToggleButton({
   action: "open" | "close";
   className?: string;
 }) {
-  const { toggle } = useSidebar();
+  const context = useContext(SidebarContext);
+  if (!context) return null;
+  const { toggle } = context;
   const label = action === "open" ? "Open sidebar" : "Collapse sidebar";
   const Icon = action === "open" ? PanelOpenIcon : PanelCloseIcon;
 

@@ -8,8 +8,10 @@ import {
   BrandsIcon,
   HomeIcon,
   LibraryIcon,
-  MyPagesIcon,
+  PagesIcon,
   PlusIcon,
+  SearchIcon,
+  SettingsIcon,
   TemplatesIcon,
 } from "@/components/ui/icons";
 import {
@@ -19,79 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-import { SECTION_ACTIONS, sectionFor } from "./navigation";
-import { SidebarToggleButton } from "./sidebar-state";
 import { WithPathname } from "./with-pathname";
-
-/** Sidebar title (the active rail section) with the collapse button. */
-export function SidebarHeader() {
-  return (
-    <div className="flex items-center justify-between gap-2 pl-2">
-      <h2 className="text-md font-semibold">
-        <WithPathname fallback={null}>
-          {(pathname) => sectionFor(pathname).label}
-        </WithPathname>
-      </h2>
-      <SidebarToggleButton action="close" />
-    </div>
-  );
-}
-
-/** The section's primary action ("New page" …): a quiet full-width button, not a loud one. */
-export function SidebarAction() {
-  return (
-    <WithPathname
-      fallback={<SidebarActionButton action={SECTION_ACTIONS.pages} />}
-    >
-      {(pathname) => (
-        <SidebarActionButton
-          action={SECTION_ACTIONS[sectionFor(pathname).id]}
-        />
-      )}
-    </WithPathname>
-  );
-}
-
-const ACTION_CLASS =
-  "flex h-nav-item w-full items-center gap-2 rounded-sm bg-surface-muted px-2 text-base font-medium text-fg hover:bg-surface-hover aria-disabled:cursor-not-allowed";
-
-function ActionContent({ label }: { label: string }) {
-  return (
-    <>
-      <span
-        aria-hidden
-        className="flex size-4 items-center justify-center rounded-full bg-fg text-surface"
-      >
-        <PlusIcon className="size-3" />
-      </span>
-      {label}
-    </>
-  );
-}
-
-function SidebarActionButton({
-  action,
-}: {
-  action: { label: string; href?: string };
-}) {
-  if (action.href) {
-    return (
-      <Link href={action.href} className={ACTION_CLASS}>
-        <ActionContent label={action.label} />
-      </Link>
-    );
-  }
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button type="button" aria-disabled="true" className={ACTION_CLASS}>
-          <ActionContent label={action.label} />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="right">Not built yet</TooltipContent>
-    </Tooltip>
-  );
-}
 
 // Icons are chosen by name: Server Components can pass a string to this Client Component, but
 // not an icon component (functions are not serialisable).
@@ -100,11 +30,16 @@ const NAV_ICONS = {
   brands: BrandsIcon,
   home: HomeIcon,
   library: LibraryIcon,
-  "my-pages": MyPagesIcon,
+  new: PlusIcon,
+  pages: PagesIcon,
+  settings: SettingsIcon,
   templates: TemplatesIcon,
 };
 
 export type NavIconName = keyof typeof NAV_ICONS;
+
+const ITEM_CLASS =
+  "flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-base text-fg outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring";
 
 type NavItemProps = {
   href: string;
@@ -113,21 +48,25 @@ type NavItemProps = {
   emoji?: string;
   /** A custom mark (e.g. a BrandMark) in place of an icon or emoji. */
   leading?: ReactNode;
+  /** Only the exact path is current (not the pages under it). */
+  exact?: boolean;
 };
 
-/**
- * A 32 px sidebar link: icon or emoji, label; subtle grey on hover, stronger when active.
- * Links with a query (/pages?view=mine) never show as active; the page header's tabs show the view.
- */
+/** Whether a nav link is the current page. /pages/new belongs to New page, not Pages. */
+export function isCurrent(pathname: string, href: string, exact = false) {
+  if (pathname === href) return true;
+  if (exact || !pathname.startsWith(`${href}/`)) return false;
+  return !(href === "/pages" && pathname.startsWith("/pages/new"));
+}
+
+/** A 32 px sidebar link: icon or mark and label; grey on hover and when it's the current page. */
 export function NavItem(props: NavItemProps) {
   return (
     <WithPathname fallback={<NavLink {...props} active={false} />}>
       {(pathname) => (
         <NavLink
           {...props}
-          active={
-            pathname === props.href || pathname.startsWith(`${props.href}/`)
-          }
+          active={isCurrent(pathname, props.href, props.exact)}
         />
       )}
     </WithPathname>
@@ -148,10 +87,7 @@ function NavLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex h-nav-item items-center gap-2 rounded-sm px-2 text-base text-fg hover:bg-surface-hover",
-        active && "bg-surface-active font-medium hover:bg-surface-active",
-      )}
+      className={cn(ITEM_CLASS, active && "bg-surface-hover")}
     >
       {leading ? (
         leading
@@ -166,5 +102,25 @@ function NavLink({
       )}
       <span className="truncate">{label}</span>
     </Link>
+  );
+}
+
+/** Search (⌘K), shown but not built yet: the command palette arrives in a later build. */
+export function SearchItem() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-disabled="true"
+          className={cn(ITEM_CLASS, "cursor-not-allowed")}
+        >
+          <SearchIcon aria-hidden className="size-4 shrink-0 text-fg-muted" />
+          <span className="truncate">Search</span>
+          <kbd className="ml-auto font-sans text-sm text-fg-subtle">⌘K</kbd>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right">Not built yet</TooltipContent>
+    </Tooltip>
   );
 }

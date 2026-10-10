@@ -8,6 +8,7 @@ export {
   Aperture as ApertureIcon,
   Brush as BrushIcon,
   Camera as CameraIcon,
+  Triangle as CaretIcon,
   Workflow as DiagramIcon,
   ImageOff as ImageOffIcon,
   Box as RenderIcon,

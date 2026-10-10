@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { PageBody } from "@/components/app/page-body";
 import { PageHeader } from "@/components/app/page-header";
-import { GettingStarted } from "@/components/features/home/getting-started";
+import { Welcome } from "@/components/features/home/welcome";
 import { HomeIcon } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
@@ -15,24 +15,25 @@ export default function HomePage() {
   return (
     <>
       <PageHeader icon={HomeIcon} title="Home" />
-      <PageBody>
+      <PageBody width="xl" className="gap-10 py-12">
         <Suspense
           fallback={
             <Skeleton
               width="100%"
-              height="calc(var(--spacing-row) * 7)"
+              height="calc(var(--spacing-row) * 9)"
               radius="var(--radius-lg)"
             />
           }
         >
-          <SetupChecklist />
+          <HomeContent />
         </Suspense>
       </PageBody>
     </>
   );
 }
 
-async function SetupChecklist() {
-  const { currentOrg } = await getSessionContext();
-  return <GettingStarted progress={await getSetupProgress(currentOrg.id)} />;
+async function HomeContent() {
+  const { user, currentOrg } = await getSessionContext();
+  const progress = await getSetupProgress(currentOrg.id);
+  return <Welcome name={user.displayName} progress={progress} />;
 }

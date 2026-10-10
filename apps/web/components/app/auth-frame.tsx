@@ -33,7 +33,9 @@ export function AuthFrame({
         </div>
         <div className="flex w-full max-w-sm flex-col gap-5 rounded-lg border border-border bg-surface p-6">
           <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-semibold">{title}</h1>
+            <h1 className="font-serif text-3xl font-normal tracking-tight">
+              {title}
+            </h1>
             {description ? (
               <p className="text-base text-fg-muted">{description}</p>
             ) : null}

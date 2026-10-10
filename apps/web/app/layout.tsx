@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Crimson_Pro, Inter, JetBrains_Mono } from "next/font/google";
 
 import { InlineScript } from "@/components/app/inline-script";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +13,11 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
 });
+// Page greetings and big titles (D67).
+const crimsonPro = Crimson_Pro({
+  subsets: ["latin"],
+  variable: "--font-crimson",
+});
 
 export const metadata: Metadata = {
   title: { default: "LP Platform", template: "%s · LP Platform" },
@@ -25,7 +30,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn(inter.variable, jetbrainsMono.variable)}
+      className={cn(
+        inter.variable,
+        jetbrainsMono.variable,
+        crimsonPro.variable,
+      )}
     >
       <head>
         <InlineScript html={PRE_PAINT_SCRIPT} />

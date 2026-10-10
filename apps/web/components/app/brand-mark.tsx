@@ -35,7 +35,9 @@ export function BrandMark({
         "flex shrink-0 items-center justify-center rounded-xs font-semibold",
         box,
         !color && "bg-surface-active",
-        readableOn(color) === "light" ? "text-surface" : "text-fg",
+        // The letter follows the brand colour, not the theme: a cream brand needs a dark letter
+        // in dark mode too.
+        readableOn(color) === "light" ? "text-on-dark" : "text-on-light",
       )}
     >
       {name.trim().charAt(0).toUpperCase() || "?"}

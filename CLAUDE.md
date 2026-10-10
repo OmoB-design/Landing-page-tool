@@ -71,7 +71,7 @@ Numbering matches `docs/DECISIONS.md`, which is canonical. Every decision here i
 
 **Frontend**
 - D18. Next.js App Router, TypeScript strict, Tailwind v4 with design tokens declared in `@theme` in `apps/web/app/globals.css`, Radix through shadcn, React Query, zod, react-hook-form, date-fns, lucide-react for icons, `motion/react` for animation (never `framer-motion`).
-- D19. UI style: a calm, dense, Notion-like workspace (icon rail, secondary sidebar, tabbed main pane, grouped lists). See `docs/DESIGN.md`.
+- D19. UI style: a calm, dense workspace. *Superseded by D67 (2026-10-10):* the Quality app's look and layout — one sidebar on a grey canvas, the page in a floating white panel, Inter 13 px with Crimson Pro serif greetings, indigo primary. See `docs/DESIGN.md`.
 - D20. shadcn is **scaffolding**. It will be replaced component by component from Figma via the Figma MCP. Feature code imports UI only from `@/components/ui/*` and `@/components/app/*`, never from a third-party UI package directly, so a redesign touches one folder. Once the owner provides Figma frames, **Figma (through the MCP) is the authoritative source for tokens and component styling.** Do not invent values that conflict with it.
 
 ---

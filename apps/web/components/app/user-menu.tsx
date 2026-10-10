@@ -19,6 +19,7 @@ import { ProfileMenu } from "@/components/ui/profile-menu";
 import { signOut } from "@/lib/auth/actions";
 import type { ThemePreference } from "@/lib/preferences";
 
+import { PersonMark } from "./mark";
 import { initials } from "./row-meta";
 import { setThemePreference, useThemePreference } from "./theme-preference";
 
@@ -40,15 +41,18 @@ const THEME_ICONS = { system: MonitorIcon, light: SunIcon, dark: MoonIcon };
 /**
  * Account menu (AffectUI profile menu in a popover): who is signed in, Settings, theme
  * (cycles System → Light → Dark), sign out, and the workspace's getting-started progress.
+ * `variant="row"` is the sidebar's account row (avatar and name); the default is an avatar.
  */
 export function UserMenu({
   name,
   email,
   setup,
+  variant = "avatar",
 }: {
   name: string;
   email: string;
   setup: UserMenuSetup;
+  variant?: "avatar" | "row";
 }) {
   const router = useRouter();
   const theme = useThemePreference();
@@ -64,16 +68,28 @@ export function UserMenu({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Account menu for ${name}`}
-          className="flex size-7 items-center justify-center rounded-full bg-surface-active text-xs font-medium text-fg hover:opacity-80"
-        >
-          {initials(name)}
-        </button>
+        {variant === "row" ? (
+          <button
+            type="button"
+            aria-label={`Account menu for ${name}`}
+            className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-base text-fg outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <PersonMark name={name} className="size-5" />
+            <span className="truncate">{name}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label={`Account menu for ${name}`}
+            className="flex size-7 items-center justify-center rounded-full bg-surface-active text-xs font-medium text-fg hover:opacity-80"
+          >
+            {initials(name)}
+          </button>
+        )}
       </PopoverTrigger>
       <PopoverContent
-        align="end"
+        side={variant === "row" ? "top" : "bottom"}
+        align={variant === "row" ? "start" : "end"}
         className="w-80 border-0 bg-transparent p-0 shadow-pop"
       >
         <ProfileMenu

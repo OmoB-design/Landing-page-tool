@@ -24,8 +24,13 @@ import {
 } from "@/lib/queries/notifications";
 import { cn } from "@/lib/utils";
 
-/** Notifications bell (BUILD_SPEC §15): unread dot, latest notifications, mark as read. */
-export function NotificationsButton() {
+/** Notifications (BUILD_SPEC §15): unread count, latest notifications, mark as read. The default
+ * is a bell button; `variant="row"` is the sidebar row (D67). */
+export function NotificationsButton({
+  variant = "icon",
+}: {
+  variant?: "icon" | "row";
+}) {
   const { data, isPending } = useNotifications();
   const markRead = useMarkNotificationsRead();
   const notifications = data?.notifications ?? [];
@@ -33,8 +38,27 @@ export function NotificationsButton() {
   const label =
     unread > 0 ? `Notifications, ${unread} unread` : "Notifications";
 
-  return (
-    <DropdownMenu>
+  const trigger =
+    variant === "row" ? (
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-base text-fg outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-surface-hover"
+        >
+          <BellIcon aria-hidden className="size-4 shrink-0 text-fg-muted" />
+          <span className="truncate">Notifications</span>
+          {unread > 0 ? (
+            <span
+              aria-hidden
+              className="ml-auto rounded-xs bg-surface-hover px-1.5 text-sm text-fg-muted tabular-nums"
+            >
+              {unread}
+            </span>
+          ) : null}
+        </button>
+      </DropdownMenuTrigger>
+    ) : (
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
@@ -56,7 +80,16 @@ export function NotificationsButton() {
         </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="end" className="w-80">
+    );
+
+  return (
+    <DropdownMenu>
+      {trigger}
+      <DropdownMenuContent
+        side={variant === "row" ? "right" : "bottom"}
+        align="start"
+        className="w-80"
+      >
         <DropdownMenuLabel>Notifications</DropdownMenuLabel>
         {isPending ? (
           <div

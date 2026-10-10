@@ -3,10 +3,14 @@ import type { ReactNode } from "react";
 import type { Icon } from "@/components/ui/icons";
 import { Separator } from "@/components/ui/separator";
 
+import { SidebarToggleButton } from "./sidebar-state";
+
 type PageHeaderProps = {
   title: string;
-  /** An outline icon, an emoji, or a custom mark (e.g. a BrandMark) shown before the title. */
+  /** The section's icon. Not shown (D67: headers are text, like the reference); kept so pages
+   * can still name their section's icon in one place. */
   icon?: Icon;
+  /** An emoji or a custom mark (e.g. a BrandMark) shown before the title. */
   emoji?: string;
   mark?: ReactNode;
   /** Usually SegmentedTabs, shown after a vertical divider. */
@@ -15,17 +19,21 @@ type PageHeaderProps = {
   actions?: ReactNode;
 };
 
-/** 48 px page header (DESIGN.md §2): icon or emoji, the entity name, a divider, then tabs. */
+/** The page panel's 48 px header (DESIGN.md §2, D67): a mark if any, the 13 px regular title, a
+ * divider, then tabs; actions on the right. Opens the sidebar on small screens or when it's collapsed. */
 export function PageHeader({
   title,
-  icon: HeaderIcon,
   emoji,
   mark,
   tabs,
   actions,
 }: PageHeaderProps) {
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-6">
+    <header className="flex h-header shrink-0 items-center gap-3 border-b border-border px-5">
+      <SidebarToggleButton
+        action="open"
+        className="-ml-1.5 lg:hidden lg:sidebar-collapsed:inline-flex"
+      />
       <div className="flex min-w-0 items-center gap-2">
         {mark ? (
           mark
@@ -33,10 +41,8 @@ export function PageHeader({
           <span aria-hidden className="text-md">
             {emoji}
           </span>
-        ) : HeaderIcon ? (
-          <HeaderIcon aria-hidden className="size-4 shrink-0 text-fg-muted" />
         ) : null}
-        <h1 className="truncate text-lg font-semibold">{title}</h1>
+        <h1 className="truncate text-base font-normal">{title}</h1>
       </div>
       {tabs ? (
         <>

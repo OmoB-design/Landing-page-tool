@@ -1,16 +1,21 @@
 import { type ReactNode, Suspense } from "react";
 
-import { IconRail } from "./icon-rail";
+import { Skeleton } from "@/components/ui/shimmer-loader";
+
 import { MobileSidebar } from "./mobile-sidebar";
 import { SidebarNav } from "./sidebar";
 import { SidebarProvider } from "./sidebar-state";
-import { TopBar } from "./top-bar";
 
 /**
- * The signed-in workspace (DESIGN.md §2): top bar over an icon rail, a collapsible sidebar and
- * the main pane. Rail and top bar sit on the canvas; sidebar and main share one white panel.
+ * The signed-in workspace (DESIGN.md §2, D67): one sidebar on the grey canvas (workspace menu,
+ * jobs, notifications, navigation, settings, account) and the page in a floating white panel.
  */
 export function AppShell({ children }: { children: ReactNode }) {
+  const sidebar = (
+    <Suspense fallback={<SidebarSkeleton />}>
+      <SidebarNav />
+    </Suspense>
+  );
   return (
     <SidebarProvider>
       <a
@@ -19,28 +24,35 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <div className="flex h-dvh flex-col bg-canvas text-fg">
-        <Suspense fallback={<div className="h-topbar shrink-0" />}>
-          <TopBar />
-        </Suspense>
-        <div className="flex min-h-0 flex-1">
-          <IconRail />
-          <div className="flex min-w-0 flex-1 overflow-hidden rounded-tl-lg border-t border-l border-border bg-surface">
-            <aside
-              aria-label="Sidebar"
-              className="hidden w-sidebar shrink-0 overflow-y-auto border-r border-border lg:block lg:sidebar-collapsed:hidden"
-            >
-              <SidebarNav />
-            </aside>
-            <main id="main" className="min-w-0 flex-1 overflow-y-auto">
-              {children}
-            </main>
-          </div>
+      <div className="flex h-dvh bg-canvas text-fg">
+        <aside
+          aria-label="Sidebar"
+          className="hidden w-sidebar shrink-0 lg:flex lg:sidebar-collapsed:hidden"
+        >
+          {sidebar}
+        </aside>
+        <div className="flex min-w-0 flex-1 p-1.5 lg:pl-0 lg:sidebar-collapsed:pl-1.5">
+          <main
+            id="main"
+            className="min-w-0 flex-1 overflow-y-auto rounded-lg border border-border bg-surface shadow-panel"
+          >
+            {children}
+          </main>
         </div>
       </div>
-      <MobileSidebar>
-        <SidebarNav />
-      </MobileSidebar>
+      <MobileSidebar>{sidebar}</MobileSidebar>
     </SidebarProvider>
+  );
+}
+
+function SidebarSkeleton() {
+  return (
+    <div className="flex w-full flex-col gap-2 p-3">
+      <Skeleton height="var(--spacing-nav-item)" radius="var(--radius-sm)" />
+      <Skeleton
+        height="calc(var(--spacing-nav-item) * 5)"
+        radius="var(--radius-sm)"
+      />
+    </div>
   );
 }
