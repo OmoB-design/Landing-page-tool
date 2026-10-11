@@ -9,14 +9,14 @@ import {
   useState,
 } from "react";
 
-import { Button } from "@/components/ui/button";
-import { PanelCloseIcon, PanelOpenIcon } from "@/components/ui/icons";
+import { SidebarCollapseIcon } from "@/components/ui/lp-icons";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SIDEBAR_COOKIE } from "@/lib/preferences";
+import { cn } from "@/lib/utils";
 
 // Matches Tailwind's `lg` breakpoint: below it the sidebar is an overlay sheet.
 const DESKTOP_QUERY = "(min-width: 1024px)";
@@ -54,6 +54,11 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   return <SidebarContext value={value}>{children}</SidebarContext>;
 }
 
+/** Whether this renders inside the app shell (component tests render pieces without it). */
+export function useInShell(): boolean {
+  return useContext(SidebarContext) !== null;
+}
+
 export function useSidebar(): SidebarState {
   const context = useContext(SidebarContext);
   if (!context)
@@ -61,8 +66,9 @@ export function useSidebar(): SidebarState {
   return context;
 }
 
-/** Icon button that collapses (in the sidebar) or opens (in a page header) the sidebar. Renders
- * nothing outside the app shell (e.g. a page header in a component test). */
+/** The sidebar's collapse button (Figma: Icon/Sidebar Left — a 32 px box around a 14 px icon);
+ * mirrored, it opens the sidebar from a page header. Renders nothing outside the app shell
+ * (e.g. a page header in a component test). */
 export function SidebarToggleButton({
   action,
   className,
@@ -74,20 +80,23 @@ export function SidebarToggleButton({
   if (!context) return null;
   const { toggle } = context;
   const label = action === "open" ? "Open sidebar" : "Collapse sidebar";
-  const Icon = action === "open" ? PanelOpenIcon : PanelCloseIcon;
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
+        <button
+          type="button"
           aria-label={label}
           onClick={toggle}
-          className={className}
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-sm text-icon-system outline-none hover:bg-foreground-02 hover:text-icon-nav-active focus-visible:ring-2 focus-visible:ring-ring",
+            className,
+          )}
         >
-          <Icon aria-hidden />
-        </Button>
+          <SidebarCollapseIcon
+            className={cn("size-3.5", action === "open" && "-scale-x-100")}
+          />
+        </button>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>

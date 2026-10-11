@@ -44,7 +44,7 @@ function renderTray(jobs: JobSummary[]) {
       <TooltipProvider>{children}</TooltipProvider>
     </QueryClientProvider>
   );
-  return render(<JobTray userId="me" />, { wrapper });
+  return render(<JobTray />, { wrapper });
 }
 
 describe("JobTray", () => {
@@ -55,11 +55,13 @@ describe("JobTray", () => {
       job({ id: "c", status: "succeeded" }),
     ]);
     const button = screen.getByRole("button", { name: "Jobs, 2 running" });
-    expect(button.textContent).toBe("2");
+    expect(button.querySelector("[data-dot]")).toBeTruthy();
   });
 
   it("has no count when nothing is running", () => {
     renderTray([job({ status: "failed" })]);
-    expect(screen.getByRole("button", { name: "Jobs" }).textContent).toBe("");
+    expect(
+      screen.getByRole("button", { name: "Jobs" }).querySelector("[data-dot]"),
+    ).toBeNull();
   });
 });

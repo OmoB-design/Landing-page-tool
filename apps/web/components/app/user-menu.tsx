@@ -1,26 +1,27 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 
 import {
-  LogOutIcon,
-  MonitorIcon,
-  MoonIcon,
-  SettingsIcon,
-  SunIcon,
-} from "@/components/ui/icons";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ProfileMenu } from "@/components/ui/profile-menu";
+  ExpandIcon,
+  MenuArrowIcon,
+  MenuLogoutIcon,
+  MenuSettingsIcon,
+  MenuThemesIcon,
+} from "@/components/ui/lp-icons";
 import { signOut } from "@/lib/auth/actions";
 import type { ThemePreference } from "@/lib/preferences";
 
 import { PersonMark } from "./mark";
-import { initials } from "./row-meta";
 import { setThemePreference, useThemePreference } from "./theme-preference";
 
 export type UserMenuSetup = {
@@ -36,124 +37,154 @@ const THEME_LABELS: Record<ThemePreference, string> = {
   light: "Light",
   dark: "Dark",
 };
-const THEME_ICONS = { system: MonitorIcon, light: SunIcon, dark: MoonIcon };
+
+// Figma: Sidebar Menu Option rows — 4 px across, 6 px down, 4 px corners, 16 px icon, 4 px gap,
+// 12 px medium heading-02, foreground-02 on hover and keyboard focus.
+const ITEM =
+  "gap-1 rounded-xsm px-1 py-1.5 text-type-caption-1 font-medium text-heading-02 focus:bg-foreground-02 focus:text-heading-02 [&_svg]:size-4 [&_svg]:text-icon-system";
 
 /**
- * Account menu (AffectUI profile menu in a popover): who is signed in, Settings, theme
- * (cycles System → Light → Dark), sign out, and the workspace's getting-started progress.
- * `variant="row"` is the sidebar's account row (avatar and name); the default is an avatar.
+ * The profile card at the bottom of the sidebar (Figma: Profile Nav) and its account menu
+ * (Figma: Sidebar Menu Option). The card: a 30 px avatar, the name in 12 px and the email in
+ * 10 px, and the up-down chevrons, 6 px inside a 10 px-rounded card with a stroke border and the
+ * inner edge shadow. The menu opens above it: who is signed in, Settings, Themes (cycles System →
+ * Light → Dark; the badge shows the current one), Logout, then getting-started progress with the
+ * next step.
  */
 export function UserMenu({
   name,
   email,
   setup,
-  variant = "avatar",
 }: {
   name: string;
   email: string;
   setup: UserMenuSetup;
-  variant?: "avatar" | "row";
 }) {
   const router = useRouter();
   const theme = useThemePreference();
-  const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
-  const ThemeIcon = THEME_ICONS[theme];
-
-  const go = (href: string) => {
-    setOpen(false);
-    router.push(href);
-  };
+  const percent = setup.total > 0 ? (setup.done / setup.total) * 100 : 0;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        {variant === "row" ? (
-          <button
-            type="button"
-            aria-label={`Account menu for ${name}`}
-            className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <PersonMark name={name} className="size-5" />
-            <span className="truncate">{name}</span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            aria-label={`Account menu for ${name}`}
-            className="flex size-7 items-center justify-center rounded-full bg-foreground-03 text-type-caption-2 font-medium text-body hover:opacity-80"
-          >
-            {initials(name)}
-          </button>
-        )}
-      </PopoverTrigger>
-      <PopoverContent
-        side={variant === "row" ? "top" : "bottom"}
-        align={variant === "row" ? "start" : "end"}
-        className="w-80 border-0 bg-transparent p-0 shadow-pop"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Account menu for ${name}`}
+          className="flex w-full items-center gap-2.5 rounded-lg border border-stroke bg-surface-primary p-1.5 text-left shadow-edge outline-none hover:border-stroke-strong focus-visible:ring-2 focus-visible:ring-ring aria-expanded:border-stroke-strong"
+        >
+          <PersonMark name={name} />
+          <span className="flex min-w-0 flex-1 flex-col font-medium">
+            <span className="truncate text-type-caption-1 text-heading-01">
+              {name}
+            </span>
+            <span className="truncate text-type-caption-3 text-heading-04">
+              {email}
+            </span>
+          </span>
+          <ExpandIcon className="size-4 shrink-0 text-icon-system" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side="top"
+        align="start"
+        alignOffset={-2}
+        sideOffset={6}
+        className="flex w-menu-account flex-col gap-3 rounded-md bg-surface-primary px-1.5 pt-1.5 pb-3.5 shadow-control ring-thin ring-stroke-strong"
       >
-        <ProfileMenu
-          name={name}
-          email={email}
-          avatar={
-            // An SVG keeps the initials centred: the card sizes its avatar slot as a block.
-            <svg viewBox="0 0 40 40" aria-hidden>
-              <circle
-                cx="20"
-                cy="20"
-                r="20"
-                className="fill-highlight-indigo-50"
+        <DropdownMenuLabel className="flex items-center gap-2.5 p-0 font-medium">
+          <PersonMark name={name} />
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-type-caption-1 text-heading-01">
+              {name}
+            </span>
+            <span className="truncate text-type-caption-3 text-heading-04">
+              {email}
+            </span>
+          </span>
+        </DropdownMenuLabel>
+        <DropdownMenuGroup className="flex flex-col gap-0.5 pb-1.5 divider-b-thin">
+          <DropdownMenuItem
+            className={ITEM}
+            onSelect={() => router.push("/settings")}
+          >
+            <MenuSettingsIcon />
+            Settings
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className={`${ITEM} justify-between`}
+            onSelect={(event) => {
+              // Stay open, so the badge shows the new theme.
+              event.preventDefault();
+              setThemePreference(
+                THEME_ORDER[
+                  (THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length
+                ]!,
+              );
+            }}
+          >
+            <span className="flex items-center gap-1">
+              <MenuThemesIcon />
+              Themes
+            </span>
+            <span className="rounded-lg bg-foreground-01 px-1.5 py-0.5 text-type-caption-3 font-medium text-heading-05">
+              {THEME_LABELS[theme]}
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className={ITEM}
+            onSelect={() =>
+              startTransition(async () => {
+                await signOut();
+              })
+            }
+          >
+            <MenuLogoutIcon />
+            Logout
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between font-medium">
+              <span className="text-type-caption-1 text-heading-01">
+                Getting Started
+              </span>
+              <span className="text-type-caption-2 text-heading-05 tabular-nums">
+                {setup.done}/{setup.total}
+              </span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="Getting started"
+              aria-valuemin={0}
+              aria-valuemax={setup.total}
+              aria-valuenow={setup.done}
+              className="h-0.5 overflow-hidden rounded-xsm bg-foreground-02"
+            >
+              <div
+                className="h-full bg-spot-500-blue"
+                // Progress through the steps (data, not styling).
+                style={{ width: `${percent}%` }}
               />
-              <text
-                x="20"
-                y="20"
-                textAnchor="middle"
-                dominantBaseline="central"
-                className="fill-text-link text-type-caption-1 font-medium"
-              >
-                {initials(name)}
-              </text>
-            </svg>
-          }
-          items={[
-            {
-              id: "settings",
-              label: "Settings",
-              icon: <SettingsIcon />,
-              onSelect: () => go("/settings"),
-            },
-            {
-              id: "theme",
-              label: "Theme",
-              icon: <ThemeIcon />,
-              badge: THEME_LABELS[theme],
-              onSelect: () => {
-                const next =
-                  THEME_ORDER[
-                    (THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length
-                  ]!;
-                setThemePreference(next);
-              },
-            },
-            {
-              id: "sign-out",
-              label: "Sign out",
-              icon: <LogOutIcon />,
-              onSelect: () =>
-                startTransition(async () => {
-                  await signOut();
-                }),
-            },
-          ]}
-          setup={{
-            title: "Getting started",
-            done: setup.done,
-            total: setup.total,
-            next: setup.nextLabel,
-            onContinue: setup.nextHref ? () => go(setup.nextHref!) : undefined,
-          }}
-        />
-      </PopoverContent>
-    </Popover>
+            </div>
+          </div>
+          {setup.nextLabel && setup.nextHref ? (
+            <DropdownMenuItem
+              className="justify-between rounded-xsm p-0 text-type-caption-1 font-medium text-heading-01 focus:bg-transparent focus:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring"
+              onSelect={() => router.push(setup.nextHref!)}
+            >
+              <span>
+                <span className="text-heading-05">Next:</span> {setup.nextLabel}
+              </span>
+              <MenuArrowIcon className="size-3.5 text-icon-system" />
+            </DropdownMenuItem>
+          ) : (
+            <p className="text-type-caption-1 font-medium text-heading-05">
+              All steps done.
+            </p>
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

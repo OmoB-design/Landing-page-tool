@@ -1,21 +1,14 @@
-import { type ReactNode, Suspense } from "react";
+import { Suspense } from "react";
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { CaretIcon } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { getOrgBrands } from "@/lib/brands/queries";
 import { getSetupProgress } from "@/lib/onboarding/setup";
 
-import { BrandMark } from "./brand-mark";
-import { JobTray } from "./job-tray";
-import { NotificationsButton } from "./notifications-button";
+import { JobToasts } from "./job-tray";
+import { BrandNavMark } from "./mark";
 import { OrgSwitcher } from "./org-switcher";
-import { NavItem, SearchItem } from "./sidebar-parts";
+import { NavGroup, NavItem, SearchButton } from "./sidebar-parts";
 import { SidebarSetup } from "./sidebar-setup";
 import { SidebarToggleButton } from "./sidebar-state";
 import { UserMenu } from "./user-menu";
@@ -23,102 +16,90 @@ import { UserMenu } from "./user-menu";
 const VISIBLE_BRANDS = 6;
 
 /**
- * The sidebar (DESIGN.md §2, D67): the workspace menu and collapse on top; Home, New page,
- * Search, Notifications and Jobs; the Workspace and Your brands groups; Settings and the account
- * at the bottom, with the getting-started card above them until every step is done.
- * Rendered in the desktop column and in the mobile sheet.
+ * The sidebar (Figma: Side Nav; DESIGN.md §2). Top row, 12 px down and 8 px in: the workspace
+ * menu, Search and the collapse button. Then, 8 px in and 2 px apart: Home and New page; the
+ * Workspace group (Pages, Templates, Brands, Library, Analytics) and Your brands, 16 px above each. At the
+ * bottom, 6 px from the edges: the getting-started card (until every step is done) above the
+ * profile card, 8 px apart. Jobs and Notifications live in the page header. Rendered in the
+ * desktop column and in the mobile sheet.
  */
 export async function SidebarNav() {
   const { user, orgs, currentOrg } = await getSessionContext();
   const setup = await getSetupProgress(currentOrg.id);
+  const showSetup = setup.done < setup.total;
   return (
-    <div className="flex h-full w-full flex-col gap-4 px-2.5 pt-3.5 pb-3">
-      <div className="flex items-center gap-1">
-        <OrgSwitcher orgs={orgs} currentOrg={currentOrg} />
-        <SidebarToggleButton action="close" className="ml-auto" />
-      </div>
-      <nav
-        aria-label="Workspace"
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
-      >
-        <div className="flex flex-col gap-px">
+    <div className="flex h-full w-full flex-col justify-between bg-dashboard">
+      <div className="flex min-h-0 flex-col">
+        <div className="flex items-center justify-between px-2 py-3">
+          <OrgSwitcher orgs={orgs} currentOrg={currentOrg} />
+          <div className="flex shrink-0 items-center gap-0.75">
+            <SearchButton />
+            <SidebarToggleButton action="close" />
+          </div>
+        </div>
+        <nav
+          aria-label="Workspace"
+          className="flex min-h-0 flex-col gap-0.5 overflow-y-auto p-2"
+        >
           <NavItem href="/home" icon="home" label="Home" />
           <NavItem href="/pages/new" icon="new" label="New page" exact />
-          <SearchItem />
-          <NotificationsButton variant="row" />
-          <JobTray userId={user.id} variant="row" />
-        </div>
-        <NavGroup label="Workspace">
-          <NavItem href="/pages" icon="pages" label="Pages" />
-          <NavItem href="/templates" icon="templates" label="Templates" />
-          <NavItem href="/brands" icon="brands" label="Brands" exact />
-          <NavItem href="/library" icon="library" label="Library" />
-          <NavItem href="/analytics" icon="analytics" label="Analytics" />
-        </NavGroup>
-        <NavGroup label="Your brands">
-          <Suspense
-            fallback={
-              <Skeleton
-                height="var(--spacing-nav-item)"
-                radius="var(--radius-sm)"
-              />
-            }
-          >
-            <BrandLinks />
-          </Suspense>
-        </NavGroup>
-      </nav>
-      <div className="flex flex-col gap-3">
+          <NavGroup label="Workspace">
+            <NavItem href="/pages" icon="pages" label="Pages" />
+            <NavItem href="/templates" icon="templates" label="Templates" />
+            <NavItem href="/brands" icon="brands" label="Brands" exact />
+            <NavItem href="/library" icon="library" label="Library" />
+            <NavItem href="/analytics" icon="analytics" label="Analytics" />
+          </NavGroup>
+          <NavGroup label="Your brands">
+            <Suspense
+              fallback={
+                <Skeleton
+                  height="calc(var(--spacing) * 7)"
+                  radius="var(--radius-sm)"
+                />
+              }
+            >
+              <BrandLinks />
+            </Suspense>
+          </NavGroup>
+        </nav>
+      </div>
+      <div
+        className={
+          showSetup
+            ? "flex flex-col gap-2 px-2 pb-1.5"
+            : "flex flex-col px-1.5 pb-1.5"
+        }
+      >
         <SidebarSetup
           steps={setup.steps}
           done={setup.done}
           total={setup.total}
         />
-        <div className="flex flex-col gap-px">
-          <NavItem href="/settings" icon="settings" label="Settings" />
-          <UserMenu
-            variant="row"
-            name={user.displayName}
-            email={user.email}
-            setup={{
-              done: setup.done,
-              total: setup.total,
-              nextLabel: setup.next?.label,
-              nextHref: setup.next?.href,
-            }}
-          />
-        </div>
+        <UserMenu
+          name={user.displayName}
+          email={user.email}
+          setup={{
+            done: setup.done,
+            total: setup.total,
+            nextLabel: setup.next?.label,
+            nextHref: setup.next?.href,
+          }}
+        />
       </div>
+      <JobToasts userId={user.id} />
     </div>
   );
 }
 
-/** A collapsible group: a muted 12 px label with a small caret, like the reference. */
-function NavGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <Collapsible defaultOpen className="flex flex-col gap-px">
-      <CollapsibleTrigger className="group flex h-7 items-center gap-1.5 self-start rounded-sm px-2 text-type-caption-1 text-sub-text hover:text-body">
-        {label}
-        <CaretIcon
-          aria-hidden
-          className="size-2 rotate-180 fill-current transition-transform duration-150 ease-out group-data-closed:rotate-90 motion-reduce:transition-none"
-        />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="flex flex-col gap-px">
-        {children}
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
-/** The current org's brands with their colour marks; long lists end in "All brands". */
+/** The current org's brands with their letter marks; long lists end in "All brands". */
 async function BrandLinks() {
   const { currentOrg } = await getSessionContext();
   const brands = await getOrgBrands(currentOrg.id);
 
   if (brands.length === 0) {
     return (
-      <p className="px-2 py-1 text-type-body-small text-sub-text">
+      <p className="px-2 py-1 text-type-body-small font-medium text-heading-05">
         No brands yet.
       </p>
     );
@@ -130,13 +111,7 @@ async function BrandLinks() {
           key={brand.id}
           href={`/brands/${brand.id}`}
           label={brand.name}
-          leading={
-            <BrandMark
-              name={brand.name}
-              emoji={brand.emoji}
-              color={brand.primary}
-            />
-          }
+          leading={<BrandNavMark name={brand.name} />}
         />
       ))}
       {brands.length > VISIBLE_BRANDS ? (

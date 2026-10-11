@@ -8,7 +8,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { CheckIcon, ChevronDownIcon } from "@/components/ui/icons";
+import {
+  CardChevronIcon,
+  StepDoneIcon,
+  StepTodoIcon,
+} from "@/components/ui/lp-icons";
 import type { SetupStep } from "@/lib/onboarding/progress";
 import { cn } from "@/lib/utils";
 
@@ -41,10 +45,12 @@ function writeFolded(folded: boolean) {
 }
 
 /**
- * The getting-started card at the bottom of the sidebar (D67, like the reference's onboarding
- * card): a progress ring, "Getting started", "N/M steps completed", and the steps as links with
- * a circle that becomes a tick. The chevron folds it to its header; the fold is remembered in
- * this browser. The card goes once every step is done.
+ * The getting-started card above the profile card (Figma: Side Nav — Getting started Card, and
+ * Getting started Card closed). Open: a 20 px progress ring and a chevron, "Getting Started" in
+ * 13 px medium, "N/5 steps completed" in 11 px, then the steps, 12 px apart, each a 14 px circle
+ * (a blue disc with a tick once done) and its label in 12 px medium (done steps in heading-05).
+ * Open it has a stroke border and the inner edge shadow; closed, a stroke-strong border and a soft
+ * lift. The chevron folds it (remembered in this browser); it goes once every step is done.
  */
 export function SidebarSetup({
   steps,
@@ -63,50 +69,51 @@ export function SidebarSetup({
     <Collapsible
       open={open}
       onOpenChange={toggle}
-      className="rounded-lg border border-stroke-strong bg-surface-primary p-2 shadow-panel"
+      className={cn(
+        "flex flex-col gap-3 rounded-lg border bg-surface-primary p-3",
+        open
+          ? "border-stroke shadow-edge"
+          : "border-stroke-strong shadow-raise",
+      )}
     >
-      <div className="flex items-start justify-between gap-2 px-1 pt-1">
-        <ProgressRing done={done} total={total} />
-        <CollapsibleTrigger
-          aria-label={open ? "Fold getting started" : "Unfold getting started"}
-          className="-mt-1 -mr-1 flex size-7 items-center justify-center rounded-sm text-sub-text outline-none hover:bg-foreground-02 hover:text-body focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ChevronDownIcon
-            aria-hidden
-            className={cn(
-              "size-4 transition-transform duration-150 ease-out motion-reduce:transition-none",
-              !open && "rotate-180",
-            )}
-          />
-        </CollapsibleTrigger>
-      </div>
-      <div className="flex flex-col px-1 pt-2 pb-1">
-        <h2 className="text-type-body-small font-medium">Getting started</h2>
-        <p className="text-type-caption-1 text-sub-text tabular-nums">
-          {done}/{total} steps completed
-        </p>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <ProgressRing done={done} total={total} />
+          <CollapsibleTrigger
+            aria-label={
+              open ? "Fold getting started" : "Unfold getting started"
+            }
+            className="flex size-5 items-center justify-center rounded-xsm text-icon-system outline-none hover:bg-foreground-02 hover:text-icon-nav-active focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <CardChevronIcon />
+          </CollapsibleTrigger>
+        </div>
+        <div className="flex flex-col">
+          <h2 className="text-type-body-small font-medium text-heading-01">
+            Getting Started
+          </h2>
+          <p className="text-type-caption-2 font-medium text-heading-05 tabular-nums">
+            {done}/{total} steps completed
+          </p>
+        </div>
       </div>
       <CollapsibleContent>
-        <ol className="flex flex-col gap-px pt-1">
+        <ol className="flex flex-col gap-3">
           {steps.map((step) => (
             <li key={step.id}>
               <Link
                 href={step.href}
-                className="flex h-nav-item items-center gap-2 rounded-sm px-1 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                  "flex items-center gap-1 rounded-xsm text-type-caption-1 font-medium outline-none hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring",
+                  step.done ? "text-heading-05" : "text-body",
+                )}
               >
                 {step.done ? (
-                  <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-spot-500-green text-white">
-                    <CheckIcon aria-hidden className="size-2.5" />
-                  </span>
+                  <StepDoneIcon className="size-3.5 shrink-0" />
                 ) : (
-                  <span
-                    aria-hidden
-                    className="size-4 shrink-0 rounded-full border border-stroke-strong"
-                  />
+                  <StepTodoIcon className="size-3.5 shrink-0 text-stroke-input-hover" />
                 )}
-                <span className={cn("truncate", step.done && "text-sub-text")}>
-                  {step.label}
-                </span>
+                <span className="truncate">{step.label}</span>
                 <span className="sr-only">
                   {step.done ? " (done)" : " (to do)"}
                 </span>
@@ -119,9 +126,10 @@ export function SidebarSetup({
   );
 }
 
-/** A 20 px ring that fills clockwise with the accent colour as steps are done. */
+/** The 20 px ring (Figma): a 1.92 px track, and a blue arc that starts at 9 o'clock and runs
+ * anticlockwise as steps are done. */
 function ProgressRing({ done, total }: { done: number; total: number }) {
-  const radius = 8;
+  const radius = 9.04;
   const length = 2 * Math.PI * radius;
   const filled = total > 0 ? (done / total) * length : 0;
   return (
@@ -129,28 +137,26 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
       viewBox="0 0 20 20"
       role="img"
       aria-label={`${done} of ${total} steps completed`}
-      className="size-5 -rotate-90"
+      className="size-5 -scale-x-100"
     >
       <circle
         cx="10"
         cy="10"
         r={radius}
         fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        className="text-foreground-03"
+        strokeWidth="1.92"
+        className="stroke-stroke-input-hover"
       />
       <circle
         cx="10"
         cy="10"
         r={radius}
         fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="1.92"
         strokeLinecap="round"
         // The arc length is data (progress), not styling.
         strokeDasharray={`${filled} ${length}`}
-        className="text-spot-500-indigo"
+        className="stroke-spot-500-blue"
       />
     </svg>
   );

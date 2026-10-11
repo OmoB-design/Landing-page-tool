@@ -4,16 +4,21 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import {
-  AnalyticsIcon,
-  BrandsIcon,
-  HomeIcon,
-  LibraryIcon,
-  PagesIcon,
-  PlusIcon,
-  SearchIcon,
-  SettingsIcon,
-  TemplatesIcon,
-} from "@/components/ui/icons";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  GroupCaretIcon,
+  NavAnalyticsIcon,
+  NavBrandsIcon,
+  NavHomeIcon,
+  NavLibraryIcon,
+  NavNewPageIcon,
+  NavPagesIcon,
+  NavTemplatesIcon,
+  SidebarSearchIcon,
+} from "@/components/ui/lp-icons";
 import {
   Tooltip,
   TooltipContent,
@@ -26,27 +31,22 @@ import { WithPathname } from "./with-pathname";
 // Icons are chosen by name: Server Components can pass a string to this Client Component, but
 // not an icon component (functions are not serialisable).
 const NAV_ICONS = {
-  analytics: AnalyticsIcon,
-  brands: BrandsIcon,
-  home: HomeIcon,
-  library: LibraryIcon,
-  new: PlusIcon,
-  pages: PagesIcon,
-  settings: SettingsIcon,
-  templates: TemplatesIcon,
+  analytics: NavAnalyticsIcon,
+  brands: NavBrandsIcon,
+  home: NavHomeIcon,
+  library: NavLibraryIcon,
+  new: NavNewPageIcon,
+  pages: NavPagesIcon,
+  templates: NavTemplatesIcon,
 };
 
 export type NavIconName = keyof typeof NAV_ICONS;
-
-const ITEM_CLASS =
-  "flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring";
 
 type NavItemProps = {
   href: string;
   label: string;
   icon?: NavIconName;
-  emoji?: string;
-  /** A custom mark (e.g. a BrandMark) in place of an icon or emoji. */
+  /** A custom mark (a brand's letter mark) in place of an icon. */
   leading?: ReactNode;
   /** Only the exact path is current (not the pages under it). */
   exact?: boolean;
@@ -59,7 +59,12 @@ export function isCurrent(pathname: string, href: string, exact = false) {
   return !(href === "/pages" && pathname.startsWith("/pages/new"));
 }
 
-/** A 32 px sidebar link: icon or mark and label; grey on hover and when it's the current page. */
+/**
+ * A sidebar link (Figma: Side nav — Default and Hover): 16 px icon, 6 px gap, 13 px medium label
+ * on a 20 px line; 6 px across and 4 px down inside a 6 px-rounded row. Hover and the current page fill the row
+ * with foreground-02; the current page's icon turns from icon-system to icon-nav-active.
+ * Brand rows (with a `leading` mark) sit 8 px in, as in the design.
+ */
 export function NavItem(props: NavItemProps) {
   return (
     <WithPathname fallback={<NavLink {...props} active={false} />}>
@@ -77,52 +82,75 @@ function NavLink({
   href,
   label,
   icon,
-  emoji,
   leading,
   active,
 }: NavItemProps & { active: boolean }) {
   const ItemIcon = icon ? NAV_ICONS[icon] : undefined;
-
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={cn(ITEM_CLASS, active && "bg-foreground-02")}
-    >
-      {leading ? (
-        leading
-      ) : emoji ? (
-        <span aria-hidden className="flex w-4 justify-center">
-          {emoji}
-        </span>
-      ) : ItemIcon ? (
-        <ItemIcon aria-hidden className="size-4 shrink-0 text-sub-text" />
-      ) : (
-        <span aria-hidden className="w-4" />
+      className={cn(
+        "flex w-full items-center gap-1.5 rounded-sm py-1 text-type-body-small leading-5 font-medium text-heading-04 outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring",
+        leading ? "px-2" : "px-1.5",
+        active && "bg-foreground-02 text-heading-03",
       )}
-      <span className="truncate">{label}</span>
+    >
+      {leading ??
+        (ItemIcon ? (
+          <ItemIcon
+            className={cn(
+              "size-4 shrink-0",
+              active ? "text-icon-nav-active" : "text-icon-system",
+            )}
+          />
+        ) : (
+          <span aria-hidden className="size-4 shrink-0" />
+        ))}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
     </Link>
   );
 }
 
-/** Search (⌘K), shown but not built yet: the command palette arrives in a later build. */
-export function SearchItem() {
+/**
+ * A collapsible nav group (Figma: Workspace ▾, Your brands ▾): 16 px above, a 12 px medium
+ * heading-05 label with a small filled caret, 8 px in; its rows 2 px apart.
+ */
+export function NavGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <Collapsible defaultOpen className="flex flex-col pt-4">
+      <CollapsibleTrigger className="group flex items-center gap-1 self-start rounded-sm px-2 py-1 text-type-caption-1 font-medium text-heading-05 outline-none hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring">
+        {label}
+        <GroupCaretIcon className="transition-transform duration-150 ease-out group-data-closed:-rotate-90 motion-reduce:transition-none" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="flex flex-col gap-0.5">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+/** Search in the sidebar's top row (Figma: 14 px icon). Not built yet: the ⌘K palette comes later. */
+export function SearchButton() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <button
           type="button"
           aria-disabled="true"
-          className={cn(ITEM_CLASS, "cursor-not-allowed")}
+          aria-label="Search (not built yet)"
+          className="flex size-5 cursor-not-allowed items-center justify-center rounded-xsm text-icon-system outline-none hover:text-icon-nav-active focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <SearchIcon aria-hidden className="size-4 shrink-0 text-sub-text" />
-          <span className="truncate">Search</span>
-          <kbd className="ml-auto font-sans text-type-caption-1 text-caption-1">
-            ⌘K
-          </kbd>
+          <SidebarSearchIcon className="size-3.5" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="right">Not built yet</TooltipContent>
+      <TooltipContent>Search · not built yet</TooltipContent>
     </Tooltip>
   );
 }

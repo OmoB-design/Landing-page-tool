@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
-// Workspace and people marks (D67): a letter on one of eight colours, picked from the name so
-// the same name always gets the same colour.
+// Workspace, people and brand marks (D67; Figma side nav): a letter on one of eight avatar
+// colours, picked from the name so the same name always gets the same colour.
 const MARKS = [
   "bg-avatar-a",
   "bg-avatar-b",
@@ -19,7 +19,9 @@ export function markColour(name: string): (typeof MARKS)[number] {
   return MARKS[hash % MARKS.length]!;
 }
 
-/** A rounded square with the workspace's first letter (sidebar, workspace menu). */
+const initial = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
+
+/** The workspace's mark: an 18 px rounded square, Geist 14 px letter (Figma: User Option). */
 export function WorkspaceMark({
   name,
   className,
@@ -31,17 +33,32 @@ export function WorkspaceMark({
     <span
       aria-hidden
       className={cn(
-        "flex size-5 shrink-0 items-center justify-center rounded-xsm text-type-caption-2 font-semibold text-white",
+        "flex size-4.5 shrink-0 items-center justify-center overflow-hidden rounded-xsm font-mark text-type-body-large leading-none font-medium text-button-primary-text",
         markColour(name),
         className,
       )}
     >
-      {name.trim().charAt(0).toUpperCase() || "?"}
+      {initial(name)}
     </span>
   );
 }
 
-/** A round avatar with a person's initial (account row, Home greeting). */
+/** A brand's mark in the sidebar: a 16 px rounded square, Geist 12 px letter (Figma: Your brands). */
+export function BrandNavMark({ name }: { name: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-xsm font-mark text-type-caption-1 leading-none font-medium text-button-primary-text",
+        markColour(name),
+      )}
+    >
+      {initial(name)}
+    </span>
+  );
+}
+
+/** A round avatar with a person's initial (profile card and account menu: 30 px; Home: larger). */
 export function PersonMark({
   name,
   className,
@@ -53,12 +70,12 @@ export function PersonMark({
     <span
       aria-hidden
       className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-full text-type-caption-2 font-medium text-white",
+        "flex size-7.5 shrink-0 items-center justify-center rounded-full font-mark text-type-body-large leading-none font-medium text-button-primary-text",
         markColour(name),
         className,
       )}
     >
-      {name.trim().charAt(0).toUpperCase() || "?"}
+      {initial(name)}
     </span>
   );
 }

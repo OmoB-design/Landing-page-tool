@@ -25,6 +25,9 @@
   /* Greetings and big titles (Heading H3 and H4). */
   --font-serif:
     var(--font-crimson), ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  /* Letter marks on workspaces, people and brands (Figma: Geist Medium). */
+  --font-mark:
+    var(--font-geist), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Primitives (Figma: Primitives collection). Plain variables the tokens point at; feature code
@@ -308,15 +311,18 @@
   /* Layout (Figma: Size). Tailwind v4 only builds w-/h-/size- utilities from the --spacing-*
      namespace, so they live here (w-sidebar, h-topbar, h-header, h-row, h-nav-item …). Spacing
      itself is Tailwind's 4px scale, which is Figma's Space scale (Space-16 = p-4). */
-  --spacing-sidebar: 236px; /* Quality: 234px */
+  --spacing-sidebar: 240px; /* Figma: Side Nav */
   --spacing-topbar: 48px; /* the section editor's own top bar */
-  --spacing-header: 48px; /* page header inside the panel (h-header); Quality: 48px */
+  --spacing-header: 49px; /* page header inside the panel (h-header), bottom border included; Figma Home: 50 with the panel's top stroke */
   --spacing-row: 40px;
   --spacing-nav-item: 32px;
   --spacing-panel: 384px; /* right-hand panel on the build page (w-panel) */
   --spacing-preview-mobile: 390px; /* phone-width page preview (w-preview-mobile) */
   --spacing-editor-panel: 440px; /* section editor's left panel (w-editor-panel) */
   --spacing-wizard-dossier: 300px; /* create wizard's dossier panel (w-wizard-dossier) */
+  --spacing-menu-workspace: 228px; /* Figma: Sidebar Account Option (w-menu-workspace); its ring-thin is outside */
+  --spacing-menu-account: 270px; /* Figma: Sidebar Menu Option (w-menu-account) */
+  --spacing-menu-header: 280px; /* Figma: Jobs, Notification (w-menu-header) */
 
   /* Motion (D51, DESIGN.md §6): strong custom curves; the built-in ones are too weak. */
   --ease-out: cubic-bezier(
@@ -336,6 +342,7 @@
     0 0 0 0.5px rgb(61 59 53 / 0.1), 0 1px 1px rgb(0 0 0 / 0.1),
     0 1px 5px rgb(61 59 53 / 0.05);
   --shadow-edge: inset 0 -0.5px 0 0.3px rgb(0 0 0 / 0.15);
+  --shadow-raise: 0 1px 3px 0 rgb(0 0 0 / 0.06); /* Figma: closed getting-started card */
   --shadow-panel: 0 0 0 0.5px rgb(61 59 53 / 0.04), 0 1px 2px rgb(0 0 0 / 0.03);
 }
 
@@ -452,7 +459,7 @@
     @apply bg-dashboard font-sans text-body;
   }
   body {
-    @apply bg-dashboard text-type-body-small text-body;
+    @apply bg-dashboard text-type-body-small text-body antialiased;
   }
   /* Focus ring: 2 px accent at 40 % opacity, offset 1 px, always visible on keyboard focus. */
   :focus-visible {
@@ -599,4 +606,29 @@
   outline: 2px solid
     color-mix(in oklab, var(--color-spot-500-indigo) 40%, transparent);
   outline-offset: 1px;
+}
+
+/* Figma strokes thinner than 1 px (D69). Browsers round borders up to whole pixels, so these are
+   drawn as box shadows, which keep their fraction like Figma does. `ring-thin` is a 0.7 px outline
+   outside the box (Figma's outside stroke) in the ring colour: `ring-thin ring-stroke-strong`.
+   `divider-b-thin` (0.7 px) and `divider-b-half` (0.5 px) draw a stroke-coloured line inside the
+   bottom edge. They compose with shadow-* like Tailwind's own rings, and take no layout space. */
+@utility ring-thin {
+  --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 0.7px
+    var(--tw-ring-color, currentcolor);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+@utility divider-b-thin {
+  --tw-inset-shadow: inset 0 -0.7px 0 0 var(--color-stroke);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+@utility divider-b-half {
+  --tw-inset-shadow: inset 0 -0.5px 0 0 var(--color-stroke);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
 }

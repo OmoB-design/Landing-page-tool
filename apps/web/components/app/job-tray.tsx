@@ -4,14 +4,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useEffect, useRef } from "react";
 
-import { Button } from "@/components/ui/button";
+import { LoadingIcon, StatusFailedIcon } from "@/components/ui/icons";
 import {
-  CheckIcon,
-  JobsIcon,
-  LoadingIcon,
-  StatusBuildingIcon,
-  StatusFailedIcon,
-} from "@/components/ui/icons";
+  HeaderJobsIcon,
+  JobDoneIcon,
+  StepTodoIcon,
+} from "@/components/ui/lp-icons";
 import {
   Popover,
   PopoverContent,
@@ -37,195 +35,150 @@ import type { JobStatus, JobSummary } from "@/lib/validators/jobs";
 
 import { toast } from "./toaster";
 
+// Figma: Jobs and Notification popovers — 280 px, 10 px corners, a 0.7 px stroke-strong outline
+// and the inner edge shadow; white in light mode, the overlay colour in dark mode.
+export const HEADER_POPOVER =
+  "flex w-menu-header flex-col gap-1.5 overflow-hidden rounded-lg bg-surface-primary p-0 pb-1.5 shadow-edge ring-thin ring-stroke-strong dark:bg-overlay";
+export const HEADER_POPOVER_TITLE =
+  "divider-b-thin p-3 text-type-caption-2 font-medium text-heading-05";
+
+/** Job toasts for your own jobs, kept running from the sidebar so they work on every page. */
+export function JobToasts({ userId }: { userId: string }) {
+  const { data } = useJobs();
+  useJobToasts(data?.jobs ?? [], userId);
+  return null;
+}
+
 /**
- * Jobs tray (DESIGN.md §5.2 JobTray): a button with the number of running jobs and a popover of
- * recent jobs with live progress. Your own running jobs also show as toasts whose progress line
- * updates live and turns into a done/failed toast when they finish. `variant="row"` is the
- * sidebar row (D67): icon, "Jobs" and the running count.
+ * Jobs in the page header (Figma: Icon/Job — a 16 px icon in a 32 px box): a blue dot while jobs
+ * run, and a popover (Figma: Jobs) of recent jobs, each with its status, live progress while it
+ * runs, and when it started.
  */
-export function JobTray({
-  userId,
-  variant = "icon",
-}: {
-  userId: string;
-  variant?: "icon" | "row";
-}) {
+export function JobTray() {
   const { data, isPending } = useJobs();
   const jobs = data?.jobs ?? [];
   const running = jobs.filter((job) => isActive(job.status)).length;
-  useJobToasts(jobs, userId);
-
   const label = running > 0 ? `Jobs, ${running} running` : "Jobs";
-  const content = (
-    <PopoverContent
-      side={variant === "row" ? "right" : "bottom"}
-      align="start"
-      className="w-80 gap-0 p-0"
-    >
-      <JobList jobs={jobs} isPending={isPending} />
-    </PopoverContent>
-  );
-  if (variant === "row") {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label={label}
-            className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-foreground-02"
-          >
-            <JobsIcon
-              aria-hidden
-              className={cn(
-                "size-4 shrink-0",
-                running > 0 ? "text-spot-500-indigo" : "text-sub-text",
-              )}
-            />
-            <span className="truncate">Jobs</span>
-            {running > 0 ? (
-              <span
-                aria-hidden
-                className="ml-auto rounded-xsm bg-foreground-02 px-1.5 text-type-caption-1 text-sub-text tabular-nums"
-              >
-                {running}
-              </span>
-            ) : null}
-          </button>
-        </PopoverTrigger>
-        {content}
-      </Popover>
-    );
-  }
   return (
     <Popover>
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
+            <button
+              type="button"
               aria-label={label}
-              className="relative"
+              className="relative flex size-8 items-center justify-center rounded-sm text-icon-system outline-none hover:bg-foreground-02 hover:text-icon-nav-active focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-foreground-01 aria-expanded:text-icon-nav-active"
             >
-              <JobsIcon
-                aria-hidden
-                className={cn(running > 0 && "text-spot-500-indigo")}
-              />
+              <HeaderJobsIcon className="size-4" />
               {running > 0 ? (
                 <span
                   aria-hidden
-                  className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-spot-500-indigo text-type-caption-2 font-medium text-on-dark tabular-nums"
-                >
-                  {running}
-                </span>
+                  data-dot
+                  className="absolute top-2 left-4.5 size-1 rounded-full bg-spot-500-blue"
+                />
               ) : null}
-            </Button>
+            </button>
           </PopoverTrigger>
         </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>
-      {content}
+      <PopoverContent align="end" sideOffset={6} className={HEADER_POPOVER}>
+        <h2 className={HEADER_POPOVER_TITLE}>Jobs</h2>
+        {isPending ? (
+          <div
+            className="flex flex-col gap-2 px-3 pb-1.5"
+            aria-label="Loading jobs"
+          >
+            <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
+            <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
+          </div>
+        ) : jobs.length === 0 ? (
+          <p className="px-3 py-4 text-type-caption-1 font-medium text-heading-05">
+            No jobs yet
+          </p>
+        ) : (
+          <ul
+            className="flex max-h-96 flex-col gap-0.5 overflow-y-auto px-2.5 pb-1.5"
+            aria-live="polite"
+          >
+            {jobs.map((job) => (
+              <JobItem key={job.id} job={job} />
+            ))}
+          </ul>
+        )}
+      </PopoverContent>
     </Popover>
-  );
-}
-
-/** The tray's popover: recent jobs with live progress. */
-function JobList({
-  jobs,
-  isPending,
-}: {
-  jobs: JobSummary[];
-  isPending: boolean;
-}) {
-  return (
-    <>
-      <h2 className="border-b border-stroke px-3 py-2 text-type-caption-1 font-medium">
-        Jobs
-      </h2>
-      {isPending ? (
-        <div className="flex flex-col gap-2 p-3" aria-label="Loading jobs">
-          <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-          <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-        </div>
-      ) : jobs.length === 0 ? (
-        <p className="px-3 py-6 text-center text-type-caption-1 text-sub-text">
-          No jobs yet
-        </p>
-      ) : (
-        <ul className="max-h-96 overflow-y-auto" aria-live="polite">
-          {jobs.map((job) => (
-            <JobItem key={job.id} job={job} />
-          ))}
-        </ul>
-      )}
-    </>
   );
 }
 
 function JobItem({ job }: { job: JobSummary }) {
   const percent = progressPercent(job.latest);
-  const line =
-    job.status === "failed"
-      ? job.error?.message
-      : (job.latest?.message ?? <ShimmerText>Waiting to start…</ShimmerText>);
   return (
-    <li className="flex flex-col gap-1.5 border-b border-stroke px-3 py-2.5 last:border-b-0">
-      <div className="flex items-center gap-2">
+    <li className="flex items-start gap-0.5">
+      <span className="flex pt-2">
         <JobStatusIcon status={job.status} />
-        <span className="text-type-body-small font-medium">
-          {jobTitle(job.kind)}
-        </span>
-        <span className="ml-auto text-type-caption-2 text-sub-text">
-          {STATUS_LABELS[job.status]}
-        </span>
-      </div>
-      {line ? (
-        <p
-          className={cn(
-            "truncate text-type-caption-1 text-sub-text",
-            job.status === "failed" && "text-text-danger",
-          )}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1 px-1 pt-1 pb-1.5 divider-b-half">
+        <div className="flex items-start justify-between gap-2 text-heading-01">
+          <span className="truncate text-type-caption-1 font-medium">
+            {jobTitle(job.kind)}
+          </span>
+          <span
+            className={cn(
+              "shrink-0 text-type-caption-2",
+              job.status === "failed" && "text-text-danger",
+            )}
+          >
+            {STATUS_LABELS[job.status]}
+          </span>
+        </div>
+        {job.status === "failed" && job.error?.message ? (
+          <p className="truncate text-type-caption-2 text-text-danger">
+            {job.error.message}
+          </p>
+        ) : isActive(job.status) ? (
+          <>
+            <p className="truncate text-type-caption-2 text-heading-05">
+              {job.latest?.message ?? (
+                <ShimmerText>Waiting to start…</ShimmerText>
+              )}
+            </p>
+            <Progress
+              value={percent ?? 0}
+              aria-label={`${jobTitle(job.kind)} progress`}
+            />
+          </>
+        ) : null}
+        <time
+          dateTime={job.created_at}
+          className="text-type-caption-2 text-heading-05"
         >
-          {line}
-        </p>
-      ) : null}
-      {isActive(job.status) ? (
-        <Progress
-          value={percent ?? 0}
-          aria-label={`${jobTitle(job.kind)} progress`}
-        />
-      ) : null}
-      <time
-        dateTime={job.created_at}
-        className="text-type-caption-2 text-caption-1"
-      >
-        Started{" "}
-        {formatDistanceToNowStrict(new Date(job.created_at), {
-          addSuffix: true,
-        })}
-      </time>
+          Started{" "}
+          {formatDistanceToNowStrict(new Date(job.created_at), {
+            addSuffix: true,
+          })}
+        </time>
+      </div>
     </li>
   );
 }
 
 function JobStatusIcon({ status }: { status: JobStatus }) {
   switch (status) {
-    case "queued":
-      return (
-        <StatusBuildingIcon aria-hidden className="size-4 text-sub-text" />
-      );
+    case "succeeded":
+      return <JobDoneIcon className="size-2.5" />;
     case "running":
       return (
         <LoadingIcon
           aria-hidden
-          className="size-4 animate-spin text-spot-500-indigo motion-reduce:animate-spin-slow"
+          className="size-2.5 animate-spin text-spot-500-blue motion-reduce:animate-spin-slow"
         />
       );
-    case "succeeded":
-      return <CheckIcon aria-hidden className="size-4 text-spot-500-green" />;
+    case "queued":
+      return <StepTodoIcon className="size-2.5 text-stroke-input-hover" />;
     default:
       return (
-        <StatusFailedIcon aria-hidden className="size-4 text-spot-500-red" />
+        <StatusFailedIcon aria-hidden className="size-2.5 text-text-danger" />
       );
   }
 }

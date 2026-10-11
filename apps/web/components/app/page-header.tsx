@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Icon } from "@/components/ui/icons";
 import { Separator } from "@/components/ui/separator";
 
+import { HeaderTools } from "./header-tools";
 import { SidebarToggleButton } from "./sidebar-state";
 
 type PageHeaderProps = {
@@ -19,8 +20,8 @@ type PageHeaderProps = {
   actions?: ReactNode;
 };
 
-/** The page panel's 48 px header (DESIGN.md §2, D67): a mark if any, the 13 px regular title, a
- * divider, then tabs; actions on the right. Opens the sidebar on small screens or when it's collapsed. */
+/** The page panel's header (DESIGN.md §2; Figma: Home): 49 px with its border, 16 px in counting the panel's border; a mark if
+ * any, the 13 px regular title, a divider, then tabs; actions, Jobs and Notifications on the right. Opens the sidebar on small screens or when it's collapsed. */
 export function PageHeader({
   title,
   emoji,
@@ -29,7 +30,7 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <header className="flex h-header shrink-0 items-center gap-3 border-b border-stroke px-5">
+    <header className="flex h-header shrink-0 items-center gap-3 border-b border-stroke px-3.75">
       <SidebarToggleButton
         action="open"
         className="-ml-1.5 lg:hidden lg:sidebar-collapsed:inline-flex"
@@ -50,9 +51,12 @@ export function PageHeader({
           {tabs}
         </>
       ) : null}
-      {actions ? (
-        <div className="ml-auto flex items-center gap-1">{actions}</div>
-      ) : null}
+      <div className="ml-auto flex items-center gap-3">
+        {actions ? (
+          <div className="flex items-center gap-1">{actions}</div>
+        ) : null}
+        <HeaderTools />
+      </div>
     </header>
   );
 }

@@ -32,20 +32,43 @@ function openMenu() {
       }}
     />,
   );
-  fireEvent.click(
-    screen.getByRole("button", { name: "Account menu for Ada Lovelace" }),
-  );
+  const trigger = screen.getByRole("button", {
+    name: "Account menu for Ada Lovelace",
+  });
+  // Radix opens its menu on pointer down (left button) or the keyboard.
+  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
 }
 
 describe("UserMenu", () => {
-  it("shows who is signed in, the actions and getting-started progress", () => {
+  it("shows the profile card with who is signed in", () => {
+    render(
+      <UserMenu
+        name="Ada Lovelace"
+        email="ada@example.test"
+        setup={{ done: 1, total: 5 }}
+      />,
+    );
+    const card = screen.getByRole("button", {
+      name: "Account menu for Ada Lovelace",
+    });
+    expect(card.textContent).toContain("ada@example.test");
+  });
+
+  it("lists the actions, the theme and getting-started progress", () => {
     openMenu();
-    expect(screen.getByText("ada@example.test")).toBeTruthy();
-    const menu = screen.getByRole("menu", { name: "Account" });
+    // Radix names the menu after its trigger.
+    const menu = screen.getByRole("menu", {
+      name: "Account menu for Ada Lovelace",
+    });
     const items = Array.from(menu.querySelectorAll('[role="menuitem"]')).map(
       (item) => item.textContent,
     );
-    expect(items).toEqual(["Settings", "ThemeSystem", "Sign out"]);
+    expect(items).toEqual([
+      "Settings",
+      "ThemesSystem",
+      "Logout",
+      "Next: Add a product",
+    ]);
     expect(
       screen.getByRole("progressbar", { name: "Getting started" }),
     ).toBeTruthy();
@@ -54,14 +77,14 @@ describe("UserMenu", () => {
 
   it("cycles the theme from System to Light", () => {
     openMenu();
-    fireEvent.click(screen.getByRole("menuitem", { name: /Theme/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Themes/ }));
     expect(setTheme).toHaveBeenCalledWith("light");
   });
 
   it("goes to the next setup step", () => {
     openMenu();
     fireEvent.click(
-      screen.getByRole("button", { name: /Next: Add a product/ }),
+      screen.getByRole("menuitem", { name: /Next: Add a product/ }),
     );
     expect(push).toHaveBeenCalledWith("/brands");
   });

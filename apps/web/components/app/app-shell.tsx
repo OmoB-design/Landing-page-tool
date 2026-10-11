@@ -7,8 +7,9 @@ import { SidebarNav } from "./sidebar";
 import { SidebarProvider } from "./sidebar-state";
 
 /**
- * The signed-in workspace (DESIGN.md §2, D67): one sidebar on the grey canvas (workspace menu,
- * jobs, notifications, navigation, settings, account) and the page in a floating white panel.
+ * The signed-in workspace (DESIGN.md §2, D67; Figma: Home): the 240 px sidebar on the grey canvas
+ * (workspace menu, navigation, getting started, account) and the page in a floating panel 6 px in
+ * from every edge, the sidebar included.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const sidebar = (
@@ -31,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           {sidebar}
         </aside>
-        <div className="flex min-w-0 flex-1 p-1.5 lg:pl-0 lg:sidebar-collapsed:pl-1.5">
+        <div className="flex min-w-0 flex-1 p-1.5">
           <main
             id="main"
             className="min-w-0 flex-1 overflow-y-auto rounded-lg border border-stroke bg-surface-primary shadow-panel"

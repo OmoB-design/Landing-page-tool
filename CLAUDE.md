@@ -245,7 +245,7 @@ On the owner's 8 GB Intel Mac, Supabase services take 1–2 minutes to become he
 - No secrets in the repo. Shopify credentials live in Supabase Vault, referenced by id.
 - Long work is always a job. Route handlers never run a pipeline or an LLM call inline (the reference tool's synchronous "redraft" timed out; do not repeat it).
 - Every destructive edit to a build (image replace, section remove, agent edit, recolor) takes a snapshot first so it can be undone.
-- UI: no raw colour values or ad-hoc spacing in feature code. Use tokens. Icons from `lucide-react` only. Animation from `motion/react` only.
+- UI: no raw colour values or ad-hoc spacing in feature code. Use tokens. Icons from `lucide-react` only, except the Figma icons in `components/ui/lp-icons.tsx` (D69). Animation from `motion/react` only.
 - Write tests alongside engines. Engines get fixture-based tests; nodes get tests with provider fakes.
 
 ---

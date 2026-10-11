@@ -2,16 +2,13 @@
 
 import { formatDistanceToNowStrict } from "date-fns";
 
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BellIcon } from "@/components/ui/icons";
+import { HeaderBellIcon } from "@/components/ui/lp-icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import {
   Tooltip,
@@ -22,15 +19,16 @@ import {
   useMarkNotificationsRead,
   useNotifications,
 } from "@/lib/queries/notifications";
-import { cn } from "@/lib/utils";
 
-/** Notifications (BUILD_SPEC §15): unread count, latest notifications, mark as read. The default
- * is a bell button; `variant="row"` is the sidebar row (D67). */
-export function NotificationsButton({
-  variant = "icon",
-}: {
-  variant?: "icon" | "row";
-}) {
+import { HEADER_POPOVER, HEADER_POPOVER_TITLE } from "./job-tray";
+
+/**
+ * Notifications in the page header (BUILD_SPEC §15; Figma: Icon/Bell, Icon/Bell active and
+ * Notification): a 16 px bell in a 32 px box with a blue dot while anything is unread, and a
+ * popover of the latest notifications (a blue dot on unread ones, the title in 12 px medium and
+ * the time in 11 px) with Mark all as read.
+ */
+export function NotificationsButton() {
   const { data, isPending } = useNotifications();
   const markRead = useMarkNotificationsRead();
   const notifications = data?.notifications ?? [];
@@ -38,62 +36,38 @@ export function NotificationsButton({
   const label =
     unread > 0 ? `Notifications, ${unread} unread` : "Notifications";
 
-  const trigger =
-    variant === "row" ? (
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          className="flex h-nav-item w-full items-center gap-2 rounded-sm px-2 text-type-body-small text-body outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-foreground-02"
-        >
-          <BellIcon aria-hidden className="size-4 shrink-0 text-sub-text" />
-          <span className="truncate">Notifications</span>
-          {unread > 0 ? (
-            <span
-              aria-hidden
-              className="ml-auto rounded-xsm bg-foreground-02 px-1.5 text-type-caption-1 text-sub-text tabular-nums"
-            >
-              {unread}
-            </span>
-          ) : null}
-        </button>
-      </DropdownMenuTrigger>
-    ) : (
+  return (
+    <DropdownMenu>
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
+            <button
+              type="button"
               aria-label={label}
-              className="relative"
+              className="relative flex size-8 items-center justify-center rounded-sm text-icon-system outline-none hover:bg-foreground-02 hover:text-icon-nav-active focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-foreground-01 aria-expanded:text-icon-nav-active"
             >
-              <BellIcon aria-hidden />
+              <HeaderBellIcon className="size-4" />
               {unread > 0 ? (
                 <span
                   aria-hidden
-                  className="absolute top-1 right-1 size-2 rounded-full bg-spot-500-indigo ring-2 ring-dashboard"
+                  data-dot
+                  className="absolute top-2 left-4.5 size-1 rounded-full bg-spot-500-blue"
                 />
               ) : null}
-            </Button>
+            </button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>
-    );
-
-  return (
-    <DropdownMenu>
-      {trigger}
       <DropdownMenuContent
-        side={variant === "row" ? "right" : "bottom"}
-        align="start"
-        className="w-80"
+        align="end"
+        sideOffset={6}
+        className={HEADER_POPOVER}
       >
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+        <h2 className={HEADER_POPOVER_TITLE}>Notification</h2>
         {isPending ? (
           <div
-            className="flex flex-col gap-2 p-2"
+            className="flex flex-col gap-2 px-3"
             aria-label="Loading notifications"
           >
             <Skeleton
@@ -106,61 +80,57 @@ export function NotificationsButton({
             />
           </div>
         ) : notifications.length === 0 ? (
-          <p className="px-2 py-6 text-center text-type-caption-1 text-sub-text">
+          <p className="px-3 py-2 text-type-caption-1 font-medium text-heading-05">
             No notifications yet
           </p>
         ) : (
-          notifications.map((note) => {
-            const isUnread = note.read_at === null;
-            return (
-              <DropdownMenuItem
-                key={note.id}
-                onSelect={() => {
-                  if (isUnread) markRead.mutate([note.id]);
-                }}
-                className="flex items-start gap-2 py-2"
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "mt-1.5 size-2 shrink-0 rounded-full",
-                    isUnread ? "bg-spot-500-indigo" : "bg-transparent",
-                  )}
-                />
-                <span className="flex min-w-0 flex-col gap-0.5">
-                  <span
-                    className={cn(
-                      "text-type-body-small",
-                      isUnread && "font-medium",
-                    )}
-                  >
+          <div className="flex max-h-96 flex-col gap-0.5 overflow-y-auto px-3 pt-1.5 pb-1.5">
+            {notifications.map((note) => {
+              const isUnread = note.read_at === null;
+              return (
+                <DropdownMenuItem
+                  key={note.id}
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    if (isUnread) markRead.mutate([note.id]);
+                  }}
+                  className="items-start gap-0.5 rounded-xsm p-0 focus:bg-foreground-02"
+                >
+                  <span aria-hidden className="relative h-3 w-1 shrink-0">
                     {isUnread ? (
-                      <span className="sr-only">Unread: </span>
+                      <span className="absolute bottom-0 left-0 size-1 rounded-full bg-spot-500-blue" />
                     ) : null}
-                    {note.title}
                   </span>
-                  {note.body ? (
-                    <span className="text-type-caption-1 text-sub-text">
-                      {note.body}
+                  <span className="flex min-w-0 flex-1 flex-col gap-1 px-1 pt-1 pb-1.5 divider-b-half">
+                    <span className="truncate text-type-caption-1 font-medium text-heading-01">
+                      {isUnread ? (
+                        <span className="sr-only">Unread: </span>
+                      ) : null}
+                      {note.title}
                     </span>
-                  ) : null}
-                  <time
-                    dateTime={note.created_at}
-                    className="text-type-caption-2 text-caption-1"
-                  >
-                    {formatDistanceToNowStrict(new Date(note.created_at), {
-                      addSuffix: true,
-                    })}
-                  </time>
-                </span>
-              </DropdownMenuItem>
-            );
-          })
+                    {note.body ? (
+                      <span className="truncate text-type-caption-2 text-heading-05">
+                        {note.body}
+                      </span>
+                    ) : null}
+                    <time
+                      dateTime={note.created_at}
+                      className="text-type-caption-2 text-heading-05"
+                    >
+                      {formatDistanceToNowStrict(new Date(note.created_at), {
+                        addSuffix: true,
+                      })}
+                    </time>
+                  </span>
+                </DropdownMenuItem>
+              );
+            })}
+          </div>
         )}
-        <DropdownMenuSeparator />
         <DropdownMenuItem
           disabled={unread === 0}
           onSelect={() => markRead.mutate(undefined)}
+          className="rounded-none py-2 pr-1 pl-3 text-type-caption-1 font-medium text-heading-01 focus:bg-foreground-02 focus:text-heading-01"
         >
           Mark all as read
         </DropdownMenuItem>

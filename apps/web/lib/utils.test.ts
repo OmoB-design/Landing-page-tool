@@ -30,6 +30,18 @@ describe("cn", () => {
     expect(cn("text-body", "text-sub-text")).toBe("text-sub-text");
   });
 
+  it("treats ring-thin as a ring width, kept beside a ring colour", () => {
+    expect(
+      cn("ring-1 ring-foreground/10", "ring-thin ring-stroke-strong"),
+    ).toBe("ring-thin ring-stroke-strong");
+    expect(cn("ring-thin", "ring-0")).toBe("ring-0");
+  });
+
+  it("lets a shadow token replace shadcn's shadow", () => {
+    expect(cn("shadow-md", "shadow-control")).toBe("shadow-control");
+    expect(cn("shadow-md", "shadow-edge")).toBe("shadow-edge");
+  });
+
   it("drops falsy values", () => {
     expect(cn("p-2", false, undefined, "font-medium")).toBe("p-2 font-medium");
   });

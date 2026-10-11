@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Crimson_Pro, Inter, JetBrains_Mono } from "next/font/google";
+import { Crimson_Pro, Geist, Inter, JetBrains_Mono } from "next/font/google";
 
 import { InlineScript } from "@/components/app/inline-script";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,12 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
+});
+// Letter marks on workspaces, people and brands (Figma side nav).
+const geist = Geist({
+  subsets: ["latin"],
+  weight: ["500"],
+  variable: "--font-geist",
 });
 // Page greetings and big titles (D67).
 const crimsonPro = Crimson_Pro({
@@ -34,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         inter.variable,
         jetbrainsMono.variable,
         crimsonPro.variable,
+        geist.variable,
       )}
     >
       <head>

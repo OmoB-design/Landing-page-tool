@@ -11,10 +11,24 @@ import { createCn } from "cn/config";
 export const cn = createCn({
   extend: {
     theme: {
-      spacing: ["sidebar", "topbar", "header", "row", "nav-item"],
+      spacing: [
+        "sidebar",
+        "topbar",
+        "header",
+        "row",
+        "nav-item",
+        "menu-workspace",
+        "menu-account",
+        "menu-header",
+      ],
       radius: ["xsm", "xxl", "max"],
+      // Without these, shadow-edge etc. read as a shadow colour and shadcn's shadow-md stays.
+      shadow: ["pop", "control", "edge", "raise", "panel"],
     },
     classGroups: {
+      // Figma's 0.7 px outline (@utility in globals.css): a ring width, so it replaces shadcn's
+      // ring-1 and isn't read as a ring colour.
+      "ring-w": [{ ring: ["thin"] }],
       // The Figma type scale (D68); without this, text-type-* would read as a text colour.
       "font-size": [
         {

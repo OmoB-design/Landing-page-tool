@@ -15,16 +15,14 @@ The owner supplied a reference screenshot (a work-management app: icon rail, sec
 
 ## 2. Layout anatomy
 
-**Current (D67):**
+**Current (D69, Figma frames Home and Home Dark):**
 ```
 ┌──────────────┬──────────────────────────────────────────────────┐
-│ [B] Org ▾  ◧ │ ╭──────────────────────────────────────────────╮ │  canvas #f9f9f9
-│              │ │ Page title  │ Tabs …                Actions │ │  PageHeader 48px
+│ [B] Org ˅ ⌕ ◧│ ╭──────────────────────────────────────────────╮ │  canvas (dashboard)
+│              │ │ Page title  │ Tabs …     Actions  ⟳ jobs 🔔  │ │  PageHeader 49px
 │ ⌂ Home       │ ├──────────────────────────────────────────────┤ │
 │ + New page   │ │                                              │ │
-│ ⌕ Search  ⌘K │ │  page content (centred column or full width) │ │
-│ 🔔 Notifications 43                                           │ │
-│ ⟳ Jobs       │ │                                              │ │
+│              │ │  page content (centred column or full width) │ │
 │ Workspace ▾  │ │                                              │ │
 │  Pages       │ │                                              │ │
 │  Templates   │ │                                              │ │
@@ -34,17 +32,19 @@ The owner supplied a reference screenshot (a work-management app: icon rail, sec
 │ Your brands ▾│ │                                              │ │
 │  ■ Allbirds  │ │                                              │ │
 │ ╭──────────╮ │ │                                              │ │
-│ │◔ Getting │ │ │                                              │ │
-│ │  started │ │ │                                              │ │
+│ │◔       ˅ │ │ │                                              │ │
+│ │Getting   │ │ │                                              │ │
+│ │Started   │ │ │                                              │ │
 │ │○ steps … │ │ │                                              │ │
 │ ╰──────────╯ │ │                                              │ │
-│ ⚙ Settings   │ │                                              │ │
-│ (B) Account  │ ╰──────────────────────────────────────────────╯ │  white panel, 6px inset,
+│ ╭(B) Name ⇕╮ │ ╰──────────────────────────────────────────────╯ │  panel 6px from every edge,
 └──────────────┴──────────────────────────────────────────────────┘  10px corners
-  sidebar 236px
+  sidebar 240px
 ```
-- **Sidebar** (on the canvas): the workspace menu (coloured letter mark, name, chevron; lists orgs) and the collapse button; Home, New page, Search (⌘K, not built), Notifications and Jobs rows with counts (popovers open to the right); collapsible **Workspace** and **Your brands** groups with a small filled caret; the **getting-started card** (`SidebarSetup`: a progress ring, "Getting started", "N/5 steps completed", the five steps as links with a circle that becomes a tick; the chevron folds it, remembered in the browser; gone once every step is done), then Settings and the account row (avatar and name; the account menu opens upward) at the bottom. Current item and hover: `surface-hover`.
-- **Page panel:** white, 6 px from the window edges, 10 px corners, a hairline border. Each page starts with `PageHeader` (48 px: a mark if any, the title in 13 px regular, a divider, tabs, actions on the right; no section icons). These sizes were measured from the owner's Quality screenshots. On small screens, or with the sidebar collapsed, the header shows the open-sidebar button.
+- **Sidebar** (`bg-dashboard`, 240 px): top row 12 px down and 8 px in: the workspace menu (18 px letter mark in Geist, 14 px name, small chevron; menu 228 px: Settings, Invite and manage members, Logout, the org list when there is more than one), Search (14 px, not built) and the collapse button (32 px). Nav 8 px in, rows 2 px apart: Home, New page; the **Workspace** and **Your brands** groups (16 px above; 12 px medium `heading-05` label with a filled caret). Rows are 28 px: 16 px icon, 6 px gap, 13 px medium `heading-04` on a 20 px line; hover and the current page fill `foreground-02`, the current page's text turns `heading-03` and its icon `icon-nav-active`. Brand rows use a 16 px letter mark. At the bottom, 8 px in and 6 px up: the **getting-started card** (`SidebarSetup`: 20 px progress ring, chevron to fold, "Getting Started", "N/M steps completed", the steps as links with a 14 px circle that becomes a blue tick; open: `border-stroke shadow-edge`, folded: `border-stroke-strong shadow-raise`; the fold is remembered in the browser; gone once every step is done) above the **profile card** (30 px avatar, 12 px name, 10 px email, up-down chevrons; 10 px corners, `shadow-edge`). The profile card opens the account menu upward (270 px: who is signed in; Settings, Themes with the current theme in a badge, Logout; getting-started progress and "Next: …").
+- **Page panel:** `surface-primary`, 6 px from every edge (the sidebar included), 10 px corners, a hairline border. Each page starts with `PageHeader` (49 px with its border, 16 px in counting the panel border: a mark if any, the title in 13 px regular, a divider, tabs; on the right the page's actions, then Jobs and Notifications: 32 px icon buttons with a blue dot while jobs run or anything is unread, opening 280 px popovers with a titled header). On small screens, or with the sidebar collapsed, the header shows the open-sidebar button.
+- **Hairlines:** browsers round borders up to whole pixels, so Figma's 0.7 px and 0.5 px strokes are drawn as box shadows, which keep the fraction: `ring-thin ring-<colour>` (a 0.7 px outline outside the box, like Figma's outside stroke) on menus and popovers, and `divider-b-thin` (0.7 px) / `divider-b-half` (0.5 px) for stroke-coloured lines inside the bottom edge. They take no layout space and combine with `shadow-*`.
+- **Dark mode** (Home Dark): the same layout through the Dark token values (`dashboard` #090909, `surface-primary` #121212, `foreground-02`/`stroke` #2a2a2a, header popovers on `overlay`).
 - **No icon rail and no top bar** (removed in D67).
 
 **Before D67 (the original reference):**
@@ -132,7 +132,7 @@ Right side of each row (not visible in the screenshot, add it): origin badge (Ow
 
 **Type** (Figma text styles Heading/Body/Caption): `text-type-caption-3` 10 (not used yet), `text-type-caption-2` 11, `text-type-caption-1` 12, `text-type-body-small` 13 (body), `text-type-body-large` 14, `text-type-h6` 16, `text-type-h5` 22, `text-type-h4` 30 (serif card titles), `text-type-h3` 36 (serif greetings); `h2`/`h1` exist but are unused. Weights through `font-normal/medium/semibold/bold`. The `type-` prefix keeps sizes apart from colours (Caption 1 is both a text style and a text colour). Tailwind's default type and radius scales are switched off (`--text-*: initial`, `--radius-*: initial`), so `text-sm` or `rounded-xs` produce nothing.
 
-**Radius** (Figma Radius): `rounded-xsm` 4, `rounded-sm` 6 (controls), `rounded-md` 8, `rounded-lg` 10 (panels, cards; Figma's Radius-L keeps the CSS name `--radius-lg` because Tailwind's `rounded-l` means left corners), `rounded-xl` 24, `rounded-xxl` 32, `rounded-max` 64. **Spacing** is Tailwind's 4 px scale, which equals Figma's Space scale (Space-16 = `p-4`). **Sizes** (Figma Size): `w-sidebar` 236, `h-header` 48, `h-topbar` 48, `h-row` 40, `h-nav-item` 32, `w-panel`, `w-preview-mobile`, `w-editor-panel`, `w-wizard-dossier`. **Shadows** (Figma effect styles): `shadow-pop`, `shadow-control`, `shadow-edge`, `shadow-panel`.
+**Radius** (Figma Radius): `rounded-xsm` 4, `rounded-sm` 6 (controls), `rounded-md` 8, `rounded-lg` 10 (panels, cards; Figma's Radius-L keeps the CSS name `--radius-lg` because Tailwind's `rounded-l` means left corners), `rounded-xl` 24, `rounded-xxl` 32, `rounded-max` 64. **Spacing** is Tailwind's 4 px scale, which equals Figma's Space scale (Space-16 = `p-4`). **Sizes** (Figma Size): `w-sidebar` 240, `h-header` 49, `w-menu-workspace` 228, `w-menu-account` 270, `w-menu-header` 280, `h-topbar` 48, `h-row` 40, `h-nav-item` 32, `w-panel`, `w-preview-mobile`, `w-editor-panel`, `w-wizard-dossier`. **Shadows** (Figma effect styles): `shadow-pop`, `shadow-control`, `shadow-edge`, `shadow-panel`, plus `shadow-raise` (the folded getting-started card). **Hairlines** (box shadows, see §2): `ring-thin` (0.7 px outline), `divider-b-thin` (0.7 px), `divider-b-half` (0.5 px). **Fonts:** `font-mark` (Geist 500, the workspace mark's letter).
 
 Fonts come from `next/font` (`--font-inter`, `--font-jetbrains-mono`, `--font-crimson`) and map to `font-sans`, `font-mono`, `font-serif`.
 
@@ -178,9 +178,10 @@ Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, She
 | Component | Purpose |
 |---|---|
 | `AppShell` | *D67:* the sidebar on the canvas and the page in a floating white panel (`main`). Handles sidebar collapse (persisted in a cookie) and the mobile sheet. |
-| `SidebarNav` | *D67:* workspace menu and collapse; Home, New page, Search, Notifications and Jobs rows; Workspace and Your brands groups; Settings and the account row. |
-| `OrgSwitcher` | Coloured letter mark (`WorkspaceMark`) + name + chevron; dropdown of orgs. |
-| `WorkspaceMark` / `PersonMark` | *D67:* a letter on one of eight colours picked from the name (`components/app/mark.tsx`). |
+| `SidebarNav` | *D69 (Figma Side Nav):* workspace menu, Search and collapse; Home and New page; Workspace and Your brands groups; the getting-started card and the profile card (`UserMenu`, the account menu). |
+| `OrgSwitcher` | *D69:* the workspace menu (Figma User Option and Sidebar Account Option): letter mark + name + chevron; Settings, Invite and manage members, Logout, and the org list when there is more than one. |
+| `WorkspaceMark` / `BrandNavMark` / `PersonMark` | *D67:* a letter on one of eight `avatar-*` colours picked from the name (`components/app/mark.tsx`). |
+| `HeaderTools` | *D69:* Jobs and Notifications at the right of every `PageHeader` inside the app shell. |
 | ~~`TopBar`~~, ~~`IconRail`~~ | Removed in D67. |
 | `Sidebar` / `SidebarHeader` / `SidebarAction` / `NavItem` / `NavGroup` | The secondary navigation. |
 | `PageHeader` | Icon/emoji + title + divider + `SegmentedTabs`. |
@@ -194,7 +195,7 @@ Button, Input, Textarea, Select, Checkbox, Switch, RadioGroup, Tabs, Dialog, She
 | `ScoreChip` | Residue score with colour by threshold. |
 | `CostLabel` | `$1.84` muted. |
 | `Banner` | Red/amber/green banners on the review desk. |
-| `JobTray` | Running jobs toasts with live progress lines. B0.4a: button with running count + popover of recent jobs; toasts via `Toaster` (sonner, follows the theme). *D67:* a sidebar row ("Jobs" with the running count; popover opens to the right). `NotificationsButton` likewise ("Notifications" with the unread count). |
+| `JobTray` | Running jobs toasts with live progress lines. B0.4a: button with running count + popover of recent jobs; toasts via `Toaster` (sonner, follows the theme). *D69:* a 32 px icon button in the page header with a blue dot while jobs run; the popover lists recent jobs (status icon, title, status, progress, start time). Toasts come from `JobToasts` in the sidebar so they show on every page. `NotificationsButton` likewise (blue dot while anything is unread; Mark all as read). |
 | `PreviewFrame` | Sandboxed iframe with desktop/mobile toggle and zoom. |
 | `SectionRail` | Draggable section list (reorder, remove, duplicate, rename). |
 | `WizardStepper` | Step indicator for the create wizard. *B1.2:* horizontal step bar (number, tick when done, current step filled, joining lines, unavailable steps disabled; compact "Step N of M" with a progress line when narrow), `components/app/wizard-stepper.tsx`. |
