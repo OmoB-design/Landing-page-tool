@@ -229,7 +229,9 @@ pnpm gen:types                   # regenerate apps/web/types/database.ts from th
 # Optional Docker stack (not needed): pnpm db:local:start | db:local:stop | db:local:reset.
 
 # Vercel: a preview of the website only (D75; the worker isn't deployed, so worker features fail there).
-# Repo root is linked to the project lp-platform (omob-design's projects). Viewing needs a Vercel login.
+# Repo root is linked to the project lp-platform (omob-design's projects). Viewing needs a Vercel login, or a
+# 23-hour share link. Git: origin = github.com/OmoB-design/Landing-page-tool (private). A push to main deploys
+# Production (lp-platform-omob-designs-projects.vercel.app); other branches deploy previews. Push only on the owner's go.
 vercel deploy --target preview   # preview build on Vercel's servers; prints the URL. Always pass --target preview:
                                  # the CLI made the first deploy Production. Never production without the owner's go
 ```
