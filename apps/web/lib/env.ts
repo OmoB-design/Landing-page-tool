@@ -10,5 +10,9 @@ const publicEnvSchema = z.object({
 export const publicEnv = publicEnvSchema.parse({
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
   supabasePublishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-  appUrl: process.env.NEXT_PUBLIC_APP_URL,
+  // Vercel previews get a new address per deploy; fall back to the deployment's own (D75).
+  appUrl:
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.NEXT_PUBLIC_VERCEL_URL &&
+      `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`),
 });

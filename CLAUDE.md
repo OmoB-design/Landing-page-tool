@@ -215,24 +215,26 @@ uv run python -m app.cli.smoke_build --email <you> --brand <name> [--product <na
 # Builds: LangGraph checkpoints live in the private `langgraph` schema, one thread per build; a
 # restarted or retried build resumes after its last finished node. Page revisions go to the
 # `builds` bucket and only working.html is kept once a build finishes.
-# Worker tests use the local Supabase Postgres (skipped when it is down); services/worker/.env holds
-# local keys (gitignored; recreate from .env.example + `supabase status`).
+# Worker tests use the database in DATABASE_URL (the cloud dev project; skipped when unreachable).
 
-# database (needs Docker Desktop running)
-pnpm db:start                    # supabase start --ignore-health-check (see note below)
-pnpm db:stop                     # supabase stop (data is kept)
-pnpm db:reset                    # re-apply migrations + seed (LOCAL ONLY; wipes local data, including accounts)
-supabase migration up --local    # apply new migrations without wiping local data
+# database: the Supabase Cloud dev project `lp-platform-dev` (D73). No Docker. The repo is linked
+# (`supabase link --project-ref vfwzbivlkwkcbdjoqezg`; needs `supabase login` once per machine).
 supabase migration new <name> < /dev/null   # create an empty migration (without < /dev/null it waits for SQL on stdin)
-pnpm test:db                     # pgTAP tests in supabase/tests (tenant isolation)
-pnpm gen:types                   # regenerate apps/web/types/database.ts after schema changes
-supabase status                  # local URLs and keys
-# Local URLs: API http://127.0.0.1:54321 · Studio http://127.0.0.1:54323 · Mailpit (emails) http://127.0.0.1:54324
+pnpm db:push                     # apply new migrations to the cloud dev project (lists them and asks first)
+pnpm test:db                     # pgTAP tests in supabase/tests on the cloud project, run by pytest (tenant isolation; rolls back; `supabase test db` needs Docker)
+pnpm gen:types                   # regenerate apps/web/types/database.ts from the cloud project after schema changes
+# Dashboard: https://supabase.com/dashboard/project/vfwzbivlkwkcbdjoqezg (Table editor, Auth users,
+# Storage, logs). Free plan: pauses after 7 days idle (Restore in the dashboard). Never reset the
+# cloud database without the owner's go; it wipes accounts and builds.
+# Optional Docker stack (not needed): pnpm db:local:start | db:local:stop | db:local:reset.
+
+# Vercel: a preview of the website only (D75; the worker isn't deployed, so worker features fail there).
+# Repo root is linked to the project lp-platform (omob-design's projects). Viewing needs a Vercel login.
+vercel deploy --target preview   # preview build on Vercel's servers; prints the URL. Always pass --target preview:
+                                 # the CLI made the first deploy Production. Never production without the owner's go
 ```
 
-On the owner's 8 GB Intel Mac, Supabase services take 1–2 minutes to become healthy, longer than the CLI's health-check wait, so `db:start` skips the gate and `db reset` may print "container is not ready: unhealthy". Confirm with `docker ps` that all `supabase_*_lp-platform` containers show `(healthy)` before testing.
-
-`apps/web/.env.local` holds the local Supabase URL and publishable key (gitignored). To recreate it, copy `apps/web/.env.example` and fill `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from `supabase status`.
+`apps/web/.env.local` and `services/worker/.env` hold the cloud project's URL and keys (gitignored). To recreate them, copy the `.env.example` files and fill in the values from the dashboard: Project Settings → API Keys (publishable key for the web app, secret key for the worker), and Connect → Session pooler for `DATABASE_URL`.
 
 ---
 

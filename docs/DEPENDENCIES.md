@@ -12,8 +12,8 @@
 | pnpm | package manager and workspaces |
 | Python 3.12 | worker |
 | uv | Python package and venv manager |
-| Docker Desktop | local Supabase stack |
-| Supabase CLI | local stack, migrations, type generation |
+| Docker Desktop | optional: only for the local Supabase stack (`pnpm db:local:*`); dev uses the cloud project (D73) |
+| Supabase CLI | link to the cloud dev project, migrations, type generation |
 | Git | version control |
 | Playwright browsers | installed by `uv run playwright install chromium` in the worker |
 | Claude Code + Figma MCP | build and design handoff |
@@ -77,7 +77,7 @@
 
 | Service | Used for | Needed by | Owner creates |
 |---|---|---|---|
-| Supabase | Postgres, Auth, Storage, Vault | B0.2 | project (or local only at first) |
+| Supabase | Postgres, Auth, Storage, Vault | B0.2 | Free-plan dev project `lp-platform-dev` (D73); a production project before the first deploy |
 | Anthropic API | copy, vision, analysis, agent | B0.4 / B0.6 | API key |
 | fal.ai | image generation and edits | B1.3 (mock before) | API key |
 | Vercel | static publish | B1.5 | access token (+ team id if a team) |
@@ -108,7 +108,7 @@ Never expose the secret (service-role) key to the web app.
 |---|---|---|
 | `SUPABASE_URL` | — | Supabase URL |
 | `SUPABASE_SECRET_KEY` | — | secret key, service-role access (worker only); replaces the legacy service_role key (D32, B0.2) |
-| `DATABASE_URL` | — | direct Postgres connection (queue, checkpoints) |
+| `DATABASE_URL` | — | Postgres connection (queue, checkpoints): the Session pooler string, port 5432 (D73) |
 | `ANTHROPIC_API_KEY` | — | Claude |
 | `FAL_KEY` | — | fal.ai |
 | `LP_MODEL_COPY` | `claude-sonnet-5-5` | copy rewrite |

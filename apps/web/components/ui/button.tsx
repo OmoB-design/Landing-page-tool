@@ -8,8 +8,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground shadow-edge hover:bg-button-primary-active",
+        // The blue button (Figma: Button Primary States; the button-primary utility in globals.css).
+        default: "button-primary text-button-primary-text",
         outline:
           "border-stroke-strong bg-surface-primary text-body shadow-control hover:bg-foreground-02 aria-expanded:bg-foreground-02",
         secondary:
@@ -26,6 +26,9 @@ const buttonVariants = cva(
         xs: "h-6 gap-1 rounded-xsm px-2 text-type-caption-2 in-data-[slot=button-group]:rounded-sm has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-7 gap-1 rounded-sm px-2.5 text-type-body-small in-data-[slot=button-group]:rounded-sm has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        // Figma Button Primary States: 26 px, 8 px corners, 4/8 padding, 6 px gap, 12 px medium label, 14 px icon.
+        compact:
+          "h-6.5 gap-1.5 rounded-md px-2 text-type-caption-1 [&_svg:not([class*='size-'])]:size-3.5",
         icon: "size-8",
         "icon-xs":
           "size-6 rounded-xsm in-data-[slot=button-group]:rounded-sm [&_svg:not([class*='size-'])]:size-3",

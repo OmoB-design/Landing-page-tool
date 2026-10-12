@@ -169,6 +169,19 @@
   --glyph-versus: #e5484d;
   --glyph-comparison: #2fb36e;
   --glyph-long-form: #3f76ff;
+  /* Button blue (Figma: Button Primary States 147:6910). The fill is the shared library's Blue
+     500, a shade off this file's Blue 500; the stroke and inner-shadow blues are typed in. */
+  --button-blue-fill: #1969fe;
+  --button-blue-stroke-top: #3279ff;
+  --button-blue-stroke-bottom: #7aa7fa;
+  --button-blue-highlight: #3e82ff;
+  --button-blue-shade: #0059ff;
+  --button-blue-glow: #0555ea;
+  /* Its two soft drop shadows show in dark only; light has none (owner, 2026-10-12). */
+  --button-blue-drop: 0 0 #0000;
+  /* Template cards: the Shadow/Edge line shows in dark only; light keeps just the Stroke lines
+     (owner, 2026-10-12). */
+  --card-edge-shadow: 0 0 #0000;
 }
 
 @theme {
@@ -219,8 +232,15 @@
   --color-stroke-input-active: var(--grey-850);
   --color-stroke-input-negative: var(--red-700);
   /* Button */
-  --color-button-primary: var(--indigo-500);
-  --color-button-primary-active: var(--indigo-700);
+  /* The blue button in both themes; its hover (10 % darker) isn't in Figma yet. */
+  --color-button-primary: var(--button-blue-fill);
+  --color-button-primary-active: color-mix(
+    in oklab,
+    var(--button-blue-fill) 90%,
+    black
+  );
+  --color-button-primary-stroke-top: var(--button-blue-stroke-top);
+  --color-button-primary-stroke-bottom: var(--button-blue-stroke-bottom);
   --color-button-primary-disabled: var(--grey-100);
   --color-button-secondary: var(--base-white);
   --color-button-neutral: var(--grey-100);
@@ -263,7 +283,7 @@
   --color-heading-02: var(--grey-850);
   --color-heading-03: var(--grey-850);
   --color-heading-04: var(--grey-850);
-  --color-heading-05: var(--grey-500);
+  --color-heading-05: var(--grey-600);
   --color-heading-06: var(--grey-500);
   --color-body: var(--grey-850);
   --color-sub-text: var(--grey-500);
@@ -318,6 +338,8 @@
   --color-tint-yellow: var(--color-highlight-yellow-50);
   /* The 2 px line under the current view tab (Figma: Surface/Tab-Indicator). */
   --color-tab-indicator: var(--color-overlay);
+  /* Figma template cards: the 3 px dot between type and section count (#d9d9d9 in both themes). */
+  --color-meta-dot: var(--grey-200);
   /* Frame edges (Quality's stroke: a 0.5 px border in its Border-on-bg, Grey 50 #e6e6e6 in light
      and Grey 400 #2a2a2a in dark, which is our Stroke-Strong); on hover, Quality's
      Border-input-hover (#d8d8d8 light, #212121 dark), our Stroke-Input-Hover. */
@@ -400,6 +422,9 @@
 
 /* Dark mode (Figma: Tokens collection, Dark mode): only the tokens whose value changes. */
 .dark {
+  --card-edge-shadow: var(--shadow-edge);
+  --button-blue-drop:
+    0 0 4.12px rgb(186 186 186 / 0.25), 0 4.12px 17.62px rgb(0 0 0 / 0.15);
   --color-tint-green: var(--green-950);
   --color-tint-blue: var(--blue-950);
   --color-tint-red: var(--red-950);
@@ -422,7 +447,6 @@
   --color-stroke-input-active: var(--base-white);
   --color-stroke-input-negative: var(--red-50);
   /* Button */
-  --color-button-primary: var(--indigo-400);
   --color-button-primary-disabled: var(--grey-850);
   --color-button-secondary: var(--grey-950);
   --color-button-neutral: var(--grey-800);
@@ -479,7 +503,8 @@
   --card-foreground: var(--color-body);
   --popover: var(--color-surface-modal);
   --popover-foreground: var(--color-body);
-  --primary: var(--color-button-primary);
+  /* shadcn's primary (avatars, checked fields, badges) stays indigo; only the Button is blue. */
+  --primary: var(--color-spot-500-indigo);
   --primary-foreground: var(--color-button-primary-text);
   --secondary: var(--color-foreground-01);
   --secondary-foreground: var(--color-body);
@@ -783,4 +808,65 @@
 }
 @utility edge-strong {
   border-color: var(--color-edge-strong);
+}
+
+/* Figma template cards (Template/Library 173:3836, Template/Yours 147:9566): a 0.5 px
+   Surface/Stroke border; inside it a 0.7 px Stroke line and (dark only) the Shadow/Edge line,
+   drawn over the content as Figma does (the picture runs under them). Needs the card's own
+   corner radius. */
+@utility frame-stroke {
+  position: relative;
+  border: 0.5px solid var(--color-stroke);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow:
+      var(--card-edge-shadow),
+      inset 0 0 0 0.7px var(--color-stroke);
+    pointer-events: none;
+  }
+}
+
+/* The blue button (Figma: Button Primary States 147:6910), on the Button's 1 px transparent
+   border. The fill sits on a 1 px stroke that fades from #3279ff at the top to #7aa7fa at the
+   bottom; over both, three inner shadows: a 1 px light line along the top, a darker blue just
+   under it and a soft glow all round; under it, in dark only, two soft drop shadows. Figma
+   paints inner shadows over the stroke, but CSS keeps inset shadows inside the border, so they
+   go on a layer behind the label (::after) that covers the border too. Order is Figma's, topmost
+   first. The doubled class outranks the Button's bg-clip-padding, which would hide the stroke. */
+@utility button-primary {
+  &.button-primary {
+    --button-fill: var(--color-button-primary);
+    position: relative;
+    isolation: isolate;
+    border-color: transparent;
+    background:
+      linear-gradient(var(--button-fill), var(--button-fill)) padding-box,
+      linear-gradient(
+          var(--color-button-primary-stroke-top),
+          var(--color-button-primary-stroke-bottom)
+        )
+        border-box;
+    --tw-shadow: var(--button-blue-drop);
+    box-shadow:
+      var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+      var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  &.button-primary::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 1.03px 0 var(--button-blue-highlight),
+      inset 0 0 6.7px var(--button-blue-glow),
+      inset 0 1.24px 1.03px var(--button-blue-shade);
+    pointer-events: none;
+  }
+  &.button-primary:hover {
+    --button-fill: var(--color-button-primary-active);
+  }
 }

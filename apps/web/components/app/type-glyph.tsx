@@ -57,14 +57,15 @@ export function templateTypeLabel(type: string): string {
 
 /**
  * The template type as a coloured glyph in a tinted square (DESIGN.md §2). `md` is the Pages
- * row size (Figma: 23 x 24 with 4 px corners); `sm` the 20 px square used in cards and steps.
+ * row size (Figma: 23 x 24 with 4 px corners); `card` the template cards' (Figma: the same
+ * glyph at 87 %, 20 x 21); `sm` the 20 px square used in steps.
  */
 export function TypeGlyph({
   type,
   size = "sm",
 }: {
   type: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "card";
 }) {
   const glyph = GLYPHS[type];
   const GlyphIcon = glyph?.icon ?? TypeOtherFigmaIcon;
@@ -74,7 +75,11 @@ export function TypeGlyph({
       title={label}
       className={cn(
         "flex shrink-0 items-center justify-center rounded-xsm",
-        size === "md" ? "h-6 w-5.75" : "size-5",
+        size === "md"
+          ? "h-6 w-5.75"
+          : size === "card"
+            ? "h-5.25 w-5 [&_svg]:scale-87"
+            : "size-5",
         glyph?.className ??
           "bg-foreground-01 text-heading-01 dark:bg-foreground-02 dark:text-icon-system",
       )}

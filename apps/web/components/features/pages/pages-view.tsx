@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
+import { type ViewTab, ViewTabs } from "@/components/app/view-tabs";
 import { FilterIcon, PagesIcon } from "@/components/ui/icons";
 import { getSessionContext } from "@/lib/auth/session";
 import { getOrgPages } from "@/lib/builds/queries";
@@ -20,7 +21,6 @@ import { PagesDisplay } from "./pages-display";
 import { PagesFilter } from "./pages-filter";
 import { PagesLayoutToggle } from "./pages-layout-toggle";
 import { PagesList } from "./pages-list";
-import { type PagesTab, PagesTabs } from "./pages-tabs";
 
 export type PagesViewId = "all" | "mine";
 
@@ -53,7 +53,7 @@ export async function PagesView({
   const withSample = (href: string) =>
     sample ? `${href}${href.includes("?") ? "&" : "?"}sample=1` : href;
   // Switching views keeps the filters and display choices.
-  const tabs: PagesTab[] = [
+  const tabs: ViewTab<PagesViewId>[] = [
     {
       id: "all",
       label: "All pages",
@@ -86,7 +86,7 @@ export async function PagesView({
           ) : null}
         </div>
         <div className="flex h-9 items-center justify-between gap-4 divider-b-thin">
-          <PagesTabs tabs={tabs} active={view} />
+          <ViewTabs label="Page views" tabs={tabs} active={view} />
           <div className="flex items-center gap-1.5">
             <PagesFilter view={view} filters={filters} display={display} />
             <PagesDisplay view={view} filters={filters} display={display} />

@@ -5,27 +5,31 @@ import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-export type PagesTab = {
-  id: "all" | "mine";
+export type ViewTab<T extends string> = {
+  id: T;
   label: string;
   count: number;
   href: string;
 };
 
 /**
- * All pages / My pages (Figma: All Pages and My Pages): 13 px medium labels with a count pill,
- * 32 px apart, and a 2 px line under the current view that slides to the other on click. The
- * line moves as soon as you click (the list follows when the server answers); before the first
- * measurement it is drawn under the current tab so nothing jumps on load.
+ * The views of a list page (Figma: All pages / My pages, Library / Yours): 13 px medium labels
+ * with a count pill, 32 px apart, and a 2 px line under the current view that slides to the
+ * other on click. The line moves as soon as you click (the list follows when the server
+ * answers); before the first measurement it is drawn under the current tab so nothing jumps on
+ * load. Place it in a 36 px bar on a hairline (`h-9 divider-b-thin`).
  */
-export function PagesTabs({
+export function ViewTabs<T extends string>({
+  label,
   tabs,
   active,
 }: {
-  tabs: PagesTab[];
-  active: PagesTab["id"];
+  /** Names the tab list for screen readers ("Page views"). */
+  label: string;
+  tabs: ViewTab<T>[];
+  active: T;
 }) {
-  const [pending, setPending] = useState<PagesTab["id"] | null>(null);
+  const [pending, setPending] = useState<T | null>(null);
   const [shown, setShown] = useState(active);
   // A new view from the server replaces the optimistic one.
   if (shown !== active) {
@@ -34,7 +38,7 @@ export function PagesTabs({
   }
   const current = pending ?? active;
 
-  const refs = useRef<Partial<Record<PagesTab["id"], HTMLAnchorElement>>>({});
+  const refs = useRef<Partial<Record<T, HTMLAnchorElement>>>({});
   const [line, setLine] = useState<{ x: number; width: number } | null>(null);
   const [animate, setAnimate] = useState(false);
 
@@ -55,7 +59,7 @@ export function PagesTabs({
   }, [current]);
 
   return (
-    <nav aria-label="Page views" className="relative flex h-full gap-8">
+    <nav aria-label={label} className="relative flex h-full gap-8">
       {tabs.map((tab) => {
         const isCurrent = tab.id === current;
         return (

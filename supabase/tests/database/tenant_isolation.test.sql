@@ -1,7 +1,7 @@
 -- Tenant isolation (B0.2 acceptance).
 -- Sign-up creates an org, an owner membership and a profile; one org's members cannot read or
 -- write another org's rows or files; org settings are platform-controlled.
--- Run with: pnpm test:db  (needs the local stack: pnpm db:start)
+-- Run with: pnpm test:db  (runs on the linked cloud project; everything rolls back at the end)
 begin;
 create extension if not exists pgtap with schema extensions;
 select plan(20);

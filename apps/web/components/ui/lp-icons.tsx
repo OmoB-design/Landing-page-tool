@@ -1227,3 +1227,72 @@ export function TypeOtherFigmaIcon(props: IconProps) {
     </svg>
   );
 }
+
+// ── Template cards (Figma: Template/Library and Template/Yours) ──────────────────────────
+
+/** Use Template: a plus of two filled 1.17 px bars (14 px). */
+export function PlusFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="currentColor"
+      aria-hidden
+      {...props}
+    >
+      <path d="M11.4722 7.58326H2.52773C2.20573 7.58326 1.9444 7.32193 1.9444 6.99993C1.9444 6.67793 2.20573 6.4166 2.52773 6.4166H11.4722C11.7942 6.4166 12.0555 6.67793 12.0555 6.99993C12.0555 7.32193 11.7942 7.58326 11.4722 7.58326Z" />
+      <path d="M7.00014 12.0555C6.67814 12.0555 6.41681 11.7942 6.41681 11.4722V2.52773C6.41681 2.20573 6.67814 1.9444 7.00014 1.9444C7.32214 1.9444 7.58348 2.20573 7.58348 2.52773V11.4722C7.58348 11.7942 7.32214 12.0555 7.00014 12.0555Z" />
+    </svg>
+  );
+}
+
+/** Preview: a box with an arrow out of its corner (14 px). */
+export function ExternalLinkFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M8.16667 2.13889H11.8611V5.83333" />
+        <path d="M11.8611 2.13889L7 7" />
+        <path d="M10.3056 8.16667V10.3056C10.3056 11.165 9.60944 11.8611 8.75 11.8611H3.69444C2.835 11.8611 2.13889 11.165 2.13889 10.3056V5.25C2.13889 4.39056 2.835 3.69444 3.69444 3.69444H5.83333" />
+      </g>
+    </svg>
+  );
+}
+
+/** Delete: a bin with a lid (14 px). */
+export function TrashFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M10.6538 6.0278L10.3833 11.1611C10.3398 11.9934 9.65689 12.6389 8.83012 12.6389H5.1707C4.34315 12.6389 3.66103 11.9934 3.61747 11.1611L3.34705 6.0278" />
+        <path d="M2.13879 3.6944H11.861" />
+        <path d="M5.25 3.69454V2.13898C5.25 1.71121 5.59844 1.36121 6.02778 1.36121H7.97222C8.40156 1.36121 8.75 1.71121 8.75 2.13898V3.69454" />
+      </g>
+    </svg>
+  );
+}

@@ -1,5 +1,6 @@
-"""Shared fixtures. Database tests run against the local Supabase Postgres and are skipped when
-it is not running. Each test works in its own throwaway org and user, deleted afterwards."""
+"""Shared fixtures. Database tests run against the database in DATABASE_URL (the cloud dev project,
+D73) and are skipped when it cannot be reached. Each test works in its own throwaway org and user,
+deleted afterwards."""
 
 import os
 
@@ -22,14 +23,14 @@ from app.db import transaction
 
 def _database_up() -> bool:
     try:
-        with psycopg.connect(get_settings().database_url, connect_timeout=2):
+        with psycopg.connect(get_settings().database_url, connect_timeout=5):
             return True
     except psycopg.OperationalError:
         return False
 
 
 DB_UP = _database_up()
-needs_db = pytest.mark.skipif(not DB_UP, reason="local Supabase Postgres is not running")
+needs_db = pytest.mark.skipif(not DB_UP, reason="database in DATABASE_URL is not reachable")
 
 
 @dataclass

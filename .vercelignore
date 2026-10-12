@@ -1,0 +1,13 @@
+# Vercel uploads only the web app and the workspace files it installs with (D75). Never upload
+# env files: services/worker/.env holds the database password and the Supabase secret key.
+**/.env*
+/services
+/supabase
+/templates
+/docs
+/scripts
+/.claude
+/.mcp.json
+**/node_modules
+**/.next
+**/.venv
