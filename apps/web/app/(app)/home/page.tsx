@@ -7,7 +7,6 @@ import { Welcome } from "@/components/features/home/welcome";
 import { HomeIcon } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
-import { getSetupProgress } from "@/lib/onboarding/setup";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -33,7 +32,6 @@ export default function HomePage() {
 }
 
 async function HomeContent() {
-  const { user, currentOrg } = await getSessionContext();
-  const progress = await getSetupProgress(currentOrg.id);
-  return <Welcome name={user.displayName} progress={progress} />;
+  const { user } = await getSessionContext();
+  return <Welcome name={user.displayName} />;
 }

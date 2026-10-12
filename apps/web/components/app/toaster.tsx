@@ -14,7 +14,7 @@ export function Toaster() {
       toastOptions={{
         classNames: {
           toast:
-            "border border-stroke bg-surface-primary text-body shadow-pop rounded-md text-type-body-small",
+            "edge-hairline bg-surface-primary text-body shadow-float rounded-md text-type-body-small",
           description: "text-sub-text text-type-caption-1",
         },
       }}

@@ -46,10 +46,11 @@ const ITEM =
 /**
  * The profile card at the bottom of the sidebar (Figma: Profile Nav) and its account menu
  * (Figma: Sidebar Menu Option). The card: a 30 px avatar, the name in 12 px and the email in
- * 10 px, and the up-down chevrons, 6 px inside a 10 px-rounded card with a stroke border and the
- * inner edge shadow. The menu opens above it: who is signed in, Settings, Themes (cycles System →
- * Light → Dark; the badge shows the current one), Logout, then getting-started progress with the
- * next step.
+ * 10 px, and the up-down chevrons, 6 px inside a 10 px-rounded card stroked like the content
+ * panel (a 0.5 px Border-on-bg stroke, no shadow; the stroke deepens on hover). The menu (Figma: My Pages, the open account menu) opens above it, on the
+ * pop shadow with a 0.7 px stroke outline: who is signed in, Settings, Themes (cycles System →
+ * Light → Dark; the badge shows the current one), Logout, then getting-started progress, 4 px in,
+ * and the next step, a 4 px-padded row that fills foreground-01 on hover and focus.
  */
 export function UserMenu({
   name,
@@ -71,7 +72,7 @@ export function UserMenu({
         <button
           type="button"
           aria-label={`Account menu for ${name}`}
-          className="flex w-full items-center gap-2.5 rounded-lg border border-stroke bg-surface-primary p-1.5 text-left shadow-edge outline-none hover:border-stroke-strong focus-visible:ring-2 focus-visible:ring-ring aria-expanded:border-stroke-strong"
+          className="flex w-full items-center gap-2.5 rounded-lg bg-surface-primary p-1.5 text-left outline-none edge hover:edge-strong focus-visible:ring-2 focus-visible:ring-ring aria-expanded:edge-strong"
         >
           <PersonMark name={name} />
           <span className="flex min-w-0 flex-1 flex-col font-medium">
@@ -90,7 +91,7 @@ export function UserMenu({
         align="start"
         alignOffset={-2}
         sideOffset={6}
-        className="flex w-menu-account flex-col gap-3 rounded-md bg-surface-primary px-1.5 pt-1.5 pb-3.5 shadow-control ring-thin ring-stroke-strong"
+        className="flex w-menu-account flex-col gap-3 rounded-md bg-surface-primary px-1.5 pt-1.5 pb-3.5 shadow-float edge-hairline"
       >
         <DropdownMenuLabel className="flex items-center gap-2.5 p-0 font-medium">
           <PersonMark name={name} />
@@ -144,7 +145,7 @@ export function UserMenu({
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 px-1">
             <div className="flex items-center justify-between font-medium">
               <span className="text-type-caption-1 text-heading-01">
                 Getting Started
@@ -170,7 +171,7 @@ export function UserMenu({
           </div>
           {setup.nextLabel && setup.nextHref ? (
             <DropdownMenuItem
-              className="justify-between rounded-xsm p-0 text-type-caption-1 font-medium text-heading-01 focus:bg-transparent focus:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring"
+              className="justify-between rounded-xsm p-1 text-type-caption-1 font-medium text-heading-01 focus:bg-foreground-01 focus:text-heading-01"
               onSelect={() => router.push(setup.nextHref!)}
             >
               <span>
@@ -179,7 +180,7 @@ export function UserMenu({
               <MenuArrowIcon className="size-3.5 text-icon-system" />
             </DropdownMenuItem>
           ) : (
-            <p className="text-type-caption-1 font-medium text-heading-05">
+            <p className="px-1 text-type-caption-1 font-medium text-heading-05">
               All steps done.
             </p>
           )}

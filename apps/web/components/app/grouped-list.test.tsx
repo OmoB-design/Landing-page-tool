@@ -37,8 +37,8 @@ describe("GroupedList", () => {
     const child = within(parentItem!).getByRole("link", {
       name: "Listicle B re-build",
     });
-    expect(child.className).toContain("pl-14");
-    expect(row("Listicle B").className).toContain("pl-6");
+    expect(child.className).toContain("pl-12");
+    expect(row("Listicle B").className).toContain("pl-4");
   });
 
   it("moves focus through headers and rows with the arrow keys, Home and End", () => {

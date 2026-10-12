@@ -49,7 +49,7 @@ export async function getOrgPages(
   const { data, error } = await supabase
     .from("builds")
     .select(
-      "id, key, title, status, origin, cost_usd, updated_at, parent_build_id, created_by, residue:report->residue->>score, template:templates(type)",
+      "id, key, title, status, origin, cost_usd, created_at, updated_at, parent_build_id, created_by, residue:report->residue->>score, template:templates(type)",
     )
     .eq("org_id", orgId)
     .is("deleted_at", null)
@@ -68,6 +68,7 @@ export async function getOrgPages(
         ? Number(build.residue)
         : null,
     costUsd: Number(build.cost_usd),
+    createdAt: new Date(build.created_at),
     updatedAt: new Date(build.updated_at),
     parentId: build.parent_build_id,
     createdBy: {

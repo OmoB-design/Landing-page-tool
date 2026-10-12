@@ -47,7 +47,11 @@ export const jobSummarySchema = jobSchema.extend({
 });
 export type JobSummary = z.infer<typeof jobSummarySchema>;
 
-export const jobListSchema = z.object({ jobs: z.array(jobSummarySchema) });
+export const jobListSchema = z.object({
+  jobs: z.array(jobSummarySchema),
+  /** When the user last marked jobs as read (ISO), or null. */
+  seenAt: z.string().nullable().default(null),
+});
 
 /** A job with its recent events (oldest first). */
 export const jobDetailSchema = jobSchema.extend({

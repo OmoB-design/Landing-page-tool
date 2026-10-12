@@ -20,10 +20,25 @@ export const cn = createCn({
         "menu-workspace",
         "menu-account",
         "menu-header",
+        "pages",
+        "menu-row",
+        "menu-display",
+        "home-card",
+        "home-row",
       ],
-      radius: ["xsm", "xxl", "max"],
+      radius: ["xsm", "xxl", "max", "card", "panel"],
       // Without these, shadow-edge etc. read as a shadow colour and shadcn's shadow-md stays.
-      shadow: ["pop", "control", "edge", "raise", "panel"],
+      shadow: [
+        "pop",
+        "control",
+        "edge",
+        "raise",
+        "panel",
+        "illustration-float",
+        "illustration-window",
+        "lift",
+        "float",
+      ],
     },
     classGroups: {
       // Figma's 0.7 px outline (@utility in globals.css): a ring width, so it replaces shadcn's
@@ -34,6 +49,7 @@ export const cn = createCn({
         {
           text: [
             "type-caption-3",
+            "type-title",
             "type-caption-2",
             "type-caption-1",
             "type-body-small",

@@ -59,7 +59,7 @@ export function OrgSwitcher({
         align="start"
         alignOffset={0}
         sideOffset={8}
-        className="flex w-menu-workspace flex-col gap-3 rounded-sm bg-surface-primary p-0.5 text-heading-02 shadow-edge ring-thin ring-stroke-strong"
+        className="flex w-menu-workspace flex-col gap-3 rounded-sm bg-surface-primary p-0.5 text-heading-02 shadow-float edge-hairline"
       >
         {orgs.length > 1 ? (
           <DropdownMenuGroup className="flex flex-col gap-0.5 pb-1.5 divider-b-thin">

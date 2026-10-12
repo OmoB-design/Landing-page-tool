@@ -30,7 +30,7 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <header className="flex h-header shrink-0 items-center gap-3 border-b border-stroke px-3.75">
+    <header className="flex h-header shrink-0 items-center gap-3 px-3.75 edge-b">
       <SidebarToggleButton
         action="open"
         className="-ml-1.5 lg:hidden lg:sidebar-collapsed:inline-flex"

@@ -9,7 +9,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useJobs } from "@/lib/queries/jobs";
 import type { JobSummary } from "@/lib/validators/jobs";
 
-vi.mock("@/lib/queries/jobs", () => ({ useJobs: vi.fn() }));
+vi.mock("@/lib/queries/jobs", () => ({
+  useJobs: vi.fn(),
+  useMarkJobsSeen: () => ({ mutate: vi.fn() }),
+}));
 vi.mock("@/components/app/toaster", () => ({
   toast: {
     loading: vi.fn(),
@@ -35,8 +38,8 @@ const job = (overrides: Partial<JobSummary>): JobSummary => ({
   ...overrides,
 });
 
-function renderTray(jobs: JobSummary[]) {
-  vi.mocked(useJobs).mockReturnValue({ data: { jobs } } as ReturnType<
+function renderTray(jobs: JobSummary[], seenAt: string | null = null) {
+  vi.mocked(useJobs).mockReturnValue({ data: { jobs, seenAt } } as ReturnType<
     typeof useJobs
   >);
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -56,6 +59,26 @@ describe("JobTray", () => {
     ]);
     const button = screen.getByRole("button", { name: "Jobs, 2 running" });
     expect(button.querySelector("[data-dot]")).toBeTruthy();
+  });
+
+  it("counts jobs that finished since you last marked them read", () => {
+    const finished = "2026-10-11T10:00:00Z";
+    renderTray(
+      [job({ status: "succeeded", finished_at: finished })],
+      "2026-10-11T09:00:00Z",
+    );
+    const button = screen.getByRole("button", { name: "Jobs, 1 unread" });
+    expect(button.querySelector("[data-dot]")).toBeTruthy();
+  });
+
+  it("drops the dot once jobs are marked read", () => {
+    renderTray(
+      [job({ status: "succeeded", finished_at: "2026-10-11T10:00:00Z" })],
+      "2026-10-11T11:00:00Z",
+    );
+    expect(
+      screen.getByRole("button", { name: "Jobs" }).querySelector("[data-dot]"),
+    ).toBeNull();
   });
 
   it("has no count when nothing is running", () => {

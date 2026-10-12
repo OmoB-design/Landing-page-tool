@@ -3,7 +3,10 @@ import type { PageListItem } from "./list";
 // SAMPLE PAGES for the list tests and design reviews (the Pages list shows real builds since
 // B0.6a). Brands and products are invented; keys follow DESIGN.md (LUM-23).
 
-type SamplePage = Omit<PageListItem, "updatedAt" | "createdBy"> & {
+type SamplePage = Omit<
+  PageListItem,
+  "createdAt" | "updatedAt" | "createdBy"
+> & {
   minutesAgo: number;
   byMe: boolean;
 };
@@ -158,6 +161,8 @@ const SAMPLE_PAGES: SamplePage[] = [
 export function samplePages(now: Date, myName: string): PageListItem[] {
   return SAMPLE_PAGES.map(({ minutesAgo, byMe, ...page }) => ({
     ...page,
+    // Builds start a few minutes before their last change.
+    createdAt: new Date(now.getTime() - (minutesAgo + 12) * 60_000),
     updatedAt: new Date(now.getTime() - minutesAgo * 60_000),
     createdBy: byMe
       ? { name: myName, isMe: true }

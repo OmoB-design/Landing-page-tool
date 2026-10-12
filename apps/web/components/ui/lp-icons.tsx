@@ -789,3 +789,441 @@ export function StepTodoIcon(props: IconProps) {
     </svg>
   );
 }
+
+// ── Pages (Figma: All Pages 81:1559) ────────────────────────────────────────────────────
+
+/** Filter (Pages toolbar, 14 px). */
+export function PagesFilterIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M13.125 4.08333H0.875C0.392 4.08333 0 3.69133 0 3.20833C0 2.72533 0.392 2.33333 0.875 2.33333H13.125C13.608 2.33333 14 2.72533 14 3.20833C14 3.69133 13.608 4.08333 13.125 4.08333Z"
+        fill="currentColor"
+      />
+      <path
+        d="M10.7917 8.16667H3.20833C2.72533 8.16667 2.33333 7.77467 2.33333 7.29167C2.33333 6.80867 2.72533 6.41667 3.20833 6.41667H10.7917C11.2747 6.41667 11.6667 6.80867 11.6667 7.29167C11.6667 7.77467 11.2747 8.16667 10.7917 8.16667Z"
+        fill="currentColor"
+      />
+      <path
+        d="M8.45833 12.25H5.54167C5.05867 12.25 4.66667 11.858 4.66667 11.375C4.66667 10.892 5.05867 10.5 5.54167 10.5H8.45833C8.94133 10.5 9.33333 10.892 9.33333 11.375C9.33333 11.858 8.94133 12.25 8.45833 12.25Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** List view (Pages layout toggle, 15 px). */
+export function ViewListIcon(props: IconProps) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.07143"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M3.125 8.74965C3.81536 8.74965 4.375 8.19001 4.375 7.49965C4.375 6.8093 3.81536 6.24965 3.125 6.24965C2.43464 6.24965 1.875 6.8093 1.875 7.49965C1.875 8.19001 2.43464 8.74965 3.125 8.74965Z" />
+        <path d="M6.87221 7.5H13.1222" />
+        <path d="M3.125 4.375C3.81536 4.375 4.375 3.81536 4.375 3.125C4.375 2.43464 3.81536 1.875 3.125 1.875C2.43464 1.875 1.875 2.43464 1.875 3.125C1.875 3.81536 2.43464 4.375 3.125 4.375Z" />
+        <path d="M6.87221 3.12535H13.1222" />
+        <path d="M3.125 13.1253C3.81536 13.1253 4.375 12.5657 4.375 11.8753C4.375 11.185 3.81536 10.6253 3.125 10.6253C2.43464 10.6253 1.875 11.185 1.875 11.8753C1.875 12.5657 2.43464 13.1253 3.125 13.1253Z" />
+        <path d="M6.87221 11.8747H13.1222" />
+      </g>
+    </svg>
+  );
+}
+
+/** Grid view (Pages layout toggle, 16 px). */
+export function ViewGridIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.14286"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12.5079 2.28571H4.06349C3.08127 2.28571 2.28571 3.08571 2.28571 4.06349V11.619C2.28571 12.5968 3.08127 13.3968 4.06349 13.3968H12.5079C13.4902 13.3968 14.2857 12.5968 14.2857 11.619V4.06349C14.2857 3.08571 13.4902 2.28571 12.5079 2.28571Z" />
+        <path d="M10 2.4442V13.5553" />
+        <path d="M6 2.4442V13.5553" />
+      </g>
+    </svg>
+  );
+}
+
+/** Group chevron (status group headers, 12 px). */
+export function GroupChevronIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M3 4.875L6 7.875L9 4.875"
+        stroke="currentColor"
+        strokeWidth="1.05882"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Status ring (Needs review group, 20 px; colour from currentColor). */
+export function StatusRingIcon(props: IconProps) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M20 10C20 15.5228 15.5228 20 10 20C4.47715 20 0 15.5228 0 10C0 4.47715 4.47715 0 10 0C15.5228 0 20 4.47715 20 10ZM1.91918 10C1.91918 14.4629 5.53709 18.0808 10 18.0808C14.4629 18.0808 18.0808 14.4629 18.0808 10C18.0808 5.53709 14.4629 1.91918 10 1.91918C5.53709 1.91918 1.91918 5.53709 1.91918 10Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Advertorial template type (14 px). */
+export function TypeAdvertorialFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M4.37498 1.45833H13.125V10.2083C13.125 11.497 12.0804 12.5417 10.7917 12.5417H2.625" />
+        <path d="M7.58333 4.95833H9.91667" />
+        <path d="M7.58333 8.45833H9.91667" />
+        <path d="M0.874999 5.54167L0.875 10.7917C0.875 11.7581 1.6585 12.5417 2.625 12.5417C3.5915 12.5417 4.375 11.7581 4.375 10.7917V1.45833" />
+      </g>
+    </svg>
+  );
+}
+
+/** Listicle template type (16 px). */
+export function TypeListicleFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M3.33333 6.44444C4.31517 6.44444 5.11111 5.64851 5.11111 4.66667C5.11111 3.68483 4.31517 2.88889 3.33333 2.88889C2.35149 2.88889 1.55556 3.68483 1.55556 4.66667C1.55556 5.64851 2.35149 6.44444 3.33333 6.44444Z" />
+        <path d="M3.33333 13.1111C4.31517 13.1111 5.11111 12.3152 5.11111 11.3333C5.11111 10.3515 4.31517 9.55556 3.33333 9.55556C2.35149 9.55556 1.55556 10.3515 1.55556 11.3333C1.55556 12.3152 2.35149 13.1111 3.33333 13.1111Z" />
+        <path d="M7.77778 4.66667H14.4444" />
+        <path d="M7.77778 11.3333H14.4444" />
+      </g>
+    </svg>
+  );
+}
+
+/** Row actions ⋯ (14 px). */
+export function RowMoreIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M7 7.38889C7.21478 7.38889 7.38889 7.21478 7.38889 7C7.38889 6.78522 7.21478 6.61111 7 6.61111C6.78522 6.61111 6.61111 6.78522 6.61111 7C6.61111 7.21478 6.78522 7.38889 7 7.38889Z" />
+        <path d="M2.52778 7.38889C2.74255 7.38889 2.91667 7.21478 2.91667 7C2.91667 6.78522 2.74255 6.61111 2.52778 6.61111C2.313 6.61111 2.13889 6.78522 2.13889 7C2.13889 7.21478 2.313 7.38889 2.52778 7.38889Z" />
+        <path d="M11.4722 7.38889C11.687 7.38889 11.8611 7.21478 11.8611 7C11.8611 6.78522 11.687 6.61111 11.4722 6.61111C11.2575 6.61111 11.0833 6.78522 11.0833 7C11.0833 7.21478 11.2575 7.38889 11.4722 7.38889Z" />
+      </g>
+    </svg>
+  );
+}
+
+// ── Page states and template types (Figma: All Pages/states light and state dark) ────────
+
+/** Building: eight spokes fading round the circle (20 px). */
+export function StatusBuildingFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.66667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M10 1.94443V4.72221" />
+        <path opacity="0.88" d="M15.6967 4.30328L13.7323 6.26773" />
+        <path opacity="0.75" d="M18.0555 10H15.2777" />
+        <path opacity="0.63" d="M15.6967 15.6966L13.7323 13.7321" />
+        <path opacity="0.5" d="M10 18.0555V15.2777" />
+        <path opacity="0.38" d="M4.30359 15.6966L6.26803 13.7321" />
+        <path opacity="0.25" d="M1.94458 10H4.72236" />
+        <path opacity="0.13" d="M4.30359 4.30328L6.26803 6.26773" />
+      </g>
+    </svg>
+  );
+}
+
+/** Published: a tick in a circle (20 px). */
+export function StatusPublishedFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.66667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M10.0003 18.0555C14.4493 18.0555 18.0559 14.4489 18.0559 9.99996C18.0559 5.551 14.4493 1.94441 10.0003 1.94441C5.55135 1.94441 1.94475 5.551 1.94475 9.99996C1.94475 14.4489 5.55135 18.0555 10.0003 18.0555Z" />
+        <path d="M6.38881 10.2777L8.88881 13.0555L13.611 6.94441" />
+      </g>
+    </svg>
+  );
+}
+
+/** Approved: a ticked bubble and a pointing hand (18 px). */
+export function StatusApprovedFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M3.4998 5.75007L4.9998 7.25007L7.24981 3.75007" />
+        <path d="M10.1156 4.56143C9.67854 2.39273 7.79855 0.749927 5.50015 0.749927C2.87715 0.749927 0.750147 2.87693 0.750147 5.49993C0.750147 7.80703 2.40676 9.69233 4.58786 10.12" />
+        <path d="M17.2501 15.225C17.2501 13.166 17.0141 11.586 16.2501 11.002C15.3751 10.333 13.0981 10.164 10.9551 10.77L9.62504 7.94305C9.33204 7.31705 8.58804 7.04705 7.96204 7.34005C7.33704 7.63205 7.06604 8.37605 7.35804 9.00105L9.91904 14.457L7.19504 13.956C6.60804 13.848 6.02804 14.18 5.82404 14.741C5.59204 15.378 5.92203 16.081 6.56003 16.31L9.17603 17.251" />
+      </g>
+    </svg>
+  );
+}
+
+/** Failed: a cross in a circle (20 px). */
+export function StatusFailedFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.66667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M10.0003 18.0555C14.4493 18.0555 18.0559 14.4489 18.0559 9.99996C18.0559 5.551 14.4493 1.94441 10.0003 1.94441C5.55135 1.94441 1.94475 5.551 1.94475 9.99996C1.94475 14.4489 5.55135 18.0555 10.0003 18.0555Z" />
+        <path d="M6.94475 6.94441L13.0559 13.0555" />
+        <path d="M13.0559 6.94441L6.94475 13.0555" />
+      </g>
+    </svg>
+  );
+}
+
+/** The source-leak score's shield (11 px). */
+export function ScoreShieldIcon(props: IconProps) {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 11 11"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="0.916667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M5.68631 1.12936L8.89465 2.15603C9.14765 2.23731 9.31937 2.47258 9.31937 2.73781V6.72225C9.31937 8.57392 6.45693 9.62381 5.68815 9.87253C5.56409 9.91286 5.43576 9.91286 5.3117 9.87253C4.54293 9.62381 1.68048 8.57392 1.68048 6.72225V2.73781C1.68048 2.47197 1.8522 2.2367 2.1052 2.15603L5.31354 1.12936C5.43454 1.09086 5.5647 1.09086 5.68631 1.12936Z" />
+        <path d="M3.97058 5.95833L4.95386 6.875L7.0298 4.125" />
+      </g>
+    </svg>
+  );
+}
+
+/** Comparison template type: an open book (11 x 16). */
+export function TypeComparisonFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="11"
+      height="16"
+      viewBox="0 0 11 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M5.5 13.3787C5.60389 13.3787 5.70717 13.3387 5.80189 13.2596C6.19483 12.9298 6.86033 12.5067 7.72139 12.5084C8.27078 12.5093 8.74011 12.6836 9.10861 12.8951C9.50461 13.1218 9.92995 12.6818 9.92995 12.0622V3.98844C9.92995 3.67378 9.81933 3.384 9.63294 3.224C9.24367 2.88978 8.57817 2.45689 7.71406 2.45689C6.55906 2.45689 5.75972 3.232 5.49939 3.50756" />
+        <path d="M5.5 13.3787C5.39611 13.3787 5.29283 13.3387 5.19811 13.2596C4.80517 12.9298 4.13967 12.5067 3.27861 12.5084C2.72922 12.5093 2.25989 12.6836 1.89139 12.8951C1.49539 13.1218 1.07006 12.6844 1.07006 12.0658C1.07006 9.76089 1.07006 5.424 1.07006 3.98578C1.07006 3.67111 1.18067 3.38489 1.36706 3.22489C1.75633 2.89067 2.42183 2.45778 3.28594 2.45778C4.44095 2.45778 5.24028 3.23289 5.50061 3.50844V13.3787H5.5Z" />
+      </g>
+    </svg>
+  );
+}
+
+/** Long-form template type: a scroll (11 x 14). */
+export function TypeLongFormFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="11"
+      height="14"
+      viewBox="0 0 11 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M9.01389 12.25C9.51989 12.25 9.93056 11.7273 9.93056 11.0833V10.3056C9.93056 10.0909 9.79367 9.91667 9.625 9.91667H5.04167C4.873 9.91667 4.73611 10.0909 4.73611 10.3056V11.0833C4.73611 11.7273 4.32544 12.25 3.81944 12.25C3.31344 12.25 2.90278 11.7273 2.90278 11.0833V2.91667C2.90278 2.27267 2.49211 1.75 1.98611 1.75C1.48011 1.75 1.06944 2.27267 1.06944 2.91667V4.47222C1.06944 4.90156 1.34322 5.25 1.68056 5.25H2.90278" />
+        <path d="M9.01389 12.25H3.81944" />
+        <path d="M1.98611 1.75H7.79167C8.29767 1.75 8.70833 2.27267 8.70833 2.91667V7.97222" />
+        <path d="M4.58333 4.47222H7.02778" />
+        <path d="M4.58333 6.80556H7.02778" />
+      </g>
+    </svg>
+  );
+}
+
+/** Versus template type: books on a shelf (12 x 14). */
+export function TypeVersusFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="14"
+      viewBox="0 0 12 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M5.83333 2.13889H4.5C4.13181 2.13889 3.83333 2.48711 3.83333 2.91667V11.0833C3.83333 11.5129 4.13181 11.8611 4.5 11.8611H5.83333C6.20152 11.8611 6.5 11.5129 6.5 11.0833V2.91667C6.5 2.48711 6.20152 2.13889 5.83333 2.13889Z" />
+        <path d="M3.16667 3.69444H2.5C2.13181 3.69444 1.83333 4.04267 1.83333 4.47222V11.0833C1.83333 11.5129 2.13181 11.8611 2.5 11.8611H3.16667C3.53486 11.8611 3.83333 11.5129 3.83333 11.0833V4.47222C3.83333 4.04267 3.53486 3.69444 3.16667 3.69444Z" />
+        <path d="M8.09018 3.68194L7.13565 4.02973C6.7842 4.15779 6.58827 4.59399 6.69803 5.00401L8.38731 11.3145C8.49707 11.7246 8.87095 11.9531 9.2224 11.8251L10.1769 11.4773C10.5284 11.3492 10.7243 10.913 10.6146 10.503L8.92527 4.19249C8.81551 3.78247 8.44163 3.55389 8.09018 3.68194Z" />
+        <path d="M7.28933 7.21156L9.51667 6.39956" />
+        <path d="M3.83333 5.63889H6.5" />
+        <path d="M1.83333 6.80556H3.83333" />
+        <path d="M0.666667 11.8611H11.3333" />
+      </g>
+    </svg>
+  );
+}
+
+/** Any other template type: a document (12 x 15). */
+export function TypeOtherFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="15"
+      viewBox="0 0 12 15"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M3.83333 5.625H5.16667" />
+        <path d="M3.83333 8.125H8.16667" />
+        <path d="M3.83333 10.625H8.16667" />
+        <path d="M1.83333 11.875V3.125C1.83333 2.20417 2.43 1.45833 3.16667 1.45833H6.89067C7.06733 1.45833 7.23733 1.54583 7.362 1.7025L9.97133 4.96417C10.0967 5.12083 10.1667 5.3325 10.1667 5.55333V11.875C10.1667 12.7958 9.57 13.5417 8.83333 13.5417H3.16667C2.43 13.5417 1.83333 12.7958 1.83333 11.875Z" />
+        <path d="M10.1067 5.20833H7.83333C7.46533 5.20833 7.16667 4.835 7.16667 4.375V1.54333" />
+      </g>
+    </svg>
+  );
+}

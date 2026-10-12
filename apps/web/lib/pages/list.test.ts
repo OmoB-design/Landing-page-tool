@@ -22,6 +22,7 @@ function page(overrides: Partial<PageListItem> & { id: string }): PageListItem {
     templateType: "advertorial",
     residueScore: null,
     costUsd: 1,
+    createdAt: now,
     updatedAt: now,
     parentId: null,
     createdBy: { name: "Ada", isMe: true },
@@ -30,7 +31,7 @@ function page(overrides: Partial<PageListItem> & { id: string }): PageListItem {
 }
 
 describe("groupPagesByStatus", () => {
-  it("orders groups Building → Needs review → Approved → Published → Failed and drops empty ones", () => {
+  it("orders groups Needs review → Building → Published → Approved → Failed and drops empty ones", () => {
     const groups = groupPagesByStatus([
       page({ id: "a", status: "failed" }),
       page({ id: "b", status: "published" }),
@@ -38,8 +39,8 @@ describe("groupPagesByStatus", () => {
       page({ id: "d", status: "needs_review" }),
     ]);
     expect(groups.map((g) => g.id)).toEqual([
-      "building",
       "needs_review",
+      "building",
       "published",
       "failed",
     ]);

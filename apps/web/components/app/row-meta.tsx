@@ -1,8 +1,6 @@
 import { formatDistanceToNowStrict } from "date-fns";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { CloneIcon, ShieldIcon } from "@/components/ui/icons";
+import { ScoreShieldIcon } from "@/components/ui/lp-icons";
 import { cn } from "@/lib/utils";
 
 // Small labels shown in list rows (DESIGN.md §3, "Right side of each row").
@@ -16,16 +14,12 @@ export function KeyLabel({ children }: { children: string }) {
   );
 }
 
-/** Owned (library) or Cloned (competitor page) origin. */
+/** Owned (library) or Cloned (competitor page) origin (Figma: a 0.7 px stroke tag, 12 px). */
 export function OriginBadge({ origin }: { origin: "owned" | "cloned" }) {
   return (
-    <Badge
-      variant="outline"
-      className="h-5 rounded-xsm border-stroke px-1.5 font-normal text-sub-text"
-    >
-      {origin === "cloned" ? <CloneIcon aria-hidden /> : null}
+    <span className="flex shrink-0 items-center rounded-sm px-1.5 text-type-caption-1 text-sub-text ring-thin ring-stroke">
       {origin === "cloned" ? "Cloned" : "Owned"}
-    </Badge>
+    </span>
   );
 }
 
@@ -38,25 +32,33 @@ export function scoreTone(score: number, min: number): ScoreTone {
   return "poor";
 }
 
+// Figma: the score chips in All Pages/states (light and dark). Poor uses Text-Danger, where the
+// dark frame's dark red text on a dark red tint would be unreadable.
 const TONE_CLASSES: Record<ScoreTone, string> = {
-  good: "bg-highlight-green-50 text-text-success",
-  fair: "bg-highlight-yellow-50 text-text-warning",
-  poor: "bg-highlight-red-50 text-text-danger",
+  good: "bg-tint-green text-highlight-green-500",
+  fair: "bg-tint-yellow text-highlight-yellow-500",
+  poor: "bg-tint-red text-text-danger",
 };
 
-/** A clone's source-leak (residue) score, coloured against the publish threshold `min`. */
+/**
+ * A clone's source-leak (residue) score, coloured against the publish threshold `min` (Figma:
+ * an 18 px chip with 6 px corners, the 11 px shield and the score in 12 px, 2 px apart).
+ */
 export function ScoreChip({ score, min }: { score: number; min: number }) {
   const tone = scoreTone(score, min);
   return (
-    <Badge
+    <span
       data-tone={tone}
       title={`Source-leak score ${score} (publish needs ${min}+)`}
-      className={cn("h-5 rounded-xsm px-1.5 tabular-nums", TONE_CLASSES[tone])}
+      className={cn(
+        "flex h-4.5 shrink-0 items-center gap-0.5 rounded-sm px-1.5 text-type-caption-1 tabular-nums",
+        TONE_CLASSES[tone],
+      )}
     >
-      <ShieldIcon aria-hidden />
+      <ScoreShieldIcon />
       <span className="sr-only">Source-leak score </span>
       {score}
-    </Badge>
+    </span>
   );
 }
 
@@ -110,14 +112,18 @@ export function initials(name: string): string {
   );
 }
 
-/** Small avatar with initials; the assignee placeholder until profiles have pictures. */
+/**
+ * A 22 px avatar with initials in 10 px (Figma: Page List); the creator until profiles have
+ * pictures.
+ */
 export function PersonAvatar({ name }: { name: string }) {
   return (
-    <Avatar size="sm" title={name} className="size-5">
-      <AvatarFallback className="text-type-caption-2">
-        <span aria-hidden>{initials(name)}</span>
-        <span className="sr-only">{name}</span>
-      </AvatarFallback>
-    </Avatar>
+    <span
+      title={name}
+      className="flex size-5.5 shrink-0 items-center justify-center rounded-full bg-foreground-02 text-type-caption-3 font-medium text-body"
+    >
+      <span aria-hidden>{initials(name)}</span>
+      <span className="sr-only">{name}</span>
+    </span>
   );
 }

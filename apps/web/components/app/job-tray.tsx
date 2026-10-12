@@ -28,19 +28,20 @@ import {
   jobTitle,
   progressPercent,
 } from "@/lib/jobs/progress";
-import { useJobs } from "@/lib/queries/jobs";
+import { useJobs, useMarkJobsSeen } from "@/lib/queries/jobs";
+import { useHydrated } from "@/lib/use-hydrated";
 import { notificationKeys } from "@/lib/queries/notifications";
 import { cn } from "@/lib/utils";
 import type { JobStatus, JobSummary } from "@/lib/validators/jobs";
 
+import {
+  HEADER_POPOVER,
+  HEADER_POPOVER_TITLE,
+  POPOVER_FOOTER,
+  POPOVER_FOOTER_ACTION,
+  PopoverScroll,
+} from "./header-popover";
 import { toast } from "./toaster";
-
-// Figma: Jobs and Notification popovers — 280 px, 10 px corners, a 0.7 px stroke-strong outline
-// and the inner edge shadow; white in light mode, the overlay colour in dark mode.
-export const HEADER_POPOVER =
-  "flex w-menu-header flex-col gap-1.5 overflow-hidden rounded-lg bg-surface-primary p-0 pb-1.5 shadow-edge ring-thin ring-stroke-strong dark:bg-overlay";
-export const HEADER_POPOVER_TITLE =
-  "divider-b-thin p-3 text-type-caption-2 font-medium text-heading-05";
 
 /** Job toasts for your own jobs, kept running from the sidebar so they work on every page. */
 export function JobToasts({ userId }: { userId: string }) {
@@ -51,14 +52,31 @@ export function JobToasts({ userId }: { userId: string }) {
 
 /**
  * Jobs in the page header (Figma: Icon/Job — a 16 px icon in a 32 px box): a blue dot while jobs
- * run, and a popover (Figma: Jobs) of recent jobs, each with its status, live progress while it
- * runs, and when it started.
+ * run or any finished since you last marked them read, and a popover (Figma: Jobs, built like
+ * Notis) of recent jobs, each with its status, live progress while it runs, and when it started,
+ * over a "Mark all as read" footer.
  */
 export function JobTray() {
   const { data, isPending } = useJobs();
+  const markSeen = useMarkJobsSeen();
+  const hydrated = useHydrated();
   const jobs = data?.jobs ?? [];
   const running = jobs.filter((job) => isActive(job.status)).length;
-  const label = running > 0 ? `Jobs, ${running} running` : "Jobs";
+  const seenAt = data?.seenAt ? Date.parse(data.seenAt) : 0;
+  const unread = jobs.filter(
+    (job) =>
+      !isActive(job.status) &&
+      job.finished_at !== null &&
+      Date.parse(job.finished_at) > seenAt,
+  ).length;
+  // Counts appear after hydration, like the dot (the server has no jobs data).
+  const label = !hydrated
+    ? "Jobs"
+    : running > 0
+      ? `Jobs, ${running} running`
+      : unread > 0
+        ? `Jobs, ${unread} unread`
+        : "Jobs";
   return (
     <Popover>
       <Tooltip>
@@ -70,7 +88,7 @@ export function JobTray() {
               className="relative flex size-8 items-center justify-center rounded-sm text-icon-system outline-none hover:bg-foreground-02 hover:text-icon-nav-active focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-foreground-01 aria-expanded:text-icon-nav-active"
             >
               <HeaderJobsIcon className="size-4" />
-              {running > 0 ? (
+              {label !== "Jobs" ? (
                 <span
                   aria-hidden
                   data-dot
@@ -85,10 +103,7 @@ export function JobTray() {
       <PopoverContent align="end" sideOffset={6} className={HEADER_POPOVER}>
         <h2 className={HEADER_POPOVER_TITLE}>Jobs</h2>
         {isPending ? (
-          <div
-            className="flex flex-col gap-2 px-3 pb-1.5"
-            aria-label="Loading jobs"
-          >
+          <div className="flex flex-col gap-2 p-3" aria-label="Loading jobs">
             <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
             <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
           </div>
@@ -97,15 +112,27 @@ export function JobTray() {
             No jobs yet
           </p>
         ) : (
-          <ul
-            className="flex max-h-96 flex-col gap-0.5 overflow-y-auto px-2.5 pb-1.5"
-            aria-live="polite"
-          >
-            {jobs.map((job) => (
-              <JobItem key={job.id} job={job} />
-            ))}
-          </ul>
+          <PopoverScroll>
+            <ul
+              className="flex flex-col gap-0.5 px-2.5 py-3"
+              aria-live="polite"
+            >
+              {jobs.map((job) => (
+                <JobItem key={job.id} job={job} />
+              ))}
+            </ul>
+          </PopoverScroll>
         )}
+        <div className={POPOVER_FOOTER}>
+          <button
+            type="button"
+            disabled={unread === 0}
+            onClick={() => markSeen.mutate()}
+            className={POPOVER_FOOTER_ACTION}
+          >
+            Mark all as read
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
   );

@@ -1,33 +1,29 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { PersonMark } from "@/components/app/mark";
-import { CheckIcon } from "@/components/ui/icons";
-import type { SetupProgress } from "@/lib/onboarding/progress";
-import { cn } from "@/lib/utils";
 
 /**
- * Home's greeting (D67, the reference's "Welcome" page): the person's mark, a serif "Welcome,
- * <first name>", and three getting-started cards with drawings of our own screens. A card shows
- * Done once its step is.
+ * Home's greeting (Figma: Home 17:978 and Home Dark 38:2392): a 40 px mark and a 30 px serif
+ * "Welcome, <first name>", 8 px in from the cards; 64 px below, three 285 px getting-started
+ * cards, 16 px apart. Each card has a 207 px textured painting with a drawing of a page and the
+ * step in 13 px below. (A done state is to come from the owner's design.)
  */
-export function Welcome({
-  name,
-  progress,
-}: {
-  name: string;
-  progress: SetupProgress;
-}) {
-  const done = (id: string) =>
-    progress.steps.find((step) => step.id === id)?.done ?? false;
+export function Welcome({ name }: { name: string }) {
   const first = name.trim().split(/\s+/)[0] || name;
   return (
-    <section aria-labelledby="welcome-title" className="flex flex-col gap-8">
-      <div className="flex flex-col gap-5">
-        <PersonMark name={name} className="size-9 text-type-h6" />
+    <section
+      aria-labelledby="welcome-title"
+      className="mx-auto flex w-full max-w-home-card flex-col gap-2 md:max-w-home-row"
+    >
+      <div className="flex flex-col gap-5 px-2 pb-14">
+        <span className="flex h-14.5 w-12.5 items-center justify-center">
+          <PersonMark name={name} className="size-10 font-sans text-type-h5" />
+        </span>
         <h1
           id="welcome-title"
-          className="font-serif text-type-h3 font-normal tracking-tight text-body"
+          className="font-serif text-type-h4 font-medium text-button-secondary-text"
         >
           Welcome, {first}
         </h1>
@@ -35,185 +31,160 @@ export function Welcome({
       <ul role="list" className="grid gap-4 md:grid-cols-3">
         <WelcomeCard
           href="/brands/new"
+          image="/home/add-brand.png"
           lead="Add a brand."
           rest="Paste your store’s address and we read its colours, fonts, voice and products."
-          done={done("brand")}
-          art={<BrandArt />}
-          tint="from-avatar-a-soft dark:from-avatar-a/35"
+          texture={{ id: "home-texture-brand", radius: 14 }}
+          drawing={<FloatingWindow />}
         />
         <WelcomeCard
           href="/templates"
+          image="/home/pick-template.png"
           lead="Pick a template."
           rest="Start from a proven page in the library, then rearrange its sections."
-          done={done("template")}
-          art={<TemplateArt />}
-          tint="from-avatar-e-soft dark:from-avatar-e/35"
+          texture={{ id: "home-texture-template", radius: 15 }}
+          drawing={<FramedWindow />}
         />
         <WelcomeCard
           href="/pages/new"
+          image="/home/create-page.png"
           lead="Create a page."
           rest="Choose a product and who it’s for. It builds in the background, ready to review."
-          done={done("build")}
-          art={<PageArt />}
-          tint="from-avatar-c-soft dark:from-avatar-c/35"
+          texture={{ id: "home-texture-page", radius: 14 }}
+          drawing={<FramedWindow />}
         />
       </ul>
     </section>
   );
 }
 
+/**
+ * A getting-started card (Figma: Follow Button Container): 18 px corners, the frame edge, the
+ * painting with its page drawing, and the step 10 px in with 32 px below. On hover the border
+ * deepens, as on Quality's Home cards (Border-divider → Border-input-hover); nothing moves.
+ */
 function WelcomeCard({
   href,
+  image,
   lead,
   rest,
-  done,
-  art,
-  tint,
+  texture,
+  drawing,
 }: {
   href: string;
+  image: string;
   lead: string;
   rest: string;
-  done: boolean;
-  art: ReactNode;
-  tint: string;
+  texture: { id: string; radius: number };
+  drawing: ReactNode;
 }) {
   return (
     <li>
       <Link
         href={href}
-        className="group flex h-full flex-col overflow-hidden rounded-lg border border-stroke-strong bg-surface-primary outline-none hover:border-caption-1 focus-visible:ring-2 focus-visible:ring-ring"
+        className="group relative flex h-full flex-col overflow-hidden rounded-card bg-surface-primary outline-none edge hover:edge-strong focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <div
-          aria-hidden
-          className={cn(
-            "relative flex aspect-16/10 items-end justify-center overflow-hidden bg-linear-to-br to-foreground-01 px-6 pt-6",
-            tint,
-          )}
-        >
-          {art}
-          {done ? (
-            <span className="absolute top-3 right-3 flex items-center gap-1 rounded-xsm bg-surface-primary px-1.5 py-0.5 text-type-caption-2 font-medium text-text-success shadow-control">
-              <CheckIcon className="size-3" />
-              Done
-            </span>
-          ) : null}
+        <div aria-hidden className="relative h-51.75 shrink-0 overflow-hidden">
+          <TextureFilter {...texture} />
+          {/* The plain painting under the textured one fills the specks the texture pulls in
+              from past the edge, so the edges stay clean as in Figma. */}
+          <Image
+            src={image}
+            alt=""
+            fill
+            preload
+            sizes="(min-width: 768px) 285px, 100vw"
+            className="object-cover"
+          />
+          <Image
+            src={image}
+            alt=""
+            fill
+            sizes="(min-width: 768px) 285px, 100vw"
+            className="object-cover"
+            // An SVG filter reference (Figma's Texture effect), not a style value.
+            style={{ filter: `url(#${texture.id})` }}
+          />
+          {drawing}
         </div>
-        <p className="px-5 py-4 text-type-body-small leading-relaxed text-sub-text">
-          <span className="font-medium text-body">{lead}</span> {rest}
-          {done ? <span className="sr-only"> (done)</span> : null}
+        {/* Figma's first line sits 3 px lower than its 10 px padding (a taller line box). */}
+        <p className="px-2.5 pt-3.25 pb-8 text-type-body-small text-sub-text">
+          <span className="font-medium text-heading-01">{lead}</span> {rest}
         </p>
       </Link>
     </li>
   );
 }
 
-// ── Drawings of our own screens (token colours only) ──────────────────────────
-
-/** A window frame: three dots and an address line over the drawing's content. */
-function Window({ children }: { children: ReactNode }) {
+/**
+ * Figma's Texture effect (grain 2.5, radius 14 or 15, clipped to the shape) as an SVG filter:
+ * noise moves each pixel a few px, for a frosted, painterly grain. Frequency and strength were
+ * tuned by eye against Figma's render of the paintings.
+ */
+function TextureFilter({ id, radius }: { id: string; radius: number }) {
   return (
-    <div className="w-full max-w-60 translate-y-1 rounded-t-md bg-surface-primary shadow-control transition-transform duration-200 ease-out group-hover:translate-y-0 motion-reduce:transition-none">
-      <div className="flex items-center gap-1 border-b border-stroke px-2.5 py-1.5">
-        <span className="size-1.5 rounded-full bg-avatar-h" />
-        <span className="size-1.5 rounded-full bg-spot-500-yellow" />
-        <span className="size-1.5 rounded-full bg-spot-500-green" />
-        <span className="ml-2 h-1.5 flex-1 rounded-full bg-foreground-01" />
+    <svg aria-hidden width="0" height="0" className="absolute">
+      <filter
+        id={id}
+        x="0"
+        y="0"
+        width="100%"
+        height="100%"
+        colorInterpolationFilters="sRGB"
+      >
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.6"
+          numOctaves={1}
+          seed={3}
+          result="noise"
+        />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="noise"
+          scale={radius * 0.75}
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </svg>
+  );
+}
+
+// ── Page drawings (Figma: the windows over each painting; light in both themes) ──────────
+
+/** A two-line placeholder: a short darker line 12 px above a longer light one. */
+function Lines() {
+  return (
+    <>
+      <span className="absolute top-0 left-0 h-1.5 w-15.5 rounded-full bg-illustration-line-strong" />
+      <span className="absolute top-3 left-0 h-1.5 w-33 rounded-full bg-illustration-line" />
+    </>
+  );
+}
+
+/** Add a brand: a large window coming in from the right, cut off by the card. */
+function FloatingWindow() {
+  return (
+    <div
+      className={`absolute top-6.75 left-6 h-49.5 w-74.75 rounded-sm rounded-tl-lg bg-illustration-surface shadow-illustration-float`}
+    >
+      <div className="absolute top-28 left-21">
+        <Lines />
       </div>
-      <div className="flex flex-col gap-2 p-3">{children}</div>
     </div>
   );
 }
 
-const Line = ({ className }: { className?: string }) => (
-  <span
-    className={cn("block h-1.5 rounded-full bg-foreground-02", className)}
-  />
-);
-
-function BrandArt() {
+/** Pick a template and Create a page: a framed window inside the painting. */
+function FramedWindow() {
   return (
-    <Window>
-      <div className="flex items-center gap-2">
-        <span className="flex size-6 items-center justify-center rounded-xsm bg-avatar-a font-serif text-type-caption-1 text-white">
-          Aa
-        </span>
-        <Line className="w-20" />
+    <div
+      className={`absolute top-7 left-6 h-38.25 w-59.25 rounded-sm bg-illustration-surface shadow-illustration-window`}
+    >
+      <div className="absolute top-22.5 left-13.25">
+        <Lines />
       </div>
-      <div className="flex gap-1">
-        <span className="size-4 rounded-full bg-avatar-a" />
-        <span className="size-4 rounded-full bg-avatar-d" />
-        <span className="size-4 rounded-full bg-avatar-c" />
-        <span className="size-4 rounded-full border border-stroke-strong bg-foreground-01" />
-      </div>
-      <Line className="w-full" />
-      <Line className="w-3/4" />
-    </Window>
-  );
-}
-
-function TemplateArt() {
-  return (
-    <Window>
-      <div className="grid grid-cols-2 gap-2">
-        {[true, false].map((chosen) => (
-          <div
-            key={String(chosen)}
-            className={cn(
-              "flex flex-col gap-1 rounded-xsm border p-1.5",
-              chosen
-                ? "border-spot-500-indigo ring-1 ring-spot-500-indigo"
-                : "border-stroke",
-            )}
-          >
-            <span
-              className={cn(
-                "block h-6 rounded-xsm",
-                chosen ? "bg-avatar-e-soft" : "bg-foreground-01",
-              )}
-            />
-            <Line className="w-full" />
-            <Line className="w-2/3" />
-          </div>
-        ))}
-      </div>
-    </Window>
-  );
-}
-
-function PageArt() {
-  return (
-    <Window>
-      <div className="flex items-center">
-        {[0, 1, 2, 3].map((step) => (
-          <span key={step} className="flex flex-1 items-center last:flex-none">
-            <span
-              className={cn(
-                "flex size-3.5 items-center justify-center rounded-full",
-                step < 2
-                  ? "bg-spot-500-green text-white"
-                  : step === 2
-                    ? "bg-spot-500-indigo"
-                    : "border border-stroke-strong",
-              )}
-            >
-              {step < 2 ? <CheckIcon className="size-2.5" /> : null}
-            </span>
-            {step < 3 ? (
-              <span
-                className={cn(
-                  "mx-1 h-px flex-1",
-                  step < 2 ? "bg-spot-500-green" : "bg-stroke-strong",
-                )}
-              />
-            ) : null}
-          </span>
-        ))}
-      </div>
-      <span className="block h-1.5 overflow-hidden rounded-full bg-foreground-01">
-        <span className="block h-full w-2/3 rounded-full bg-spot-500-indigo" />
-      </span>
-      <Line className="w-full" />
-      <Line className="w-1/2" />
-    </Window>
+    </div>
   );
 }

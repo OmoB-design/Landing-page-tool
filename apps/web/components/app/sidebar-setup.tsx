@@ -49,8 +49,8 @@ function writeFolded(folded: boolean) {
  * Getting started Card closed). Open: a 20 px progress ring and a chevron, "Getting Started" in
  * 13 px medium, "N/5 steps completed" in 11 px, then the steps, 12 px apart, each a 14 px circle
  * (a blue disc with a tick once done) and its label in 12 px medium (done steps in heading-05).
- * Open it has a stroke border and the inner edge shadow; closed, a stroke-strong border and a soft
- * lift. The chevron folds it (remembered in this browser); it goes once every step is done.
+ * Stroked like the content panel (Quality's 0.5 px Border-on-bg, no shadow) on its own 10 px
+ * corners, open or folded. The chevron folds it (remembered in this browser); it goes once every step is done.
  */
 export function SidebarSetup({
   steps,
@@ -69,12 +69,7 @@ export function SidebarSetup({
     <Collapsible
       open={open}
       onOpenChange={toggle}
-      className={cn(
-        "flex flex-col gap-3 rounded-lg border bg-surface-primary p-3",
-        open
-          ? "border-stroke shadow-edge"
-          : "border-stroke-strong shadow-raise",
-      )}
+      className="flex flex-col gap-3 rounded-lg bg-surface-primary p-3 edge"
     >
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
@@ -98,20 +93,22 @@ export function SidebarSetup({
         </div>
       </div>
       <CollapsibleContent>
-        <ol className="flex flex-col gap-3">
+        {/* Rows get the nav rows' hover (6 px across, 4 px down, foreground-02); the negative
+            margins keep the steps where Figma puts them, 12 px apart. */}
+        <ol className="-mx-1.5 -my-1 flex flex-col gap-1">
           {steps.map((step) => (
             <li key={step.id}>
               <Link
                 href={step.href}
                 className={cn(
-                  "flex items-center gap-1 rounded-xsm text-type-caption-1 font-medium outline-none hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring",
+                  "group flex items-center gap-1 rounded-sm px-1.5 py-1 text-type-caption-1 font-medium outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring",
                   step.done ? "text-heading-05" : "text-body",
                 )}
               >
                 {step.done ? (
                   <StepDoneIcon className="size-3.5 shrink-0" />
                 ) : (
-                  <StepTodoIcon className="size-3.5 shrink-0 text-stroke-input-hover" />
+                  <StepTodoIcon className="size-3.5 shrink-0 text-stroke-input-hover group-hover:text-icon-system" />
                 )}
                 <span className="truncate">{step.label}</span>
                 <span className="sr-only">

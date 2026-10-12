@@ -16,10 +16,10 @@ describe("PagesList", () => {
       .getAllByRole("heading", { level: 2 })
       .map((h) => h.textContent);
     expect(groupNames).toEqual([
-      "Building2",
       "Needs review5",
-      "Approved1",
+      "Building2",
       "Published2",
+      "Approved1",
       "Failed1",
     ]);
 

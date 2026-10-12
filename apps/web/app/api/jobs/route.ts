@@ -9,7 +9,10 @@ import {
 import { JOB_COLUMNS, latestEventsByJob } from "@/lib/jobs/queries";
 import { startJobSchema } from "@/lib/validators/jobs";
 
-/** Recent jobs of the current org, each with its latest progress event (jobs tray). */
+/**
+ * Recent jobs of the current org, each with its latest progress event (jobs tray), and when the
+ * user last marked jobs as read (`seenAt`, from their auth record; null if never).
+ */
 export async function GET() {
   const session = await getApiSession();
   if (!session) return unauthorized();
@@ -27,8 +30,13 @@ export async function GET() {
     session.supabase,
     jobs.map((job) => job.id),
   );
+  const {
+    data: { session: auth },
+  } = await session.supabase.auth.getSession();
+  const seenAt = auth?.user.user_metadata?.jobs_seen_at;
   return NextResponse.json({
     jobs: jobs.map((job) => ({ ...job, latest: latest.get(job.id) ?? null })),
+    seenAt: typeof seenAt === "string" ? seenAt : null,
   });
 }
 

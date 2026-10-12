@@ -2,16 +2,22 @@
 
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreIcon } from "@/components/ui/icons";
+import { RowMoreIcon } from "@/components/ui/lp-icons";
 
-/** The ⋯ menu at the end of a page row; visible on row hover, keyboard focus or touch. */
+const ITEM =
+  "rounded-xsm px-1 py-0.5 text-type-caption-1 font-medium text-heading-02 focus:bg-foreground-03 focus:text-heading-02";
+
+/**
+ * The ⋯ at the end of a page row (Figma: Page List, Hover) and its menu: an 18 px button on
+ * foreground-03, shown on row hover, keyboard focus or touch; the menu is 132 px with 2 px
+ * padding, 6 px corners, a 0.7 px stroke-strong outline and the pop shadow.
+ */
 export function PageRowMenu({
   pageKey,
   href,
@@ -22,20 +28,24 @@ export function PageRowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
+        <button
+          type="button"
           aria-label={`Actions for ${pageKey}`}
-          className="text-sub-text opacity-0 group-hover/row:opacity-100 hover:bg-foreground-03 focus-visible:opacity-100 pointer-coarse:opacity-100 data-open:opacity-100"
+          className="flex size-4.5 items-center justify-center rounded-xsm bg-foreground-03 text-body opacity-0 outline-none group-hover/row:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:opacity-100 data-open:opacity-100"
         >
-          <MoreIcon aria-hidden />
-        </Button>
+          <RowMoreIcon />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem asChild>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={5}
+        className="flex w-menu-row flex-col gap-0.5 rounded-sm bg-surface-modal p-0.5 shadow-float edge-hairline"
+      >
+        <DropdownMenuItem asChild className={ITEM}>
           <Link href={href}>Open</Link>
         </DropdownMenuItem>
         <DropdownMenuItem
+          className={ITEM}
           onSelect={() => void navigator.clipboard?.writeText(pageKey)}
         >
           Copy key

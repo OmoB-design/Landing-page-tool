@@ -8,10 +8,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDownIcon } from "@/components/ui/icons";
+import { GroupChevronIcon } from "@/components/ui/lp-icons";
 import { cn } from "@/lib/utils";
 
-// Status-grouped list (DESIGN.md §2): tinted group bands, 40 px rows, nested child rows.
+// Status-grouped list (DESIGN.md §2; Figma: All Pages and its Page List component): 36 px
+// group bands, 48 px rows with hairline dividers, nested child rows.
 // Keyboard: ↑/↓ move between group headers and rows, Home/End jump to the ends, Enter opens a
 // row, and Enter/Space on a group header collapses or expands it.
 
@@ -57,7 +58,8 @@ export function GroupedList({
       role="group"
       aria-label={label}
       onKeyDown={handleKeyDown}
-      className="flex flex-col"
+      // Figma (All Pages/states): groups sit 16 px apart.
+      className="flex flex-col gap-4"
     >
       {children}
     </div>
@@ -73,7 +75,10 @@ type ListGroupProps = {
   children: ReactNode;
 };
 
-/** A collapsible group: a full-width tinted header band, then its rows. */
+/**
+ * A collapsible group: a 36 px foreground-02 band, 16 px in (the status glyph, the label in
+ * 13 px medium, the count in a pill and a small chevron), then its rows.
+ */
 export function ListGroup({
   label,
   count,
@@ -87,21 +92,23 @@ export function ListGroup({
         <h2>
           <CollapsibleTrigger
             data-list-nav=""
-            className="group flex h-9 w-full items-center gap-2 bg-foreground-01 px-6 text-left text-type-body-small font-medium -outline-offset-2 hover:bg-foreground-02"
+            className="group flex h-9 w-full items-center gap-1 bg-foreground-02 px-4 text-left text-type-body-small font-medium text-heading-01 divider-b-thin -outline-offset-2"
           >
-            {glyph}
-            <span>{label}</span>
-            <span className="text-type-caption-1 font-normal text-sub-text tabular-nums">
+            <span className="flex items-center gap-1.5">
+              {glyph}
+              <span>{label}</span>
+            </span>
+            <span className="min-w-5.75 rounded-lg bg-foreground-01 px-1 text-center text-type-caption-1 font-medium text-heading-03 tabular-nums">
               {count}
             </span>
-            <ChevronDownIcon
-              aria-hidden
-              className="size-3.5 text-sub-text transition-transform duration-150 ease-out group-data-closed:-rotate-90 motion-reduce:transition-none"
-            />
+            <GroupChevronIcon className="text-icon-system transition-transform duration-150 ease-out group-data-closed:-rotate-90 motion-reduce:transition-none" />
           </CollapsibleTrigger>
         </h2>
         <CollapsibleContent className="overflow-hidden">
-          <ul role="list">{children}</ul>
+          {/* Figma: rows 2 px apart, the first 2 px under the band. */}
+          <ul role="list" className="flex flex-col gap-0.5 pt-0.5">
+            {children}
+          </ul>
         </CollapsibleContent>
       </section>
     </Collapsible>
@@ -110,7 +117,7 @@ export function ListGroup({
 
 type ListRowProps = {
   href: string;
-  title: string;
+  title: ReactNode;
   /** Left of the title: type glyph, key label. */
   leading?: ReactNode;
   /** Right side, inside the link: badges, cost, time, avatar. */
@@ -123,7 +130,10 @@ type ListRowProps = {
   children?: ReactNode;
 };
 
-/** One 40 px row: the whole row is a link, with an optional menu after it. */
+/**
+ * One 48 px row (Figma: Page List): 16 px in, a hairline below, foreground-01 on hover. The
+ * whole row is a link, with an optional menu after it, 12 px from the meta.
+ */
 export function ListRow({
   href,
   title,
@@ -135,17 +145,17 @@ export function ListRow({
 }: ListRowProps) {
   return (
     <li>
-      <div className="group/row flex h-row items-center gap-1 pr-4 hover:bg-foreground-02">
+      <div className="group/row flex h-12 items-center gap-3 pr-4 divider-b-thin hover:bg-foreground-01">
         <Link
           href={href}
           data-list-nav=""
           className={cn(
-            "flex h-full min-w-0 flex-1 items-center gap-3 pr-2 -outline-offset-2",
-            level === 1 ? "pl-14" : "pl-6",
+            "flex h-full min-w-0 flex-1 items-center gap-3 -outline-offset-2",
+            level === 1 ? "pl-12" : "pl-4",
           )}
         >
           {leading}
-          <span className="min-w-0 flex-1 truncate text-type-body-small">
+          <span className="min-w-0 flex-1 truncate text-type-body-small font-medium text-heading-01">
             {title}
           </span>
           {meta ? (

@@ -71,6 +71,7 @@
   --green-800: #0f4514;
   --green-850: #0b340f;
   --green-900: #07230a;
+  --green-950: #141e15; /* dark glyph and chip tint (Figma: Green 950) */
   /* Yellow */
   --yellow-50: #fdeed4;
   --yellow-100: #fcebd5;
@@ -97,6 +98,7 @@
   --red-800: #660f0e;
   --red-850: #4d0b0b;
   --red-900: #500707;
+  --red-950: #241414; /* dark glyph and chip tint (Figma: Red 950) */
   /* Amber */
   --amber-50: #fbf1dc;
   --amber-400: #e3a93b;
@@ -116,6 +118,7 @@
   --blue-800: #0a2a66;
   --blue-850: #08204c;
   --blue-900: #051c47;
+  --blue-950: #171e31; /* dark glyph tint (Figma: Blue 950) */
   /* Pink */
   --pink-50: #ffeaf4;
   --pink-100: #ffd5e9;
@@ -188,8 +191,12 @@
   --text-type-h6--line-height: calc(1.75 / 1.125);
   --text-type-h5: 1.375rem; /* 22px H5: titles in empty states */
   --text-type-h5--line-height: calc(1.75 / 1.25);
+  --text-type-title: 1.75rem; /* 28px Title: list page titles (Pages); not a Figma text style yet */
+  --text-type-title--line-height: 1.2;
+  --text-type-title--letter-spacing: -0.03em;
   --text-type-h4: 1.875rem; /* 30px H4: sign-in and sign-up card titles (serif) */
   --text-type-h4--line-height: 1.2;
+  --text-type-h4--letter-spacing: -0.03em; /* Figma H4: -3 % */
   --text-type-h3: 2.25rem; /* 36px H3: serif greetings */
   --text-type-h3--line-height: 1.15;
   --text-type-h2: 2.875rem; /* 46px H2: not used yet */
@@ -298,6 +305,26 @@
   --color-template-versus: var(--glyph-versus);
   --color-template-comparison: var(--glyph-comparison);
   --color-template-long-form: var(--glyph-long-form);
+  /* Drawings of a light page on the Home cards; light in both themes (Figma Home and Home Dark). */
+  --color-illustration-surface: var(--base-white);
+  --color-illustration-line: var(--grey-50);
+  --color-illustration-line-strong: var(--grey-150);
+  /* Figma Notis: the footer's hover shadow colour (tuned by eye for dark). */
+  /* Soft tints behind type glyphs and score chips (Figma: Highlights/Tint-*). Light uses the
+     Highlight-*-50 values; dark uses quiet tints (Green/Blue/Red 950, Highlight-Yellow-150). */
+  --color-tint-green: var(--color-highlight-green-50);
+  --color-tint-blue: var(--color-highlight-blue-50);
+  --color-tint-red: var(--color-highlight-red-50);
+  --color-tint-yellow: var(--color-highlight-yellow-50);
+  /* The 2 px line under the current view tab (Figma: Surface/Tab-Indicator). */
+  --color-tab-indicator: var(--color-overlay);
+  /* Frame edges (Quality's stroke: a 0.5 px border in its Border-on-bg, Grey 50 #e6e6e6 in light
+     and Grey 400 #2a2a2a in dark, which is our Stroke-Strong); on hover, Quality's
+     Border-input-hover (#d8d8d8 light, #212121 dark), our Stroke-Input-Hover. */
+  --color-edge: var(--color-stroke-strong);
+  --color-edge-strong: var(--color-stroke-input-hover);
+  --float-intensity: 1;
+  --color-lift-shadow: rgb(181 181 181 / 0.25);
 
   /* Radius (Figma: Radius). Radius-L is --radius-lg because Tailwind's rounded-l means left corners. */
   --radius-xsm: 4px;
@@ -307,6 +334,8 @@
   --radius-xl: 24px;
   --radius-xxl: 32px;
   --radius-max: 64px;
+  --radius-panel: 16px; /* the content panel, as Quality's content frame (its 2xl radius, 1rem) */
+  --radius-card: 18px; /* Figma Home: getting-started cards (Numbers/18) */
 
   /* Layout (Figma: Size). Tailwind v4 only builds w-/h-/size- utilities from the --spacing-*
      namespace, so they live here (w-sidebar, h-topbar, h-header, h-row, h-nav-item …). Spacing
@@ -323,6 +352,13 @@
   --spacing-menu-workspace: 228px; /* Figma: Sidebar Account Option (w-menu-workspace); its ring-thin is outside */
   --spacing-menu-account: 270px; /* Figma: Sidebar Menu Option (w-menu-account) */
   --spacing-menu-header: 280px; /* Figma: Jobs, Notification (w-menu-header) */
+  --spacing-pages: 1100px; /* Figma All Pages: the content column (max-w-pages) */
+  --spacing-menu-display: 200px; /* Pages → Display menu (w-menu-display); not in a frame yet */
+  --spacing-menu-row: 132px; /* Figma All Pages: the row ⋯ menu (w-menu-row) */
+  --spacing-home-card: 285px; /* Figma Home: a getting-started card (w-home-card) */
+  --spacing-home-row: calc(
+    var(--spacing-home-card) * 3 + var(--spacing) * 8
+  ); /* three cards and two 16 px gaps (max-w-home-row) */
 
   /* Motion (D51, DESIGN.md §6): strong custom curves; the built-in ones are too weak. */
   --ease-out: cubic-bezier(
@@ -338,16 +374,41 @@
 
   /* Shadows (Figma effect styles Shadow/Pop, Control, Edge, Panel; Quality's values). */
   --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
+  /* Floating menus and popovers (after Nucleo's --shadow-lg): a 0.5 px contact line and soft,
+     layered depth; --float-intensity is 1 in light and 2.5 in dark (Nucleo: --shadow-intensity). */
+  --shadow-float:
+    0 0.5px 0 0 rgb(10 10 11 / calc(0.03 * var(--float-intensity))),
+    0 36px 15px -4px rgb(10 10 11 / calc(0.01 * var(--float-intensity))),
+    0 20px 12px -3px rgb(10 10 11 / calc(0.03 * var(--float-intensity))),
+    0 9px 9px -2px rgb(10 10 11 / calc(0.04 * var(--float-intensity))),
+    0 2px 5px -1px rgb(10 10 11 / calc(0.05 * var(--float-intensity)));
   --shadow-control:
     0 0 0 0.5px rgb(61 59 53 / 0.1), 0 1px 1px rgb(0 0 0 / 0.1),
     0 1px 5px rgb(61 59 53 / 0.05);
   --shadow-edge: inset 0 -0.5px 0 0.3px rgb(0 0 0 / 0.15);
   --shadow-raise: 0 1px 3px 0 rgb(0 0 0 / 0.06); /* Figma: closed getting-started card */
+  --shadow-lift: 0 -1px 6.6px 0 var(--color-lift-shadow); /* Figma Notis: footer on hover */
+  /* Figma Home card drawings: the window peeking in from the right, and the framed windows. */
+  --shadow-illustration-float:
+    -5px 0 24.5px 0 rgb(0 0 0 / 0.3), 0 1px 5px 0 rgb(61 59 53 / 0.05),
+    0 1px 1px 0 rgb(0 0 0 / 0.1), 0 0 0 0.5px rgb(61 59 53 / 0.1);
+  --shadow-illustration-window:
+    inset 0 0 0 0.5px var(--color-illustration-line-strong),
+    0 4.9px 5.9px 0 rgb(200 196 196 / 0.15);
   --shadow-panel: 0 0 0 0.5px rgb(61 59 53 / 0.04), 0 1px 2px rgb(0 0 0 / 0.03);
 }
 
 /* Dark mode (Figma: Tokens collection, Dark mode): only the tokens whose value changes. */
 .dark {
+  --color-tint-green: var(--green-950);
+  --color-tint-blue: var(--blue-950);
+  --color-tint-red: var(--red-950);
+  --color-tab-indicator: var(--color-foreground-03);
+  --color-tint-yellow: var(--color-highlight-yellow-150);
+  --color-edge: var(--color-stroke-strong);
+  --color-edge-strong: var(--color-stroke-input-hover);
+  --float-intensity: 2.5;
+  --color-lift-shadow: rgb(0 0 0 / 0.45);
   /* Surface */
   --color-surface-primary: var(--grey-950);
   --color-foreground-01: var(--grey-900);
@@ -631,4 +692,95 @@
   box-shadow:
     var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
     var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* A marker sliding to a new place and size (the Pages view line): 200 ms, ease-in-out for
+   movement on screen. */
+@utility transition-slide {
+  transition-property: translate, width;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-in-out);
+}
+
+/* Figma Notis: a 0.5 px stroke-coloured line inside the top edge (the popover footer). */
+@utility divider-t-half {
+  --tw-inset-shadow: inset 0 0.5px 0 0 var(--color-stroke);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* Popover lists (Jobs, Notifications): where more of the list sits below, its last 40 px fade out
+   into whatever is behind it (a mask, so it needs no colour and works in both themes). The fade
+   length is a registered property driven by the list's own scroll (animation-timeline), so it
+   is absent when the list fits and shrinks to nothing over the last 40 px of scrolling; the
+   gradient is eased so the edge never shows a band. Without scroll-driven animations (Firefox),
+   the list's data-more attribute (set from script) switches the same fade on and off. Technique:
+   shadcn scroll-fade, tw-fade, ngrok Mantle. */
+@property --scroll-fade-b {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-fade-b {
+  from {
+    --scroll-fade-b: 2.5rem;
+  }
+  to {
+    --scroll-fade-b: 0px;
+  }
+}
+@utility scroll-fade-b {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--scroll-fade-b)),
+    rgb(0 0 0 / 0.8) calc(100% - var(--scroll-fade-b) * 0.75),
+    rgb(0 0 0 / 0.5) calc(100% - var(--scroll-fade-b) * 0.5),
+    rgb(0 0 0 / 0.2) calc(100% - var(--scroll-fade-b) * 0.25),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--scroll-fade-b)),
+    rgb(0 0 0 / 0.8) calc(100% - var(--scroll-fade-b) * 0.75),
+    rgb(0 0 0 / 0.5) calc(100% - var(--scroll-fade-b) * 0.5),
+    rgb(0 0 0 / 0.2) calc(100% - var(--scroll-fade-b) * 0.25),
+    transparent 100%
+  );
+  @supports (animation-timeline: scroll()) {
+    animation: scroll-fade-b linear both;
+    animation-timeline: scroll(self block);
+    animation-range: calc(100% - 2.5rem) 100%;
+  }
+  @supports not (animation-timeline: scroll()) {
+    transition: --scroll-fade-b 150ms ease-out;
+    &[data-more] {
+      --scroll-fade-b: 2.5rem;
+    }
+  }
+}
+
+/* Floating frames (menus, popovers, toasts): a true 0.5 px hairline in --color-edge, drawn as a
+   shadow so Chrome keeps the fraction too. Pair with shadow-float. */
+@utility edge-hairline {
+  --tw-ring-shadow: 0 0 0 0.5px var(--color-edge);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* The line under a page header: the same 0.5 px border as the content panel (Quality: the sticky
+   header's border-b-[0.5px] border-on-bg). */
+@utility edge-b {
+  border-bottom: 0.5px solid var(--color-edge);
+}
+
+/* A frame's edge (the content panel, cards, the layout toggle), as Quality draws it: a 0.5 px
+   border in --color-edge (Chrome draws it 1 px, Safari a true half pixel). `edge-strong` darkens
+   it (hover, the folded getting-started card). */
+@utility edge {
+  border: 0.5px solid var(--color-edge);
+}
+@utility edge-strong {
+  border-color: var(--color-edge-strong);
 }
