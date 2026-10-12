@@ -34,7 +34,7 @@ const ITEM =
 
 /**
  * The ⋯ beside Use Template on your own templates (Figma: Template/Yours): a 28 x 26 button on
- * Foreground-03 (Foreground-02 in dark) with 8 px corners, and its 132 px menu, Preview and Delete, with the app's menu
+ * Foreground-02 with 8 px corners, and its 132 px menu, Preview and Delete, with the app's menu
  * frame (2 px padding, 6 px corners, the float shadow and a 0.5 px edge). Delete asks first.
  */
 export function TemplateCardMenu({
@@ -69,7 +69,7 @@ export function TemplateCardMenu({
           <button
             type="button"
             aria-label={`More actions for ${name}`}
-            className="flex h-6.5 w-7 shrink-0 items-center justify-center rounded-md bg-foreground-03 text-icon-nav-active outline-none hover:bg-stroke-input-hover focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-stroke-input-hover dark:bg-foreground-02 dark:hover:bg-foreground-03 dark:aria-expanded:bg-foreground-02"
+            className="flex h-6.5 w-7 shrink-0 items-center justify-center rounded-md bg-foreground-02 text-icon-nav-active outline-none hover:bg-foreground-03 focus-visible:ring-2 focus-visible:ring-ring aria-expanded:bg-foreground-03"
           >
             <RowMoreIcon />
           </button>
