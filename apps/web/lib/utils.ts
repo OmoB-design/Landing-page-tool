@@ -21,6 +21,7 @@ export const cn = createCn({
         "menu-account",
         "menu-header",
         "pages",
+        "brands",
         "menu-row",
         "menu-display",
         "home-card",
@@ -38,6 +39,8 @@ export const cn = createCn({
         "illustration-window",
         "lift",
         "float",
+        "light",
+        "focus",
       ],
     },
     classGroups: {

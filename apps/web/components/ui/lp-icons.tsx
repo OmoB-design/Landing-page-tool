@@ -1296,3 +1296,27 @@ export function TrashFigmaIcon(props: IconProps) {
     </svg>
   );
 }
+
+// ── Input Field (Figma 191:21125) ─────────────────────────────────────────────────────────
+
+/** Dropdown chevron in fields (Figma: Icon/Accordion Down, 14 px, a 2 px stroke). */
+export function ChevronDownFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M2.04 4.52L7 9.48L11.96 4.52"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

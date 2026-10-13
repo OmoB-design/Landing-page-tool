@@ -39,7 +39,6 @@ export function AuthTextField({
         autoComplete={autoComplete}
         aria-invalid={error ? true : undefined}
         aria-describedby={hintId}
-        className="h-9"
         {...registration}
       />
       {error ? (

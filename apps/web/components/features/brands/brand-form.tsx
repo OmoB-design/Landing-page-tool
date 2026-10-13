@@ -249,7 +249,7 @@ function TextField({
       ) : (
         <Input
           type={type}
-          className={uppercase ? "h-9 uppercase" : "h-9"}
+          className={uppercase ? "uppercase" : undefined}
           {...common}
         />
       )}
@@ -296,7 +296,7 @@ function ColorField({
         />
         <Input
           id={id}
-          className="h-9 font-mono"
+          className="font-mono"
           placeholder="#rrggbb"
           aria-invalid={error ? true : undefined}
           value={value}

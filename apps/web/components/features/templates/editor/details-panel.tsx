@@ -71,7 +71,6 @@ export function DetailsPanel({
           <FieldLabel htmlFor="template-name">Name</FieldLabel>
           <Input
             id="template-name"
-            className="h-9"
             aria-invalid={errors.name ? true : undefined}
             aria-describedby={errors.name ? "template-name-error" : undefined}
             defaultValue={form.formState.defaultValues?.name ?? ""}

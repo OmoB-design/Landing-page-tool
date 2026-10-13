@@ -192,7 +192,7 @@ function TextField({
         <Input
           type={type}
           inputMode={inputMode}
-          className={uppercase ? "h-9 uppercase" : "h-9"}
+          className={uppercase ? "uppercase" : undefined}
           {...common}
         />
       )}

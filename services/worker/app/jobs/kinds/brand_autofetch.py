@@ -57,7 +57,15 @@ def run(ctx: JobContext) -> dict[str, Any]:
     )
 
     signals = brand_extract.extract_static(page.html, page.url)
-    ctx.progress(f"Read the page: {signals.name}", data={"step": 2, "total": TOTAL})
+    # The logo goes out with this step so the new-brand screen can show it while the rest runs.
+    ctx.progress(
+        f"Read the page: {signals.name}",
+        data={
+            "step": 2,
+            "total": TOTAL,
+            "logo_url": signals.logo_urls[0] if signals.logo_urls else None,
+        },
+    )
 
     try:
         rendered = browser.render_signals(page.url)

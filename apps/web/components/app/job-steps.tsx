@@ -2,6 +2,7 @@
 
 import { ProgressTracker } from "@/components/ui/progress-tracker";
 import { type StepDefinition, jobStepStates } from "@/lib/jobs/steps";
+import { cn } from "@/lib/utils";
 import type { JobDetail } from "@/lib/validators/jobs";
 
 /**
@@ -15,11 +16,14 @@ export function JobSteps({
   steps,
   job,
   hideErrorInLog = true,
+  className,
 }: {
   title: string;
   steps: StepDefinition[];
   job: JobDetail | null;
   hideErrorInLog?: boolean;
+  /** Sizes the tracker, e.g. the brand fetch's 300 px card (`w-75`). */
+  className?: string;
 }) {
   const events =
     job?.events.filter(
@@ -31,7 +35,7 @@ export function JobSteps({
         ),
     ) ?? [];
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn("flex flex-col gap-2", className)}>
       <ProgressTracker
         title={title}
         readOnly

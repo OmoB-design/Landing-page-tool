@@ -9,12 +9,7 @@ import { toast } from "@/components/app/toaster";
 import { authLinkClass } from "@/components/app/auth-frame";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { AlertIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { createBrand } from "@/lib/brands/actions";
@@ -22,8 +17,11 @@ import { EMPTY_BRAND_FORM, draftToForm } from "@/lib/brands/form";
 import { deriveDark, deriveTint } from "@/lib/brands/palette";
 import { useJob, useStartJob } from "@/lib/queries/jobs";
 import { type BrandDraft, brandDraftSchema } from "@/lib/validators/brand";
+import type { JobDetail } from "@/lib/validators/jobs";
 
 import { BrandForm } from "./brand-form";
+import { BrandLogoSlot } from "./brand-logo-slot";
+import { BrandsHeading } from "./brands-heading";
 import { PalettePicker } from "./palette-picker";
 
 export const FETCH_STEPS = [
@@ -34,7 +32,11 @@ export const FETCH_STEPS = [
   { id: "profile", label: "Write the brand profile" },
 ];
 
-/** /brands/new: paste a URL → live fetch steps → review the draft → save. Or fill in by hand. */
+/**
+ * /brands/new (Figma: Brands/Enter details and fetch details, light and dark): paste a URL →
+ * the logo square shimmers while the 300 px loader ticks through the fetch steps → review the
+ * draft → save. Or fill in by hand. A failed fetch keeps the form: Try again, or Fill by hand.
+ */
 export function NewBrandFlow() {
   const router = useRouter();
   const startJob = useStartJob();
@@ -54,7 +56,11 @@ export function NewBrandFlow() {
     ? parsedDraft.data
     : null;
 
+  const busy =
+    startJob.isPending || job?.status === "queued" || job?.status === "running";
+
   const fetchBrand = () => {
+    if (busy) return;
     const value = url.trim();
     if (!/^(https?:\/\/)?[^\s/]+\.[^\s]+$/i.test(value)) {
       setUrlError("Enter the brand's website, e.g. https://www.allbirds.com");
@@ -74,7 +80,8 @@ export function NewBrandFlow() {
 
   if (draft || manual) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="mx-auto box-content flex w-full max-w-brands flex-col gap-6 px-6">
+        <BrandsHeading bordered />
         <ReviewNotes draft={draft} onStartOver={reset} />
         <BrandForm
           defaultValues={draft ? draftToForm(draft) : EMPTY_BRAND_FORM}
@@ -132,83 +139,92 @@ export function NewBrandFlow() {
     );
   }
 
-  const busy =
-    startJob.isPending || job?.status === "queued" || job?.status === "running";
+  const failed = job?.status === "failed";
   return (
-    <div className="flex flex-col gap-6">
-      <form
-        className="flex flex-col gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          fetchBrand();
-        }}
-        noValidate
-      >
-        <Field data-invalid={urlError ? true : undefined}>
-          <FieldLabel htmlFor="brand-url">Brand website</FieldLabel>
-          <div className="flex gap-2">
-            <Input
-              id="brand-url"
-              type="url"
-              className="h-9"
-              placeholder="https://www.yourbrand.com"
-              value={url}
-              aria-invalid={urlError ? true : undefined}
-              aria-describedby={urlError ? "brand-url-error" : "brand-url-hint"}
-              onChange={(event) => setUrl(event.target.value)}
-              disabled={busy}
-            />
-            <Button type="submit" disabled={busy} className="h-9 px-4">
-              Fetch details
-            </Button>
-          </div>
-          {urlError ? (
-            <FieldError id="brand-url-error">{urlError}</FieldError>
-          ) : (
-            <FieldDescription id="brand-url-hint">
-              We read the site&apos;s name, colours, fonts, logo and tone.
-              Nothing is saved until you review it.
-            </FieldDescription>
-          )}
-        </Field>
-        {startJob.error ? (
-          <p role="alert" className="text-type-caption-1 text-text-danger">
-            {startJob.error.message}
-          </p>
-        ) : null}
-      </form>
+    <div className="flex flex-col gap-4">
+      {/* Figma Brands/Enter details: the title and the form, closed by a full-width line. */}
+      <section className="flex flex-col items-center px-6 pb-8 divider-b-thin">
+        <div className="flex w-full max-w-brands flex-col gap-2">
+          <BrandsHeading bordered />
+          <form
+            className="mx-auto flex w-full max-w-100 flex-col gap-4 py-1.5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              fetchBrand();
+            }}
+            noValidate
+          >
+            <BrandLogoSlot logoUrl={foundLogo(job)} searching={busy} />
+            <div className="flex flex-col gap-4">
+              <Field data-invalid={urlError ? true : undefined}>
+                <FieldLabel htmlFor="brand-url">Enter Website</FieldLabel>
+                <Input
+                  id="brand-url"
+                  type="url"
+                  placeholder="https://www.yourbrand.com"
+                  value={url}
+                  aria-invalid={urlError ? true : undefined}
+                  aria-describedby={urlError ? "brand-url-error" : undefined}
+                  onChange={(event) => setUrl(event.target.value)}
+                  // Figma's fetch frame keeps the field as it was; it just can't change mid-fetch.
+                  readOnly={busy}
+                />
+                {urlError ? (
+                  <FieldError id="brand-url-error">{urlError}</FieldError>
+                ) : null}
+              </Field>
+              <Button
+                type="submit"
+                size="compact"
+                className="h-8.5 w-full"
+                aria-disabled={busy || undefined}
+              >
+                {failed ? "Try again" : "Fetch details"}
+              </Button>
+              {startJob.error ? (
+                <p
+                  role="alert"
+                  className="text-type-caption-1 text-text-danger"
+                >
+                  {startJob.error.message}
+                </p>
+              ) : null}
+              <p className="text-center text-type-body-small font-medium text-sub-text">
+                No website, or prefer to type it?{" "}
+                <button
+                  type="button"
+                  className="text-heading-01 underline underline-offset-2 outline-none hover:text-sub-text focus-visible:rounded-xsm focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => setManual(true)}
+                >
+                  Fill by hand
+                </button>
+              </p>
+            </div>
+          </form>
+        </div>
+      </section>
 
       {job ? (
-        <JobSteps
-          title="Fetching brand details"
-          steps={FETCH_STEPS}
-          job={job}
-        />
-      ) : null}
-
-      {job?.status === "failed" ? (
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={fetchBrand}>
-            Try again
-          </Button>
-          <Button variant="ghost" onClick={() => setManual(true)}>
-            Fill in by hand
-          </Button>
+        <div className="flex justify-center px-6 py-1.5">
+          <JobSteps
+            title="Fetching brand details"
+            steps={FETCH_STEPS}
+            job={job}
+            className="w-75 [&_.ui-progress]:pb-6.5"
+          />
         </div>
-      ) : (
-        <p className="text-type-caption-1 text-sub-text">
-          No website, or prefer to type it?{" "}
-          <button
-            type="button"
-            className={authLinkClass}
-            onClick={() => setManual(true)}
-          >
-            Fill in by hand
-          </button>
-        </p>
-      )}
+      ) : null}
     </div>
   );
+}
+
+/** The logo the fetch found, as soon as it reports one (the "Read the page" step carries it). */
+function foundLogo(job: JobDetail | null | undefined): string | null {
+  for (const event of [...(job?.events ?? [])].reverse()) {
+    const logo = event.data?.logo_url;
+    if (typeof logo === "string" && /^https?:\/\//.test(logo)) return logo;
+  }
+  return null;
 }
 
 function ReviewNotes({

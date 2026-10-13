@@ -1,13 +1,13 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { PlusIcon } from "@/components/ui/icons";
+import { PlusFigmaIcon } from "@/components/ui/lp-icons";
 
 export function NewBrandButton() {
   return (
-    <Button asChild size="sm" className="h-8">
+    <Button asChild size="compact">
       <Link href="/brands/new">
-        <PlusIcon aria-hidden />
+        <PlusFigmaIcon />
         New brand
       </Link>
     </Button>

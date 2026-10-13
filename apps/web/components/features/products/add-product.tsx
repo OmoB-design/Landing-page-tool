@@ -85,7 +85,6 @@ export function AddProduct({
             <Input
               id="product-url"
               type="url"
-              className="h-9"
               placeholder={placeholder}
               value={url}
               aria-invalid={urlError ? true : undefined}
@@ -95,7 +94,7 @@ export function AddProduct({
               onChange={(event) => setUrl(event.target.value)}
               disabled={busy}
             />
-            <Button type="submit" disabled={busy} className="h-9 px-4">
+            <Button type="submit" disabled={busy} className="h-11.5 px-4">
               Add product
             </Button>
           </div>
