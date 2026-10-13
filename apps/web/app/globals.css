@@ -177,8 +177,7 @@
   --button-blue-highlight: #3e82ff;
   --button-blue-shade: #0059ff;
   --button-blue-glow: #0555ea;
-  /* Its two soft drop shadows show in dark only; light has none (owner, 2026-10-12). */
-  --button-blue-drop: 0 0 #0000;
+  --button-blue-active: #145add; /* hover: the fill 10 % darker (oklab); not drawn in Figma */
   /* Template cards: the Shadow/Edge line shows in dark only; light keeps just the Stroke lines
      (owner, 2026-10-12). */
   --card-edge-shadow: 0 0 #0000;
@@ -235,15 +234,14 @@
   --color-stroke-input-active: var(--grey-850);
   --color-stroke-input-negative: var(--red-700);
   /* Button */
-  /* The blue button in both themes; its hover (10 % darker) isn't in Figma yet. */
+  /* The blue button in both themes (Figma: Button Primary States). Its two soft drop shadows show
+     in dark only (owner, 2026-10-12), so their colours are clear in light. */
   --color-button-primary: var(--button-blue-fill);
-  --color-button-primary-active: color-mix(
-    in oklab,
-    var(--button-blue-fill) 90%,
-    black
-  );
+  --color-button-primary-active: var(--button-blue-active);
   --color-button-primary-stroke-top: var(--button-blue-stroke-top);
   --color-button-primary-stroke-bottom: var(--button-blue-stroke-bottom);
+  --color-button-primary-drop-soft: rgb(186 186 186 / 0);
+  --color-button-primary-drop-deep: rgb(0 0 0 / 0);
   --color-button-primary-disabled: var(--grey-100);
   --color-button-secondary: var(--base-white);
   --color-button-neutral: var(--grey-100);
@@ -429,8 +427,8 @@
   --card-edge-shadow: var(--shadow-edge);
   --template-shot-line: var(--color-stroke);
   --template-shot-shadow: 0 4.92px 10.1px 0 rgb(6 6 6 / 0.15);
-  --button-blue-drop:
-    0 0 4.12px rgb(186 186 186 / 0.25), 0 4.12px 17.62px rgb(0 0 0 / 0.15);
+  --color-button-primary-drop-soft: rgb(186 186 186 / 0.25);
+  --color-button-primary-drop-deep: rgb(0 0 0 / 0.15);
   --color-tint-green: var(--green-950);
   --color-tint-blue: var(--blue-950);
   --color-tint-red: var(--red-950);
@@ -863,7 +861,9 @@
           var(--color-button-primary-stroke-bottom)
         )
         border-box;
-    --tw-shadow: var(--button-blue-drop);
+    --tw-shadow:
+      0 0 4.12px var(--color-button-primary-drop-soft),
+      0 4.12px 17.62px var(--color-button-primary-drop-deep);
     box-shadow:
       var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
       var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
