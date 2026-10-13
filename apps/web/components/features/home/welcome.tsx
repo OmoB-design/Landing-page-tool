@@ -3,15 +3,17 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { PersonMark } from "@/components/app/mark";
+import { SkeletonMark, SkeletonText } from "@/components/app/skeletons";
 
 /**
  * Home's greeting (Figma: Home 17:978 and Home Dark 38:2392): a 40 px mark and a 30 px serif
  * "Welcome, <first name>", 8 px in from the cards; 64 px below, three 285 px getting-started
  * cards, 16 px apart. Each card has a 207 px textured painting with a drawing of a page and the
- * step in 13 px below. (A done state is to come from the owner's design.)
+ * step in 13 px below. (A done state is to come from the owner's design.) With no name yet (the
+ * session is loading) the mark and the name shimmer in place; the cards are already there.
  */
-export function Welcome({ name }: { name: string }) {
-  const first = name.trim().split(/\s+/)[0] || name;
+export function Welcome({ name }: { name: string | null }) {
+  const first = name ? name.trim().split(/\s+/)[0] || name : null;
   return (
     <section
       aria-labelledby="welcome-title"
@@ -19,13 +21,27 @@ export function Welcome({ name }: { name: string }) {
     >
       <div className="flex flex-col gap-5 px-2 pb-14">
         <span className="flex h-14.5 w-12.5 items-center justify-center">
-          <PersonMark name={name} className="size-10 font-sans text-type-h5" />
+          {name ? (
+            <PersonMark
+              name={name}
+              className="size-10 font-sans text-type-h5"
+            />
+          ) : (
+            <SkeletonMark size={40} round />
+          )}
         </span>
         <h1
           id="welcome-title"
-          className="font-serif text-type-h4 font-medium text-button-secondary-text"
+          className="flex items-center gap-2 font-serif text-type-h4 font-medium text-button-secondary-text"
         >
-          Welcome, {first}
+          {first ? (
+            `Welcome, ${first}`
+          ) : (
+            <>
+              Welcome,
+              <SkeletonText className="font-serif text-type-h4" width={120} />
+            </>
+          )}
         </h1>
       </div>
       <ul role="list" className="grid gap-4 md:grid-cols-3">

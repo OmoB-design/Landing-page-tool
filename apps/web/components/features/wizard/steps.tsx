@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { JobSteps } from "@/components/app/job-steps";
 import { OptionCard } from "@/components/app/option-card";
+import { SkeletonMark, SkeletonText } from "@/components/app/skeletons";
 import { TypeGlyph, templateTypeLabel } from "@/components/app/type-glyph";
 import { Button } from "@/components/ui/button";
 import {
@@ -340,10 +341,8 @@ function BriefingWait({
 }: {
   briefing: ReturnType<typeof useBriefing>;
 }) {
-  if (briefing.status === "loading")
-    return (
-      <p className="text-type-caption-1 text-sub-text">Loading the briefing…</p>
-    );
+  // Loading a stored briefing: its audiences and options show as skeletons where they go.
+  if (briefing.status === "loading") return null;
   if (briefing.status === "failed")
     return (
       <div
@@ -436,6 +435,19 @@ export function AudienceStep({
             </span>
           </OptionCard>
         ))}
+        {briefing.status === "loading"
+          ? [168, 140, 188].map((width) => (
+              <div
+                key={width}
+                aria-hidden
+                className="flex flex-col gap-1 rounded-lg border border-stroke bg-surface-primary p-3"
+              >
+                <SkeletonText className="text-type-body-small" width={width} />
+                <SkeletonText className="text-type-caption-1" width="100%" />
+                <SkeletonText className="text-type-caption-1" width="70%" />
+              </div>
+            ))
+          : null}
       </div>
       {briefing.status !== "ready" ? (
         <BriefingWait briefing={briefing} />
@@ -519,6 +531,7 @@ export function EmphasisStep({
           key={group.kind}
           {...group}
           options={briefing.briefing?.[group.kind] ?? []}
+          loading={briefing.status === "loading"}
           chosen={state[group.kind]}
           onChange={(values) => update({ [group.kind]: values })}
         />
@@ -532,6 +545,7 @@ function EmphasisGroup({
   title,
   hint,
   options,
+  loading,
   chosen,
   onChange,
 }: {
@@ -539,6 +553,8 @@ function EmphasisGroup({
   title: string;
   hint: string;
   options: Briefing[EmphasisKind];
+  /** The stored briefing is still loading: its options show as skeleton rows. */
+  loading: boolean;
   chosen: string[];
   onChange: (values: string[]) => void;
 }) {
@@ -560,6 +576,20 @@ function EmphasisGroup({
         </span>
       </legend>
       <div className="flex flex-col gap-1.5">
+        {loading
+          ? ["82%", "64%", "74%"].map((width) => (
+              <div
+                key={width}
+                aria-hidden
+                className="flex items-start gap-2.5 rounded-md bg-foreground-01 px-3 py-2"
+              >
+                <span className="mt-0.5">
+                  <SkeletonMark size={16} />
+                </span>
+                <SkeletonText className="text-type-caption-1" width={width} />
+              </div>
+            ))
+          : null}
         {[...options, ...own].map((option) => {
           const checked = chosen.includes(option);
           return (

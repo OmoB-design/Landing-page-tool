@@ -5,10 +5,16 @@ import { Suspense } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
-import { PageBody } from "@/components/app/page-body";
+import { SkeletonButton, SkeletonText } from "@/components/app/skeletons";
 import { ProductActions } from "@/components/features/products/product-actions";
-import { ProductBriefing } from "@/components/features/products/product-briefing";
-import { ProductForm } from "@/components/features/products/product-form";
+import {
+  ProductBriefing,
+  ProductBriefingSkeleton,
+} from "@/components/features/products/product-briefing";
+import {
+  ProductForm,
+  ProductFormSkeleton,
+} from "@/components/features/products/product-form";
 import {
   ProductImages,
   ProductOptions,
@@ -39,14 +45,7 @@ export default function ProductPage({
   params,
 }: PageProps<"/brands/[brandId]/products/[productId]">) {
   return (
-    <Suspense
-      fallback={
-        <PageBody width="lg" className="gap-3">
-          <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-          <Skeleton height="12rem" radius="var(--radius-md)" />
-        </PageBody>
-      }
-    >
+    <Suspense fallback={<ProductSkeleton />}>
       <Product params={params} />
     </Suspense>
   );
@@ -169,6 +168,74 @@ async function Product({
           briefing={product.briefing?.data ?? null}
           updatedAt={product.briefing?.updatedAt ?? null}
         />
+      </BrandColumn>
+    </BrandFrame>
+  );
+}
+
+/**
+ * The product page while it loads: the same header, sections and briefing heading, with the name,
+ * price, website, buttons, images and field values not ready yet.
+ */
+function ProductSkeleton() {
+  return (
+    <BrandFrame
+      header={
+        <div
+          aria-hidden
+          className="mx-auto flex w-full max-w-150 flex-col gap-5 pr-1 pb-2.5"
+        >
+          <div className="flex flex-col gap-3">
+            <span className="flex w-fit items-center gap-1 text-type-body-small font-medium text-sub-text">
+              <ChevronLeftFigmaIcon className="text-icon-system" />
+              All products
+            </span>
+            <div className="flex flex-col gap-1.5">
+              <SkeletonText
+                className="font-serif text-type-title"
+                width={280}
+              />
+              <SkeletonText className="text-type-body-small" width={236} />
+              <SkeletonText className="text-type-body-small" width={152} />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {[196, 104, 86].map((width) => (
+              <SkeletonButton
+                key={width}
+                width={width}
+                radius="var(--radius-md)"
+              />
+            ))}
+          </div>
+        </div>
+      }
+    >
+      <section className="px-6 pb-8 divider-b-thin">
+        <div className="mx-auto flex w-full max-w-150 flex-col gap-6 py-1.5">
+          <Section title="Images">
+            <ul aria-hidden className="grid grid-cols-3 gap-4 sm:grid-cols-4">
+              {[0, 1, 2, 3].map((index) => (
+                <li key={index}>
+                  <Skeleton
+                    height="auto"
+                    radius="var(--radius-sm)"
+                    className="aspect-square"
+                  />
+                </li>
+              ))}
+            </ul>
+          </Section>
+          <Section title="Details">
+            <ProductFormSkeleton />
+          </Section>
+          <Section title="Options and pricing" tight>
+            <SkeletonText className="text-type-body-small" width={220} />
+          </Section>
+        </div>
+      </section>
+      <BrandColumn width="wide">
+        <ProductBriefingSkeleton />
       </BrandColumn>
     </BrandFrame>
   );

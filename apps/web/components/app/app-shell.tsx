@@ -1,6 +1,4 @@
-import { type ReactNode, Suspense } from "react";
-
-import { Skeleton } from "@/components/ui/shimmer-loader";
+import type { ReactNode } from "react";
 
 import { MobileSidebar } from "./mobile-sidebar";
 import { SidebarNav } from "./sidebar";
@@ -13,11 +11,8 @@ import { SidebarProvider } from "./sidebar-state";
  * 0.5 px Border-on-bg stroke (`edge`) and no shadow (D72).
  */
 export function AppShell({ children }: { children: ReactNode }) {
-  const sidebar = (
-    <Suspense fallback={<SidebarSkeleton />}>
-      <SidebarNav />
-    </Suspense>
-  );
+  // The sidebar's own parts wait for the session; its links show at once.
+  const sidebar = <SidebarNav />;
   return (
     <SidebarProvider>
       <a
@@ -44,17 +39,5 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <MobileSidebar>{sidebar}</MobileSidebar>
     </SidebarProvider>
-  );
-}
-
-function SidebarSkeleton() {
-  return (
-    <div className="flex w-full flex-col gap-2 p-3">
-      <Skeleton height="var(--spacing-nav-item)" radius="var(--radius-sm)" />
-      <Skeleton
-        height="calc(var(--spacing-nav-item) * 5)"
-        radius="var(--radius-sm)"
-      />
-    </div>
   );
 }

@@ -3,10 +3,13 @@ import { Suspense } from "react";
 
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
+import { SkeletonViewTabs } from "@/components/app/skeletons";
 import { type ViewTab, ViewTabs } from "@/components/app/view-tabs";
-import { TemplateCard } from "@/components/features/templates/template-card";
+import {
+  TemplateCard,
+  TemplateCardSkeleton,
+} from "@/components/features/templates/template-card";
 import { TemplatesIcon } from "@/components/ui/icons";
-import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { getLibraryTemplates, getOrgTemplates } from "@/lib/templates/queries";
 
@@ -60,15 +63,7 @@ async function Templates({
       <PageHeader icon={TemplatesIcon} title="Templates" />
       <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-8 px-6 py-12">
         <div className="flex flex-col gap-1">
-          <div className="flex flex-col gap-1.5 pr-1 pb-4">
-            <h1 className="font-serif text-type-title font-medium text-button-secondary-text">
-              Templates
-            </h1>
-            <p className="text-type-body-small leading-5 font-medium text-sub-text">
-              Proven page designs. Use one to make it yours; every page built
-              from it is rewritten for your brand and product.
-            </p>
-          </div>
+          <TemplatesTitle />
           <div className="flex h-9 items-center divider-b-thin">
             <ViewTabs label="Template views" tabs={tabs} active={view} />
           </div>
@@ -101,24 +96,40 @@ async function Templates({
   );
 }
 
+function TemplatesTitle() {
+  return (
+    <div className="flex flex-col gap-1.5 pr-1 pb-4">
+      <h1 className="font-serif text-type-title font-medium text-button-secondary-text">
+        Templates
+      </h1>
+      <p className="text-type-body-small leading-5 font-medium text-sub-text">
+        Proven page designs. Use one to make it yours; every page built from it
+        is rewritten for your brand and product.
+      </p>
+    </div>
+  );
+}
+
+/** While the templates load: the same title and tabs (counts to come), then cards in their shape. */
 function TemplatesFallback() {
   return (
     <>
       <PageHeader icon={TemplatesIcon} title="Templates" />
       <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-8 px-6 py-12">
-        <Skeleton
-          height="calc(var(--spacing) * 29)"
-          radius="var(--radius-sm)"
-        />
-        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 4 }, (_, index) => (
-            <Skeleton
-              key={index}
-              height="calc(var(--spacing) * 83)"
-              radius="var(--radius-card)"
-            />
-          ))}
+        <div className="flex flex-col gap-1">
+          <TemplatesTitle />
+          <SkeletonViewTabs labels={["Library", "Yours"]} />
         </div>
+        <ul
+          aria-hidden
+          className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
+          {Array.from({ length: 4 }, (_, index) => (
+            <li key={index} className="flex">
+              <TemplateCardSkeleton />
+            </li>
+          ))}
+        </ul>
       </div>
     </>
   );

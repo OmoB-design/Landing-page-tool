@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
+import { SkeletonJobSteps, SkeletonText } from "@/components/app/skeletons";
 import { StatusGlyph } from "@/components/app/status-glyph";
 import { BuildPreview } from "@/components/features/builds/build-preview";
 import { BuildProgress } from "@/components/features/builds/build-progress";
@@ -12,6 +13,7 @@ import { PagesIcon } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { getBuild } from "@/lib/builds/queries";
+import { OWNED_BUILD_STEPS } from "@/lib/builds/steps";
 import { STATUS_GROUPS } from "@/lib/pages/list";
 
 export const metadata: Metadata = { title: "Page" };
@@ -24,15 +26,32 @@ export default function BuildPage({ params }: PageProps<"/pages/[buildId]">) {
   return (
     <Suspense
       fallback={
-        <>
-          <PageHeader icon={PagesIcon} title="Page" />
-          <div className="p-6">
-            <Skeleton
-              height="calc(var(--spacing-row) * 8)"
-              radius="var(--radius-lg)"
-            />
+        // The same split while the build loads: its key and title, the preview pane and the
+        // steps panel.
+        <div className="flex h-full flex-col">
+          <PageHeader
+            icon={PagesIcon}
+            mark={<SkeletonText className="text-type-body-small" width={200} />}
+            title=""
+            actions={
+              <SkeletonText className="text-type-caption-1" width={72} />
+            }
+          />
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+            <div className="h-screen min-w-0 flex-1 bg-dashboard p-4 lg:h-auto lg:p-6">
+              <Skeleton height="100%" radius="var(--radius-lg)" />
+            </div>
+            <aside
+              aria-hidden
+              className="flex w-full shrink-0 flex-col gap-6 border-t border-stroke p-4 lg:w-panel lg:border-t-0 lg:border-l"
+            >
+              <SkeletonJobSteps
+                title="Build steps"
+                steps={OWNED_BUILD_STEPS.length}
+              />
+            </aside>
           </div>
-        </>
+        </div>
       }
     >
       <Build params={params} />

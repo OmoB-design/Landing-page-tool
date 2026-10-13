@@ -4,6 +4,7 @@ import { BrandMark } from "@/components/app/brand-mark";
 import { GroupedList } from "@/components/app/grouped-list";
 import { RelativeTime } from "@/components/app/row-meta";
 import { RowMenu } from "@/components/app/row-menu";
+import { SkeletonMark, SkeletonRow } from "@/components/app/skeletons";
 import { formatPrice } from "@/lib/products/form";
 import type { ProductSummary } from "@/lib/products/queries";
 
@@ -97,5 +98,23 @@ export function ProductsList({
         })}
       </ul>
     </GroupedList>
+  );
+}
+
+/** Product rows while they load: the 24 px picture, the name, the price and the last change. */
+export function ProductsListSkeleton() {
+  return (
+    <ul aria-hidden className="flex flex-col gap-0.5">
+      {[224, 176, 248].map((name) => (
+        <SkeletonRow
+          key={name}
+          gap="gap-2.5"
+          leading={<SkeletonMark size={24} />}
+          name={name}
+          meta={[52, 84]}
+          menu
+        />
+      ))}
+    </ul>
   );
 }

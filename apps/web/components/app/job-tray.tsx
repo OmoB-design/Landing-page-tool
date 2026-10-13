@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
-import { ShimmerText, Skeleton } from "@/components/ui/shimmer-loader";
+import { ShimmerText } from "@/components/ui/shimmer-loader";
 import {
   Tooltip,
   TooltipContent,
@@ -42,6 +42,7 @@ import {
   PopoverScroll,
 } from "./header-popover";
 import { toast } from "./toaster";
+import { SkeletonMark, SkeletonText } from "./skeletons";
 
 /** Job toasts for your own jobs, kept running from the sidebar so they work on every page. */
 export function JobToasts({ userId }: { userId: string }) {
@@ -103,10 +104,29 @@ export function JobTray() {
       <PopoverContent align="end" sideOffset={6} className={HEADER_POPOVER}>
         <h2 className={HEADER_POPOVER_TITLE}>Jobs</h2>
         {isPending ? (
-          <div className="flex flex-col gap-2 p-3" aria-label="Loading jobs">
-            <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-            <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-          </div>
+          // Job rows in their shape while the list loads: status ring, title and state, started.
+          <ul
+            className="flex flex-col gap-0.5 px-2.5 py-3"
+            aria-label="Loading jobs"
+          >
+            {[120, 96].map((width) => (
+              <li key={width} aria-hidden className="flex items-start gap-0.5">
+                <span className="flex pt-2">
+                  <SkeletonMark size={12} round />
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1 px-1 pt-1 pb-1.5 divider-b-half">
+                  <div className="flex items-center justify-between gap-2">
+                    <SkeletonText
+                      className="text-type-caption-1"
+                      width={width}
+                    />
+                    <SkeletonText className="text-type-caption-2" width={44} />
+                  </div>
+                  <SkeletonText className="text-type-caption-2" width={92} />
+                </div>
+              </li>
+            ))}
+          </ul>
         ) : jobs.length === 0 ? (
           <p className="px-3 py-4 text-type-caption-1 font-medium text-heading-05">
             No jobs yet

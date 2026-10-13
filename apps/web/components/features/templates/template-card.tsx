@@ -1,9 +1,11 @@
 import Link from "next/link";
 
+import { SkeletonButton, SkeletonText } from "@/components/app/skeletons";
 import { TypeGlyph, templateTypeLabel } from "@/components/app/type-glyph";
 import { Button } from "@/components/ui/button";
 import { TemplatesIcon } from "@/components/ui/icons";
 import { ExternalLinkFigmaIcon, PlusFigmaIcon } from "@/components/ui/lp-icons";
+import { Skeleton } from "@/components/ui/shimmer-loader";
 import type { TemplateCardData } from "@/lib/templates/queries";
 
 import { TemplateCardMenu } from "./template-card-menu";
@@ -139,6 +141,46 @@ function Thumbnail({ templateId }: { templateId: string }) {
           loading="lazy"
           className="relative size-full object-cover object-top"
         />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A card while the templates load: the picture well in its frame, the name, the type and section
+ * count and a line of description, then the two 26 px buttons.
+ */
+export function TemplateCardSkeleton() {
+  return (
+    <div
+      aria-hidden
+      className="frame-stroke flex w-full flex-col overflow-hidden rounded-card bg-surface-primary"
+    >
+      <div className="flex h-47.5 shrink-0 overflow-hidden rounded-b-well border-b border-stroke bg-foreground-01 p-4">
+        <div className="relative flex-1 overflow-hidden template-shot">
+          <Skeleton height="100%" radius="0" />
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col gap-3.5 px-2.5 pt-2.5 pb-3">
+        <div className="flex flex-col gap-1.5">
+          <SkeletonText className="text-type-body-small" width="62%" />
+          <SkeletonText className="text-type-caption-2" width="46%" />
+          <span className="flex flex-col">
+            <SkeletonText className="text-type-caption-2" width="94%" />
+            <SkeletonText className="text-type-caption-2" width="58%" />
+          </span>
+        </div>
+        <div className="mt-auto flex gap-1.5">
+          {[0, 1].map((index) => (
+            <span key={index} className="flex-1">
+              <SkeletonButton
+                width="100%"
+                height={26}
+                radius="var(--radius-md)"
+              />
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

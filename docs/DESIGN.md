@@ -221,7 +221,7 @@ to tokens in `globals.css`. Install with `pnpm dlx shadcn@latest add https://www
 | `progress-tracker` | in use (B0.4c, B0.5a) | Home "Getting started" checklist (read-only, from real data, steps link to where they're done); job steps via `JobSteps` (B0.5a: running = spinner + shimmering label, failed = cross + reason; used by the demo job and brand fetch). Later: build progress screen (B1.2) |
 | `profile-menu` | in use (B0.4c) | Account menu (top right): Settings, Theme, Sign out, getting-started progress |
 | `filter-menu` | in use (B0.4c) | Pages toolbar → Filter (status, origin, template type; URL state). Later: Library filters (B1.6) |
-| `shimmer-loader` | in use (B0.4c) | All loading states (`Skeleton`, `ShimmerText`); replaces shadcn Skeleton |
+| `shimmer-loader` | in use (B0.4c) | All loading states (`Skeleton`, `ShimmerText`); replaces shadcn Skeleton. *2026-10-13:* every loading state is drawn in the shape of what it stands in for, from `components/app/skeletons.tsx` (`SkeletonText` sized to its type's line, `SkeletonField` with the real label and empty frame, `SkeletonRow`, `SkeletonViewTabs`, `SkeletonJobSteps`): fixed frames, labels and headings render as themselves, only server data shimmers. A page's skeleton lives next to the component it mirrors (e.g. `BrandOverviewSkeleton`, `ProductFormSkeleton`). |
 | `grid-background` | in use (B0.4c) | Sign-in / sign-up / link-error pages |
 | `smart-recommendation` | in use (B0.5a) | New brand review: detected brand colours with confidence and alternatives. Later: B1.2 "let the desk pick" audience and angle |
 | `text-reveal` | planned | B1.2 progress screen: AI-written text arriving |

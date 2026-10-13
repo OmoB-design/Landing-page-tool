@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import { PageBody } from "@/components/app/page-body";
 import { PageHeader } from "@/components/app/page-header";
 import { CreateWizard } from "@/components/features/wizard/create-wizard";
+import { CreateWizardSkeleton } from "@/components/features/wizard/wizard-skeleton";
 import { PagesIcon } from "@/components/ui/icons";
-import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { getWizardData } from "@/lib/wizard/queries";
 
@@ -22,14 +22,7 @@ export default function NewPage() {
           Rebrand a proven template for a brand and product. It ends on the
           page’s build screen, then its review.
         </p>
-        <Suspense
-          fallback={
-            <Skeleton
-              height="calc(var(--spacing-row) * 12)"
-              radius="var(--radius-lg)"
-            />
-          }
-        >
+        <Suspense fallback={<CreateWizardSkeleton />}>
           <Wizard />
         </Suspense>
       </PageBody>

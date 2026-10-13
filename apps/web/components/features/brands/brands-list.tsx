@@ -4,6 +4,11 @@ import { BrandMark } from "@/components/app/brand-mark";
 import { GroupedList } from "@/components/app/grouped-list";
 import { RelativeTime } from "@/components/app/row-meta";
 import { RowMenu } from "@/components/app/row-menu";
+import {
+  SkeletonMark,
+  SkeletonRow,
+  SkeletonText,
+} from "@/components/app/skeletons";
 import { Button } from "@/components/ui/button";
 import { PlusFigmaIcon } from "@/components/ui/lp-icons";
 import type { BrandSummary } from "@/lib/brands/queries";
@@ -90,5 +95,31 @@ function NoBrands() {
         </Link>
       </Button>
     </div>
+  );
+}
+
+/**
+ * Brand rows while they load: the 20 px mark and the prefix in their column, the name, then the
+ * website, product count and last change.
+ */
+export function BrandsListSkeleton() {
+  return (
+    <ul aria-hidden className="flex flex-col gap-0.5">
+      {[120, 96, 144].map((name) => (
+        <SkeletonRow
+          key={name}
+          height="h-11"
+          leading={
+            <span className="flex w-24.25 shrink-0 items-center gap-2.5">
+              <SkeletonMark size={20} />
+              <SkeletonText className="text-type-caption-1" width={28} />
+            </span>
+          }
+          name={name}
+          meta={[112, 64, 76]}
+          menu
+        />
+      ))}
+    </ul>
   );
 }

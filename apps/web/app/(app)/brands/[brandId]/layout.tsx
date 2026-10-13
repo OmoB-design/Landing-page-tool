@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 
 import { BrandMark } from "@/components/app/brand-mark";
-import { BrandTabs } from "@/components/app/brand-tabs";
+import { BrandTabs, BrandTabsPlaceholder } from "@/components/app/brand-tabs";
 import { PageHeader } from "@/components/app/page-header";
+import { SkeletonMark, SkeletonText } from "@/components/app/skeletons";
 import { BrandsIcon } from "@/components/ui/icons";
 
 import { loadBrand } from "./brand";
@@ -18,6 +19,12 @@ export default function BrandLayout({
           <PageHeader
             icon={BrandsIcon}
             crumb={{ label: "Brands", href: "/brands" }}
+            mark={
+              <>
+                <SkeletonMark size={18} />
+                <SkeletonText className="text-type-caption-1" width={64} />
+              </>
+            }
             title=""
           />
         }
@@ -28,7 +35,7 @@ export default function BrandLayout({
           in each tab's page, so they stay put (and the line slides) while the next tab loads. */}
       <div className="flex justify-center px-6 pt-12">
         <div className="w-full max-w-pages">
-          <Suspense fallback={<div className="h-9 divider-b-thin" />}>
+          <Suspense fallback={<BrandTabsPlaceholder />}>
             <Tabs params={params} />
           </Suspense>
         </div>

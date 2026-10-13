@@ -2,8 +2,16 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
+import {
+  SkeletonButton,
+  SkeletonMark,
+  SkeletonRow,
+  SkeletonText,
+  SkeletonViewTabs,
+} from "@/components/app/skeletons";
 import { type ViewTab, ViewTabs } from "@/components/app/view-tabs";
 import { FilterIcon, PagesIcon } from "@/components/ui/icons";
+import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { getOrgPages } from "@/lib/builds/queries";
 import { DEFAULT_DISPLAY, type PageDisplay } from "@/lib/pages/display";
@@ -72,19 +80,7 @@ export async function PagesView({
     <>
       <PageHeader icon={PagesIcon} title="Pages" />
       <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-2 px-6 py-12">
-        <div className="flex flex-col gap-1.5 pr-1 pb-6">
-          <h1 className="font-serif text-type-title font-medium text-button-secondary-text">
-            Pages
-          </h1>
-          <p className="text-type-body-small leading-5 font-medium text-sub-text">
-            Where all your content resides with your attention.
-          </p>
-          {sample ? (
-            <p className="text-type-caption-1 font-medium text-text-warning">
-              Sample pages (development only): one or more in every status.
-            </p>
-          ) : null}
-        </div>
+        <PagesTitle sample={sample} />
         <div className="flex h-9 items-center justify-between gap-4 divider-b-thin">
           <ViewTabs label="Page views" tabs={tabs} active={view} />
           <div className="flex items-center gap-1.5">
@@ -119,6 +115,82 @@ export async function PagesView({
               hide={display.hide}
             />
           )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PagesTitle({ sample = false }: { sample?: boolean }) {
+  return (
+    <div className="flex flex-col gap-1.5 pr-1 pb-6">
+      <h1 className="font-serif text-type-title font-medium text-button-secondary-text">
+        Pages
+      </h1>
+      <p className="text-type-body-small leading-5 font-medium text-sub-text">
+        Where all your content resides with your attention.
+      </p>
+      {sample ? (
+        <p className="text-type-caption-1 font-medium text-text-warning">
+          Sample pages (development only): one or more in every status.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Pages while they load: the same title, the views (counts to come) and toolbar, then a status
+ * band and page rows in their shape: glyph and key, title, score, origin, cost, time, avatar.
+ */
+export function PagesViewSkeleton() {
+  return (
+    <>
+      <PageHeader icon={PagesIcon} title="Pages" />
+      <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-2 px-6 py-12">
+        <PagesTitle />
+        <SkeletonViewTabs labels={["All pages", "My pages"]}>
+          <div className="flex items-center gap-1.5">
+            <SkeletonButton width={62} height={26} />
+            <SkeletonButton width={70} height={26} />
+            <SkeletonButton width={64} height={27} radius="var(--radius-md)" />
+          </div>
+        </SkeletonViewTabs>
+        <div aria-hidden className="mt-3 flex flex-col gap-4">
+          {[3, 2].map((rows, group) => (
+            <section key={group}>
+              <div className="flex h-9 items-center gap-1.5 bg-foreground-02 px-4 divider-b-thin">
+                <SkeletonMark size={14} round />
+                <SkeletonText
+                  className="text-type-body-small"
+                  width={group === 0 ? 72 : 56}
+                />
+              </div>
+              <ul className="flex flex-col gap-0.5 pt-0.5">
+                {Array.from({ length: rows }, (_, index) => (
+                  <SkeletonRow
+                    key={index}
+                    leading={
+                      <span className="flex w-23.75 shrink-0 items-center gap-1.5">
+                        <Skeleton
+                          width={23}
+                          height={24}
+                          radius="var(--radius-xsm)"
+                        />
+                        <SkeletonText
+                          className="text-type-body-small"
+                          width={48}
+                        />
+                      </span>
+                    }
+                    name={[260, 200, 232][index] ?? 220}
+                    meta={[40, 48, 36, 80]}
+                    metaEnd={<SkeletonMark size={22} round />}
+                  />
+                ))}
+              </ul>
+            </section>
+          ))}
         </div>
       </div>
     </>

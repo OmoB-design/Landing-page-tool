@@ -4,6 +4,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { useState } from "react";
 
 import { JobSteps } from "@/components/app/job-steps";
+import { SkeletonButton } from "@/components/app/skeletons";
 import { Button } from "@/components/ui/button";
 import { RefreshFigmaIcon } from "@/components/ui/lp-icons";
 import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
@@ -173,6 +174,23 @@ function BriefingList({ title, items }: { title: string; items: string[] }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** The briefing's heading while the product loads; its button (Generate or Refresh) not ready yet. */
+export function ProductBriefingSkeleton() {
+  return (
+    <div aria-hidden className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-2">
+        <span className="text-type-body-large leading-normal font-medium text-heading-01">
+          Briefing
+        </span>
+        <span className="text-type-body-small font-medium text-heading-04">
+          Who the page can speak to, and what to say.
+        </span>
+      </div>
+      <SkeletonButton width={92} radius="var(--radius-md)" />
     </div>
   );
 }

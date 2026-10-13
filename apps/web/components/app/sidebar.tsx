@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 
-import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { getOrgBrands } from "@/lib/brands/queries";
 import { getSetupProgress } from "@/lib/onboarding/setup";
@@ -10,6 +9,7 @@ import { BrandNavMark } from "./mark";
 import { OrgSwitcher } from "./org-switcher";
 import { NavGroup, NavItem, SearchButton } from "./sidebar-parts";
 import { SidebarSetup } from "./sidebar-setup";
+import { SkeletonMark, SkeletonText } from "./skeletons";
 import { SidebarToggleButton } from "./sidebar-state";
 import { UserMenu } from "./user-menu";
 
@@ -23,15 +23,14 @@ const VISIBLE_BRANDS = 6;
  * profile card, 8 px apart. Jobs and Notifications live in the page header. Rendered in the
  * desktop column and in the mobile sheet.
  */
-export async function SidebarNav() {
-  const { user, orgs, currentOrg } = await getSessionContext();
-  const setup = await getSetupProgress(currentOrg.id);
-  const showSetup = setup.done < setup.total;
+export function SidebarNav() {
   return (
     <div className="flex h-full w-full flex-col justify-between bg-dashboard">
       <div className="flex min-h-0 flex-col">
         <div className="flex items-center justify-between px-2 py-3">
-          <OrgSwitcher orgs={orgs} currentOrg={currentOrg} />
+          <Suspense fallback={<OrgSwitcherSkeleton />}>
+            <Workspace />
+          </Suspense>
           <div className="flex shrink-0 items-center gap-0.75">
             <SearchButton />
             <SidebarToggleButton action="close" />
@@ -51,19 +50,32 @@ export async function SidebarNav() {
             <NavItem href="/analytics" icon="analytics" label="Analytics" />
           </NavGroup>
           <NavGroup label="Your brands">
-            <Suspense
-              fallback={
-                <Skeleton
-                  height="calc(var(--spacing) * 7)"
-                  radius="var(--radius-sm)"
-                />
-              }
-            >
+            <Suspense fallback={<BrandLinksSkeleton />}>
               <BrandLinks />
             </Suspense>
           </NavGroup>
         </nav>
       </div>
+      <Suspense fallback={<FooterSkeleton />}>
+        <Footer />
+      </Suspense>
+    </div>
+  );
+}
+
+/** The workspace menu, once the session is known. */
+async function Workspace() {
+  const { orgs, currentOrg } = await getSessionContext();
+  return <OrgSwitcher orgs={orgs} currentOrg={currentOrg} />;
+}
+
+/** The getting-started card (until every step is done) above the profile card; job toasts. */
+async function Footer() {
+  const { user, currentOrg } = await getSessionContext();
+  const setup = await getSetupProgress(currentOrg.id);
+  const showSetup = setup.done < setup.total;
+  return (
+    <>
       <div
         className={
           showSetup
@@ -88,6 +100,52 @@ export async function SidebarNav() {
         />
       </div>
       <JobToasts userId={user.id} />
+    </>
+  );
+}
+
+/** The workspace menu while the session loads: the 18 px mark and the name, as in the trigger. */
+function OrgSwitcherSkeleton() {
+  return (
+    <span aria-hidden className="flex min-w-0 items-center gap-1.5 px-1 py-0.5">
+      <SkeletonMark size={18} />
+      <SkeletonText className="text-type-body-large" width={104} />
+    </span>
+  );
+}
+
+/** Brand rows while they load: the 16 px mark and the name, on the nav row's 20 px line. */
+function BrandLinksSkeleton() {
+  return (
+    <>
+      {[72, 56].map((width) => (
+        <span
+          key={width}
+          aria-hidden
+          className="flex items-center gap-1.5 px-2 py-1"
+        >
+          <SkeletonMark size={16} />
+          <SkeletonText
+            className="text-type-body-small leading-5"
+            width={width}
+          />
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** The profile card while the session loads: the 30 px avatar, the name and the email. */
+function FooterSkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col px-1.5 pb-1.5">
+      <div className="flex items-center gap-2.5 rounded-lg bg-surface-primary p-1.5 edge">
+        <SkeletonMark size={30} round />
+        <span className="flex min-w-0 flex-1 flex-col">
+          <SkeletonText className="text-type-caption-1" width={96} />
+          <SkeletonText className="text-type-caption-3" width={136} />
+        </span>
+      </div>
     </div>
   );
 }

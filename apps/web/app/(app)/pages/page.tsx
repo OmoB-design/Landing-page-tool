@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageHeader } from "@/components/app/page-header";
 import {
   PagesView,
   type PagesViewId,
+  PagesViewSkeleton,
 } from "@/components/features/pages/pages-view";
-import { PagesIcon } from "@/components/ui/icons";
-import { Skeleton } from "@/components/ui/shimmer-loader";
 import { parsePageDisplay } from "@/lib/pages/display";
 import { parsePageFilters } from "@/lib/pages/list";
 
@@ -15,7 +13,7 @@ export const metadata: Metadata = { title: "Pages" };
 
 export default function PagesPage({ searchParams }: PageProps<"/pages">) {
   return (
-    <Suspense fallback={<PagesFallback />}>
+    <Suspense fallback={<PagesViewSkeleton />}>
       <PagesContent searchParams={searchParams} />
     </Suspense>
   );
@@ -36,18 +34,5 @@ async function PagesContent({
       display={parsePageDisplay(params)}
       sample={sample}
     />
-  );
-}
-
-function PagesFallback() {
-  return (
-    <>
-      <PageHeader icon={PagesIcon} title="Pages" />
-      <div className="flex flex-col gap-2 px-6 py-4">
-        <Skeleton height="calc(var(--spacing) * 9)" radius="var(--radius-sm)" />
-        <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-        <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-      </div>
-    </>
   );
 }

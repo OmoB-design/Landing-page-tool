@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { BrandColumn } from "@/components/app/brand-frame";
-import { AddProduct } from "@/components/features/products/add-product";
-import { ProductsList } from "@/components/features/products/products-list";
-import { Skeleton } from "@/components/ui/shimmer-loader";
+import {
+  AddProduct,
+  AddProductSkeleton,
+} from "@/components/features/products/add-product";
+import {
+  ProductsList,
+  ProductsListSkeleton,
+} from "@/components/features/products/products-list";
 import { getSessionContext } from "@/lib/auth/session";
 import { getBrandProducts } from "@/lib/products/queries";
 
@@ -18,10 +23,11 @@ export default function BrandProductsPage({
   return (
     <Suspense
       fallback={
-        <div className="mx-auto flex w-full max-w-pages flex-col gap-2 px-6 pt-10">
-          <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-          <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-        </div>
+        <AddProductSkeleton>
+          <BrandColumn width="list">
+            <ProductsListSkeleton />
+          </BrandColumn>
+        </AddProductSkeleton>
       }
     >
       <Products params={params} />

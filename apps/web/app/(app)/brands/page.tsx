@@ -3,10 +3,12 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
 import { BrandsHeading } from "@/components/features/brands/brands-heading";
-import { BrandsList } from "@/components/features/brands/brands-list";
+import {
+  BrandsList,
+  BrandsListSkeleton,
+} from "@/components/features/brands/brands-list";
 import { NewBrandButton } from "@/components/features/brands/new-brand-button";
 import { BrandsIcon } from "@/components/ui/icons";
-import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { getBrandList } from "@/lib/brands/queries";
 
@@ -49,10 +51,7 @@ function BrandsFallback() {
       <PageHeader icon={BrandsIcon} title="Brands" />
       <div className="mx-auto box-content flex w-full max-w-brands flex-col gap-2 px-6 py-12">
         <BrandsHeading />
-        <Skeleton
-          height="calc(var(--spacing) * 40)"
-          radius="var(--radius-card)"
-        />
+        <BrandsListSkeleton />
       </div>
     </>
   );

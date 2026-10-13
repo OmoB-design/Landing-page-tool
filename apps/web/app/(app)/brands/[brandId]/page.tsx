@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 
-import { BrandOverview } from "@/components/features/brands/brand-overview";
+import {
+  BrandOverview,
+  BrandOverviewSkeleton,
+} from "@/components/features/brands/brand-overview";
 
 import { loadBrand } from "./brand";
 
@@ -8,7 +11,7 @@ export default function BrandOverviewPage({
   params,
 }: PageProps<"/brands/[brandId]">) {
   return (
-    <Suspense>
+    <Suspense fallback={<BrandOverviewSkeleton />}>
       <Overview params={params} />
     </Suspense>
   );

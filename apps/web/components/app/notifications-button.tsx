@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { HeaderBellIcon } from "@/components/ui/lp-icons";
-import { Skeleton } from "@/components/ui/shimmer-loader";
 import {
   Tooltip,
   TooltipContent,
@@ -28,6 +27,7 @@ import {
   POPOVER_FOOTER_ACTION,
   PopoverScroll,
 } from "./header-popover";
+import { SkeletonText } from "./skeletons";
 
 /**
  * Notifications in the page header (BUILD_SPEC §15; Figma: Icon/Bell, Icon/Bell active and the
@@ -77,18 +77,25 @@ export function NotificationsButton() {
       >
         <h2 className={HEADER_POPOVER_TITLE}>Notification</h2>
         {isPending ? (
+          // Notifications in their shape while they load: title, message and time.
           <div
-            className="flex flex-col gap-2 p-3"
+            className="flex flex-col gap-0.5 px-2 py-3"
             aria-label="Loading notifications"
           >
-            <Skeleton
-              height="calc(var(--spacing) * 10)"
-              radius="var(--radius-sm)"
-            />
-            <Skeleton
-              height="calc(var(--spacing) * 10)"
-              radius="var(--radius-sm)"
-            />
+            {[148, 120].map((width) => (
+              <div
+                key={width}
+                aria-hidden
+                className="flex items-start gap-0.5 px-1"
+              >
+                <span className="w-1 shrink-0" />
+                <span className="flex min-w-0 flex-1 flex-col gap-1 px-1 pt-1 pb-1.5 divider-b-half">
+                  <SkeletonText className="text-type-caption-1" width={width} />
+                  <SkeletonText className="text-type-caption-2" width="88%" />
+                  <SkeletonText className="text-type-caption-2" width={64} />
+                </span>
+              </div>
+            ))}
           </div>
         ) : notifications.length === 0 ? (
           <p className="p-3 text-type-caption-1 font-medium text-heading-05">
