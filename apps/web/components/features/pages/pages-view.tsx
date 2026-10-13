@@ -6,6 +6,7 @@ import {
   SkeletonButton,
   SkeletonMark,
   SkeletonRow,
+  SkeletonStatus,
   SkeletonText,
   SkeletonViewTabs,
 } from "@/components/app/skeletons";
@@ -156,6 +157,7 @@ export function PagesViewSkeleton() {
             <SkeletonButton width={64} height={27} radius="var(--radius-md)" />
           </div>
         </SkeletonViewTabs>
+        <SkeletonStatus label="Loading pages" />
         <div aria-hidden className="mt-3 flex flex-col gap-4">
           {[3, 2].map((rows, group) => (
             <section key={group}>

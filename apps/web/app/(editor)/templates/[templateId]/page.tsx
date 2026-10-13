@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { SkeletonButton, SkeletonText } from "@/components/app/skeletons";
+import {
+  SkeletonButton,
+  SkeletonStatus,
+  SkeletonText,
+} from "@/components/app/skeletons";
 import { TemplateEditor } from "@/components/features/templates/editor/template-editor";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import { WorkerError, getTemplateEditor } from "@/lib/api/worker";
@@ -20,7 +24,8 @@ export default function TemplateEditorPage({
       fallback={
         // The editor while the template loads: the top bar (back, name, saved state, undo, redo,
         // Create a page), the panel (its tabs, then section rows) and the preview with its toolbar.
-        <div aria-hidden className="flex h-dvh flex-col bg-dashboard">
+        <div className="flex h-dvh flex-col bg-dashboard">
+          <SkeletonStatus label="Loading the template" />
           <div className="flex h-topbar shrink-0 items-center gap-3 border-b border-stroke bg-surface-primary px-3 sm:px-4">
             <SkeletonButton width={28} height={28} />
             <SkeletonText className="text-type-body-small" width={168} />

@@ -6,7 +6,11 @@ import { type ReactNode, useState } from "react";
 import { authLinkClass } from "@/components/app/auth-frame";
 import { JobSteps } from "@/components/app/job-steps";
 import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
-import { SkeletonButton, SkeletonField } from "@/components/app/skeletons";
+import {
+  SkeletonButton,
+  SkeletonField,
+  SkeletonStatus,
+} from "@/components/app/skeletons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -216,6 +220,7 @@ export function AddProductSkeleton({ children }: { children: ReactNode }) {
         </div>
       }
     >
+      <SkeletonStatus label="Loading products" />
       {children}
     </BrandFrame>
   );

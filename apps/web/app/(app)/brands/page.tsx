@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
+import { SkeletonStatus } from "@/components/app/skeletons";
 import { BrandsHeading } from "@/components/features/brands/brands-heading";
 import {
   BrandsList,
@@ -51,6 +52,7 @@ function BrandsFallback() {
       <PageHeader icon={BrandsIcon} title="Brands" />
       <div className="mx-auto box-content flex w-full max-w-brands flex-col gap-2 px-6 py-12">
         <BrandsHeading />
+        <SkeletonStatus label="Loading brands" />
         <BrandsListSkeleton />
       </div>
     </>

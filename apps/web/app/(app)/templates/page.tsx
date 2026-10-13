@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
-import { SkeletonViewTabs } from "@/components/app/skeletons";
+import { SkeletonStatus, SkeletonViewTabs } from "@/components/app/skeletons";
 import { type ViewTab, ViewTabs } from "@/components/app/view-tabs";
 import {
   TemplateCard,
@@ -120,6 +120,7 @@ function TemplatesFallback() {
           <TemplatesTitle />
           <SkeletonViewTabs labels={["Library", "Yours"]} />
         </div>
+        <SkeletonStatus label="Loading templates" />
         <ul
           aria-hidden
           className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"

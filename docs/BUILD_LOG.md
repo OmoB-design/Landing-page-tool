@@ -544,3 +544,11 @@ as new entries.
 - **Verification:** web typecheck, ESLint, token checks, Prettier, vitest 124/124. Every page loaded with JavaScript off (which holds it on its loading state) and screenshotted beside the loaded page at 1512 px; popovers and wizard steps checked with their requests held. Throwaway account and rows deleted. Dark mode not screenshotted (the theme script needs JavaScript); the skeletons use the theme's tokens.
 - **Owner confirmed:** no
 
+### Design pass — Professional loaders and a tweak panel (owner request)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-13
+- **Owner:** "reduce the opacity of the loaders - give me a tweak panel"; "I want the loaders to be done professionally."
+- **Summary:** skeleton look moved to `--skeleton-*` tokens in `app/globals.css` (light and dark). They now wait 150 ms before showing and fade in over 300 ms (no flash on quick loads), sit at 70 % opacity in light, use Foreground-02 in dark (Foreground-03/Grey-700 was too bright on the dark panel) with a 4 % sweep, and text lines are two thirds of the type's size. Reduced motion keeps the fade, drops the sweep. Every page's loading state announces "Loading…" to screen readers (`SkeletonStatus`). New `/dev/loaders` (development only): every skeleton held still, and a panel for opacity, fill, motion (sweep, breathe, still), sweep light, speed, delay and fade per theme, saved in the browser, with Replay and Copy CSS.
+- **Verification:** web typecheck, ESLint, token checks, Prettier, vitest 124/124. /dev/loaders screenshotted in light and dark; the panel's opacity slider, Reset and theme switch checked in the browser; the fade-in animation (150 ms delay) confirmed on a skeleton. Throwaway account deleted.
+- **Owner confirmed:** no
+

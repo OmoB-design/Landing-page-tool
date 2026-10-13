@@ -3,7 +3,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { PersonMark } from "@/components/app/mark";
-import { SkeletonMark, SkeletonText } from "@/components/app/skeletons";
+import {
+  SkeletonMark,
+  SkeletonStatus,
+  SkeletonText,
+} from "@/components/app/skeletons";
 
 /**
  * Home's greeting (Figma: Home 17:978 and Home Dark 38:2392): a 40 px mark and a 30 px serif
@@ -27,7 +31,10 @@ export function Welcome({ name }: { name: string | null }) {
               className="size-10 font-sans text-type-h5"
             />
           ) : (
-            <SkeletonMark size={40} round />
+            <>
+              <SkeletonStatus />
+              <SkeletonMark size={40} round />
+            </>
           )}
         </span>
         <h1

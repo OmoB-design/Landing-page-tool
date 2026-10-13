@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
-import { SkeletonJobSteps, SkeletonText } from "@/components/app/skeletons";
+import {
+  SkeletonJobSteps,
+  SkeletonStatus,
+  SkeletonText,
+} from "@/components/app/skeletons";
 import { StatusGlyph } from "@/components/app/status-glyph";
 import { BuildPreview } from "@/components/features/builds/build-preview";
 import { BuildProgress } from "@/components/features/builds/build-progress";
@@ -37,6 +41,7 @@ export default function BuildPage({ params }: PageProps<"/pages/[buildId]">) {
               <SkeletonText className="text-type-caption-1" width={72} />
             }
           />
+          <SkeletonStatus label="Loading the page" />
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
             <div className="h-screen min-w-0 flex-1 bg-dashboard p-4 lg:h-auto lg:p-6">
               <Skeleton height="100%" radius="var(--radius-lg)" />

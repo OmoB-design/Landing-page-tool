@@ -430,10 +430,25 @@
   --shadow-light: 0 1px 2px 0 var(--color-foreground-01);
   --shadow-focus: 0 0 1px 2px
     color-mix(in srgb, var(--blue-300) 15%, transparent);
+  /* Loading skeletons (Skeleton in shimmer-loader). They wait `delay` before fading in over
+     `fade`, so quick loads show no flash; then a soft light sweeps across them every `speed`
+     (`motion` ui-shm-sweep), or they breathe (skeleton-pulse), or hold still (none). Tune them
+     live at /dev/loaders. */
+  --skeleton-opacity: 0.7;
+  --skeleton-base: var(--color-foreground-03);
+  --skeleton-glow: color-mix(in srgb, var(--color-on-dark) 70%, transparent);
+  --skeleton-speed: 2s;
+  --skeleton-delay: 150ms;
+  --skeleton-fade: 300ms;
+  --skeleton-motion: ui-shm-sweep;
 }
 
 /* Dark mode (Figma: Tokens collection, Dark mode): only the tokens whose value changes. */
 .dark {
+  /* Skeletons: Foreground-02 on the dark panel; Foreground-03 (Grey-700) shouted. */
+  --skeleton-opacity: 1;
+  --skeleton-base: var(--color-foreground-02);
+  --skeleton-glow: color-mix(in srgb, var(--color-on-dark) 4%, transparent);
   --card-edge-shadow: var(--shadow-edge);
   --briefing-item-shadow: transparent;
   --template-shot-line: var(--color-stroke);
@@ -710,9 +725,36 @@
 
 :root .ui-shm,
 :root .ui-shm-text {
-  --ui-shm-base: var(--color-foreground-03);
+  --ui-shm-base: var(--skeleton-base);
   --ui-shm-text: var(--color-caption-1);
   --ui-shm-text-glow: var(--color-body);
+}
+:root .ui-shm {
+  --ui-shm-glow: var(--skeleton-glow);
+  --ui-shm-dur: var(--skeleton-speed);
+  opacity: var(--skeleton-opacity);
+  animation:
+    skeleton-in var(--skeleton-fade) var(--ease-out) var(--skeleton-delay) both,
+    var(--skeleton-motion) var(--skeleton-speed) linear infinite;
+}
+/* Fades in to --skeleton-opacity (the element's own opacity). */
+@keyframes skeleton-in {
+  from {
+    opacity: 0;
+  }
+}
+/* The "breathe" motion: the fill eases to half strength and back. */
+@keyframes skeleton-pulse {
+  50% {
+    background-color: color-mix(in srgb, var(--ui-shm-base) 50%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root .ui-shm {
+    animation: skeleton-in var(--skeleton-fade) var(--ease-out)
+      var(--skeleton-delay) both;
+    background-image: none;
+  }
 }
 
 :root .ui-gb {

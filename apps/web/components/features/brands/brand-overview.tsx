@@ -2,7 +2,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
-import { SkeletonButton, SkeletonText } from "@/components/app/skeletons";
+import {
+  SkeletonButton,
+  SkeletonStatus,
+  SkeletonText,
+} from "@/components/app/skeletons";
 import { ExternalLinkSmallFigmaIcon } from "@/components/ui/lp-icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import type { getBrand } from "@/lib/brands/queries";
@@ -170,6 +174,7 @@ export function BrandOverviewSkeleton() {
     <BrandFrame
       header={
         <div className="mx-auto flex w-full max-w-150 flex-col gap-1.5 pr-1 pb-2.5">
+          <SkeletonStatus label="Loading the brand" />
           <div className="flex items-center justify-between gap-4">
             <span className="flex h-11.5 items-center rounded-sm bg-foreground-01 px-3 py-1.5">
               <SkeletonText className="font-serif text-type-title" width={88} />

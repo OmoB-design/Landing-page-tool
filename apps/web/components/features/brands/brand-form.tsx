@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 
-import { SkeletonField } from "@/components/app/skeletons";
+import { SkeletonField, SkeletonStatus } from "@/components/app/skeletons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -220,33 +220,36 @@ export function BrandForm({
  */
 export function BrandFormSkeleton() {
   return (
-    <div aria-hidden className="@container flex max-w-2xl flex-col gap-10">
-      <Section title="Identity">
-        <div className="grid gap-4 @lg:grid-cols-2">
-          <SkeletonField label="Brand name" value="30%" />
-          <SkeletonField label="Website" value="70%" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <SkeletonField
-            label="Key prefix"
-            hint="2 to 4 letters for page keys, e.g. LUM-23."
-            value="25%"
-          />
-          <SkeletonField label="Emoji" hint="Optional." value="15%" />
-          <SkeletonField
-            label="Language"
-            hint="e.g. en or en-GB."
-            value="20%"
-          />
-        </div>
-        <SkeletonField label="Tagline" value="55%" />
-      </Section>
-      <Section title="Voice">
-        <SkeletonField label="Positioning" value="80%" multiline />
-        <SkeletonField label="Audience" value="70%" multiline />
-        <SkeletonField label="Brand context" value="75%" multiline />
-        <SkeletonField label="Voice" value="80%" multiline />
-      </Section>
+    <div className="@container flex max-w-2xl flex-col gap-10">
+      <SkeletonStatus label="Loading Brand DNA" />
+      <div aria-hidden className="flex flex-col gap-10">
+        <Section title="Identity">
+          <div className="grid gap-4 @lg:grid-cols-2">
+            <SkeletonField label="Brand name" value="30%" />
+            <SkeletonField label="Website" value="70%" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <SkeletonField
+              label="Key prefix"
+              hint="2 to 4 letters for page keys, e.g. LUM-23."
+              value="25%"
+            />
+            <SkeletonField label="Emoji" hint="Optional." value="15%" />
+            <SkeletonField
+              label="Language"
+              hint="e.g. en or en-GB."
+              value="20%"
+            />
+          </div>
+          <SkeletonField label="Tagline" value="55%" />
+        </Section>
+        <Section title="Voice">
+          <SkeletonField label="Positioning" value="80%" multiline />
+          <SkeletonField label="Audience" value="70%" multiline />
+          <SkeletonField label="Brand context" value="75%" multiline />
+          <SkeletonField label="Voice" value="80%" multiline />
+        </Section>
+      </div>
     </div>
   );
 }

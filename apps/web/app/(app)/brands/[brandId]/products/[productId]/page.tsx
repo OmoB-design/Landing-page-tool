@@ -5,7 +5,11 @@ import { Suspense } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
-import { SkeletonButton, SkeletonText } from "@/components/app/skeletons";
+import {
+  SkeletonButton,
+  SkeletonStatus,
+  SkeletonText,
+} from "@/components/app/skeletons";
 import { ProductActions } from "@/components/features/products/product-actions";
 import {
   ProductBriefing,
@@ -211,7 +215,8 @@ function ProductSkeleton() {
         </div>
       }
     >
-      <section className="px-6 pb-8 divider-b-thin">
+      <SkeletonStatus label="Loading the product" />
+      <section aria-hidden className="px-6 pb-8 divider-b-thin">
         <div className="mx-auto flex w-full max-w-150 flex-col gap-6 py-1.5">
           <Section title="Images">
             <ul aria-hidden className="grid grid-cols-3 gap-4 sm:grid-cols-4">

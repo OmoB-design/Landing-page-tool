@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  */
 
 /**
- * A line of text still loading: a bar three quarters of the type's size, on that type's own line
+ * A line of text still loading: a bar two thirds of the type's size, on that type's own line
  * height. `className` carries the type (and any line-height override), e.g. `text-type-body-small`.
  * A percentage width is of the line's container (the line then spans it, even in a row).
  */
@@ -30,7 +30,7 @@ export function SkeletonText({
         className,
       )}
     >
-      <Skeleton width={width} height="0.75em" radius="var(--radius-xsm)" />
+      <Skeleton width={width} height="0.64em" radius="var(--radius-xsm)" />
     </span>
   );
 }
@@ -225,5 +225,14 @@ export function SkeletonJobSteps({
         ))}
       </div>
     </div>
+  );
+}
+
+/** Tells screen readers the region is loading (the skeleton shapes themselves are hidden). */
+export function SkeletonStatus({ label = "Loading" }: { label?: string }) {
+  return (
+    <span role="status" className="sr-only">
+      {label}…
+    </span>
   );
 }
