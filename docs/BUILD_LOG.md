@@ -510,4 +510,14 @@ as new entries.
 - **Deviations:** website placeholder and header titles (the frames carry placeholder copy); the switch's off track uses Icon-Explainer (our Overlay is near-black); the loader keeps its "Details" log; the brand list and review step aren't in the frames.
 - **Verification:** see the report (typecheck, ESLint, token checks, Prettier, vitest, worker ruff/mypy/brand job tests); screenshots at 1512 x 982 of /brands (empty), /brands/new before and during a real fetch (allbirds.com, mock AI, $0) in light and dark, side by side with the frames (positions within 1–2 px; the header is 49 px with its border); the logo appeared in the square after "Read the page"; /dev/inputs in both themes. A throwaway account on the cloud dev project was used and deleted.
 - **Owner confirmed:** no
+- **Follow-up (owner, 2026-10-13):** owner said push: committed D76 (81b883f) and the worker Dockerfile for Railway (28d0ca6, `services/worker/Dockerfile` + `.dockerignore`), pushed `main`; Vercel built it as Production (READY, dub1) at lp-platform-omob-designs-projects.vercel.app; share link for /sign-up reused (expires 2026-10-13 21:54). Live brand fetch still waits on the worker: the owner's first Railway build failed at the repo root (Railpack found the pnpm workspace); the fix is Root Directory `/services/worker` (Dockerfile build), then `WORKER_API_URL` on Vercel.
+
+
+### Deploy D77 — Worker on Railway (owner request)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-13
+- **Owner:** the live brand fetch was stuck (no worker reachable from Vercel); asked for the Railway walkthrough, created the Railway project and services, set Root Directory `/services/worker`, region, domain and variables.
+- **Summary:** `services/worker/Dockerfile` (+ `.dockerignore`) builds one image for the API and the job loop; Railway runs both (first build failed at the repo root until the root directory was set; the first live call failed with "Invalid or expired session" until `SUPABASE_URL` reached the service). `WORKER_API_URL` added on Vercel for Production and Preview, production redeployed. Owner's local `pnpm dev` stopped (owner asked) so Railway takes the jobs. CLAUDE.md §5 and DECISIONS (D77, O6 resolved) updated.
+- **Verification:** `/health` 200; POST /jobs without a session 401; on the live site with the share link, a throwaway account fetched allbirds.com: the job ran on Railway (Chromium "Loaded … with a browser", 5 steps, succeeded, mock AI, $0). Throwaway accounts deleted.
+- **Owner confirmed:** no
 

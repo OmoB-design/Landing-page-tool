@@ -301,6 +301,10 @@ Project `lp-platform` in the team omob-design's projects (Hobby plan), root dire
 *Not as drawn:* the field placeholder reads "https://www.yourbrand.com" (the frames say "you@email.com"); the page header reads Brands / New brand (the frames say Pages); the loader keeps its folded "Details" log; the brand list (not in the frames) sits in the same column.
 *Why:* the owner designed the screens and the field and asked for them implemented as seen, in this project's own colours and type.
 
+**D77 — The worker runs on Railway.** Locked (owner, 2026-10-13). Resolves O6.
+Project `enchanting-fulfillment` on the owner's Railway account (trial, then Hobby: $5 a month with $5 of usage; expected $5–15 a month at current use). Two services from github.com/OmoB-design/Landing-page-tool, root directory `/services/worker`, built from `services/worker/Dockerfile` (python:3.12-slim, uv, Playwright Chromium): the API (`uvicorn` on Railway's port, public at https://landing-page-tool-production.up.railway.app, health check `/health`) and the job loop (`python worker.py`, no domain). Both read the same variables as `services/worker/.env` (shared variables, pasted by the owner; Claude never sees the values); AI stays in mock mode unless `LP_MOCK_LLM`/`LP_MOCK_IMAGES` are set to 0. Vercel's `WORKER_API_URL` (Production and Preview) points at the API, so live and preview sites start jobs there. The API refuses calls without a valid Supabase session (401). Railway and a local `pnpm dev` share the cloud database and can both claim jobs (safely, `SKIP LOCKED`); stop the local job loop when testing the live site.
+*Why:* the live site's worker features (brand fetch, builds, template copies) need a hosted worker; Railway runs the Docker image with Chromium and was the owner's pick.
+
 **O5 resolved — Expert author allowed, without credentials.** Locked (owner, B1.2, 2026-10-09). See D66.
 
 **O6 resolved — Worker runs locally for now.** Locked (owner approved B0.4 plan, 2026-10-08). Choose a host (needs Playwright Chromium) before the first deploy.
@@ -312,5 +316,5 @@ Project `lp-platform` in the team omob-design's projects (Hobby plan), root dire
 - O3 — Which library templates ship first, and their HTML (owner designs; see `template-onboarding` skill).
 - O4 — Billing/plans: out of scope for v1 unless the owner adds it.
 - ~~O5 — Whether "doctor/expert" author type is allowed at all, and how bylines are labelled.~~ Resolved (D66).
-- O6 — Hosting for the worker (Railway, Fly.io, Render, or a VM). Needs Chromium. *Local for now (see above); decide before the first deploy.*
+- ~~O6 — Hosting for the worker (Railway, Fly.io, Render, or a VM). Needs Chromium.~~ Resolved (D77). *Was: local for now (see above); decide before the first deploy.*
 - ~~O10 — Local database runtime: Docker Desktop, Colima, or a Supabase Cloud dev project.~~ Resolved (D73).
