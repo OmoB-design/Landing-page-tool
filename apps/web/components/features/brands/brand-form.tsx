@@ -292,7 +292,7 @@ function ColorField({
           aria-label={`${label} picker`}
           value={/^#[0-9a-f]{6}$/i.test(value) ? value : EMPTY_SWATCH}
           onChange={(event) => set(event.target.value)}
-          className="size-11.5 shrink-0 cursor-pointer rounded-lg border border-stroke bg-surface-primary p-1 shadow-light"
+          className="size-10.5 shrink-0 cursor-pointer rounded-lg border border-stroke bg-surface-primary p-1 shadow-light"
         />
         <Input
           id={id}

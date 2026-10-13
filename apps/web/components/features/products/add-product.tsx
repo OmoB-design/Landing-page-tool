@@ -94,7 +94,7 @@ export function AddProduct({
               onChange={(event) => setUrl(event.target.value)}
               disabled={busy}
             />
-            <Button type="submit" disabled={busy} className="h-11.5 px-4">
+            <Button type="submit" disabled={busy} className="h-10.5 px-4">
               Add product
             </Button>
           </div>

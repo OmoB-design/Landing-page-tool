@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
  */
 
 const BOX =
-  "group/input-group relative flex h-11.5 w-full min-w-0 items-stretch rounded-lg border border-stroke bg-surface-primary text-type-caption-1 font-medium shadow-light transition-[border-color,box-shadow] duration-150 ease-out has-[input:disabled]:cursor-not-allowed has-[input:disabled]:border-stroke-strong has-[input:disabled]:bg-foreground-02 has-[input:disabled]:shadow-none has-[input[aria-invalid=true]]:border-text-danger";
+  "group/input-group relative flex h-10.5 w-full min-w-0 items-stretch rounded-lg border border-stroke bg-surface-primary text-type-caption-1 font-medium shadow-light transition-[border-color,box-shadow] duration-150 ease-out has-[input:disabled]:cursor-not-allowed has-[input:disabled]:border-stroke-strong has-[input:disabled]:bg-foreground-02 has-[input:disabled]:shadow-none has-[input[aria-invalid=true]]:border-text-danger";
 
 /** The field's box. `focus="field"` keeps the box grey on focus and outlines the input only. */
 function InputGroup({
