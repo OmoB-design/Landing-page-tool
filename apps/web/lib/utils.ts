@@ -27,7 +27,7 @@ export const cn = createCn({
         "home-card",
         "home-row",
       ],
-      radius: ["xsm", "xxl", "max", "card", "panel"],
+      radius: ["xsm", "xxl", "max", "card", "panel", "item"],
       // Without these, shadow-edge etc. read as a shadow colour and shadcn's shadow-md stays.
       shadow: [
         "pop",

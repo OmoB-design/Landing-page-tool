@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { PagesIcon } from "@/components/ui/icons";
+import { PageFigmaIcon } from "@/components/ui/lp-icons";
 
 /** Opens the create wizard with this product chosen, on the template step. */
 export function NewPageLink({
@@ -17,10 +17,10 @@ export function NewPageLink({
     product: productId,
   });
   return (
-    <Button asChild size="sm" className="h-8 self-start">
+    <Button asChild size="compact" className="h-7.5 px-4">
       <Link href={`/pages/new?${search}`}>
-        <PagesIcon aria-hidden />
-        New page for this product
+        <PageFigmaIcon className="size-4" />
+        New Page for this product
       </Link>
     </Button>
   );

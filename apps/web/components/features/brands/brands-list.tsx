@@ -1,52 +1,73 @@
 import Link from "next/link";
 
 import { BrandMark } from "@/components/app/brand-mark";
-import { GroupedList, ListRow } from "@/components/app/grouped-list";
-import { KeyLabel, RelativeTime } from "@/components/app/row-meta";
+import { GroupedList } from "@/components/app/grouped-list";
+import { RelativeTime } from "@/components/app/row-meta";
+import { RowMenu } from "@/components/app/row-menu";
 import { Button } from "@/components/ui/button";
 import { PlusFigmaIcon } from "@/components/ui/lp-icons";
 import type { BrandSummary } from "@/lib/brands/queries";
 
-/** The org's brands: mark, key prefix, name, website, product count, last change. */
+/**
+ * The org's brands (Figma Brands Details: Brands/List): 44 px rows 2 px apart, each on a 0.7 px
+ * line with Foreground-01 on hover. The 20 px mark and the key prefix (12 px medium) sit in a
+ * fixed column, so names (13 px medium) line up; on the right the website, product count and
+ * last change in 12 px Sub-Text, then the ⋯ menu, shown on hover or focus.
+ */
 export function BrandsList({ brands }: { brands: BrandSummary[] }) {
   if (brands.length === 0) return <NoBrands />;
   return (
     <GroupedList label="Brands">
-      <ul role="list">
+      <ul role="list" className="flex flex-col gap-0.5">
         {brands.map((brand) => (
-          <ListRow
-            key={brand.id}
-            href={`/brands/${brand.id}`}
-            title={brand.name}
-            leading={
-              <>
-                <BrandMark
-                  name={brand.name}
-                  emoji={brand.emoji}
-                  color={brand.primary}
-                  size="md"
-                />
-                <KeyLabel>{brand.prefix}</KeyLabel>
-              </>
-            }
-            meta={
-              <>
-                {brand.url ? (
-                  <span className="text-type-caption-1 text-sub-text">
-                    {new URL(brand.url).hostname}
-                  </span>
-                ) : null}
-                <span className="text-type-caption-1 text-sub-text tabular-nums">
-                  {brand.productCount}{" "}
-                  {brand.productCount === 1 ? "product" : "products"}
-                </span>
-                <RelativeTime date={brand.updatedAt} />
-              </>
-            }
-          />
+          <BrandRow key={brand.id} brand={brand} />
         ))}
       </ul>
     </GroupedList>
+  );
+}
+
+function BrandRow({ brand }: { brand: BrandSummary }) {
+  const href = `/brands/${brand.id}`;
+  return (
+    <li className="group/row flex h-11 items-center gap-3 bg-surface-primary pr-4 divider-b-thin hover:bg-foreground-01 has-focus-visible:bg-foreground-01">
+      <Link
+        href={href}
+        data-list-nav=""
+        className="flex h-full min-w-0 flex-1 items-center gap-3 pl-4 -outline-offset-2"
+      >
+        <span className="flex w-24.25 shrink-0 items-center gap-2.5">
+          <BrandMark
+            name={brand.name}
+            emoji={brand.emoji}
+            color={brand.primary}
+            size="list"
+          />
+          <span className="text-type-caption-1 font-medium text-heading-01 tabular-nums">
+            {brand.prefix}
+          </span>
+        </span>
+        <span className="min-w-0 flex-1 truncate text-type-body-small font-medium text-heading-01">
+          {brand.name}
+        </span>
+        <span className="hidden shrink-0 items-center gap-3 text-type-caption-1 text-sub-text md:flex">
+          {brand.url ? <span>{new URL(brand.url).hostname}</span> : null}
+          <span className="tabular-nums">
+            {brand.productCount}{" "}
+            {brand.productCount === 1 ? "product" : "products"}
+          </span>
+          <RelativeTime date={brand.updatedAt} />
+        </span>
+      </Link>
+      <RowMenu
+        label={`Actions for ${brand.name}`}
+        items={[
+          { label: "Open", href },
+          { label: "Products", href: `${href}/products` },
+          { label: "Edit Brand DNA", href: `${href}/dna` },
+        ]}
+      />
+    </li>
   );
 }
 

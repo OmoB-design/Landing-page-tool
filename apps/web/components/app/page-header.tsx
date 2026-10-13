@@ -1,7 +1,9 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { Icon } from "@/components/ui/icons";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 import { HeaderTools } from "./header-tools";
 import { SidebarToggleButton } from "./sidebar-state";
@@ -18,6 +20,8 @@ type PageHeaderProps = {
   tabs?: ReactNode;
   /** Right-aligned actions. */
   actions?: ReactNode;
+  /** A parent page before the title, as "Parent / title" (Figma Brands Details: "Brands / BREZ"). */
+  crumb?: { label: string; href: string };
 };
 
 /** The page panel's header (DESIGN.md §2; Figma: Home): 49 px with its border, 16 px in counting the panel's border; a mark if
@@ -28,6 +32,7 @@ export function PageHeader({
   mark,
   tabs,
   actions,
+  crumb,
 }: PageHeaderProps) {
   return (
     <header className="flex h-header shrink-0 items-center gap-3 px-3.75 edge-b">
@@ -35,7 +40,25 @@ export function PageHeader({
         action="open"
         className="-ml-1.5 lg:hidden lg:sidebar-collapsed:inline-flex"
       />
-      <div className="flex min-w-0 items-center gap-2">
+      <div
+        className={cn("flex min-w-0 items-center", crumb ? "gap-1.5" : "gap-2")}
+      >
+        {crumb ? (
+          <>
+            <Link
+              href={crumb.href}
+              className="shrink-0 rounded-xsm text-type-body-small font-medium text-heading-01 outline-none hover:text-sub-text focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {crumb.label}
+            </Link>
+            <span
+              aria-hidden
+              className="text-type-body-small font-medium text-heading-01"
+            >
+              /
+            </span>
+          </>
+        ) : null}
         {mark ? (
           mark
         ) : emoji ? (
@@ -43,7 +66,16 @@ export function PageHeader({
             {emoji}
           </span>
         ) : null}
-        <h1 className="truncate text-type-body-small font-normal">{title}</h1>
+        <h1
+          className={cn(
+            "truncate",
+            crumb
+              ? "text-type-caption-1 font-medium text-heading-01"
+              : "text-type-body-small font-normal",
+          )}
+        >
+          {title}
+        </h1>
       </div>
       {tabs ? (
         <>

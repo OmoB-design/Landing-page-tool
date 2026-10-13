@@ -2,19 +2,24 @@ import { ImageIcon } from "@/components/ui/icons";
 import { formatPrice } from "@/lib/products/form";
 import type { ProductDetail } from "@/lib/products/queries";
 
-/** The product's stored images (from the pull); replacing them comes with the editor. */
+/**
+ * The product's stored images (from the pull; Figma Brands Details: square Foreground-01 tiles with
+ * 6 px corners, four to a row, 16 px apart). Replacing them comes with the editor.
+ */
 export function ProductImages({ images }: { images: ProductDetail["images"] }) {
   if (images.length === 0) {
     return (
-      <p className="text-type-caption-1 text-sub-text">No images found.</p>
+      <p className="text-type-body-small font-medium text-heading-04">
+        No images found.
+      </p>
     );
   }
   return (
-    <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+    <ul className="grid grid-cols-3 gap-4 sm:grid-cols-4">
       {images.map((image, index) => (
         <li
           key={image.source_url}
-          className="flex aspect-square items-center justify-center overflow-hidden rounded-md border border-stroke bg-foreground-01"
+          className="flex aspect-square items-center justify-center overflow-hidden rounded-sm bg-foreground-01"
         >
           {image.url ? (
             // Product images are stored in the public assets bucket.
@@ -48,8 +53,8 @@ export function ProductOptions({
 }) {
   if (variants.length === 0 && pricingLines.length === 0) {
     return (
-      <p className="text-type-caption-1 text-sub-text">
-        One option, no subscriptions found.
+      <p className="text-type-body-small font-medium text-heading-04">
+        One option, no subscription found.
       </p>
     );
   }

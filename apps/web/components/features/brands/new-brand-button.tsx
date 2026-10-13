@@ -5,7 +5,7 @@ import { PlusFigmaIcon } from "@/components/ui/lp-icons";
 
 export function NewBrandButton() {
   return (
-    <Button asChild size="compact">
+    <Button asChild size="compact" className="h-7.5">
       <Link href="/brands/new">
         <PlusFigmaIcon />
         New brand

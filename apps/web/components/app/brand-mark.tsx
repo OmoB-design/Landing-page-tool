@@ -14,10 +14,17 @@ export function BrandMark({
   name: string;
   emoji?: string | null;
   color?: string | null;
-  size?: "sm" | "md";
+  /** sm 16 px, md 24 px; Figma Brands Details: crumb 18 px (page header), list 20 px (brand
+   * rows), row 24 px (product rows), all with medium letters. */
+  size?: "sm" | "md" | "crumb" | "list" | "row";
 }) {
-  const box =
-    size === "md" ? "size-6 text-type-caption-1" : "size-4 text-type-caption-2";
+  const box = {
+    sm: "size-4 text-type-caption-2 font-semibold",
+    md: "size-6 text-type-caption-1 font-semibold",
+    crumb: "size-4.5 text-type-caption-2 font-medium",
+    list: "size-5 text-type-caption-1 font-medium",
+    row: "size-6 text-type-body-large font-medium",
+  }[size];
   if (emoji) {
     return (
       <span
@@ -33,7 +40,7 @@ export function BrandMark({
       aria-hidden
       style={color ? { backgroundColor: color } : undefined}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-xsm font-semibold",
+        "flex shrink-0 items-center justify-center rounded-xsm",
         box,
         !color && "bg-foreground-03",
         // The letter follows the brand colour, not the theme: a cream brand needs a dark letter

@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { JobSteps } from "@/components/app/job-steps";
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
-import { RefreshIcon, RemoveIcon } from "@/components/ui/icons";
+import { RefreshFigmaIcon, TrashFigmaIcon } from "@/components/ui/lp-icons";
 import {
   Popover,
   PopoverContent,
@@ -20,8 +20,17 @@ import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
 import { useJob, useStartJob } from "@/lib/queries/jobs";
 
 import { PULL_STEPS } from "./add-product";
+import { NewPageLink } from "./new-page-link";
 
-/** "Pull again" (re-reads the product page, replacing the details) and "Remove". */
+/** Pull again, and Refresh on the briefing: Surface-Primary on a Stroke line, a 16 px icon. */
+export const PULL_AGAIN =
+  "h-7.5 border-stroke px-4 text-heading-02 shadow-none hover:bg-foreground-01 aria-expanded:bg-foreground-01";
+
+/**
+ * The product's actions (Figma Brands Details: product detail page), 30 px buttons 6 px apart:
+ * New Page for this product (blue), Pull again (re-reads the product page, replacing the details;
+ * Surface-Primary on a Stroke line) and Remove (no frame); each change asks first.
+ */
 export function ProductActions({
   brandId,
   productId,
@@ -64,17 +73,18 @@ export function ProductActions({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
+        <NewPageLink brandId={brandId} productId={productId} />
         {url ? (
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                size="sm"
-                className="h-8"
+                size="compact"
+                className={PULL_AGAIN}
                 disabled={busy}
               >
-                <RefreshIcon aria-hidden />
+                <RefreshFigmaIcon className="size-4 text-icon-nav-active" />
                 Pull again
               </Button>
             </PopoverTrigger>
@@ -96,11 +106,11 @@ export function ProductActions({
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
-              size="sm"
-              className="h-8 text-sub-text"
+              size="compact"
+              className="h-7.5 px-4 text-heading-03"
               disabled={removing}
             >
-              <RemoveIcon aria-hidden />
+              <TrashFigmaIcon className="size-4 text-icon-system" />
               Remove
             </Button>
           </PopoverTrigger>
@@ -139,6 +149,7 @@ export function ProductActions({
           title="Pulling the product again"
           steps={PULL_STEPS}
           job={job}
+          className="w-75 [&_.ui-progress]:pb-6.5"
         />
       ) : null}
     </div>

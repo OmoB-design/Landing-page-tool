@@ -1320,3 +1320,105 @@ export function ChevronDownFigmaIcon(props: IconProps) {
     </svg>
   );
 }
+
+// ── Brand and product pages (Figma: Brands Details) ───────────────────────────────────────
+
+/** "All products": back chevron (16 px, a 2 px stroke). */
+export function ChevronLeftFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M10.3337 2.3335L4.66699 8.00016L10.3337 13.6668"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** A website link's small arrow-out (12 px, a 1.5 px stroke). */
+export function ExternalLinkSmallFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M7.26855 4.73224L10.5735 1.42725" />
+        <path d="M10.75 8V8.75C10.75 9.855 9.855 10.75 8.75 10.75H3.25C2.145 10.75 1.25 9.855 1.25 8.75V3.25C1.25 2.145 2.145 1.25 3.25 1.25H4" />
+        <path d="M10.75 5V1.25H7" />
+      </g>
+    </svg>
+  );
+}
+
+/** "New page for this product": a page with lines (16 px). */
+export function PageFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M5.11133 6H6.88911" />
+        <path d="M5.11133 8.6665H10.8891" />
+        <path d="M5.11133 11.3335H10.8891" />
+        <path d="M2.44434 12.6668V3.33344C2.44434 2.35122 3.23989 1.55566 4.22211 1.55566H9.18745C9.423 1.55566 9.64967 1.649 9.81589 1.81611L13.295 5.29522C13.4621 5.46233 13.5554 5.68811 13.5554 5.92366V12.6668C13.5554 13.649 12.7599 14.4446 11.7777 14.4446H4.22211C3.23989 14.4446 2.44434 13.649 2.44434 12.6668Z" />
+        <path d="M13.4757 5.55533H10.4446C9.95389 5.55533 9.55566 5.15711 9.55566 4.66644V1.646" />
+      </g>
+    </svg>
+  );
+}
+
+/** "Pull again" / "Refresh": two turning arrows (16 px). */
+export function RefreshFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M7.55566 11.3335L9.55566 13.3335L7.55566 15.3335" />
+        <path d="M4.13767 4.00439C3.09091 5.01444 2.44434 6.43186 2.44434 7.99995C2.44434 11.0684 4.93322 13.5555 7.99989 13.5555C8.53322 13.5555 9.03989 13.4808 9.52878 13.3422" />
+        <path d="M8.44434 4.6665L6.44434 2.6665L8.44434 0.666504" />
+        <path d="M11.8617 11.9943C12.9019 10.9843 13.5556 9.56736 13.5556 7.99989C13.5556 4.93145 11.0667 2.44434 8.00007 2.44434C7.48451 2.44434 6.98674 2.51451 6.51562 2.64518" />
+      </g>
+    </svg>
+  );
+}

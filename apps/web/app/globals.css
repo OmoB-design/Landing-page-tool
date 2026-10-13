@@ -181,6 +181,8 @@
   /* Template cards: the Shadow/Edge line shows in dark only; light keeps just the Stroke lines
      (owner, 2026-10-12). */
   --card-edge-shadow: 0 0 #0000;
+  /* Briefing list items: their soft shadow shows in light only (Figma Brands Details, both frames). */
+  --briefing-item-shadow: rgb(182 182 182 / 0.15);
   /* Template cards: the screenshot's line and shadow (Figma Template/Yours 154:14185, 187:15866). */
   --template-shot-line: var(--color-illustration-line-strong);
   --template-shot-shadow: 0 4.92px 5.91px 0 rgb(200 196 196 / 0.15);
@@ -280,10 +282,10 @@
   --color-highlight-blue-150: var(--blue-150);
   --color-highlight-blue-500: var(--blue-500);
   /* Typography */
-  --color-heading-01: var(--grey-850);
+  --color-heading-01: var(--grey-900);
   --color-heading-02: var(--grey-850);
-  --color-heading-03: var(--grey-850);
-  --color-heading-04: var(--grey-850);
+  --color-heading-03: var(--grey-800);
+  --color-heading-04: var(--grey-700);
   --color-heading-05: var(--grey-600);
   --color-heading-06: var(--grey-500);
   --color-body: var(--grey-850);
@@ -361,6 +363,7 @@
   --radius-max: 64px;
   --radius-panel: 16px; /* the content panel, as Quality's content frame (its 2xl radius, 1rem) */
   --radius-card: 18px; /* Figma Home: getting-started cards (Numbers/18) */
+  --radius-item: 12px; /* Figma Brands Details: briefing audience cards and list items */
   --radius-well: 14px; /* Figma template cards: the picture well's bottom corners */
 
   /* Layout (Figma: Size). Tailwind v4 only builds w-/h-/size- utilities from the --spacing-*
@@ -432,6 +435,7 @@
 /* Dark mode (Figma: Tokens collection, Dark mode): only the tokens whose value changes. */
 .dark {
   --card-edge-shadow: var(--shadow-edge);
+  --briefing-item-shadow: transparent;
   --template-shot-line: var(--color-stroke);
   --template-shot-shadow: 0 4.92px 10.1px 0 rgb(6 6 6 / 0.15);
   --color-button-primary-drop-soft: rgb(186 186 186 / 0.25);
@@ -869,6 +873,15 @@
    and long pages (or when a step grows into a scroll) where scrollbars take space. */
 @utility scrollbar-stable {
   scrollbar-gutter: stable;
+}
+
+/* Figma Brands Details, product briefing: a list item card, 12 px corners, a 0.5 px Surface/Stroke
+   line inside and, in light only, a soft shadow above (#b6b6b6 at 15 %, 10 px, 1 px up). */
+@utility briefing-item {
+  border-radius: var(--radius-item);
+  box-shadow:
+    inset 0 0 0 0.5px var(--color-stroke),
+    0 -1px 10px 0 var(--briefing-item-shadow);
 }
 
 /* Figma template cards (Template/Library 173:3836, Template/Yours 147:9566): a 0.5 px

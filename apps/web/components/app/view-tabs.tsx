@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 export type ViewTab<T extends string> = {
   id: T;
   label: string;
-  count: number;
+  /** A count pill after the label (list pages); leave out for plain section tabs. */
+  count?: number;
   href: string;
 };
 
@@ -17,17 +18,20 @@ export type ViewTab<T extends string> = {
  * with a count pill, 32 px apart, and a 2 px line under the current view that slides to the
  * other on click. The line moves as soon as you click (the list follows when the server
  * answers); before the first measurement it is drawn under the current tab so nothing jumps on
- * load. Place it in a 36 px bar on a hairline (`h-9 divider-b-thin`).
+ * load. Place it in a 36 px bar on a hairline (`h-9 divider-b-thin`). `muted` greys the other
+ * tabs (Heading-04; Figma Brands Details: Overview, Products, Pages, Brand DNA).
  */
 export function ViewTabs<T extends string>({
   label,
   tabs,
   active,
+  muted = false,
 }: {
   /** Names the tab list for screen readers ("Page views"). */
   label: string;
   tabs: ViewTab<T>[];
   active: T;
+  muted?: boolean;
 }) {
   const [pending, setPending] = useState<T | null>(null);
   const [shown, setShown] = useState(active);
@@ -70,13 +74,24 @@ export function ViewTabs<T extends string>({
             }}
             href={tab.href}
             aria-current={isCurrent ? "page" : undefined}
-            onClick={() => setPending(tab.id)}
-            className="relative flex h-full items-center gap-1 text-type-body-small font-medium text-heading-01 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={(event) => {
+              setPending(tab.id);
+              // The tabs stay mounted across views, so a clicked tab would keep focus and show
+              // the keyboard ring on the next key press. A mouse click lets go (detail counts
+              // clicks; Enter gives 0, so keyboard users keep their place).
+              if (event.detail > 0) event.currentTarget.blur();
+            }}
+            className={cn(
+              "relative flex h-full items-center gap-1 text-type-body-small font-medium text-heading-01 outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              muted && !isCurrent && "text-heading-04 hover:text-heading-01",
+            )}
           >
             {tab.label}
-            <span className="min-w-5.75 rounded-lg bg-foreground-01 px-1 text-center text-type-caption-1 font-medium text-heading-01 tabular-nums">
-              {tab.count}
-            </span>
+            {tab.count !== undefined ? (
+              <span className="min-w-5.75 rounded-lg bg-foreground-01 px-1 text-center text-type-caption-1 font-medium text-heading-01 tabular-nums">
+                {tab.count}
+              </span>
+            ) : null}
             {isCurrent && line === null ? <Line className="inset-x-0" /> : null}
           </Link>
         );

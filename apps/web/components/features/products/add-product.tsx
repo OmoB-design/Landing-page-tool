@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { authLinkClass } from "@/components/app/auth-frame";
 import { JobSteps } from "@/components/app/job-steps";
+import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,13 +32,19 @@ export const PULL_STEPS = [
   { id: "save", label: "Save the product" },
 ];
 
-/** Products tab: paste a product page → live pull steps → the product is saved to the brand. */
+/**
+ * The Products tab (Figma Brands Details: Brands/product page, light and dark), around the list
+ * it's given: in the frame's header, a 400 px form (Product page, then a full-width Add product);
+ * below the line, the 300 px loader while the product is read, what was added, then the list.
+ */
 export function AddProduct({
   brandId,
   placeholder,
+  children,
 }: {
   brandId: string;
   placeholder: string;
+  children: ReactNode;
 }) {
   const startJob = useStartJob();
   const [url, setUrl] = useState("");
@@ -50,8 +57,11 @@ export function AddProduct({
       : null;
   const pulled = result?.success ? result.data : null;
   usePageRefresh(job?.status === "succeeded" ? job.id : null);
+  const busy =
+    startJob.isPending || job?.status === "queued" || job?.status === "running";
 
   const pull = () => {
+    if (busy) return;
     const parsed = productUrlSchema.safeParse(url);
     if (!parsed.success) {
       setUrlError(parsed.error.issues[0]?.message ?? "Check the address.");
@@ -67,21 +77,19 @@ export function AddProduct({
     );
   };
 
-  const busy =
-    startJob.isPending || job?.status === "queued" || job?.status === "running";
   return (
-    <div className="flex flex-col gap-4">
-      <form
-        className="flex flex-col gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          pull();
-        }}
-        noValidate
-      >
-        <Field data-invalid={urlError ? true : undefined}>
-          <FieldLabel htmlFor="product-url">Product page</FieldLabel>
-          <div className="flex gap-2">
+    <BrandFrame
+      header={
+        <form
+          className="mx-auto flex w-full max-w-100 flex-col gap-4 py-1.5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            pull();
+          }}
+          noValidate
+        >
+          <Field data-invalid={urlError ? true : undefined}>
+            <FieldLabel htmlFor="product-url">Product page</FieldLabel>
             <Input
               id="product-url"
               type="url"
@@ -92,50 +100,63 @@ export function AddProduct({
                 urlError ? "product-url-error" : "product-url-hint"
               }
               onChange={(event) => setUrl(event.target.value)}
-              disabled={busy}
+              // It keeps its look while the product is read; it just can't change mid-way.
+              readOnly={busy}
             />
-            <Button type="submit" disabled={busy} className="h-10.5 px-4">
-              Add product
-            </Button>
-          </div>
-          {urlError ? (
-            <FieldError id="product-url-error">{urlError}</FieldError>
-          ) : (
-            <FieldDescription id="product-url-hint">
-              We read the price, images, options and subscription offers, then
-              write the selling points. Adding the same product again updates
-              it.
-            </FieldDescription>
-          )}
-        </Field>
-        {startJob.error ? (
-          <p role="alert" className="text-type-caption-1 text-text-danger">
-            {startJob.error.message}
-          </p>
-        ) : null}
-      </form>
-
+            {urlError ? (
+              <FieldError id="product-url-error">{urlError}</FieldError>
+            ) : (
+              <FieldDescription id="product-url-hint">
+                Adding the same product again updates it.
+              </FieldDescription>
+            )}
+          </Field>
+          <Button
+            type="submit"
+            size="compact"
+            className="h-8.5 w-full"
+            aria-disabled={busy || undefined}
+          >
+            Add product
+          </Button>
+          {startJob.error ? (
+            <p role="alert" className="text-type-caption-1 text-text-danger">
+              {startJob.error.message}
+            </p>
+          ) : null}
+        </form>
+      }
+    >
       {job ? (
-        <JobSteps title="Adding the product" steps={PULL_STEPS} job={job} />
+        <div className="flex justify-center px-6 py-1.5">
+          <JobSteps
+            title="Adding the product"
+            steps={PULL_STEPS}
+            job={job}
+            className="w-75 [&_.ui-progress]:pb-6.5"
+          />
+        </div>
       ) : null}
-
       {pulled ? (
-        <PullResult
-          brandId={brandId}
-          productId={pulled.product_id}
-          name={pulled.name}
-          created={pulled.created}
-          notes={[
-            ...pulled.warnings,
-            ...(pulled.ai === "mock"
-              ? [
-                  "The selling points are placeholders: AI calls are in mock mode.",
-                ]
-              : []),
-          ]}
-        />
+        <BrandColumn width="list">
+          <PullResult
+            brandId={brandId}
+            productId={pulled.product_id}
+            name={pulled.name}
+            created={pulled.created}
+            notes={[
+              ...pulled.warnings,
+              ...(pulled.ai === "mock"
+                ? [
+                    "The selling points are placeholders: AI calls are in mock mode.",
+                  ]
+                : []),
+            ]}
+          />
+        </BrandColumn>
       ) : null}
-    </div>
+      {children}
+    </BrandFrame>
   );
 }
 

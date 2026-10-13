@@ -65,9 +65,11 @@ export function ProductForm({
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-      <TextField form={form} name="name" label="Product name" />
-      <TextField form={form} name="url" label="Product page" type="url" />
+    <form onSubmit={submit} noValidate className="flex flex-col gap-6">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField form={form} name="name" label="Product name" />
+        <TextField form={form} name="url" label="Product page" type="url" />
+      </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <TextField
           form={form}
@@ -91,20 +93,13 @@ export function ProductForm({
           uppercase
         />
       </div>
-      <TextField
-        form={form}
-        name="description"
-        label="Description"
-        multiline
-        rows={4}
-      />
+      <TextField form={form} name="description" label="Description" multiline />
       <TextField
         form={form}
         name="usps"
         label="Selling points"
         description="One per line."
         multiline
-        rows={5}
       />
       <TextField
         form={form}
@@ -112,7 +107,6 @@ export function ProductForm({
         label="Specs"
         description="One per line, as Label: value (e.g. Material: merino wool)."
         multiline
-        rows={5}
       />
       <TextField
         form={form}
@@ -134,7 +128,12 @@ export function ProductForm({
         </Alert>
       ) : null}
       <div>
-        <Button type="submit" disabled={pending} className="h-9 px-4">
+        <Button
+          type="submit"
+          size="compact"
+          disabled={pending}
+          className="h-8.5 px-4"
+        >
           {pending ? (
             <LoadingIcon
               aria-hidden
@@ -156,7 +155,7 @@ function TextField({
   type = "text",
   inputMode,
   multiline = false,
-  rows = 3,
+  rows = 2,
   uppercase = false,
 }: {
   form: UseFormReturn<ProductFormValues>;
@@ -187,7 +186,8 @@ function TextField({
     <Field data-invalid={error ? true : undefined}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       {multiline ? (
-        <Textarea rows={rows} {...common} />
+        // Figma Brands Details: 80 px tall when empty, growing with the text.
+        <Textarea rows={rows} className="min-h-20" {...common} />
       ) : (
         <Input
           type={type}

@@ -23,7 +23,9 @@ type FieldName = keyof BrandFormValues;
 
 /**
  * Brand DNA form (BUILD_SPEC §7.1), for a new brand (prefilled from the fetch) and for editing.
- * Validated in the browser with the same zod schema the server action uses.
+ * Validated in the browser with the same zod schema the server action uses. Laid out like the
+ * product's details (Figma Brands Details): sections 40 px apart under a 14 px medium title,
+ * fields 24 px apart (16 px side by side), 80 px text areas and a 34 px Save.
  */
 export function BrandForm({
   defaultValues,
@@ -66,109 +68,119 @@ export function BrandForm({
     <form
       onSubmit={submit}
       noValidate
-      className="flex max-w-2xl flex-col gap-8"
+      className="@container flex max-w-2xl flex-col gap-6"
     >
-      {aboveFields?.(form)}
+      <div className="flex flex-col gap-10">
+        {aboveFields?.(form)}
 
-      <Section title="Identity">
-        <TextField form={form} name="name" label="Brand name" />
-        <div className="grid gap-4 sm:grid-cols-3">
+        <Section title="Identity">
+          {/* Side by side only when the form has room (Brand DNA's 600 px column, not the
+              400 px review step of a new brand). */}
+          <div className="grid gap-4 @lg:grid-cols-2">
+            <TextField form={form} name="name" label="Brand name" />
+            <TextField form={form} name="url" label="Website" type="url" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <TextField
+              form={form}
+              name="prefix"
+              label="Key prefix"
+              description="2 to 4 letters for page keys, e.g. LUM-23."
+              uppercase
+            />
+            <TextField
+              form={form}
+              name="emoji"
+              label="Emoji"
+              description="Optional."
+            />
+            <TextField
+              form={form}
+              name="language"
+              label="Language"
+              description="e.g. en or en-GB."
+            />
+          </div>
+          <TextField form={form} name="tagline" label="Tagline" />
+        </Section>
+
+        <Section title="Voice">
           <TextField
             form={form}
-            name="prefix"
-            label="Key prefix"
-            description="2 to 4 letters for page keys, e.g. LUM-23."
-            uppercase
+            name="positioning"
+            label="Positioning"
+            multiline
+          />
+          <TextField form={form} name="audience" label="Audience" multiline />
+          <TextField
+            form={form}
+            name="brand_context"
+            label="Brand context"
+            multiline
+          />
+          <TextField form={form} name="voice" label="Voice" multiline />
+          <TextField
+            form={form}
+            name="voice_examples"
+            label="Voice examples"
+            description="One per line: real lines from the brand's site or ads."
+            multiline
           />
           <TextField
             form={form}
-            name="emoji"
-            label="Emoji"
-            description="Optional."
+            name="cta_text"
+            label="Button text"
+            description="e.g. Shop now."
           />
+        </Section>
+
+        <Section title="Look">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ColorField
+              form={form}
+              name="palette_primary"
+              label="Primary colour"
+              derive
+            />
+            <ColorField
+              form={form}
+              name="palette_accent"
+              label="Accent colour"
+            />
+            <ColorField form={form} name="palette_dark" label="Dark shade" />
+            <ColorField form={form} name="palette_tint" label="Tint" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField form={form} name="font_heading" label="Heading font" />
+            <TextField form={form} name="font_body" label="Body font" />
+          </div>
+        </Section>
+
+        <Section title="Offer and contact">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              form={form}
+              name="sale_percent"
+              label="Sale percent"
+              description="0 to 100, optional."
+            />
+            <TextField form={form} name="promo_text" label="Promo text" />
+          </div>
           <TextField
             form={form}
-            name="language"
-            label="Language"
-            description="e.g. en or en-GB."
+            name="support_email"
+            label="Support email"
+            type="email"
           />
-        </div>
-        <TextField form={form} name="url" label="Website" type="url" />
-        <TextField form={form} name="tagline" label="Tagline" />
-      </Section>
-
-      <Section title="Voice">
-        <TextField
-          form={form}
-          name="positioning"
-          label="Positioning"
-          multiline
-        />
-        <TextField form={form} name="audience" label="Audience" multiline />
-        <TextField
-          form={form}
-          name="brand_context"
-          label="Brand context"
-          multiline
-        />
-        <TextField form={form} name="voice" label="Voice" multiline />
-        <TextField
-          form={form}
-          name="voice_examples"
-          label="Voice examples"
-          description="One per line: real lines from the brand's site or ads."
-          multiline
-        />
-        <TextField
-          form={form}
-          name="cta_text"
-          label="Button text"
-          description="e.g. Shop now."
-        />
-      </Section>
-
-      <Section title="Look">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ColorField
-            form={form}
-            name="palette_primary"
-            label="Primary colour"
-            derive
-          />
-          <ColorField form={form} name="palette_accent" label="Accent colour" />
-          <ColorField form={form} name="palette_dark" label="Dark shade" />
-          <ColorField form={form} name="palette_tint" label="Tint" />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField form={form} name="font_heading" label="Heading font" />
-          <TextField form={form} name="font_body" label="Body font" />
-        </div>
-      </Section>
-
-      <Section title="Offer and contact">
-        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField form={form} name="meta_title" label="Page title (SEO)" />
           <TextField
             form={form}
-            name="sale_percent"
-            label="Sale percent"
-            description="0 to 100, optional."
+            name="meta_description"
+            label="Page description (SEO)"
+            multiline
           />
-          <TextField form={form} name="promo_text" label="Promo text" />
-        </div>
-        <TextField
-          form={form}
-          name="support_email"
-          label="Support email"
-          type="email"
-        />
-        <TextField form={form} name="meta_title" label="Page title (SEO)" />
-        <TextField
-          form={form}
-          name="meta_description"
-          label="Page description (SEO)"
-          multiline
-        />
-      </Section>
+        </Section>
+      </div>
 
       {rootError ? (
         <Alert
@@ -182,7 +194,12 @@ export function BrandForm({
         </Alert>
       ) : null}
       <div>
-        <Button type="submit" disabled={pending} className="h-9 px-4">
+        <Button
+          type="submit"
+          size="compact"
+          disabled={pending}
+          className="h-8.5 px-4"
+        >
           {pending ? (
             <LoadingIcon
               aria-hidden
@@ -205,8 +222,10 @@ function Section({
 }) {
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-type-body-large font-semibold">{title}</h2>
-      {children}
+      <h2 className="text-type-body-large leading-normal font-medium text-heading-01">
+        {title}
+      </h2>
+      <div className="flex flex-col gap-6">{children}</div>
     </section>
   );
 }
@@ -245,7 +264,8 @@ function TextField({
     <Field data-invalid={error ? true : undefined}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       {multiline ? (
-        <Textarea rows={3} {...common} />
+        // As on the product: 80 px tall when empty, growing with the text.
+        <Textarea rows={2} className="min-h-20" {...common} />
       ) : (
         <Input
           type={type}

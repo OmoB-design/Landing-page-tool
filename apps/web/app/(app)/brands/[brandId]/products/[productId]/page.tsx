@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { formatDistanceToNowStrict } from "date-fns";
 
-import { authLinkClass } from "@/components/app/auth-frame";
+import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
 import { PageBody } from "@/components/app/page-body";
-import { RelativeTime } from "@/components/app/row-meta";
 import { ProductActions } from "@/components/features/products/product-actions";
 import { ProductBriefing } from "@/components/features/products/product-briefing";
 import { ProductForm } from "@/components/features/products/product-form";
@@ -13,9 +13,10 @@ import {
   ProductImages,
   ProductOptions,
 } from "@/components/features/products/product-media";
-import { NewPageLink } from "@/components/features/products/new-page-link";
-import { ExternalLinkIcon } from "@/components/ui/icons";
-import { Separator } from "@/components/ui/separator";
+import {
+  ChevronLeftFigmaIcon,
+  ExternalLinkSmallFigmaIcon,
+} from "@/components/ui/lp-icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import { getSessionContext } from "@/lib/auth/session";
 import { formatPrice, productRowToForm } from "@/lib/products/form";
@@ -67,101 +68,127 @@ async function Product({
   const productsHref = `/brands/${brand.row.id}/products`;
 
   return (
-    <PageBody width="lg" className="gap-8">
-      <div className="flex flex-col gap-3">
-        <Link
-          href={productsHref}
-          className={`${authLinkClass} w-fit text-type-caption-1`}
-        >
-          ← All products
-        </Link>
-        <div className="flex flex-col gap-1">
-          <h2 className="text-type-h5 font-semibold">{row.name}</h2>
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-type-caption-1 text-sub-text">
-            {sale ? (
-              <span className="text-body tabular-nums">
-                {sale}{" "}
-                <s className="text-caption-1">
-                  <span className="sr-only">was </span>
-                  {regular}
-                </s>
-              </span>
-            ) : regular ? (
-              <span className="text-body tabular-nums">{regular}</span>
-            ) : (
-              <span>No price yet</span>
-            )}
-            {row.pull_source && row.pulled_at ? (
-              <span>
-                From {SOURCE_LABELS[row.pull_source] ?? row.pull_source},{" "}
-                <RelativeTime date={new Date(row.pulled_at)} />
-              </span>
-            ) : null}
-            {row.url ? (
-              <a
-                href={row.url}
-                target="_blank"
-                rel="noreferrer"
-                className={`${authLinkClass} inline-flex items-center gap-1`}
-              >
-                {new URL(row.url).hostname}
-                <ExternalLinkIcon aria-hidden className="size-3" />
-                <span className="sr-only">(opens in a new tab)</span>
-              </a>
-            ) : null}
-          </p>
+    <BrandFrame
+      header={
+        <div className="mx-auto flex w-full max-w-150 flex-col gap-5 pr-1 pb-2.5">
+          <div className="flex flex-col gap-3">
+            <Link
+              href={productsHref}
+              className="flex w-fit items-center gap-1 rounded-xsm text-type-body-small font-medium text-sub-text outline-none hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronLeftFigmaIcon className="text-icon-system" />
+              All products
+            </Link>
+            <div className="flex flex-col gap-1.5">
+              <h2 className="font-serif text-type-title font-medium text-button-secondary-text">
+                {row.name}
+              </h2>
+              <p className="flex flex-wrap items-center gap-1.5 text-type-body-small font-medium text-heading-02">
+                {sale ? (
+                  <span className="tabular-nums">
+                    {sale}{" "}
+                    <s className="text-caption-1">
+                      <span className="sr-only">was </span>
+                      {regular}
+                    </s>
+                  </span>
+                ) : (
+                  <span className="tabular-nums">
+                    {regular ?? "No price yet"}
+                  </span>
+                )}
+                {row.pull_source && row.pulled_at ? (
+                  <>
+                    <span
+                      aria-hidden
+                      className="size-0.75 rounded-full bg-foreground-03"
+                    />
+                    <span>
+                      From {SOURCE_LABELS[row.pull_source] ?? row.pull_source},{" "}
+                      <time
+                        dateTime={row.pulled_at}
+                        title={new Date(row.pulled_at).toLocaleString("en-GB")}
+                      >
+                        {formatDistanceToNowStrict(new Date(row.pulled_at), {
+                          addSuffix: true,
+                        })}
+                      </time>
+                    </span>
+                  </>
+                ) : null}
+              </p>
+              {row.url ? (
+                <a
+                  href={row.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex w-fit items-center gap-1 rounded-xsm text-type-body-small font-medium text-heading-02 outline-none hover:text-sub-text focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {new URL(row.url).hostname}
+                  <ExternalLinkSmallFigmaIcon className="text-icon-nav-active" />
+                  <span className="sr-only">(opens in a new tab)</span>
+                </a>
+              ) : null}
+            </div>
+          </div>
+          <ProductActions
+            brandId={brand.row.id}
+            productId={row.id}
+            name={row.name}
+            url={row.url}
+          />
         </div>
-        <ProductActions
-          brandId={brand.row.id}
+      }
+    >
+      {/* Images, details and options, closed by a full-width line 32 px below. */}
+      <section className="px-6 pb-8 divider-b-thin">
+        <div className="mx-auto flex w-full max-w-150 flex-col gap-6 py-1.5">
+          <Section title="Images">
+            <ProductImages images={product.images} />
+          </Section>
+          <Section title="Details">
+            {/* Remount only when the product is pulled again: saving keeps what's being typed. */}
+            <ProductForm
+              key={row.pulled_at ?? row.id}
+              productId={row.id}
+              defaultValues={productRowToForm(row)}
+            />
+          </Section>
+          <Section title="Options and pricing" tight>
+            <ProductOptions
+              variants={product.variants}
+              pricingLines={product.pricingLines}
+              currency={row.currency}
+            />
+          </Section>
+        </div>
+      </section>
+      <BrandColumn width="wide">
+        <ProductBriefing
           productId={row.id}
-          name={row.name}
-          url={row.url}
+          briefing={product.briefing?.data ?? null}
+          updatedAt={product.briefing?.updatedAt ?? null}
         />
-      </div>
-
-      <NewPageLink brandId={brand.row.id} productId={row.id} />
-
-      <Section title="Images">
-        <ProductImages images={product.images} />
-      </Section>
-
-      <Section title="Details">
-        {/* Remount only when the product is pulled again: saving keeps what's being typed. */}
-        <ProductForm
-          key={row.pulled_at ?? row.id}
-          productId={row.id}
-          defaultValues={productRowToForm(row)}
-        />
-      </Section>
-
-      <Section title="Options and pricing">
-        <ProductOptions
-          variants={product.variants}
-          pricingLines={product.pricingLines}
-          currency={row.currency}
-        />
-      </Section>
-
-      <Separator />
-      <ProductBriefing
-        productId={row.id}
-        briefing={product.briefing?.data ?? null}
-        updatedAt={product.briefing?.updatedAt ?? null}
-      />
-    </PageBody>
+      </BrandColumn>
+    </BrandFrame>
   );
 }
 
+/** A titled block in the 600 px column: a 14 px medium label 16 px above (8 px when `tight`). */
 function Section({
   title,
+  tight = false,
   children,
 }: {
   title: string;
+  tight?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-type-body-large font-semibold">{title}</h2>
+    <section className={tight ? "flex flex-col gap-2" : "flex flex-col gap-4"}>
+      <h3 className="text-type-body-large leading-normal font-medium text-heading-01">
+        {title}
+      </h3>
       {children}
     </section>
   );

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { PageBody } from "@/components/app/page-body";
+import { BrandColumn } from "@/components/app/brand-frame";
 import { AddProduct } from "@/components/features/products/add-product";
 import { ProductsList } from "@/components/features/products/products-list";
 import { Skeleton } from "@/components/ui/shimmer-loader";
@@ -18,10 +18,10 @@ export default function BrandProductsPage({
   return (
     <Suspense
       fallback={
-        <PageBody width="lg" className="gap-2">
+        <div className="mx-auto flex w-full max-w-pages flex-col gap-2 px-6 pt-10">
           <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
           <Skeleton height="var(--spacing-row)" radius="var(--radius-sm)" />
-        </PageBody>
+        </div>
       }
     >
       <Products params={params} />
@@ -37,17 +37,24 @@ async function Products({ params }: { params: Promise<{ brandId: string }> }) {
     ? new URL(brand.row.url).origin
     : "https://brand.com";
   return (
-    <PageBody width="lg">
-      <AddProduct brandId={brand.row.id} placeholder={`${site}/products/…`} />
-      {products.length > 0 ? (
-        <div className="-mx-6">
-          <ProductsList brandId={brand.row.id} products={products} />
-        </div>
-      ) : (
-        <p className="text-type-body-small text-sub-text">
-          No products yet. Paste a product page above to add one.
-        </p>
-      )}
-    </PageBody>
+    <AddProduct brandId={brand.row.id} placeholder={`${site}/products/…`}>
+      <BrandColumn width="list">
+        {products.length > 0 ? (
+          <ProductsList
+            brand={{
+              id: brand.row.id,
+              name: brand.row.name,
+              emoji: brand.row.emoji,
+              primary: brand.primary,
+            }}
+            products={products}
+          />
+        ) : (
+          <p className="py-3 text-center text-type-body-small font-medium text-heading-05">
+            No products yet. Paste a product page above to add one.
+          </p>
+        )}
+      </BrandColumn>
+    </AddProduct>
   );
 }
