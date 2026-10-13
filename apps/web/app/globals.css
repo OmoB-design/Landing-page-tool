@@ -865,6 +865,12 @@
   border-color: var(--color-edge-strong);
 }
 
+/* The content panel keeps room for its scrollbar, so content doesn't shift sideways between short
+   and long pages (or when a step grows into a scroll) where scrollbars take space. */
+@utility scrollbar-stable {
+  scrollbar-gutter: stable;
+}
+
 /* Figma template cards (Template/Library 173:3836, Template/Yours 147:9566): a 0.5 px
    Surface/Stroke border; inside it a 0.7 px Stroke line and (dark only) the Shadow/Edge line,
    drawn over the content as Figma does (the picture runs under them). Needs the card's own

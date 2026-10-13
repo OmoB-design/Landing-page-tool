@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { JobSteps } from "@/components/app/job-steps";
 import { toast } from "@/components/app/toaster";
-import { authLinkClass } from "@/components/app/auth-frame";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -80,41 +78,41 @@ export function NewBrandFlow() {
 
   if (draft || manual) {
     return (
-      <div className="mx-auto box-content flex w-full max-w-brands flex-col gap-6 px-6">
-        <BrandsHeading bordered />
+      <BrandsFrame>
+        <BrandLogoSlot
+          logoUrl={draft ? draftLogo(draft) : null}
+          searching={false}
+        />
         <ReviewNotes draft={draft} onStartOver={reset} />
         <BrandForm
           defaultValues={draft ? draftToForm(draft) : EMPTY_BRAND_FORM}
           submitLabel="Save brand"
           aboveFields={(form) =>
             draft ? (
-              <div className="flex flex-col gap-4">
-                <LogoPreview draft={draft} />
-                <PalettePicker
-                  candidates={draft.palette_candidates}
-                  onChoose={(hex) => {
-                    // Picking the current accent as primary swaps the two.
-                    const previous = form.getValues("palette_primary");
-                    if (
-                      form.getValues("palette_accent").toLowerCase() ===
-                      hex.toLowerCase()
-                    ) {
-                      form.setValue("palette_accent", previous, {
-                        shouldDirty: true,
-                      });
-                    }
-                    form.setValue("palette_primary", hex, {
+              <PalettePicker
+                candidates={draft.palette_candidates}
+                onChoose={(hex) => {
+                  // Picking the current accent as primary swaps the two.
+                  const previous = form.getValues("palette_primary");
+                  if (
+                    form.getValues("palette_accent").toLowerCase() ===
+                    hex.toLowerCase()
+                  ) {
+                    form.setValue("palette_accent", previous, {
                       shouldDirty: true,
                     });
-                    form.setValue("palette_dark", deriveDark(hex) ?? "", {
-                      shouldDirty: true,
-                    });
-                    form.setValue("palette_tint", deriveTint(hex) ?? "", {
-                      shouldDirty: true,
-                    });
-                  }}
-                />
-              </div>
+                  }
+                  form.setValue("palette_primary", hex, {
+                    shouldDirty: true,
+                  });
+                  form.setValue("palette_dark", deriveDark(hex) ?? "", {
+                    shouldDirty: true,
+                  });
+                  form.setValue("palette_tint", deriveTint(hex) ?? "", {
+                    shouldDirty: true,
+                  });
+                }}
+              />
             ) : null
           }
           onSubmit={async (values) => {
@@ -135,86 +133,79 @@ export function NewBrandFlow() {
             return result;
           }}
         />
-      </div>
+      </BrandsFrame>
     );
   }
 
   const failed = job?.status === "failed";
   return (
-    <div className="flex flex-col gap-4">
-      {/* Figma Brands/Enter details: the title and the form, closed by a full-width line. */}
-      <section className="flex flex-col items-center px-6 pb-8 divider-b-thin">
-        <div className="flex w-full max-w-brands flex-col gap-2">
-          <BrandsHeading bordered />
-          <form
-            className="mx-auto flex w-full max-w-100 flex-col gap-4 py-1.5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              fetchBrand();
-            }}
-            noValidate
+    <BrandsFrame
+      after={
+        job ? (
+          <div className="flex justify-center px-6 py-1.5">
+            <JobSteps
+              title="Fetching brand details"
+              steps={FETCH_STEPS}
+              job={job}
+              className="w-75 [&_.ui-progress]:pb-6.5"
+            />
+          </div>
+        ) : null
+      }
+    >
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          fetchBrand();
+        }}
+        noValidate
+      >
+        <BrandLogoSlot logoUrl={foundLogo(job)} searching={busy} />
+        <div className="flex flex-col gap-4">
+          <Field data-invalid={urlError ? true : undefined}>
+            <FieldLabel htmlFor="brand-url">Enter Website</FieldLabel>
+            <Input
+              id="brand-url"
+              type="url"
+              placeholder="https://www.yourbrand.com"
+              value={url}
+              aria-invalid={urlError ? true : undefined}
+              aria-describedby={urlError ? "brand-url-error" : undefined}
+              onChange={(event) => setUrl(event.target.value)}
+              // Figma's fetch frame keeps the field as it was; it just can't change mid-fetch.
+              readOnly={busy}
+            />
+            {urlError ? (
+              <FieldError id="brand-url-error">{urlError}</FieldError>
+            ) : null}
+          </Field>
+          <Button
+            type="submit"
+            size="compact"
+            className="h-8.5 w-full"
+            aria-disabled={busy || undefined}
           >
-            <BrandLogoSlot logoUrl={foundLogo(job)} searching={busy} />
-            <div className="flex flex-col gap-4">
-              <Field data-invalid={urlError ? true : undefined}>
-                <FieldLabel htmlFor="brand-url">Enter Website</FieldLabel>
-                <Input
-                  id="brand-url"
-                  type="url"
-                  placeholder="https://www.yourbrand.com"
-                  value={url}
-                  aria-invalid={urlError ? true : undefined}
-                  aria-describedby={urlError ? "brand-url-error" : undefined}
-                  onChange={(event) => setUrl(event.target.value)}
-                  // Figma's fetch frame keeps the field as it was; it just can't change mid-fetch.
-                  readOnly={busy}
-                />
-                {urlError ? (
-                  <FieldError id="brand-url-error">{urlError}</FieldError>
-                ) : null}
-              </Field>
-              <Button
-                type="submit"
-                size="compact"
-                className="h-8.5 w-full"
-                aria-disabled={busy || undefined}
-              >
-                {failed ? "Try again" : "Fetch details"}
-              </Button>
-              {startJob.error ? (
-                <p
-                  role="alert"
-                  className="text-type-caption-1 text-text-danger"
-                >
-                  {startJob.error.message}
-                </p>
-              ) : null}
-              <p className="text-center text-type-body-small font-medium text-sub-text">
-                No website, or prefer to type it?{" "}
-                <button
-                  type="button"
-                  className="text-heading-01 underline underline-offset-2 outline-none hover:text-sub-text focus-visible:rounded-xsm focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => setManual(true)}
-                >
-                  Fill by hand
-                </button>
-              </p>
-            </div>
-          </form>
+            {failed ? "Try again" : "Fetch details"}
+          </Button>
+          {startJob.error ? (
+            <p role="alert" className="text-type-caption-1 text-text-danger">
+              {startJob.error.message}
+            </p>
+          ) : null}
+          <p className="text-center text-type-body-small font-medium text-sub-text">
+            No website, or prefer to type it?{" "}
+            <button
+              type="button"
+              className="text-heading-01 underline underline-offset-2 outline-none hover:text-sub-text focus-visible:rounded-xsm focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setManual(true)}
+            >
+              Fill by hand
+            </button>
+          </p>
         </div>
-      </section>
-
-      {job ? (
-        <div className="flex justify-center px-6 py-1.5">
-          <JobSteps
-            title="Fetching brand details"
-            steps={FETCH_STEPS}
-            job={job}
-            className="w-75 [&_.ui-progress]:pb-6.5"
-          />
-        </div>
-      ) : null}
-    </div>
+      </form>
+    </BrandsFrame>
   );
 }
 
@@ -243,7 +234,7 @@ function ReviewNotes({
       : []),
   ];
   return (
-    <div className="flex max-w-2xl flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <p className="text-type-body-small text-sub-text">
           {draft
@@ -267,37 +258,37 @@ function ReviewNotes({
   );
 }
 
-function LogoPreview({ draft }: { draft: BrandDraft }) {
-  const src = draft.logo_url
-    ? draft.logo_url
-    : draft.logo_svg
-      ? `data:image/svg+xml;utf8,${encodeURIComponent(draft.logo_svg)}`
-      : null;
+/**
+ * The frame both steps share (Figma: Brands/Enter details), so nothing moves when the fetch
+ * finishes and the review opens: the title, then a 400 px column centred in the 871 px one,
+ * closed by a full-width line; anything after it (the loader) sits below the line.
+ */
+function BrandsFrame({
+  children,
+  after,
+}: {
+  children: ReactNode;
+  after?: ReactNode;
+}) {
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-stroke p-3">
-      <div className="flex h-12 w-32 items-center justify-center rounded-sm bg-foreground-01">
-        {src ? (
-          // The logo is shown from the brand's own site until the brand is saved.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={src}
-            alt="Logo found on the site"
-            className="max-h-10 max-w-28 object-contain"
-          />
-        ) : (
-          <span className="text-type-caption-1 text-caption-1">
-            No logo found
-          </span>
-        )}
-      </div>
-      <p className="text-type-caption-1 text-sub-text">
-        {src
-          ? "This logo is saved with the brand. You can replace it later."
-          : "You can add a logo later."}{" "}
-        <Link href="/brands" className={authLinkClass}>
-          Back to brands
-        </Link>
-      </p>
+    <div className="flex flex-col gap-4">
+      <section className="flex flex-col items-center px-6 pb-8 divider-b-thin">
+        <div className="flex w-full max-w-brands flex-col gap-2">
+          <BrandsHeading bordered />
+          <div className="mx-auto flex w-full max-w-100 flex-col gap-4 py-1.5">
+            {children}
+          </div>
+        </div>
+      </section>
+      {after}
     </div>
   );
+}
+
+/** The logo the fetch found: its address, or the inline SVG as a data URL. */
+function draftLogo(draft: BrandDraft): string | null {
+  if (draft.logo_url) return draft.logo_url;
+  if (draft.logo_svg)
+    return `data:image/svg+xml;utf8,${encodeURIComponent(draft.logo_svg)}`;
+  return null;
 }

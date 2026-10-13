@@ -512,6 +512,7 @@ as new entries.
 - **Owner confirmed:** no
 - **Follow-up (owner, 2026-10-13):** owner said push: committed D76 (81b883f) and the worker Dockerfile for Railway (28d0ca6, `services/worker/Dockerfile` + `.dockerignore`), pushed `main`; Vercel built it as Production (READY, dub1) at lp-platform-omob-designs-projects.vercel.app; share link for /sign-up reused (expires 2026-10-13 21:54). Live brand fetch still waits on the worker: the owner's first Railway build failed at the repo root (Railpack found the pnpm workspace); the fix is Root Directory `/services/worker` (Dockerfile build), then `WORKER_API_URL` on Vercel.
 
+- **Follow-up (owner, 2026-10-13):** the review step after a fetch (and Fill by hand) uses the website step's frame: same title, the 400 px column centred in the 871 px one, the logo square in the same spot (now holding the found logo; the separate logo card is gone), so nothing moves when the fetch finishes. Textareas take the Input Field look; colour swatches match the 46 px fields; the content panel reserves its scrollbar space (`scrollbar-stable`) so long and short pages don't shift sideways. Measured on a local server: title (440, 104), logo square (676, 226) and column x 676 identical on both steps. A Figma frame for this step is to come from the owner.
 
 ### Deploy D77 — Worker on Railway (owner request)
 - **Status:** complete (awaiting owner confirmation)

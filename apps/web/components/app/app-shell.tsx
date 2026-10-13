@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 flex-1 p-1.5">
           <main
             id="main"
-            className="min-w-0 flex-1 overflow-y-auto rounded-panel bg-surface-primary edge"
+            className="min-w-0 flex-1 scrollbar-stable overflow-y-auto rounded-panel bg-surface-primary edge"
           >
             {children}
           </main>
