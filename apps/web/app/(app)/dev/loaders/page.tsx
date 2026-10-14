@@ -9,10 +9,10 @@ import {
   SkeletonJobSteps,
   SkeletonText,
 } from "@/components/app/skeletons";
+import { BrandFormSkeleton } from "@/components/features/brands/brand-form";
 import { BrandOverviewSkeleton } from "@/components/features/brands/brand-overview";
 import { BrandsListSkeleton } from "@/components/features/brands/brands-list";
 import { LoaderTweaks } from "@/components/features/dev/loader-tweaks";
-import { ProductFormSkeleton } from "@/components/features/products/product-form";
 import { ProductsListSkeleton } from "@/components/features/products/products-list";
 import { TemplateCardSkeleton } from "@/components/features/templates/template-card";
 import { CreateWizardSkeleton } from "@/components/features/wizard/wizard-skeleton";
@@ -93,10 +93,8 @@ export default function LoadersPage() {
           </div>
         </Specimen>
 
-        <Specimen title="Product details">
-          <div className="max-w-150">
-            <ProductFormSkeleton />
-          </div>
+        <Specimen title="Brand DNA">
+          <BrandFormSkeleton />
         </Specimen>
       </div>
       <LoaderTweaks />

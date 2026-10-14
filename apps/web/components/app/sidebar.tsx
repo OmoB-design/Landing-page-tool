@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { getSessionContext } from "@/lib/auth/session";
 import { getOrgBrands } from "@/lib/brands/queries";
@@ -9,7 +9,6 @@ import { BrandNavMark } from "./mark";
 import { OrgSwitcher } from "./org-switcher";
 import { NavGroup, NavItem, SearchButton } from "./sidebar-parts";
 import { SidebarSetup } from "./sidebar-setup";
-import { SkeletonMark, SkeletonText } from "./skeletons";
 import { SidebarToggleButton } from "./sidebar-state";
 import { UserMenu } from "./user-menu";
 
@@ -21,16 +20,86 @@ const VISIBLE_BRANDS = 6;
  * Workspace group (Pages, Templates, Brands, Library, Analytics) and Your brands, 16 px above each. At the
  * bottom, 6 px from the edges: the getting-started card (until every step is done) above the
  * profile card, 8 px apart. Jobs and Notifications live in the page header. Rendered in the
- * desktop column and in the mobile sheet.
+ * desktop column and in the mobile sheet. Everything that needs the session arrives together.
  */
-export function SidebarNav() {
+export async function SidebarNav() {
+  const { user, orgs, currentOrg } = await getSessionContext();
+  const [setup, brands] = await Promise.all([
+    getSetupProgress(currentOrg.id),
+    getOrgBrands(currentOrg.id),
+  ]);
+  const showSetup = setup.done < setup.total;
+  return (
+    <SidebarFrame
+      workspace={<OrgSwitcher orgs={orgs} currentOrg={currentOrg} />}
+      brands={<BrandLinks brands={brands} />}
+      footer={
+        <>
+          <div
+            className={
+              showSetup
+                ? "flex flex-col gap-2 px-2 pb-1.5"
+                : "flex flex-col px-1.5 pb-1.5"
+            }
+          >
+            <SidebarSetup
+              steps={setup.steps}
+              done={setup.done}
+              total={setup.total}
+            />
+            <UserMenu
+              name={user.displayName}
+              email={user.email}
+              setup={{
+                done: setup.done,
+                total: setup.total,
+                nextLabel: setup.next?.label,
+                nextHref: setup.next?.href,
+              }}
+            />
+          </div>
+          <JobToasts userId={user.id} />
+        </>
+      }
+    />
+  );
+}
+
+/**
+ * The sidebar while the session loads: the same links, with the workspace name, brands and
+ * profile held back (no shimmer) until they arrive together.
+ */
+export function SidebarSkeleton() {
+  return (
+    <SidebarFrame
+      workspace={
+        // Keeps the top row at the workspace menu's height.
+        <span
+          aria-hidden
+          className="invisible flex items-center gap-1.5 px-1 py-0.5"
+        >
+          <span className="size-4.5" />
+          <span className="text-type-body-large font-medium">Workspace</span>
+        </span>
+      }
+    />
+  );
+}
+
+function SidebarFrame({
+  workspace,
+  brands,
+  footer,
+}: {
+  workspace: ReactNode;
+  brands?: ReactNode;
+  footer?: ReactNode;
+}) {
   return (
     <div className="flex h-full w-full flex-col justify-between bg-dashboard">
       <div className="flex min-h-0 flex-col">
         <div className="flex items-center justify-between px-2 py-3">
-          <Suspense fallback={<OrgSwitcherSkeleton />}>
-            <Workspace />
-          </Suspense>
+          {workspace}
           <div className="flex shrink-0 items-center gap-0.75">
             <SearchButton />
             <SidebarToggleButton action="close" />
@@ -49,112 +118,20 @@ export function SidebarNav() {
             <NavItem href="/library" icon="library" label="Library" />
             <NavItem href="/analytics" icon="analytics" label="Analytics" />
           </NavGroup>
-          <NavGroup label="Your brands">
-            <Suspense fallback={<BrandLinksSkeleton />}>
-              <BrandLinks />
-            </Suspense>
-          </NavGroup>
+          <NavGroup label="Your brands">{brands}</NavGroup>
         </nav>
       </div>
-      <Suspense fallback={<FooterSkeleton />}>
-        <Footer />
-      </Suspense>
-    </div>
-  );
-}
-
-/** The workspace menu, once the session is known. */
-async function Workspace() {
-  const { orgs, currentOrg } = await getSessionContext();
-  return <OrgSwitcher orgs={orgs} currentOrg={currentOrg} />;
-}
-
-/** The getting-started card (until every step is done) above the profile card; job toasts. */
-async function Footer() {
-  const { user, currentOrg } = await getSessionContext();
-  const setup = await getSetupProgress(currentOrg.id);
-  const showSetup = setup.done < setup.total;
-  return (
-    <>
-      <div
-        className={
-          showSetup
-            ? "flex flex-col gap-2 px-2 pb-1.5"
-            : "flex flex-col px-1.5 pb-1.5"
-        }
-      >
-        <SidebarSetup
-          steps={setup.steps}
-          done={setup.done}
-          total={setup.total}
-        />
-        <UserMenu
-          name={user.displayName}
-          email={user.email}
-          setup={{
-            done: setup.done,
-            total: setup.total,
-            nextLabel: setup.next?.label,
-            nextHref: setup.next?.href,
-          }}
-        />
-      </div>
-      <JobToasts userId={user.id} />
-    </>
-  );
-}
-
-/** The workspace menu while the session loads: the 18 px mark and the name, as in the trigger. */
-function OrgSwitcherSkeleton() {
-  return (
-    <span aria-hidden className="flex min-w-0 items-center gap-1.5 px-1 py-0.5">
-      <SkeletonMark size={18} />
-      <SkeletonText className="text-type-body-large" width={104} />
-    </span>
-  );
-}
-
-/** Brand rows while they load: the 16 px mark and the name, on the nav row's 20 px line. */
-function BrandLinksSkeleton() {
-  return (
-    <>
-      {[72, 56].map((width) => (
-        <span
-          key={width}
-          aria-hidden
-          className="flex items-center gap-1.5 px-2 py-1"
-        >
-          <SkeletonMark size={16} />
-          <SkeletonText
-            className="text-type-body-small leading-5"
-            width={width}
-          />
-        </span>
-      ))}
-    </>
-  );
-}
-
-/** The profile card while the session loads: the 30 px avatar, the name and the email. */
-function FooterSkeleton() {
-  return (
-    <div aria-hidden className="flex flex-col px-1.5 pb-1.5">
-      <div className="flex items-center gap-2.5 rounded-lg bg-surface-primary p-1.5 edge">
-        <SkeletonMark size={30} round />
-        <span className="flex min-w-0 flex-1 flex-col">
-          <SkeletonText className="text-type-caption-1" width={96} />
-          <SkeletonText className="text-type-caption-3" width={136} />
-        </span>
-      </div>
+      {footer}
     </div>
   );
 }
 
 /** The current org's brands with their letter marks; long lists end in "All brands". */
-async function BrandLinks() {
-  const { currentOrg } = await getSessionContext();
-  const brands = await getOrgBrands(currentOrg.id);
-
+function BrandLinks({
+  brands,
+}: {
+  brands: Awaited<ReturnType<typeof getOrgBrands>>;
+}) {
   if (brands.length === 0) {
     return (
       <p className="px-2 py-1 text-type-body-small font-medium text-heading-05">

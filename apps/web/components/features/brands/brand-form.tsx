@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTransition } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 
-import { SkeletonField, SkeletonStatus } from "@/components/app/skeletons";
+import { SkeletonStatus } from "@/components/app/skeletons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/field";
 import { AlertIcon, LoadingIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/shimmer-loader";
 import { Textarea } from "@/components/ui/textarea";
 import type { BrandActionResult } from "@/lib/brands/actions";
 import { EMPTY_SWATCH, deriveDark, deriveTint } from "@/lib/brands/palette";
@@ -215,39 +216,19 @@ export function BrandForm({
 }
 
 /**
- * Brand DNA while the brand loads: the Identity and Voice sections with every field's label and
- * frame, values as lines (the sections below follow when the form arrives).
+ * Brand DNA while the brand loads: the section titles, each over one plain block (the fields
+ * arrive with the form).
  */
 export function BrandFormSkeleton() {
   return (
-    <div className="@container flex max-w-2xl flex-col gap-10">
+    <div className="flex max-w-2xl flex-col gap-10">
       <SkeletonStatus label="Loading Brand DNA" />
       <div aria-hidden className="flex flex-col gap-10">
         <Section title="Identity">
-          <div className="grid gap-4 @lg:grid-cols-2">
-            <SkeletonField label="Brand name" value="30%" />
-            <SkeletonField label="Website" value="70%" />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <SkeletonField
-              label="Key prefix"
-              hint="2 to 4 letters for page keys, e.g. LUM-23."
-              value="25%"
-            />
-            <SkeletonField label="Emoji" hint="Optional." value="15%" />
-            <SkeletonField
-              label="Language"
-              hint="e.g. en or en-GB."
-              value="20%"
-            />
-          </div>
-          <SkeletonField label="Tagline" value="55%" />
+          <Skeleton height={200} radius="var(--radius-lg)" />
         </Section>
         <Section title="Voice">
-          <SkeletonField label="Positioning" value="80%" multiline />
-          <SkeletonField label="Audience" value="70%" multiline />
-          <SkeletonField label="Brand context" value="75%" multiline />
-          <SkeletonField label="Voice" value="80%" multiline />
+          <Skeleton height={200} radius="var(--radius-lg)" />
         </Section>
       </div>
     </div>

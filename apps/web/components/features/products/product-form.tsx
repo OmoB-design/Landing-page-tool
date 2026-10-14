@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 
-import { SkeletonButton, SkeletonField } from "@/components/app/skeletons";
 import { toast } from "@/components/app/toaster";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -203,46 +202,5 @@ function TextField({
         <FieldDescription id={hintId}>{description}</FieldDescription>
       ) : null}
     </Field>
-  );
-}
-
-/** The details form while the product loads: every field's label and frame, values as lines. */
-export function ProductFormSkeleton() {
-  return (
-    <div aria-hidden className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SkeletonField label="Product name" value="70%" />
-        <SkeletonField label="Product page" value="85%" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SkeletonField label="Price" hint="The regular price." value="35%" />
-        <SkeletonField
-          label="Sale price"
-          hint="Only if it's on sale."
-          value="35%"
-        />
-        <SkeletonField label="Currency" hint="e.g. USD." value="25%" />
-      </div>
-      <SkeletonField label="Description" value="80%" multiline />
-      <SkeletonField
-        label="Selling points"
-        hint="One per line."
-        value="60%"
-        multiline
-      />
-      <SkeletonField
-        label="Specs"
-        hint="One per line, as Label: value (e.g. Material: merino wool)."
-        value="50%"
-        multiline
-      />
-      <SkeletonField
-        label="Selling context"
-        hint="Who buys it and why, and any offer (bundles, subscriptions, guarantees)."
-        value="70%"
-        multiline
-      />
-      <SkeletonButton width={114} height={34} radius="var(--radius-md)" />
-    </div>
   );
 }

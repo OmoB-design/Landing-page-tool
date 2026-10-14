@@ -40,7 +40,7 @@ const DEFAULTS: Record<Theme, Tweaks> = {
     motion: "ui-shm-sweep",
     glow: 70,
     speed: 2,
-    delay: 150,
+    delay: 300,
     fade: 300,
   },
   dark: {
@@ -49,7 +49,7 @@ const DEFAULTS: Record<Theme, Tweaks> = {
     motion: "ui-shm-sweep",
     glow: 4,
     speed: 2,
-    delay: 150,
+    delay: 300,
     fade: 300,
   },
 };

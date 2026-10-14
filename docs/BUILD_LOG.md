@@ -552,3 +552,11 @@ as new entries.
 - **Verification:** web typecheck, ESLint, token checks, Prettier, vitest 124/124. /dev/loaders screenshotted in light and dark; the panel's opacity slider, Reset and theme switch checked in the browser; the fade-in animation (150 ms delay) confirmed on a skeleton. Throwaway account deleted.
 - **Owner confirmed:** no
 
+### Design pass — Loaders used sparingly (owner request)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-14
+- **Owner:** asked whether the loaders were excessive and what the proper way is; agreed to the recommendation.
+- **Summary:** skeletons wait 300 ms before showing. Brand DNA, the product page and the Overview drop their field-by-field skeletons for a few lines and one plain block per section (`ProductFormSkeleton` and `ProductBriefingSkeleton` removed). The sidebar is one Suspense boundary again: its links render at once, the workspace name, brands and profile arrive together with no shimmer (`SidebarSkeleton`). `experimental.staleTimes.dynamic: 30` in `next.config.ts`: going back to a page within 30 s shows it at once (saves and finished jobs call `router.refresh`, which clears it). Kept as they were: list rows, template cards, the wizard panel, the steps card, popover rows.
+- **Verification:** web typecheck, ESLint, token checks, Prettier, vitest 124/124. Loading states screenshotted with JavaScript off (Overview, Product, Brand DNA, sidebar). Brand tab timing on the dev server: first visits 1.3 to 2.4 s, revisits 86 to 290 ms (under the 300 ms delay, so no loader). Throwaway account deleted.
+- **Owner confirmed:** no
+

@@ -2,11 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
-import {
-  SkeletonButton,
-  SkeletonStatus,
-  SkeletonText,
-} from "@/components/app/skeletons";
+import { SkeletonStatus, SkeletonText } from "@/components/app/skeletons";
 import { ExternalLinkSmallFigmaIcon } from "@/components/ui/lp-icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import type { getBrand } from "@/lib/brands/queries";
@@ -166,8 +162,8 @@ function OverviewHeader({ brand }: { brand: Brand }) {
 }
 
 /**
- * The Overview while the brand loads: the same header and sections, with the logo, name, tagline,
- * website, colours, fonts and voice as lines in their own type sizes.
+ * The Overview while the brand loads: the logo box, name and tagline as lines, then the section
+ * titles, each over one plain block.
  */
 export function BrandOverviewSkeleton() {
   return (
@@ -175,86 +171,26 @@ export function BrandOverviewSkeleton() {
       header={
         <div className="mx-auto flex w-full max-w-150 flex-col gap-1.5 pr-1 pb-2.5">
           <SkeletonStatus label="Loading the brand" />
-          <div className="flex items-center justify-between gap-4">
-            <span className="flex h-11.5 items-center rounded-sm bg-foreground-01 px-3 py-1.5">
-              <SkeletonText className="font-serif text-type-title" width={88} />
-            </span>
-            <SkeletonButton width={98} radius="var(--radius-md)" />
-          </div>
+          <Skeleton width={112} height={46} radius="var(--radius-sm)" />
           <SkeletonText className="font-serif text-type-title" width={160} />
           <SkeletonText className="text-type-body-small" width={200} />
-          <SkeletonText className="text-type-body-small" width={136} />
         </div>
       }
     >
       <BrandColumn>
         <div aria-hidden className="flex flex-col gap-10">
           <Detail title="Colours">
-            <ul className="grid grid-cols-2 gap-4 sm:flex sm:justify-between sm:gap-2">
-              {SWATCHES.map((swatch) => (
-                <li key={swatch.name} className="flex flex-col gap-2">
-                  <Label>{swatch.label}</Label>
-                  <span className="flex items-center gap-2">
-                    <Skeleton
-                      width={65}
-                      height={36}
-                      radius="var(--radius-md)"
-                    />
-                    <ChipSkeleton size="hex" width={56} />
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <Skeleton height={60} radius="var(--radius-md)" />
           </Detail>
           <Detail title="Fonts">
-            <ul className="flex flex-wrap gap-4">
-              {["Headings", "Body"].map((label) => (
-                <li key={label} className="flex flex-col gap-2">
-                  <Label>{label}</Label>
-                  <ChipSkeleton width={104} />
-                </li>
-              ))}
-            </ul>
+            <Skeleton height={60} radius="var(--radius-md)" />
           </Detail>
           <Detail title="Voice">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col">
-                <SkeletonText className="text-type-body-small" width="100%" />
-                <SkeletonText className="text-type-body-small" width="64%" />
-              </div>
-              <ul className="flex flex-wrap gap-2">
-                {[152, 188, 124].map((width) => (
-                  <li key={width}>
-                    <ChipSkeleton width={width} />
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <Skeleton height={96} radius="var(--radius-md)" />
           </Detail>
         </div>
       </BrandColumn>
     </BrandFrame>
-  );
-}
-
-/** A chip whose words are still loading, in the chip's own frame. */
-function ChipSkeleton({
-  size = "text",
-  width,
-}: {
-  size?: "text" | "hex";
-  width: number;
-}) {
-  return (
-    <span
-      className={
-        size === "hex"
-          ? "flex rounded-xsm bg-foreground-01 px-1 py-0.5"
-          : "inline-flex rounded-md bg-foreground-01 p-2"
-      }
-    >
-      <SkeletonText className="text-type-body-small" width={width} />
-    </span>
   );
 }
 

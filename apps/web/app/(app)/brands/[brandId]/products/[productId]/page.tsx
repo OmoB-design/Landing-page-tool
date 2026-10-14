@@ -5,20 +5,10 @@ import { Suspense } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
-import {
-  SkeletonButton,
-  SkeletonStatus,
-  SkeletonText,
-} from "@/components/app/skeletons";
+import { SkeletonStatus, SkeletonText } from "@/components/app/skeletons";
 import { ProductActions } from "@/components/features/products/product-actions";
-import {
-  ProductBriefing,
-  ProductBriefingSkeleton,
-} from "@/components/features/products/product-briefing";
-import {
-  ProductForm,
-  ProductFormSkeleton,
-} from "@/components/features/products/product-form";
+import { ProductBriefing } from "@/components/features/products/product-briefing";
+import { ProductForm } from "@/components/features/products/product-form";
 import {
   ProductImages,
   ProductOptions,
@@ -178,8 +168,8 @@ async function Product({
 }
 
 /**
- * The product page while it loads: the same header, sections and briefing heading, with the name,
- * price, website, buttons, images and field values not ready yet.
+ * The product page while it loads: the back link, the name and price as lines, the action row as
+ * one bar, then the Images and Details titles, each over one plain block.
  */
 function ProductSkeleton() {
   return (
@@ -200,18 +190,9 @@ function ProductSkeleton() {
                 width={280}
               />
               <SkeletonText className="text-type-body-small" width={236} />
-              <SkeletonText className="text-type-body-small" width={152} />
             </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {[196, 104, 86].map((width) => (
-              <SkeletonButton
-                key={width}
-                width={width}
-                radius="var(--radius-md)"
-              />
-            ))}
-          </div>
+          <Skeleton width={360} height={30} radius="var(--radius-md)" />
         </div>
       }
     >
@@ -219,29 +200,13 @@ function ProductSkeleton() {
       <section aria-hidden className="px-6 pb-8 divider-b-thin">
         <div className="mx-auto flex w-full max-w-150 flex-col gap-6 py-1.5">
           <Section title="Images">
-            <ul aria-hidden className="grid grid-cols-3 gap-4 sm:grid-cols-4">
-              {[0, 1, 2, 3].map((index) => (
-                <li key={index}>
-                  <Skeleton
-                    height="auto"
-                    radius="var(--radius-sm)"
-                    className="aspect-square"
-                  />
-                </li>
-              ))}
-            </ul>
+            <Skeleton height={138} radius="var(--radius-md)" />
           </Section>
           <Section title="Details">
-            <ProductFormSkeleton />
-          </Section>
-          <Section title="Options and pricing" tight>
-            <SkeletonText className="text-type-body-small" width={220} />
+            <Skeleton height={260} radius="var(--radius-lg)" />
           </Section>
         </div>
       </section>
-      <BrandColumn width="wide">
-        <ProductBriefingSkeleton />
-      </BrandColumn>
     </BrandFrame>
   );
 }

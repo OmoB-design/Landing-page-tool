@@ -430,7 +430,8 @@
   --shadow-light: 0 1px 2px 0 var(--color-foreground-01);
   --shadow-focus: 0 0 1px 2px
     color-mix(in srgb, var(--blue-300) 15%, transparent);
-  /* Loading skeletons (Skeleton in shimmer-loader). They wait `delay` before fading in over
+  /* Loading skeletons (Skeleton in shimmer-loader). They wait `delay` (about the point a wait
+     becomes noticeable) before fading in over
      `fade`, so quick loads show no flash; then a soft light sweeps across them every `speed`
      (`motion` ui-shm-sweep), or they breathe (skeleton-pulse), or hold still (none). Tune them
      live at /dev/loaders. */
@@ -438,7 +439,7 @@
   --skeleton-base: var(--color-foreground-03);
   --skeleton-glow: color-mix(in srgb, var(--color-on-dark) 70%, transparent);
   --skeleton-speed: 2s;
-  --skeleton-delay: 150ms;
+  --skeleton-delay: 300ms;
   --skeleton-fade: 300ms;
   --skeleton-motion: ui-shm-sweep;
 }

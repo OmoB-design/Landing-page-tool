@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import { MobileSidebar } from "./mobile-sidebar";
-import { SidebarNav } from "./sidebar";
+import { SidebarNav, SidebarSkeleton } from "./sidebar";
 import { SidebarProvider } from "./sidebar-state";
 
 /**
@@ -11,8 +11,12 @@ import { SidebarProvider } from "./sidebar-state";
  * 0.5 px Border-on-bg stroke (`edge`) and no shadow (D72).
  */
 export function AppShell({ children }: { children: ReactNode }) {
-  // The sidebar's own parts wait for the session; its links show at once.
-  const sidebar = <SidebarNav />;
+  // The links show at once; the workspace, brands and profile arrive together.
+  const sidebar = (
+    <Suspense fallback={<SidebarSkeleton />}>
+      <SidebarNav />
+    </Suspense>
+  );
   return (
     <SidebarProvider>
       <a
