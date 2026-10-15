@@ -3,80 +3,76 @@ import {
   SkeletonStatus,
   SkeletonText,
 } from "@/components/app/skeletons";
+import { Skeleton } from "@/components/ui/shimmer-loader";
 import { WIZARD_STEPS } from "@/lib/wizard/state";
 
 /**
- * The create wizard while its brands, products and templates load: the same panel, the step bar
- * with its six numbered steps (none current yet), the first step's title, hint and two pickers as
- * lines, the dossier and the footer with Next.
+ * The create wizard while its brands, products and templates load: the same fixed frame, the
+ * progress column with its six steps (none current yet), the step's header as lines, two empty
+ * dropdowns, the footer with Next, and the dossier's header over a block.
  */
 export function CreateWizardSkeleton() {
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-stroke bg-surface-primary">
+    <div className="flex flex-col border-(length:--wizard-line) border-stroke bg-surface-primary lg:min-h-120 lg:flex-1 lg:flex-row">
       <SkeletonStatus label="Loading the wizard" />
-      <div aria-hidden className="contents">
-        <div className="border-b border-stroke px-6 py-4">
-          <div className="@container">
-            <div className="flex flex-col gap-2 @2xl:hidden">
-              <SkeletonText className="text-type-caption-1" width={160} />
-              <div className="h-1 rounded-full bg-foreground-01" />
-            </div>
-            <ol className="hidden items-center @2xl:flex">
-              {WIZARD_STEPS.map((step, index) => (
-                <li
-                  key={step.id}
-                  className="flex flex-1 items-center last:flex-none"
-                >
-                  <span className="flex shrink-0 items-center gap-2 px-1.5 py-1 text-type-caption-1 text-caption-1">
-                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-stroke-strong tabular-nums">
-                      {index + 1}
-                    </span>
-                    <span className="hidden @4xl:inline">{step.label}</span>
-                  </span>
-                  {index < WIZARD_STEPS.length - 1 ? (
-                    <span className="mx-2 h-px min-w-4 flex-1 bg-stroke-strong" />
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-        <div className="flex flex-col lg:flex-row">
-          <div className="flex min-w-0 flex-1 flex-col gap-5 p-6">
-            <div className="flex flex-col gap-1">
-              <SkeletonText className="text-type-h6" width={184} />
-              <SkeletonText className="text-type-caption-1" width={300} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[56, 64].map((label) => (
-                <div key={label} className="flex flex-col gap-1.5">
-                  <SkeletonText className="text-type-caption-1" width={label} />
-                  <div className="flex h-9 items-center rounded-sm border border-stroke-strong bg-surface-primary pr-2 pl-2.5">
-                    <SkeletonText
-                      className="text-type-body-small"
-                      width="55%"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="shrink-0 border-t border-stroke bg-dashboard p-5 lg:w-wizard-dossier lg:border-t-0 lg:border-l">
-            <div className="flex flex-col gap-5">
-              <span className="text-type-body-small font-semibold">
-                Brand dossier
-              </span>
-              <div className="flex flex-col">
-                <SkeletonText className="text-type-caption-1" width="100%" />
-                <SkeletonText className="text-type-caption-1" width="72%" />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center border-t border-stroke px-6 py-3">
-          <span className="ml-auto">
-            <SkeletonButton width={72} height={28} />
+      <div
+        aria-hidden
+        className="hidden w-50 shrink-0 flex-col border-r-(length:--wizard-line) border-stroke lg:flex"
+      >
+        <div className="flex h-13 shrink-0 flex-col justify-center gap-0.5 border-b-(length:--wizard-line) border-stroke bg-dashboard px-4">
+          <span className="text-type-body-small font-medium text-heading-01">
+            Progress
           </span>
+          <SkeletonText className="text-type-caption-2" width={72} />
+        </div>
+        <ol className="flex flex-col gap-1 px-3 pt-6 pb-3">
+          {WIZARD_STEPS.map((step) => (
+            <li
+              key={step.id}
+              className="flex h-7 items-center gap-1.5 px-1.5 text-type-body-small font-medium text-heading-05"
+            >
+              <span className="size-2.5 shrink-0 rounded-full bg-meta-dot" />
+              {step.label}
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div aria-hidden className="flex min-w-0 flex-1 flex-col lg:min-h-0">
+        <div className="flex h-13 shrink-0 items-center border-b-(length:--wizard-line) border-stroke bg-dashboard px-4">
+          <div className="mx-auto flex w-full max-w-175 flex-col gap-1">
+            <SkeletonText className="text-type-body-small" width={104} />
+            <SkeletonText className="text-type-caption-2" width={300} />
+          </div>
+        </div>
+        <div className="px-6 pt-6 pb-10 lg:min-h-0 lg:flex-1">
+          <div className="mx-auto grid w-full max-w-175 gap-4 sm:grid-cols-2">
+            {[40, 52].map((label) => (
+              <div key={label} className="flex flex-col gap-1.5">
+                <SkeletonText className="text-type-body-small" width={label} />
+                <div className="flex h-10.5 items-center rounded-lg border border-stroke bg-surface-primary px-3.5 shadow-light">
+                  <SkeletonText className="text-type-caption-1" width="45%" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex h-13 shrink-0 items-center border-t-(length:--wizard-line) border-stroke bg-dashboard px-4">
+          <span className="ml-auto">
+            <SkeletonButton width={67} height={26} radius="var(--radius-md)" />
+          </span>
+        </div>
+      </div>
+      <div
+        aria-hidden
+        className="flex shrink-0 flex-col border-t-(length:--wizard-line) border-stroke bg-surface-modal lg:min-h-0 lg:w-wizard-dossier lg:border-t-0 lg:border-l-(length:--wizard-line)"
+      >
+        <div className="flex h-13 shrink-0 items-center border-b-(length:--wizard-line) border-stroke bg-dashboard px-4">
+          <span className="text-type-body-small font-medium text-heading-02">
+            Brand &amp; product
+          </span>
+        </div>
+        <div className="flex flex-col gap-2.5 bg-dashboard px-4 pt-6 pb-3 lg:min-h-0 lg:flex-1">
+          <Skeleton height={99} radius="0" />
         </div>
       </div>
     </div>

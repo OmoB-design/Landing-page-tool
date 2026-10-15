@@ -13,8 +13,9 @@ import {
   FieldError,
   FieldLabel,
 } from "@/components/ui/field";
-import { AlertIcon, LoadingIcon } from "@/components/ui/icons";
+import { AlertIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import { Textarea } from "@/components/ui/textarea";
 import type { BrandActionResult } from "@/lib/brands/actions";
@@ -202,12 +203,7 @@ export function BrandForm({
           disabled={pending}
           className="h-8.5 px-4"
         >
-          {pending ? (
-            <LoadingIcon
-              aria-hidden
-              className="animate-spin motion-reduce:animate-spin-slow"
-            />
-          ) : null}
+          {pending ? <Spinner className="size-3.5" /> : null}
           {submitLabel}
         </Button>
       </div>

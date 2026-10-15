@@ -16,6 +16,8 @@ import { LoaderTweaks } from "@/components/features/dev/loader-tweaks";
 import { ProductsListSkeleton } from "@/components/features/products/products-list";
 import { TemplateCardSkeleton } from "@/components/features/templates/template-card";
 import { CreateWizardSkeleton } from "@/components/features/wizard/wizard-skeleton";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 export const metadata: Metadata = { title: "Loaders" };
 
@@ -38,6 +40,22 @@ export default function LoadersPage() {
             theme keeps its own values.
           </p>
         </div>
+
+        <Specimen title="Spinner (actions in progress)">
+          <div className="flex flex-wrap items-center gap-6 text-icon-system">
+            <Spinner label="Loading" />
+            <Spinner className="size-3.5" />
+            <Spinner className="size-2.5 spinner-thin text-spot-500-blue" />
+            <Button size="compact" className="h-8.5 px-4" disabled>
+              <Spinner className="size-3.5" />
+              Save changes
+            </Button>
+            <span className="flex items-center gap-2 text-type-body-small font-medium text-sub-text">
+              <Spinner className="size-4" />
+              Loading people…
+            </span>
+          </div>
+        </Specimen>
 
         <Specimen title="Text, fields and buttons">
           <div className="grid gap-8 md:grid-cols-2">

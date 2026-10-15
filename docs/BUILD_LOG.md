@@ -560,3 +560,30 @@ as new entries.
 - **Verification:** web typecheck, ESLint, token checks, Prettier, vitest 124/124. Loading states screenshotted with JavaScript off (Overview, Product, Brand DNA, sidebar). Brand tab timing on the dev server: first visits 1.3 to 2.4 s, revisits 86 to 290 ms (under the 300 ms delay, so no loader). Throwaway account deleted.
 - **Owner confirmed:** no
 
+### Design pass D79 — Create new page from Figma (owner request)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-14
+- **Owner:** asked for the "Create new page" section built to the finest detail in light and dark, following Emil's design principles, with the frame fixed and its content scrolling; Gender and Age kept and built into the design, the age dropdown in the style of the sidebar's workspace menu; the dossier still showing earlier choices.
+- **Summary:** see D79. New: `components/app/select-field.tsx`, `components/features/wizard/progress.tsx`; rewritten `create-wizard.tsx`, `steps.tsx`, `dossier.tsx`, `review-step.tsx`, `wizard-skeleton.tsx`, `app/(app)/pages/new/page.tsx`; 15 Figma icons in `lp-icons.tsx`; tokens `--wizard-line`, `--line-hairline`, `--shadow-wizard-footer`, `--radius-icon`, `--animate-step-in`, `divider-t-strong` / `divider-b-strong`, dossier width 312 px; `DropdownMenuRadioItem` gets `checkClassName`; brand colours carry their names; page header titles are 13 px medium.
+- **Verification:** web typecheck, ESLint, token checks, Prettier, vitest 124/124. The whole wizard walked in the browser in light and dark with a throwaway account (seeded brand, products and briefing; no AI calls) and each step compared with its Figma frame at 1512 × 982 (frame top 195 vs 196, height 748, 33 px to the panel's foot; cards 34 px under the tabs). Fixed frame confirmed on Emphasis (content 1,259 px scrolls in 642 px); footer shadow only while more is below; a mouse pick leaves no focus outline; no horizontal scroll at 390 px. Account deleted.
+- **Owner confirmed:** no
+- **Follow-up (2026-10-15, owner review):** every light frame diffed against its dark twin layer by layer and the dark-only colours applied (see D79 "Light and dark"); the progress dots and current-step colour from the frames' majority; template cards left-aligned under the tabs; the emphasis "Add your own" row back to 34 px; the dropdown's end fills its height; the briefing chip's dashed line drawn as a true 4/4 dash. Checked at 1440 × 900 in light and dark (close-ups of the dropdown and chip); typecheck, lint, tokens, vitest 124/124 (three tests timed out once under load and passed on rerun).
+
+### Design pass D80 — Create new page full screen (owner request)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-15
+- **Owner:** asked whether the sidebar should collapse for page creation; agreed to a full-screen view instead, with a placeholder header in the app's design language.
+- **Summary:** see D80. `app/(focus)/layout.tsx` (QueryProvider, the floating panel without the sidebar, Toaster); `/pages/new` moved there; `components/features/wizard/create-header.tsx` (×, title, Jobs, Notifications, Esc, the leave dialog); `components/app/remember-path.tsx` in the app shell records the last workspace page per tab.
+- **Verification:** typecheck, ESLint, token checks, vitest 124/124 (with two workers; the machine times tests out under load). In the browser at 1440 × 900: the sidebar's New page opens the full-screen view (frame 1,330 px wide); Esc with nothing chosen returns to Brands; after choosing a brand Esc asks, Stay stays, Leave returns; from a product page's New Page for this product, leaving returns to that product. Light and dark screenshots. Throwaway account deleted.
+- **Owner confirmed:** no
+- **Follow-up (owner):** the step's content column is 700 px; template cards centred under the tabs; the header keeps "New page" on the left and moves × to the right, without Jobs and Notifications. Checked at 1440 × 900 (column 700 px, cards 75 px in on each side).
+- **Fix (owner report):** after leaving through the dialog, the next New page opened with "Leave page creation?" already showing: Next keeps a left page alive in the background (React Activity) and restored the open dialog. The dialog now closes as you leave and whenever the view is put away. Reproduced and verified in the browser.
+
+### Design pass D81 — Loading states after Quality (owner request)
+- **Status:** complete (awaiting owner confirmation)
+- **Date:** 2026-10-15
+- **Owner:** "look at usequality … how they implemented load states … if theirs is better, let us implement it."
+- **Summary:** see D81. Skeleton defaults now Quality's pulse (Foreground-02, 2 s, Tailwind's curve, no sweep) with our 300 ms wait and fade kept; `--skeleton-ease` added; the tweak panel's defaults match and its motion "Breathe" is now "Pulse". New `components/ui/spinner.tsx` and `spinner` / `spinner-thin` utilities (Quality's arc keyframes) replace LoaderCircle in product and brand Save, Build page, Use Template, the sign-in buttons and the job tray's running jobs. /dev/loaders shows the spinner.
+- **Verification:** typecheck, ESLint, token checks, vitest 124/124 (two workers). On /dev/loaders in light and dark: the skeleton fill sampled from full to half strength and back over 2 s; the spinner runs both animations (frames differ); screenshots. Throwaway account deleted.
+- **Owner confirmed:** no
+

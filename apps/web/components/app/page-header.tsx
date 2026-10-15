@@ -25,7 +25,7 @@ type PageHeaderProps = {
 };
 
 /** The page panel's header (DESIGN.md §2; Figma: Home): 49 px with its border, 16 px in counting the panel's border; a mark if
- * any, the 13 px regular title, a divider, then tabs; actions, Jobs and Notifications on the right. Opens the sidebar on small screens or when it's collapsed. */
+ * any, the 13 px medium Heading-01 title (every Figma page header), a divider, then tabs; actions, Jobs and Notifications on the right. Opens the sidebar on small screens or when it's collapsed. */
 export function PageHeader({
   title,
   emoji,
@@ -71,7 +71,7 @@ export function PageHeader({
             "truncate",
             crumb
               ? "text-type-caption-1 font-medium text-heading-01"
-              : "text-type-body-small font-normal",
+              : "text-type-body-small font-medium text-heading-01",
           )}
         >
           {title}

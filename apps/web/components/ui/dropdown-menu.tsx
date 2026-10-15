@@ -131,9 +131,12 @@ function DropdownMenuRadioItem({
   className,
   children,
   inset,
+  checkClassName,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem> & {
   inset?: boolean;
+  /** Styles the tick on the chosen item (e.g. the workspace menu's 14 px Icon-System tick). */
+  checkClassName?: string;
 }) {
   return (
     <DropdownMenuPrimitive.RadioItem
@@ -150,7 +153,7 @@ function DropdownMenuRadioItem({
         data-slot="dropdown-menu-radio-item-indicator"
       >
         <DropdownMenuPrimitive.ItemIndicator>
-          <CheckIcon />
+          <CheckIcon className={checkClassName} />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}

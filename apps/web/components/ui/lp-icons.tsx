@@ -1422,3 +1422,514 @@ export function RefreshFigmaIcon(props: IconProps) {
     </svg>
   );
 }
+
+// ── Create new page (Figma section 353:11543) ──────────────────────────────────────────
+
+/** Arrow right (wizard Back and Next, 14 px; Back mirrors it). */
+export function WizardArrowIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M11.8611 7H2.13889"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.55556 3.69444L11.8611 7L8.55556 10.3056"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Image (wizard option cards: Generate images, Product photos only, Let the desk pick; 16 px). */
+export function ImageOptionIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M5.85511 10.8827L10.4827 6.26044C10.8302 5.91289 11.3929 5.91289 11.7396 6.26044L14.4444 8.96533"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M1.55556 6V11.7778C1.55556 12.76 2.35111 13.5556 3.33333 13.5556H10.8889"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6 10.8889L12.6667 10.8889C13.6485 10.8889 14.4444 10.093 14.4444 9.11111V4.22222C14.4444 3.24038 13.6485 2.44444 12.6667 2.44444L6 2.44444C5.01816 2.44444 4.22222 3.24038 4.22222 4.22222V9.11111C4.22222 10.093 5.01816 10.8889 6 10.8889Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.11111 6.22222C6.62133 6.22222 6.22222 5.82311 6.22222 5.33333C6.22222 4.84356 6.62133 4.44444 7.11111 4.44444C7.60089 4.44444 8 4.84356 8 5.33333C8 5.82311 7.60089 6.22222 7.11111 6.22222Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Camera (image style: Editorial; 16 px). */
+export function StyleCameraIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M12.6667 3.33333H10.6667L10.216 2.13244C10.0862 1.78578 9.75467 1.55556 9.384 1.55556H6.616C6.24533 1.55556 5.91378 1.78578 5.784 2.13244L5.33333 3.33333H3.33333C2.35111 3.33333 1.55556 4.12889 1.55556 5.11111V10.8889C1.55556 11.8711 2.35111 12.6667 3.33333 12.6667H12.6667C13.6489 12.6667 14.4444 11.8711 14.4444 10.8889V5.11111C14.4444 4.12889 13.6489 3.33333 12.6667 3.33333Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 10.4444C9.35003 10.4444 10.4444 9.35003 10.4444 8C10.4444 6.64997 9.35003 5.55556 8 5.55556C6.64997 5.55556 5.55556 6.64997 5.55556 8C5.55556 9.35003 6.64997 10.4444 8 10.4444Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.77778 6.22222C4.14597 6.22222 4.44444 5.92375 4.44444 5.55556C4.44444 5.18737 4.14597 4.88889 3.77778 4.88889C3.40959 4.88889 3.11111 5.18737 3.11111 5.55556C3.11111 5.92375 3.40959 6.22222 3.77778 6.22222Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Phone (image style: UGC; 14 px). */
+export function StylePhoneIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M9.52778 0.777778H4.47222C3.29233 0.777778 2.33333 1.73678 2.33333 2.91667V11.0833C2.33333 12.2632 3.29233 13.2222 4.47222 13.2222H9.52778C10.7077 13.2222 11.6667 12.2632 11.6667 11.0833V2.91667C11.6667 1.73678 10.7077 0.777778 9.52778 0.777778ZM10.5 11.0833C10.5 11.6192 10.0637 12.0556 9.52778 12.0556H4.47222C3.93633 12.0556 3.5 11.6192 3.5 11.0833V2.91667C3.5 2.38078 3.93633 1.94444 4.47222 1.94444H5.44444V2.13889C5.44444 2.46089 5.70578 2.72222 6.02778 2.72222H7.97222C8.29422 2.72222 8.55556 2.46089 8.55556 2.13889V1.94444H9.52778C10.0637 1.94444 10.5 2.38078 10.5 2.91667V11.0833Z"
+        fill="currentColor"
+      />
+      <path
+        d="M7 10.8889C7.42955 10.8889 7.77778 10.5407 7.77778 10.1111C7.77778 9.68156 7.42955 9.33333 7 9.33333C6.57045 9.33333 6.22222 9.68156 6.22222 10.1111C6.22222 10.5407 6.57045 10.8889 7 10.8889Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Aperture (image style: Studio; 14 px). */
+export function StyleApertureIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M8.72744 2.82956C9.41111 2.33567 10.3717 2.39711 10.9877 3.01233C11.6037 3.62833 11.6643 4.58811 11.1704 5.27256"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.1704 8.72744C11.6643 9.41111 11.6029 10.3717 10.9877 10.9877C10.3717 11.6037 9.41189 11.6643 8.72744 11.1704"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.27256 11.1704C4.58889 11.6643 3.62833 11.6029 3.01233 10.9877C2.39633 10.3717 2.33567 9.41189 2.82956 8.72744"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2.82956 5.27256C2.33567 4.58889 2.39711 3.62833 3.01233 3.01233C3.62833 2.39633 4.58811 2.33567 5.27256 2.82956"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.75 3.11111C8.75 2.14461 7.9665 1.36111 7 1.36111C6.0335 1.36111 5.25 2.14461 5.25 3.11111V4.27778C5.25 5.24428 6.0335 6.02778 7 6.02778C7.9665 6.02778 8.75 5.24428 8.75 4.27778V3.11111Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.8889 8.75C11.8554 8.75 12.6389 7.9665 12.6389 7C12.6389 6.0335 11.8554 5.25 10.8889 5.25H9.72222C8.75572 5.25 7.97222 6.0335 7.97222 7C7.97222 7.9665 8.75572 8.75 9.72222 8.75H10.8889Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.25 10.8889C5.25 11.8554 6.0335 12.6389 7 12.6389C7.9665 12.6389 8.75 11.8554 8.75 10.8889V9.72222C8.75 8.75572 7.9665 7.97222 7 7.97222C6.0335 7.97222 5.25 8.75572 5.25 9.72222V10.8889Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.11111 5.25C2.14461 5.25 1.36111 6.0335 1.36111 7C1.36111 7.9665 2.14461 8.75 3.11111 8.75H4.27778C5.24428 8.75 6.02778 7.9665 6.02778 7C6.02778 6.0335 5.24428 5.25 4.27778 5.25H3.11111Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Magnifier (image style: Macro close-up; 14 px). */
+export function StyleZoomIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M12.25 12.25L9.05225 9.05225"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.02778 10.3056C8.39028 10.3056 10.3056 8.39028 10.3056 6.02778C10.3056 3.66528 8.39028 1.75 6.02778 1.75C3.66528 1.75 1.75 3.66528 1.75 6.02778C1.75 8.39028 3.66528 10.3056 6.02778 10.3056Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.02778 4.08333V7.97222"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.97222 6.02778H4.08333"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Brush (image style: Editorial illustration; 14 px). */
+export function StyleBrushIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M5.41022 7.03422L10.5264 1.918C11.0094 1.435 11.7934 1.435 12.2764 1.918C12.7594 2.401 12.7594 3.185 12.2764 3.668L7.16022 8.78422"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M1.36111 11.438C3.46344 12.0696 5.16911 12.1224 6.56367 10.6952C7.40444 9.85133 7.40444 8.48244 6.56367 7.63778C5.72289 6.79311 4.36567 6.78067 3.51789 7.63778C2.13889 9.03156 3.34289 10.3553 1.36111 11.438Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Figure (image style: Anatomical explainer; 14 px). */
+export function StyleFigureIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M7 2.91667C7.64433 2.91667 8.16667 2.39433 8.16667 1.75C8.16667 1.10567 7.64433 0.583333 7 0.583333C6.35567 0.583333 5.83333 1.10567 5.83333 1.75C5.83333 2.39433 6.35567 2.91667 7 2.91667Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.63889 12.8333V4.85333"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.36111 4.85333V12.8333"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2.13889 4.47222C3.50078 4.70556 5.14111 4.88522 7 4.88522C8.38211 4.88522 10.0287 4.78567 11.8611 4.47222"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.63889 8.75H8.36111"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Diagram (image style: Instructional diagram; 14 px). */
+export function StyleDiagramIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M4.86111 9.91667V8.16667C4.86111 7.52236 5.38347 7 6.02778 7H7.97222C8.61653 7 9.13889 6.47764 9.13889 5.83333V4.08333"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.4722 1.36111H6.80556C6.376 1.36111 6.02778 1.70933 6.02778 2.13889V3.30556C6.02778 3.73511 6.376 4.08333 6.80556 4.08333H11.4722C11.9018 4.08333 12.25 3.73511 12.25 3.30556V2.13889C12.25 1.70933 11.9018 1.36111 11.4722 1.36111Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.19444 9.91667H2.52778C2.09822 9.91667 1.75 10.2649 1.75 10.6944V11.8611C1.75 12.2907 2.09822 12.6389 2.52778 12.6389H7.19444C7.624 12.6389 7.97222 12.2907 7.97222 11.8611V10.6944C7.97222 10.2649 7.624 9.91667 7.19444 9.91667Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Cube (image style: 3D render; 14 px). */
+export function StyleCubeIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M2.34656 9.69889L7 7L11.6534 9.69889"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 1.60378V7"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.8611 8.92344V5.07656C11.8611 4.522 11.5656 4.00944 11.0857 3.731L7.78011 1.81378C7.29711 1.53378 6.70211 1.53378 6.21911 1.81378L2.91433 3.731C2.43444 4.00944 2.13889 4.522 2.13889 5.07656V8.92344C2.13889 9.478 2.43444 9.99056 2.91433 10.269L6.21989 12.1862C6.70289 12.4662 7.29789 12.4662 7.78089 12.1862L11.0864 10.269C11.5663 9.99056 11.8619 9.478 11.8619 8.92344H11.8611Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Checkbox, empty (Emphasis selector, 14 px). */
+export function CheckboxFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M10.2083 1.45833H3.79167C2.503 1.45833 1.45833 2.503 1.45833 3.79167V10.2083C1.45833 11.497 2.503 12.5417 3.79167 12.5417H10.2083C11.497 12.5417 12.5417 11.497 12.5417 10.2083V3.79167C12.5417 2.503 11.497 1.45833 10.2083 1.45833Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Checkbox, checked (Emphasis selector, 14 px): Button-Primary with the tick cut out. */
+export function CheckboxCheckedFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M10.2083 0.583334H3.79167C2.02183 0.583334 0.583334 2.02183 0.583334 3.79167V10.2083C0.583334 11.9782 2.02183 13.4167 3.79167 13.4167H10.2083C11.9782 13.4167 13.4167 11.9782 13.4167 10.2083V3.79167C13.4167 2.02183 11.9782 0.583334 10.2083 0.583334ZM10.3285 5.19167L6.825 9.85833C6.67333 10.0613 6.44 10.1873 6.188 10.206C6.167 10.2072 6.146 10.2083 6.12617 10.2083C5.89517 10.2083 5.67233 10.1173 5.50783 9.95283L3.75433 8.20283C3.4125 7.86217 3.41133 7.308 3.75433 6.965C4.095 6.622 4.64917 6.622 4.99217 6.965L6.03283 8.00333L8.932 4.14167C9.2225 3.7555 9.772 3.67733 10.157 3.96783C10.5443 4.25833 10.6213 4.80667 10.3308 5.19283L10.3285 5.19167Z"
+        className="fill-button-primary"
+      />
+    </svg>
+  );
+}
+
+/** Plus, stroked (Emphasis: Add, 14 px). */
+export function AddPlusIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M12.5417 7H1.45833"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 12.5417V1.45833"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** A finished wizard step (10 px): Spot-500-Blue with a white tick. */
+export function ProgressDoneIcon(props: IconProps) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <circle cx="5" cy="5" r="5" className="fill-spot-500-blue" />
+      <path
+        d="M4.11513 7.11303C4.01513 7.11614 3.91158 7.0637 3.84847 6.9797L2.84847 5.64637C2.7378 5.49881 2.76802 5.28992 2.91513 5.1797C3.06313 5.06948 3.27158 5.09925 3.3818 5.24637L4.11602 6.22548L6.61824 2.90859C6.72935 2.76148 6.93824 2.73259 7.08491 2.84325C7.23202 2.95437 7.26091 3.16325 7.15024 3.30992L4.38136 6.98014C4.31824 7.0637 4.22002 7.11303 4.11513 7.11303Z"
+        className="fill-button-primary-text"
+      />
+    </svg>
+  );
+}
+
+/** Checkbox, checked and outlined (Emphasis rows in the dark frames, 14 px). */
+export function CheckboxTickedFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M10.2083 1.45833H3.79167C2.503 1.45833 1.45833 2.503 1.45833 3.79167V10.2083C1.45833 11.497 2.503 12.5417 3.79167 12.5417H10.2083C11.497 12.5417 12.5417 11.497 12.5417 10.2083V3.79167C12.5417 2.503 11.497 1.45833 10.2083 1.45833Z"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.3715 7.58333L6.125 9.33333L9.6285 4.66667"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

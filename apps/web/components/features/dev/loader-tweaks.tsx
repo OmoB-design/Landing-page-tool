@@ -32,27 +32,17 @@ type Tweaks = {
   fade: number;
 };
 
-/** The defaults in app/globals.css (`--skeleton-*` in :root and .dark). */
-const DEFAULTS: Record<Theme, Tweaks> = {
-  light: {
-    opacity: 70,
-    base: "foreground-03",
-    motion: "ui-shm-sweep",
-    glow: 70,
-    speed: 2,
-    delay: 300,
-    fade: 300,
-  },
-  dark: {
-    opacity: 100,
-    base: "foreground-02",
-    motion: "ui-shm-sweep",
-    glow: 4,
-    speed: 2,
-    delay: 300,
-    fade: 300,
-  },
+/** The defaults in app/globals.css (`--skeleton-*`): Quality's pulse, the same in both themes. */
+const QUALITY: Tweaks = {
+  opacity: 100,
+  base: "foreground-02",
+  motion: "skeleton-pulse",
+  glow: 0,
+  speed: 2,
+  delay: 300,
+  fade: 300,
 };
+const DEFAULTS: Record<Theme, Tweaks> = { light: QUALITY, dark: QUALITY };
 
 const BASES = [
   { id: "foreground-01", label: "Foreground-01" },
@@ -64,7 +54,7 @@ const BASES = [
 
 const MOTIONS: { id: Motion; label: string }[] = [
   { id: "ui-shm-sweep", label: "Sweep" },
-  { id: "skeleton-pulse", label: "Breathe" },
+  { id: "skeleton-pulse", label: "Pulse" },
   { id: "none", label: "Still" },
 ];
 
@@ -81,6 +71,11 @@ function variables(tweaks: Tweaks): Record<string, string> {
     "--skeleton-delay": `${tweaks.delay}ms`,
     "--skeleton-fade": `${tweaks.fade}ms`,
     "--skeleton-motion": tweaks.motion,
+    // The pulse eases like Tailwind's; a sweep runs at an even pace.
+    "--skeleton-ease":
+      tweaks.motion === "skeleton-pulse"
+        ? "cubic-bezier(0.4, 0, 0.6, 1)"
+        : "linear",
   };
 }
 

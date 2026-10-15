@@ -5,7 +5,7 @@ import { useTransition } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
-import { LoadingIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/spinner";
 import { PlusFigmaIcon } from "@/components/ui/lp-icons";
 import { addTemplate } from "@/lib/templates/actions";
 
@@ -36,14 +36,7 @@ export function UseTemplateButton({
         })
       }
     >
-      {pending ? (
-        <LoadingIcon
-          aria-hidden
-          className="animate-spin motion-reduce:animate-spin-slow"
-        />
-      ) : (
-        <PlusFigmaIcon />
-      )}
+      {pending ? <Spinner className="size-3.5" /> : <PlusFigmaIcon />}
       Use Template
       <span className="sr-only"> {name}</span>
     </Button>

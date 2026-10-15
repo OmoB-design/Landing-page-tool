@@ -352,6 +352,12 @@
   --color-edge-strong: var(--color-stroke-input-hover);
   --float-intensity: 1;
   --color-lift-shadow: rgb(181 181 181 / 0.25);
+  /* Create new page: the light the wizard's footer casts up over content scrolling under it. */
+  --color-wizard-footer-shadow: rgb(186 179 179 / 0.15);
+  /* Create new page: the frame's lines (Figma 0.8 px Surface/Stroke). */
+  --wizard-line: 0.8px;
+  /* Figma 0.5 px strokes drawn as real borders (dashed chips). */
+  --line-hairline: 0.5px;
 
   /* Radius (Figma: Radius). Radius-L is --radius-lg because Tailwind's rounded-l means left corners. */
   --radius-xsm: 4px;
@@ -365,6 +371,7 @@
   --radius-card: 18px; /* Figma Home: getting-started cards (Numbers/18) */
   --radius-item: 12px; /* Figma Brands Details: briefing audience cards and list items */
   --radius-well: 14px; /* Figma template cards: the picture well's bottom corners */
+  --radius-icon: 5px; /* Figma Create new page: the icon tile on option cards */
 
   /* Layout (Figma: Size). Tailwind v4 only builds w-/h-/size- utilities from the --spacing-*
      namespace, so they live here (w-sidebar, h-topbar, h-header, h-row, h-nav-item …). Spacing
@@ -377,7 +384,7 @@
   --spacing-panel: 384px; /* right-hand panel on the build page (w-panel) */
   --spacing-preview-mobile: 390px; /* phone-width page preview (w-preview-mobile) */
   --spacing-editor-panel: 440px; /* section editor's left panel (w-editor-panel) */
-  --spacing-wizard-dossier: 300px; /* create wizard's dossier panel (w-wizard-dossier) */
+  --spacing-wizard-dossier: 312px; /* create wizard's dossier panel (w-wizard-dossier) */
   --spacing-menu-workspace: 228px; /* Figma: Sidebar Account Option (w-menu-workspace); its ring-thin is outside */
   --spacing-menu-account: 270px; /* Figma: Sidebar Menu Option (w-menu-account) */
   --spacing-menu-header: 280px; /* Figma: Jobs, Notification (w-menu-header) */
@@ -418,6 +425,15 @@
   --shadow-edge: inset 0 -0.5px 0 0.3px rgb(0 0 0 / 0.15);
   --shadow-raise: 0 1px 3px 0 rgb(0 0 0 / 0.06); /* Figma: closed getting-started card */
   --shadow-lift: 0 -1px 6.6px 0 var(--color-lift-shadow); /* Figma Notis: footer on hover */
+  --shadow-wizard-footer: 0 -1px 13.1px 0 var(--color-wizard-footer-shadow);
+  /* A step's content as it arrives: a 4 px rise and a fade (Emil: ease-out, under 300 ms). */
+  --animate-step-in: step-in 220ms var(--ease-out) both;
+  @keyframes step-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
   /* Figma Home card drawings: the window peeking in from the right, and the framed windows. */
   --shadow-illustration-float:
     -5px 0 24.5px 0 rgb(0 0 0 / 0.3), 0 1px 5px 0 rgb(61 59 53 / 0.05),
@@ -430,26 +446,24 @@
   --shadow-light: 0 1px 2px 0 var(--color-foreground-01);
   --shadow-focus: 0 0 1px 2px
     color-mix(in srgb, var(--blue-300) 15%, transparent);
-  /* Loading skeletons (Skeleton in shimmer-loader). They wait `delay` (about the point a wait
-     becomes noticeable) before fading in over
-     `fade`, so quick loads show no flash; then a soft light sweeps across them every `speed`
-     (`motion` ui-shm-sweep), or they breathe (skeleton-pulse), or hold still (none). Tune them
-     live at /dev/loaders. */
-  --skeleton-opacity: 0.7;
-  --skeleton-base: var(--color-foreground-03);
-  --skeleton-glow: color-mix(in srgb, var(--color-on-dark) 70%, transparent);
+  /* Loading skeletons (Skeleton in shimmer-loader), as Quality draws them (its app bundle,
+     2026-10-15): Foreground-02 (Quality's Backgrounds-hover, #f0f0f0 / #2a2a2a) easing to half
+     strength and back every 2 s (Tailwind's pulse curve), no light sweeping across. Ours also wait
+     `delay` (about the point a wait becomes noticeable) before fading in over `fade`, so quick loads
+     show nothing. `motion` can be ui-shm-sweep (a light sweeps across; set `glow` and a linear
+     `ease`) or none. Tune them live at /dev/loaders. */
+  --skeleton-opacity: 1;
+  --skeleton-base: var(--color-foreground-02);
+  --skeleton-glow: transparent;
   --skeleton-speed: 2s;
+  --skeleton-ease: cubic-bezier(0.4, 0, 0.6, 1);
   --skeleton-delay: 300ms;
   --skeleton-fade: 300ms;
-  --skeleton-motion: ui-shm-sweep;
+  --skeleton-motion: skeleton-pulse;
 }
 
 /* Dark mode (Figma: Tokens collection, Dark mode): only the tokens whose value changes. */
 .dark {
-  /* Skeletons: Foreground-02 on the dark panel; Foreground-03 (Grey-700) shouted. */
-  --skeleton-opacity: 1;
-  --skeleton-base: var(--color-foreground-02);
-  --skeleton-glow: color-mix(in srgb, var(--color-on-dark) 4%, transparent);
   --card-edge-shadow: var(--shadow-edge);
   --briefing-item-shadow: transparent;
   --template-shot-line: var(--color-stroke);
@@ -465,6 +479,7 @@
   --color-edge-strong: var(--color-stroke-input-hover);
   --float-intensity: 2.5;
   --color-lift-shadow: rgb(0 0 0 / 0.45);
+  --color-wizard-footer-shadow: rgb(79 79 79 / 0.15);
   /* Surface */
   --color-surface-primary: var(--grey-950);
   --color-foreground-01: var(--grey-900);
@@ -736,7 +751,7 @@
   opacity: var(--skeleton-opacity);
   animation:
     skeleton-in var(--skeleton-fade) var(--ease-out) var(--skeleton-delay) both,
-    var(--skeleton-motion) var(--skeleton-speed) linear infinite;
+    var(--skeleton-motion) var(--skeleton-speed) var(--skeleton-ease) infinite;
 }
 /* Fades in to --skeleton-opacity (the element's own opacity). */
 @keyframes skeleton-in {
@@ -744,7 +759,8 @@
     opacity: 0;
   }
 }
-/* The "breathe" motion: the fill eases to half strength and back. */
+/* The pulse: the fill eases to half strength and back (Quality: Tailwind's pulse, opacity 0.5 at
+   the midpoint; drawn on the fill so it doesn't fight the fade-in's opacity). */
 @keyframes skeleton-pulse {
   50% {
     background-color: color-mix(in srgb, var(--ui-shm-base) 50%, transparent);
@@ -832,6 +848,118 @@
 /* Figma Notis: a 0.5 px stroke-coloured line inside the top edge (the popover footer). */
 @utility divider-t-half {
   --tw-inset-shadow: inset 0 0.5px 0 0 var(--color-stroke);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+/* The spinner (Quality's quality-spinner, from its app bundle): a 2 px ring in the text colour,
+   drawn as an arc that grows round, flips and shrinks away. Size it with size-*; `spinner-thin`
+   for 10 px. */
+@utility spinner {
+  border: 2px solid;
+  border-radius: 50%;
+  animation:
+    spinner-arc 0.8s linear infinite alternate,
+    spinner-turn 1.6s linear infinite;
+}
+@utility spinner-thin {
+  border-width: 1.5px;
+}
+@keyframes spinner-arc {
+  0% {
+    clip-path: polygon(50% 50%, 0 0, 50% 0%, 50% 0%, 50% 0%, 50% 0%, 50% 0%);
+  }
+  12.5% {
+    clip-path: polygon(
+      50% 50%,
+      0 0,
+      50% 0%,
+      100% 0%,
+      100% 0%,
+      100% 0%,
+      100% 0%
+    );
+  }
+  25% {
+    clip-path: polygon(
+      50% 50%,
+      0 0,
+      50% 0%,
+      100% 0%,
+      100% 100%,
+      100% 100%,
+      100% 100%
+    );
+  }
+  50% {
+    clip-path: polygon(
+      50% 50%,
+      0 0,
+      50% 0%,
+      100% 0%,
+      100% 100%,
+      50% 100%,
+      0% 100%
+    );
+  }
+  62.5% {
+    clip-path: polygon(
+      50% 50%,
+      100% 0,
+      100% 0%,
+      100% 0%,
+      100% 100%,
+      50% 100%,
+      0% 100%
+    );
+  }
+  75% {
+    clip-path: polygon(
+      50% 50%,
+      100% 100%,
+      100% 100%,
+      100% 100%,
+      100% 100%,
+      50% 100%,
+      0% 100%
+    );
+  }
+  to {
+    clip-path: polygon(
+      50% 50%,
+      50% 100%,
+      50% 100%,
+      50% 100%,
+      50% 100%,
+      50% 100%,
+      0% 100%
+    );
+  }
+}
+@keyframes spinner-turn {
+  0% {
+    transform: scaleY(1) rotate(0deg);
+  }
+  49.99% {
+    transform: scaleY(1) rotate(135deg);
+  }
+  50% {
+    transform: scaleY(-1) rotate(0deg);
+  }
+  to {
+    transform: scaleY(-1) rotate(-135deg);
+  }
+}
+
+/* 0.5 px Stroke-Strong rules between the create wizard's dossier sections and choice rows. */
+@utility divider-t-strong {
+  --tw-inset-shadow: inset 0 0.5px 0 0 var(--color-stroke-strong);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+@utility divider-b-strong {
+  --tw-inset-shadow: inset 0 -0.5px 0 0 var(--color-stroke-strong);
   box-shadow:
     var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
     var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);

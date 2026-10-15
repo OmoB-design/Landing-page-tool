@@ -4,7 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useEffect, useRef } from "react";
 
-import { LoadingIcon, StatusFailedIcon } from "@/components/ui/icons";
+import { StatusFailedIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/spinner";
 import {
   HeaderJobsIcon,
   JobDoneIcon,
@@ -215,12 +216,7 @@ function JobStatusIcon({ status }: { status: JobStatus }) {
     case "succeeded":
       return <JobDoneIcon className="size-2.5" />;
     case "running":
-      return (
-        <LoadingIcon
-          aria-hidden
-          className="size-2.5 animate-spin text-spot-500-blue motion-reduce:animate-spin-slow"
-        />
-      );
+      return <Spinner className="size-2.5 spinner-thin text-spot-500-blue" />;
     case "queued":
       return <StepTodoIcon className="size-2.5 text-stroke-input-hover" />;
     default:

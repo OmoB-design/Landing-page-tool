@@ -1,6 +1,7 @@
 import { type ReactNode, Suspense } from "react";
 
 import { MobileSidebar } from "./mobile-sidebar";
+import { RememberPath } from "./remember-path";
 import { SidebarNav, SidebarSkeleton } from "./sidebar";
 import { SidebarProvider } from "./sidebar-state";
 
@@ -42,6 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
       <MobileSidebar>{sidebar}</MobileSidebar>
+      <RememberPath />
     </SidebarProvider>
   );
 }

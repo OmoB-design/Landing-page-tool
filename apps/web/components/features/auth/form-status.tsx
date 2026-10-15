@@ -1,6 +1,7 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AlertIcon, LoadingIcon, MailIcon } from "@/components/ui/icons";
+import { AlertIcon, MailIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/spinner";
 
 /** The form-level result of an auth action: an error, or a confirmation message. */
 export function FormStatus({
@@ -56,12 +57,7 @@ export function SubmitButton({
       disabled={pending}
       className="h-9 w-full"
     >
-      {pending ? (
-        <LoadingIcon
-          aria-hidden
-          className="animate-spin motion-reduce:animate-spin-slow"
-        />
-      ) : null}
+      {pending ? <Spinner /> : null}
       {pending ? pendingLabel : label}
     </Button>
   );

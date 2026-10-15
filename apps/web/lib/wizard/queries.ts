@@ -9,8 +9,8 @@ export type WizardBrand = {
   name: string;
   hasVoice: boolean;
   hasPositioning: boolean;
-  /** Primary, dark, tint and accent (hex), as set in Brand DNA. */
-  colours: string[];
+  /** Primary, dark, tint and accent, as set in Brand DNA (only the ones that are set). */
+  colours: { name: string; hex: string }[];
 };
 
 export type WizardProduct = {
@@ -34,11 +34,18 @@ export type WizardTemplate = {
 const count = (value: unknown) => (Array.isArray(value) ? value.length : 0);
 
 const HEX = /^#[0-9a-f]{6}$/i;
-function paletteColours(palette: unknown): string[] {
+const PALETTE = [
+  ["primary", "Primary"],
+  ["dark", "Dark"],
+  ["tint", "Tint"],
+  ["accent", "Accent"],
+] as const;
+function paletteColours(palette: unknown): WizardBrand["colours"] {
   const p = (palette ?? {}) as Record<string, unknown>;
-  return ["primary", "dark", "tint", "accent"]
-    .map((key) => p[key])
-    .filter((v): v is string => typeof v === "string" && HEX.test(v));
+  return PALETTE.flatMap(([key, name]) => {
+    const hex = p[key];
+    return typeof hex === "string" && HEX.test(hex) ? [{ name, hex }] : [];
+  });
 }
 
 /** Everything the create wizard chooses from: the org's brands and products (with the facts the
