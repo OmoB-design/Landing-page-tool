@@ -183,6 +183,21 @@
   --card-edge-shadow: 0 0 #0000;
   /* Briefing list items: their soft shadow shows in light only (Figma Brands Details, both frames). */
   --briefing-item-shadow: rgb(182 182 182 / 0.15);
+  /* Figma Build: the Desktop / Phone switch's frame (segmented-frame). Light (Build/Desktop):
+     Foreground-03 in a 0.4 px Stroke-Input-Hover line; dark (Build/Mobile, the Dark-mode frame
+     420:52507): Dashboard in a 0.5 px Surface/Stroke line with Shadow/Light. */
+  --segmented-fill: var(--color-foreground-03);
+  --segmented-line: inset 0 0 0 0.4px var(--color-stroke-input-hover);
+  --segmented-drop: 0 0 #0000;
+  /* Figma Build, Mover: light is Foreground-03 lit from inside (white lights); dark (420:52507,
+     revised 2026-10-16) is Surface-Primary in a 0.5 px #414141 line with soft grey inner lights and
+     a 4 px drop below. */
+  --mover-fill: var(--color-foreground-03);
+  --mover-shadow:
+    0 0 0 0.5px rgb(61 59 53 / 0.1), 0 1px 1px 0 rgb(0 0 0 / 0.1),
+    0 1px 5px 0 rgb(61 59 53 / 0.05), inset 0 4px 4px 0 rgb(212 212 212 / 0.15),
+    inset 5px 4px 3px 0 rgb(255 255 255 / 0.25),
+    inset 0 0 4px 0 rgb(255 255 255 / 0.5);
   /* Template cards: the screenshot's line and shadow (Figma Template/Yours 154:14185, 187:15866). */
   --template-shot-line: var(--color-illustration-line-strong);
   --template-shot-shadow: 0 4.92px 5.91px 0 rgb(200 196 196 / 0.15);
@@ -330,6 +345,9 @@
   --color-template-long-form: var(--glyph-long-form);
   /* Drawings of a light page on the Home cards; light in both themes (Figma Home and Home Dark). */
   --color-illustration-surface: var(--base-white);
+  /* A built page's own canvas in the build preview: white in both themes, as a browser shows a page
+     that sets no background (the page is the brand's, not the app's). */
+  --color-page-canvas: var(--base-white);
   --color-illustration-line: var(--grey-50);
   --color-illustration-line-strong: var(--grey-150);
   /* Figma Notis: the footer's hover shadow colour (tuned by eye for dark). */
@@ -381,7 +399,7 @@
   --spacing-header: 49px; /* page header inside the panel (h-header), bottom border included; Figma Home: 50 with the panel's top stroke */
   --spacing-row: 40px;
   --spacing-nav-item: 32px;
-  --spacing-panel: 384px; /* right-hand panel on the build page (w-panel) */
+  --spacing-panel: 320px; /* Figma Build: the build page's right panel at rest (w-panel); the Mover widens it */
   --spacing-preview-mobile: 390px; /* phone-width page preview (w-preview-mobile) */
   --spacing-editor-panel: 440px; /* section editor's left panel (w-editor-panel) */
   --spacing-wizard-dossier: 312px; /* create wizard's dossier panel (w-wizard-dossier) */
@@ -408,8 +426,15 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* sheets and drawers */
   --animate-spin: spin 0.7s linear infinite; /* a fast spinner reads as a fast app */
   --animate-spin-slow: spin 1.6s linear infinite; /* reduced motion: slower, not stopped */
+  /* Figma Build, Stepper: the eight-dash loader turns smoothly (a transform at a constant speed,
+     drawn by the compositor), its trail fading behind the brightest dash (owner: a smooth, buttery
+     turn rather than a dash at a time); slower under reduced motion. */
+  --animate-step-spin: spin 0.8s linear infinite;
+  --animate-step-spin-slow: spin 2.4s linear infinite;
 
   /* Shadows (Figma effect styles Shadow/Pop, Control, Edge, Panel; Quality's values). */
+  /* Figma Build, Mover: the panel's resize handle (light and dark values on :root / .dark). */
+  --shadow-mover: var(--mover-shadow);
   --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
   /* Floating menus and popovers (after Nucleo's --shadow-lg): a 0.5 px contact line and soft,
      layered depth; --float-intensity is 1 in light and 2.5 in dark (Nucleo: --shadow-intensity). */
@@ -446,19 +471,19 @@
   --shadow-light: 0 1px 2px 0 var(--color-foreground-01);
   --shadow-focus: 0 0 1px 2px
     color-mix(in srgb, var(--blue-300) 15%, transparent);
-  /* Loading skeletons (Skeleton in shimmer-loader), as Quality draws them (its app bundle,
-     2026-10-15): Foreground-02 (Quality's Backgrounds-hover, #f0f0f0 / #2a2a2a) easing to half
-     strength and back every 2 s (Tailwind's pulse curve), no light sweeping across. Ours also wait
-     `delay` (about the point a wait becomes noticeable) before fading in over `fade`, so quick loads
-     show nothing. `motion` can be ui-shm-sweep (a light sweeps across; set `glow` and a linear
-     `ease`) or none. Tune them live at /dev/loaders. */
-  --skeleton-opacity: 1;
-  --skeleton-base: var(--color-foreground-02);
+  /* Loading skeletons (Skeleton in shimmer-loader): Quality's pulse (its app bundle, 2026-10-15),
+     easing to half strength and back every 2 s on Tailwind's pulse curve with no light sweeping
+     across, at the owner's tuning (2026-10-15): Foreground-03 at 20 % in light, Foreground-02 at
+     15 % in dark (below). They wait `delay` before fading in over `fade`, so quick loads show
+     nothing. `motion` can be ui-shm-sweep (a light sweeps across; set `glow` and a linear `ease`)
+     or none. Tune them live at /dev/loaders. */
+  --skeleton-opacity: 0.2;
+  --skeleton-base: var(--color-foreground-03);
   --skeleton-glow: transparent;
   --skeleton-speed: 2s;
   --skeleton-ease: cubic-bezier(0.4, 0, 0.6, 1);
-  --skeleton-delay: 300ms;
-  --skeleton-fade: 300ms;
+  --skeleton-delay: 150ms;
+  --skeleton-fade: 225ms;
   --skeleton-motion: skeleton-pulse;
 }
 
@@ -466,6 +491,15 @@
 .dark {
   --card-edge-shadow: var(--shadow-edge);
   --briefing-item-shadow: transparent;
+  --segmented-fill: var(--color-dashboard);
+  --segmented-line: inset 0 0 0 0.5px var(--color-stroke);
+  --segmented-drop: var(--shadow-light);
+  --mover-fill: var(--color-surface-primary);
+  --mover-shadow:
+    inset 0 0 0 0.5px #414141, 0 0 0 0.5px rgb(61 59 53 / 0.1),
+    0 1px 1px 0 rgb(0 0 0 / 0.1), 0 1px 5px 0 rgb(61 59 53 / 0.05),
+    inset 0 4px 4px 0 rgb(51 51 51 / 0.15),
+    inset 0 0 4px 0 rgb(62 62 62 / 0.25), 0 4px 4px 0 rgb(0 0 0 / 0.25);
   --template-shot-line: var(--color-stroke);
   --template-shot-shadow: 0 4.92px 10.1px 0 rgb(6 6 6 / 0.15);
   --color-button-primary-drop-soft: rgb(186 186 186 / 0.25);
@@ -478,6 +512,9 @@
   --color-edge: var(--color-stroke-strong);
   --color-edge-strong: var(--color-stroke-input-hover);
   --float-intensity: 2.5;
+  --skeleton-opacity: 0.15;
+  --skeleton-base: var(--color-foreground-02);
+  --skeleton-fade: 300ms;
   --color-lift-shadow: rgb(0 0 0 / 0.45);
   --color-wizard-footer-shadow: rgb(79 79 79 / 0.15);
   /* Surface */
@@ -517,11 +554,11 @@
   --color-highlight-blue-150: var(--blue-300);
   /* Typography */
   --color-heading-01: var(--grey-50);
-  --color-heading-02: var(--grey-50);
-  --color-heading-03: var(--grey-50);
-  --color-heading-04: var(--grey-50);
-  --color-heading-05: var(--grey-300);
-  --color-heading-06: var(--grey-300);
+  --color-heading-02: var(--grey-100);
+  --color-heading-03: var(--grey-150);
+  --color-heading-04: var(--grey-200);
+  --color-heading-05: var(--grey-400);
+  --color-heading-06: var(--grey-500);
   --color-body: var(--grey-50);
   --color-sub-text: var(--grey-300);
   --color-caption-1: var(--grey-700);
@@ -963,6 +1000,97 @@
   box-shadow:
     var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
     var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* Figma Build, Stepper: a step that has started or finished — a Surface-Primary card, 12 px
+   corners, a 0.5 px Surface/Stroke line inside and a soft light above it (#303030 at 10 %, 10 px,
+   1 px up). */
+@utility step-card {
+  border-radius: var(--radius-item);
+  background-color: var(--color-surface-primary);
+  box-shadow:
+    inset 0 0 0 0.5px var(--color-stroke),
+    0 -1px 10px 0 rgb(48 48 48 / 0.1);
+}
+
+/* Build steps (D82, Emil): each transition names what it moves, never `all`. A step card fades its
+   fill and shadow in; a step's name eases its size (a transform) and colour; 250 ms on the strong
+   ease-out. Under reduced motion the fades stay and the movement goes (`motion-reduce:` variants). */
+@utility transition-card {
+  transition-property: background-color, box-shadow;
+  transition-timing-function: var(--ease-out);
+  transition-duration: 250ms;
+}
+@utility transition-label {
+  transition-property: transform, color;
+  transition-timing-function: var(--ease-out);
+  transition-duration: 250ms;
+}
+/* Holds a loader where it is when its step finishes, so it doesn't jump back to its start. */
+@utility animation-paused {
+  animation-play-state: paused;
+}
+
+/* Figma Build: a frame's 0.7 px Surface/Stroke line drawn inside its edge and over its children,
+   as Figma draws a frame's stroke (the build steps card). Needs the frame's corner radius. */
+@utility stroke-inside-thin {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 0.7px var(--color-stroke);
+    pointer-events: none;
+  }
+}
+
+/* A 0.5 px ring (Figma's 0.5 px strokes on chips) in the ring colour; `ring-inset` draws it inside:
+   `ring-half ring-inset ring-stroke`. */
+@utility ring-half {
+  --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 0.5px
+    var(--tw-ring-color, currentcolor);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* Figma Build: a panel section between 0.5 px Surface/Stroke lines above and below (Details,
+   Copy changes). */
+@utility divider-y-half {
+  --tw-inset-shadow:
+    inset 0 0.5px 0 0 var(--color-stroke),
+    inset 0 -0.5px 0 0 var(--color-stroke);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* Figma Build: the right panel's 0.7 px Stroke-Strong line down its left edge. */
+@utility divider-l-panel {
+  --tw-inset-shadow: inset 0.7px 0 0 0 var(--color-stroke-strong);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* Figma Build: the preview page's 0.8 px Surface/Stroke line down its left edge, over the page. */
+@utility divider-l-preview {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0.8px 0 0 0 var(--color-stroke);
+    pointer-events: none;
+  }
+}
+
+/* Figma Build: the Desktop / Phone switch's frame (light and dark values on :root / .dark). */
+@utility segmented-frame {
+  border-radius: var(--radius-md);
+  background-color: var(--segmented-fill);
+  box-shadow: var(--segmented-line), var(--segmented-drop);
 }
 
 /* Popover lists (Jobs, Notifications): where more of the list sits below, its last 40 px fade out

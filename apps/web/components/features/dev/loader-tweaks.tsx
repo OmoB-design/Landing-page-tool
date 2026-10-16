@@ -32,17 +32,27 @@ type Tweaks = {
   fade: number;
 };
 
-/** The defaults in app/globals.css (`--skeleton-*`): Quality's pulse, the same in both themes. */
-const QUALITY: Tweaks = {
-  opacity: 100,
-  base: "foreground-02",
-  motion: "skeleton-pulse",
-  glow: 0,
-  speed: 2,
-  delay: 300,
-  fade: 300,
+/** The defaults in app/globals.css (`--skeleton-*`): Quality's pulse at the owner's tuning. */
+const DEFAULTS: Record<Theme, Tweaks> = {
+  light: {
+    opacity: 20,
+    base: "foreground-03",
+    motion: "skeleton-pulse",
+    glow: 0,
+    speed: 2,
+    delay: 150,
+    fade: 225,
+  },
+  dark: {
+    opacity: 15,
+    base: "foreground-02",
+    motion: "skeleton-pulse",
+    glow: 0,
+    speed: 2,
+    delay: 150,
+    fade: 300,
+  },
 };
-const DEFAULTS: Record<Theme, Tweaks> = { light: QUALITY, dark: QUALITY };
 
 const BASES = [
   { id: "foreground-01", label: "Foreground-01" },

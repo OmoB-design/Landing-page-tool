@@ -1933,3 +1933,147 @@ export function CheckboxTickedFigmaIcon(props: IconProps) {
     </svg>
   );
 }
+
+// ── Build page (Figma: Build) ──────────────────────────────────────────────────────────────
+
+/** The loader's eight dashes, clockwise from one o'clock; the last (eleven o'clock) is the faint
+ * tail while a step runs. */
+const STEP_DASHES = [
+  "M10.2379 2.38777C9.57367 1.92033 8.80444 1.59521 7.97222 1.45055",
+  "M12.551 6.02779C12.4118 5.22745 12.0976 4.45434 11.6114 3.7629",
+  "M11.6122 10.2379C12.0797 9.57367 12.4048 8.80444 12.5494 7.97222",
+  "M7.97222 12.551C8.77256 12.4118 9.54567 12.0976 10.2371 11.6114",
+  "M3.76212 11.6122C4.42634 12.0797 5.19556 12.4048 6.02779 12.5494",
+  "M1.44901 7.97222C1.58823 8.77256 1.90245 9.54567 2.38856 10.2371",
+  "M2.38777 3.76212C1.92033 4.42634 1.59521 5.19556 1.45055 6.02779",
+  "M6.02779 1.44901C5.22745 1.58823 4.45434 1.90245 3.7629 2.38856",
+];
+
+/**
+ * A build step's loader (Figma Build, Stepper): eight dashes round a 3.5 px dot, 1.17 px lines in
+ * `currentColor`, the dot filled with `dotClassName`'s fill. `idle` dims everything to 30 % (a step
+ * not started). `running` draws a trail for the turn: the ten o'clock dash at full strength and each
+ * dash behind it 10 % fainter, down to 30 % for the eleven o'clock dash just ahead of it (Figma's
+ * one faint dash). `done` and `failed` draw them all at full strength. Dashes fade between states.
+ */
+export function BuildStepIcon({
+  state,
+  dotClassName,
+  ...props
+}: IconProps & {
+  state: "idle" | "running" | "done" | "failed";
+  dotClassName?: string;
+}) {
+  const strength = (index: number) =>
+    state === "idle"
+      ? 0.3
+      : state === "running"
+        ? // Turning clockwise, the brightest dash leads; the others trail it.
+          1 - 0.1 * ((6 - index + STEP_DASHES.length) % STEP_DASHES.length)
+        : 1;
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <circle cx="7" cy="7" r="1.75" className={dotClassName} />
+      {STEP_DASHES.map((d, index) => (
+        <path
+          key={d}
+          d={d}
+          stroke="currentColor"
+          strokeWidth="1.16667"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={strength(index)}
+          className="transition-opacity duration-250 ease-out"
+        />
+      ))}
+      <circle
+        cx="7"
+        cy="7"
+        r="1.75"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        opacity={state === "idle" ? 0.3 : 1}
+        className="transition-opacity duration-250 ease-out"
+      />
+    </svg>
+  );
+}
+
+/** Export (the build page header's button): a tray with an arrow up. */
+export function ExportFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M11.8611 9.13889V10.3056C11.8611 11.165 11.165 11.8611 10.3056 11.8611H3.69444C2.835 11.8611 2.13889 11.165 2.13889 10.3056V9.13889"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.72222 4.86111L7 2.13889L4.27778 4.86111"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 2.13889V7.97222"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Locate (a claim's section button): three rings, a target. */
+export function LocateFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <circle
+        cx="7"
+        cy="7"
+        r="5.63889"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+      />
+      <circle
+        cx="7"
+        cy="7"
+        r="3.30556"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+      />
+      <circle
+        cx="7"
+        cy="7"
+        r="0.972222"
+        stroke="currentColor"
+        strokeWidth="1.16667"
+      />
+    </svg>
+  );
+}

@@ -67,7 +67,7 @@ export function useSidebar(): SidebarState {
 }
 
 /** The sidebar's collapse button (Figma: Icon/Sidebar Left — a 32 px box around a 14 px icon);
- * mirrored, it opens the sidebar from a page header. Renders nothing outside the app shell
+ * the same icon opens the sidebar from a page header (Figma Build, full screen). Renders nothing outside the app shell
  * (e.g. a page header in a component test). */
 export function SidebarToggleButton({
   action,
@@ -93,9 +93,7 @@ export function SidebarToggleButton({
             className,
           )}
         >
-          <SidebarCollapseIcon
-            className={cn("size-3.5", action === "open" && "-scale-x-100")}
-          />
+          <SidebarCollapseIcon className="size-3.5" />
         </button>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>

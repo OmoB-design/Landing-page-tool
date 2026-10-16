@@ -36,46 +36,52 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <header className="flex h-header shrink-0 items-center gap-3 px-3.75 edge-b">
-      <SidebarToggleButton
-        action="open"
-        className="-ml-1.5 lg:hidden lg:sidebar-collapsed:inline-flex"
-      />
-      <div
-        className={cn("flex min-w-0 items-center", crumb ? "gap-1.5" : "gap-2")}
-      >
-        {crumb ? (
-          <>
-            <Link
-              href={crumb.href}
-              className="shrink-0 rounded-xsm text-type-body-small font-medium text-heading-01 outline-none hover:text-sub-text focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {crumb.label}
-            </Link>
-            <span
-              aria-hidden
-              className="text-type-body-small font-medium text-heading-01"
-            >
-              /
-            </span>
-          </>
-        ) : null}
-        {mark ? (
-          mark
-        ) : emoji ? (
-          <span aria-hidden className="text-type-body-large">
-            {emoji}
-          </span>
-        ) : null}
-        <h1
+      {/* Figma Build (full screen): the open-sidebar button's 32 px box 16 px in, the title 6 px after it. */}
+      <div className="flex min-w-0 items-center gap-1.5">
+        <SidebarToggleButton
+          action="open"
+          className="lg:hidden lg:sidebar-collapsed:inline-flex"
+        />
+        <div
           className={cn(
-            "truncate",
-            crumb
-              ? "text-type-caption-1 font-medium text-heading-01"
-              : "text-type-body-small font-medium text-heading-01",
+            "flex min-w-0 items-center",
+            crumb ? "gap-1.5" : "gap-2",
           )}
         >
-          {title}
-        </h1>
+          {crumb ? (
+            <>
+              <Link
+                href={crumb.href}
+                className="shrink-0 rounded-xsm text-type-body-small font-medium text-heading-01 outline-none hover:text-sub-text focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {crumb.label}
+              </Link>
+              <span
+                aria-hidden
+                className="text-type-body-small font-medium text-heading-01"
+              >
+                /
+              </span>
+            </>
+          ) : null}
+          {mark ? (
+            mark
+          ) : emoji ? (
+            <span aria-hidden className="text-type-body-large">
+              {emoji}
+            </span>
+          ) : null}
+          <h1
+            className={cn(
+              "truncate",
+              crumb
+                ? "text-type-caption-1 font-medium text-heading-01"
+                : "text-type-body-small font-medium text-heading-01",
+            )}
+          >
+            {title}
+          </h1>
+        </div>
       </div>
       {tabs ? (
         <>

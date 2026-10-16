@@ -1,4 +1,5 @@
 import { getSessionContext } from "@/lib/auth/session";
+import { addSectionAnchors } from "@/lib/builds/preview-anchors";
 import { getBuild } from "@/lib/builds/queries";
 import { publicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -26,7 +27,8 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
   const storage = new URL(publicEnv.supabaseUrl).origin;
-  return new Response(await data.text(), {
+  // Section ids for the claims check's section buttons to jump to (preview only).
+  return new Response(addSectionAnchors(await data.text()), {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "private, no-store",

@@ -1,79 +1,87 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { JobSteps } from "@/components/app/job-steps";
-import { Button } from "@/components/ui/button";
-import { DownloadIcon } from "@/components/ui/icons";
-import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
+import { toast } from "@/components/app/toaster";
+import { ExportFigmaIcon } from "@/components/ui/lp-icons";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useJob, useStartJob } from "@/lib/queries/jobs";
 
-const EXPORT_STEPS = [
-  { id: "inline", label: "Inline images and fonts" },
-  { id: "save", label: "Save the file" },
-];
-
-/** Export the page as one self-contained HTML file, then download it (BUILD_SPEC §12.2). */
+/**
+ * Export (Figma Build, the header's button): 32 px, Surface-Primary in a 0.5 px Stroke-Strong
+ * line with Shadow/Panel and 8 px corners, the tray icon and "Export" in 12 px medium Heading-01.
+ * It exports the page as one self-contained HTML file (BUILD_SPEC §12.2) and downloads it when
+ * the export finishes; while it runs the icon becomes a spinner. Unavailable until the build has
+ * a page.
+ */
 export function ExportButton({
   buildId,
   buildKey,
-  exported,
+  ready,
 }: {
   buildId: string;
   buildKey: string;
-  exported: boolean;
+  ready: boolean;
 }) {
   const startJob = useStartJob();
   const [jobId, setJobId] = useState<string | null>(null);
   const { data: job } = useJob(jobId);
-  usePageRefresh(job?.status === "succeeded" ? job.id : null);
+  const handled = useRef<string | null>(null);
   const busy =
     startJob.isPending || job?.status === "queued" || job?.status === "running";
-  const download = `/api/builds/${buildId}/export`;
+
+  useEffect(() => {
+    if (!job || handled.current === job.id) return;
+    if (job.status === "succeeded") {
+      handled.current = job.id;
+      const link = document.createElement("a");
+      link.href = `/api/builds/${buildId}/export`;
+      link.download = `${buildKey}.html`;
+      link.click();
+    } else if (job.status === "failed") {
+      handled.current = job.id;
+      toast.error(job.error?.message ?? "Couldn’t export the page.");
+    }
+  }, [job, buildId, buildKey]);
 
   return (
-    <section aria-labelledby="export-title" className="flex flex-col gap-3">
-      <h3
-        id="export-title"
-        className="text-type-caption-1 font-medium text-sub-text"
-      >
-        Export
-      </h3>
-      <div className="flex flex-wrap gap-2">
-        {exported ? (
-          <Button asChild size="sm" className="h-8">
-            <a href={download} download={`${buildKey}.html`}>
-              <DownloadIcon aria-hidden />
-              Download {buildKey}.html
-            </a>
-          </Button>
-        ) : null}
-        <Button
-          variant={exported ? "outline" : "default"}
-          size="sm"
-          className="h-8"
-          disabled={busy}
-          onClick={() =>
-            startJob.mutate(
-              { kind: "export", payload: { build_id: buildId } },
-              { onSuccess: ({ job: started }) => setJobId(started.id) },
-            )
-          }
-        >
-          {exported ? "Export again" : "Export HTML"}
-        </Button>
-      </div>
-      <p className="text-type-caption-1 text-sub-text">
-        One self-contained file with its images inside, for hosting anywhere.
-      </p>
-      {startJob.error ? (
-        <p role="alert" className="text-type-caption-1 text-text-danger">
-          {startJob.error.message}
-        </p>
-      ) : null}
-      {job && job.status !== "succeeded" ? (
-        <JobSteps title="Exporting" steps={EXPORT_STEPS} job={job} />
-      ) : null}
-    </section>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {/* A span keeps the tooltip working while the button is disabled. */}
+        <span className="mr-1 inline-flex">
+          <button
+            type="button"
+            disabled={!ready || busy}
+            onClick={() =>
+              startJob.mutate(
+                { kind: "export", payload: { build_id: buildId } },
+                {
+                  onSuccess: ({ job: started }) => setJobId(started.id),
+                  onError: (error) => toast.error(error.message),
+                },
+              )
+            }
+            className="flex h-8 items-center gap-1.5 rounded-md border-(length:--line-hairline) border-stroke-strong bg-surface-primary px-2.5 py-1 text-type-caption-1 font-medium text-heading-01 shadow-panel transition-transform duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring enabled:hover:bg-foreground-01 enabled:active:scale-97 disabled:cursor-default disabled:text-heading-06"
+          >
+            {busy ? (
+              <Spinner className="size-3.5" label="Exporting" />
+            ) : (
+              <ExportFigmaIcon className="shrink-0 text-icon-nav-active" />
+            )}
+            {busy ? "Exporting…" : "Export"}
+          </button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        {ready
+          ? "Download the page as one HTML file, images inside"
+          : "Available when the build finishes"}
+      </TooltipContent>
+    </Tooltip>
   );
 }
