@@ -1,12 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import { toast } from "@/components/app/toaster";
+import { BuildStepIcon, RetryFigmaIcon } from "@/components/ui/lp-icons";
+import { apiFetch } from "@/lib/api/client";
 import {
   LOCATE_SECTION_EVENT,
   sectionAnchor,
 } from "@/lib/builds/preview-anchors";
+import { OWNED_BUILD_STEPS } from "@/lib/builds/steps";
+import { jobStepStates } from "@/lib/jobs/steps";
+import { useJob } from "@/lib/queries/jobs";
 import { cn } from "@/lib/utils";
+import { buildCreatedSchema } from "@/lib/validators/build";
+
+import { BuildingIllustration } from "./building-illustration";
 
 type Viewport = "desktop" | "phone";
 
@@ -15,30 +26,72 @@ const VIEWPORTS: [Viewport, string][] = [
   ["phone", "Phone"],
 ];
 
+/** The preview toolbar's buttons (Figma Build/Fail): 31 px, Surface-Primary in a 0.5 px
+ * Stroke-Strong line in light, Dashboard in a 0.5 px Stroke line in dark, Shadow/Light, 8 px
+ * corners, 12 px medium labels (Heading-02, Heading-01 in dark). */
+const TOOL =
+  "flex items-center rounded-md border-(length:--line-hairline) border-stroke-strong bg-surface-primary py-0.5 text-type-caption-1 font-medium text-heading-02 shadow-light outline-none transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring dark:border-stroke dark:bg-dashboard dark:text-heading-01";
+
 /**
- * The built page (Figma Build, the preview column): the Desktop / Phone switch (the chosen one on
- * Surface-Primary in light; Foreground-02 on the Dashboard frame in dark, as in 420:52507) and "Open in new
- * tab" above a Foreground-02 well (10 px in, to the foot of the view) holding the page on
- * Surface-Modal with a 0.8 px Surface/Stroke line down its left; at Phone it is 390 px wide,
- * centred. The page runs in a sandboxed frame (no scripts, no access to the app); `version`
- * changes when the page is rebuilt, so the frame reloads. A claim's section button jumps the
- * frame to that section, outlined.
+ * The built page (Figma Build, the preview column): the Desktop / Phone switch, then Retry build
+ * (a failed build only) and Open in new tab (unavailable until there is a page), above a
+ * Foreground-02 well that runs to the foot of the view. With a page, the well holds it on
+ * Surface-Modal with a 0.8 px left line, 390 px wide and centred at Phone; the page runs in a
+ * sandboxed frame (no scripts, no access to the app), reloading when `version` changes, and a
+ * claim's section button jumps it to that section, outlined. While the build runs, the well shows
+ * the build illustration over "The preview appears when the build finishes." (BuildingIllustration);
+ * when it failed (Figma Build/Fail), a dashed card
+ * says so and names the step that failed. The well fades in as it changes from one to another. `failedStep` names it directly; otherwise it is read from
+ * the build's job. `onRetry` replaces the real retry (the demo).
  */
 export function BuildPreview({
   buildId,
   version,
   ready,
   failed = false,
+  jobId = null,
+  failedStep,
+  progress: progressOverride,
+  onRetry,
 }: {
   buildId: string;
   version: string;
   ready: boolean;
   failed?: boolean;
+  jobId?: string | null;
+  failedStep?: string;
+  /** How far the build has got (0–1), for the illustration; otherwise read from the job. */
+  progress?: number;
+  onRetry?: () => void;
 }) {
+  const router = useRouter();
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [hash, setHash] = useState("");
   const frame = useRef<HTMLDivElement>(null);
   const src = `/preview/${buildId}?v=${encodeURIComponent(version)}`;
+  // The same query the steps poll (one request): the failed step's name, or the build's progress.
+  const { data: job } = useJob(ready ? null : jobId);
+  const steps = job ? jobStepStates(OWNED_BUILD_STEPS, job) : null;
+  const stepName =
+    failedStep ?? steps?.find((step) => step.status === "failed")?.label;
+  const progress =
+    progressOverride ??
+    (job && steps && (job.status === "queued" || job.status === "running")
+      ? (steps.filter((step) => step.done).length +
+          (job.status === "running" &&
+          steps.some((step) => step.status === "running")
+            ? 0.5
+            : 0)) /
+        steps.length
+      : undefined);
+  const retry = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/builds/${buildId}/retry`, buildCreatedSchema, {
+        method: "POST",
+      }),
+    onSuccess: () => router.refresh(),
+    onError: (error) => toast.error(error.message),
+  });
 
   useEffect(() => {
     let raf = 0;
@@ -71,34 +124,62 @@ export function BuildPreview({
               type="button"
               aria-pressed={viewport === id}
               onClick={() => setViewport(id)}
-              className="rounded-sm px-1.5 py-1 text-type-caption-1 font-medium text-heading-03 transition-colors duration-150 ease-out outline-none hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-surface-primary aria-pressed:text-heading-01 dark:text-heading-02 dark:hover:text-heading-01 dark:aria-pressed:bg-foreground-02 dark:aria-pressed:text-heading-02"
+              className="rounded-sm px-1.5 py-1 text-type-caption-1 font-medium text-heading-02 transition-colors duration-150 ease-out outline-none hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-foreground-02"
             >
               {label}
             </button>
           ))}
         </div>
-        {ready ? (
-          <a
-            href={src}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md border-(length:--line-hairline) border-stroke bg-surface-modal px-1.5 py-0.5 shadow-light transition-colors duration-150 ease-out outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <span className="block py-1 text-type-caption-1 font-medium text-heading-02">
-              Open in new tab
-            </span>
-          </a>
-        ) : null}
-      </div>
-      <div className="flex min-h-0 flex-1 justify-center bg-foreground-02 p-2.5">
-        <div
-          ref={frame}
-          className={cn(
-            "divider-l-preview flex min-w-0 bg-surface-modal",
-            viewport === "phone" ? "w-preview-mobile max-w-full" : "flex-1",
-          )}
-        >
+        <div className="flex items-center gap-1.5">
+          {failed ? (
+            <button
+              type="button"
+              disabled={retry.isPending}
+              onClick={() => (onRetry ? onRetry() : retry.mutate())}
+              className={cn(
+                TOOL,
+                "gap-1.5 px-3 enabled:hover:bg-foreground-01 enabled:active:scale-97 disabled:text-heading-06 dark:enabled:hover:bg-foreground-01",
+              )}
+            >
+              <RetryFigmaIcon className="shrink-0 text-icon-system dark:text-icon-nav-active" />
+              <span className="py-1">
+                {retry.isPending ? "Retrying…" : "Retry build"}
+              </span>
+            </button>
+          ) : null}
           {ready ? (
+            <a
+              href={src}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(TOOL, "px-1.5 hover:bg-foreground-01")}
+            >
+              <span className="py-1">Open in new tab</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title="Available when the page is built"
+              className={cn(
+                TOOL,
+                "px-1.5 text-heading-06 dark:text-heading-06",
+              )}
+            >
+              <span className="py-1">Open in new tab</span>
+            </button>
+          )}
+        </div>
+      </div>
+      {ready ? (
+        <div className="flex min-h-0 flex-1 animate-step-in justify-center bg-foreground-02 p-2.5 motion-reduce:animate-none">
+          <div
+            ref={frame}
+            className={cn(
+              "divider-l-preview flex min-w-0 bg-surface-modal",
+              viewport === "phone" ? "w-preview-mobile max-w-full" : "flex-1",
+            )}
+          >
             <iframe
               key={src}
               src={`${src}${hash}`}
@@ -106,15 +187,65 @@ export function BuildPreview({
               sandbox=""
               className="size-full border-0 bg-page-canvas"
             />
-          ) : (
-            <p className="m-auto max-w-60 px-4 text-center text-type-caption-1 font-medium text-heading-05">
-              {failed
-                ? "This build failed. The steps on the right say where."
-                : "The preview appears when the build finishes."}
-            </p>
-          )}
+          </div>
         </div>
-      </div>
+      ) : failed ? (
+        <div className="flex min-h-0 flex-1 animate-step-in flex-col items-center bg-foreground-02 px-2.5 pt-50 pb-2.5 motion-reduce:animate-none">
+          <DashedFrame className="flex w-70 flex-col items-center gap-1.5 p-6">
+            <p className="text-type-caption-1 font-medium text-heading-01">
+              This build failed.
+            </p>
+            {stepName ? (
+              <p className="flex w-full items-center justify-center gap-1.5 rounded-item bg-foreground-03 p-2 dark:bg-surface-primary">
+                <BuildStepIcon
+                  state="failed"
+                  className="size-3.5 shrink-0 text-step-failed"
+                  dotClassName="fill-step-failed-dot"
+                />
+                <span className="text-type-caption-1 font-medium text-heading-06">
+                  {stepName}
+                </span>
+              </p>
+            ) : null}
+          </DashedFrame>
+        </div>
+      ) : (
+        <BuildingIllustration progress={progress} />
+      )}
     </>
+  );
+}
+
+/**
+ * Figma's 1 px dashed line (8 px dashes, 8 px gaps) inside 24 px corners: an SVG, since a CSS
+ * dashed border can't set its dash length. Stroke-Input-Hover in light, Icon-Explainer in dark.
+ */
+function DashedFrame({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={cn("relative", className)}>
+      <svg
+        aria-hidden
+        className="pointer-events-none absolute inset-0 size-full overflow-visible text-stroke-input-hover dark:text-icon-explainer"
+      >
+        <rect
+          x="0.5"
+          y="0.5"
+          rx="23.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeDasharray="8 8"
+          // The frame's size less the line (CSS geometry, so it follows the content).
+          style={{ width: "calc(100% - 1px)", height: "calc(100% - 1px)" }}
+        />
+      </svg>
+      {children}
+    </div>
   );
 }

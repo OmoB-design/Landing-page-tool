@@ -75,11 +75,15 @@ async function Build({
   const failed = build.status === "failed";
   const ready = Boolean(build.working_html_path) && !failed;
 
-  // Development only: `?demo` replays this build from the start, to see the steps animate.
-  if (process.env.NODE_ENV !== "production" && "demo" in (await searchParams)) {
+  // Development only: `?demo` replays this build from the start, to see the steps animate;
+  // `?demo=fail` stops it with a failure.
+  const { demo } = await searchParams;
+  if (process.env.NODE_ENV !== "production" && demo !== undefined) {
     return (
       <BuildDemo
         key={buildId}
+        // `?demo=fail` fails at the fourth step, so Retry can be tried.
+        failAt={demo === "fail" ? 4 : undefined}
         build={{
           id: build.id,
           key: build.key,
@@ -109,6 +113,7 @@ async function Build({
             version={build.updated_at}
             ready={ready}
             failed={failed}
+            jobId={build.jobId}
           />
         }
         panel={

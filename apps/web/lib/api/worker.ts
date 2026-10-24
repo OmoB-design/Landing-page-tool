@@ -120,6 +120,22 @@ export function startBuild(
   );
 }
 
+/** Queues a failed build again; it resumes after its last finished step (worker POST
+ * /builds/{id}/retry). */
+export function retryBuild(
+  accessToken: string,
+  buildId: string,
+  body: { org_id: string },
+): Promise<BuildCreated> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/retry`,
+    accessToken,
+    body,
+    buildCreatedSchema,
+    "Could not retry the build.",
+  );
+}
+
 const templateSummarySchema = z.object({
   id: z.string(),
   slug: z.string(),

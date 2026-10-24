@@ -183,12 +183,12 @@
   --card-edge-shadow: 0 0 #0000;
   /* Briefing list items: their soft shadow shows in light only (Figma Brands Details, both frames). */
   --briefing-item-shadow: rgb(182 182 182 / 0.15);
-  /* Figma Build: the Desktop / Phone switch's frame (segmented-frame). Light (Build/Desktop):
-     Foreground-03 in a 0.4 px Stroke-Input-Hover line; dark (Build/Mobile, the Dark-mode frame
-     420:52507): Dashboard in a 0.5 px Surface/Stroke line with Shadow/Light. */
-  --segmented-fill: var(--color-foreground-03);
-  --segmented-line: inset 0 0 0 0.4px var(--color-stroke-input-hover);
-  --segmented-drop: 0 0 #0000;
+  /* Figma Build: the Desktop / Phone switch's frame (segmented-frame), as Build/Fail and the
+     preview-while-building frames draw it: Surface-Primary in light, Dashboard in dark (420:52507),
+     both in a 0.5 px Surface/Stroke line with Shadow/Light. */
+  --segmented-fill: var(--color-surface-primary);
+  --segmented-line: inset 0 0 0 0.5px var(--color-stroke);
+  --segmented-drop: var(--shadow-light);
   /* Figma Build, Mover: light is Foreground-03 lit from inside (white lights); dark (420:52507,
      revised 2026-10-16) is Surface-Primary in a 0.5 px #414141 line with soft grey inner lights and
      a 4 px drop below. */
@@ -348,6 +348,10 @@
   /* A built page's own canvas in the build preview: white in both themes, as a browser shows a page
      that sets no background (the page is the brand's, not the app's). */
   --color-page-canvas: var(--base-white);
+  /* Figma Build/Fail: a failed step's loader, its dashes in Red 500 (Highlight-Red-500's light value,
+     kept in dark as the frame does) around a #e52727 dot. */
+  --color-step-failed: var(--red-500);
+  --color-step-failed-dot: #e52727;
   --color-illustration-line: var(--grey-50);
   --color-illustration-line-strong: var(--grey-150);
   /* Figma Notis: the footer's hover shadow colour (tuned by eye for dark). */
@@ -1026,10 +1030,6 @@
   transition-timing-function: var(--ease-out);
   transition-duration: 250ms;
 }
-/* Holds a loader where it is when its step finishes, so it doesn't jump back to its start. */
-@utility animation-paused {
-  animation-play-state: paused;
-}
 
 /* Figma Build: a frame's 0.7 px Surface/Stroke line drawn inside its edge and over its children,
    as Figma draws a frame's stroke (the build steps card). Needs the frame's corner radius. */
@@ -1091,6 +1091,23 @@
   border-radius: var(--radius-md);
   background-color: var(--segmented-fill);
   box-shadow: var(--segmented-line), var(--segmented-drop);
+}
+
+/* The Hairline figures in the build preview's empty well (D82): their plates match the
+   Foreground-02 well they sit on; what is lit is Heading-01, silhouettes Heading-05, other strokes
+   Icon-Explainer, what recedes Foreground-03. */
+@utility hairline-well {
+  --hairline-plate: var(--color-foreground-02);
+  --hairline-hi: var(--color-heading-01);
+  --hairline-edge: var(--color-heading-05);
+  --hairline-mid: var(--color-icon-explainer);
+  --hairline-lo: var(--color-foreground-03);
+  /* Stroke per theme (owner's tuning, 2026-10-17: 0.9 in both for now). The build illustration's
+     dial sets both live. */
+  --hairline-stroke: var(--well-stroke-light, 0.9);
+  @variant dark {
+    --hairline-stroke: var(--well-stroke-dark, 0.9);
+  }
 }
 
 /* Popover lists (Jobs, Notifications): where more of the list sits below, its last 40 px fade out

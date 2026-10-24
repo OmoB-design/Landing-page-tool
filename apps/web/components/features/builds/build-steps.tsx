@@ -1,7 +1,7 @@
 "use client";
 
 import { SkeletonText } from "@/components/app/skeletons";
-import { BuildStepIcon } from "@/components/ui/lp-icons";
+import { BuildSpinnerIcon, BuildStepIcon } from "@/components/ui/lp-icons";
 import { OWNED_BUILD_STEPS } from "@/lib/builds/steps";
 import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
 import { jobStepStates } from "@/lib/jobs/steps";
@@ -169,11 +169,12 @@ const STATE_LABEL: Record<BuildStep["state"], string> = {
  * One step (Figma Build, Stepper): 36 px whatever its state, 8 px in, the 14 px loader and the name
  * 6 px apart. At rest (Default): 12 px medium Heading-06, the loader dimmed to 30 % in Icon-System.
  * In progress (Present): a step card (Surface-Primary, 12 px corners, 0.5 px Surface/Stroke, a soft
- * light above) fades in, the name grows to 13 px, the loader in Icon-Nav-Active turns smoothly with
- * a fading trail (250 ms ease-out; under reduced motion the fades stay and the name changes size
+ * light above) fades in, the name grows to 13 px, and the spinner (eight spokes fading behind the
+ * brightest, the owner's icon) turns smoothly in Icon-Nav-Active (250 ms ease-out; under reduced motion the fades stay and the name changes size
  * without moving). Finished: the
- * card, the name in Heading-04 and the loader still, in Highlight-Blue-500. A failed step (no
- * frame yet) keeps the card, stops the loader in Spot-500-Red and gives the reason underneath.
+ * card, the name in Heading-04 and the loader still, in Highlight-Blue-500. Failed (Figma
+ * Build/Fail): the card, the name at rest (12 px, Heading-06), the loader in red with its dashes at
+ * 70 % round a red dot, and the reason underneath in Text-Danger.
  */
 function StepRow({ step }: { step: BuildStep }) {
   const started = step.state !== "idle";
@@ -186,26 +187,26 @@ function StepRow({ step }: { step: BuildStep }) {
       )}
     >
       <span className="flex items-center gap-1.5">
-        <BuildStepIcon
-          state={step.state}
-          className={cn(
-            "size-3.5 shrink-0 transition-colors duration-250 ease-out",
-            step.state === "idle" && "text-icon-system",
-            // The loader turns while its step runs and holds still where it is once the step
-            // ends, rather than snapping back to its start.
-            step.state !== "idle" &&
-              "animate-step-spin motion-reduce:animate-step-spin-slow",
-            step.state !== "running" && "animation-paused",
-            step.state === "running" && "text-icon-nav-active",
-            step.state === "done" && "text-highlight-blue-500",
-            step.state === "failed" && "text-spot-500-red",
-          )}
-          dotClassName={
-            step.state === "done"
-              ? "fill-surface-primary"
-              : "fill-foreground-01"
-          }
-        />
+        {step.state === "running" ? (
+          <BuildSpinnerIcon className="size-3.5 shrink-0 animate-step-spin text-icon-nav-active motion-reduce:animate-step-spin-slow" />
+        ) : (
+          <BuildStepIcon
+            state={step.state}
+            className={cn(
+              "size-3.5 shrink-0 transition-colors duration-250 ease-out",
+              step.state === "idle" && "text-icon-system",
+              step.state === "done" && "text-highlight-blue-500",
+              step.state === "failed" && "text-step-failed",
+            )}
+            dotClassName={
+              step.state === "done"
+                ? "fill-surface-primary"
+                : step.state === "failed"
+                  ? "fill-step-failed-dot"
+                  : "fill-foreground-01"
+            }
+          />
+        )}
         <span
           className={cn(
             // Every step is 36 px, at rest or started, so the card keeps its height as a build
@@ -213,10 +214,9 @@ function StepRow({ step }: { step: BuildStep }) {
             // rounded) and drawn at 12 px (scaled from its left edge) until the step starts, then
             // eases up to 13 px; scaling, unlike a font-size change, moves nothing around it.
             "min-w-0 flex-1 origin-left text-type-body-small leading-5 font-medium transition-label motion-reduce:transition-colors",
-            !started && "scale-92",
-            step.state === "done" || step.state === "failed"
-              ? "text-heading-04"
-              : "text-heading-06",
+            // A failed step keeps its name at rest (Figma Build/Fail): 12 px, Heading-06.
+            (!started || step.state === "failed") && "scale-92",
+            step.state === "done" ? "text-heading-04" : "text-heading-06",
           )}
         >
           {step.label}

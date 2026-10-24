@@ -1,5 +1,6 @@
 """Creating a build (BUILD_SPEC §9 step 6): the build row with its key and its `build` job, in
-one transaction. Used by POST /builds and the smoke-build command."""
+one transaction. Used by POST /builds and the smoke-build command. Retrying a failed build queues
+its `build` job again (POST /builds/{id}/retry)."""
 
 from typing import Any
 from uuid import UUID
@@ -17,6 +18,14 @@ from app.models.build import BuildWizard
 
 class BuildInputsMissingError(Exception):
     """The template, brand or product isn't available to this org."""
+
+
+class BuildNotFoundError(Exception):
+    """No such build in this org."""
+
+
+class BuildNotFailedError(Exception):
+    """Only a failed build can be retried (one that is queued or building is still going)."""
 
 
 def create_build(
@@ -81,3 +90,45 @@ def create_build(
             conn=conn,
         )
     return dict(build), job
+
+
+def retry_build(
+    *, org_id: UUID, build_id: UUID, created_by: UUID | None
+) -> tuple[dict[str, Any], Job]:
+    """Queues a failed build again, as a new `build` job. Its LangGraph thread kept a checkpoint
+    after every node that finished, so the retry repeats only the step that failed and those after
+    it (nothing already done is paid for twice). The build row is locked while it is checked, so
+    two quick presses queue one job."""
+    with transaction() as conn:
+        build = conn.execute(
+            """
+            select id, status from builds
+            where id = %(b)s and org_id = %(o)s and deleted_at is null
+            for update
+            """,
+            {"b": build_id, "o": org_id},
+        ).fetchone()
+        if build is None:
+            raise BuildNotFoundError
+        if build["status"] != "failed":
+            raise BuildNotFailedError
+        updated = conn.execute(
+            """
+            update builds set status = 'queued', updated_at = now()
+            where id = %(b)s and org_id = %(o)s
+            returning id, key, status, title
+            """,
+            {"b": build_id, "o": org_id},
+        ).fetchone()
+        assert updated is not None
+        kind = KINDS["build"]
+        job, _ = queue.enqueue(
+            org_id=org_id,
+            kind=kind.name,
+            payload={"build_id": str(build_id)},
+            created_by=created_by,
+            build_id=build_id,
+            max_attempts=kind.max_attempts,
+            conn=conn,
+        )
+    return dict(updated), job

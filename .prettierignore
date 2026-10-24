@@ -14,3 +14,6 @@ pnpm-lock.yaml
 apps/web/AGENTS.md
 apps/web/next-env.d.ts
 apps/web/types/database.ts
+
+# Hairline's engine is copied unchanged from its skill; figures drawn on it keep the skill's format
+apps/web/public/hairline/

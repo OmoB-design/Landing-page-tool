@@ -1954,7 +1954,8 @@ const STEP_DASHES = [
  * `currentColor`, the dot filled with `dotClassName`'s fill. `idle` dims everything to 30 % (a step
  * not started). `running` draws a trail for the turn: the ten o'clock dash at full strength and each
  * dash behind it 10 % fainter, down to 30 % for the eleven o'clock dash just ahead of it (Figma's
- * one faint dash). `done` and `failed` draw them all at full strength. Dashes fade between states.
+ * one faint dash). `done` draws them all at full strength; `failed` (Figma Build/Fail) at 70 %, the
+ * ring round the dot at 30 %, the dot filled red. Dashes fade between states.
  */
 export function BuildStepIcon({
   state,
@@ -1970,7 +1971,9 @@ export function BuildStepIcon({
       : state === "running"
         ? // Turning clockwise, the brightest dash leads; the others trail it.
           1 - 0.1 * ((6 - index + STEP_DASHES.length) % STEP_DASHES.length)
-        : 1;
+        : state === "failed"
+          ? 0.7
+          : 1;
   return (
     <svg
       width="14"
@@ -1999,7 +2002,7 @@ export function BuildStepIcon({
         r="1.75"
         stroke="currentColor"
         strokeWidth="1.16667"
-        opacity={state === "idle" ? 0.3 : 1}
+        opacity={state === "idle" || state === "failed" ? 0.3 : 1}
         className="transition-opacity duration-250 ease-out"
       />
     </svg>
@@ -2073,6 +2076,93 @@ export function LocateFigmaIcon(props: IconProps) {
         r="0.972222"
         stroke="currentColor"
         strokeWidth="1.16667"
+      />
+    </svg>
+  );
+}
+
+/** The spinner's eight spokes, clockwise from twelve o'clock (viewBox 18). */
+const SPINNER_SPOKES = [
+  "M9 1.75V4.25",
+  "M14.127 3.873L12.359 5.641",
+  "M16.25 9H13.75",
+  "M14.127 14.127L12.359 12.359",
+  "M9 16.25V13.75",
+  "M3.87299 14.127L5.64099 12.359",
+  "M1.75 9H4.25",
+  "M3.87299 3.873L5.64099 5.641",
+];
+
+/**
+ * A running step's spinner (owner's icon, 2026-10-17; an experiment): eight spokes in
+ * `currentColor`, 1.5 px in an 18 px box (1.17 px at 14 px). The twelve o'clock spoke is the
+ * brightest and each spoke counter-clockwise from it is fainter, 1 down to 0.13, so turned
+ * clockwise the fade trails the bright spoke.
+ */
+export function BuildSpinnerIcon(props: IconProps) {
+  const trail = [1, 0.13, 0.25, 0.38, 0.5, 0.63, 0.75, 0.88];
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      {SPINNER_SPOKES.map((d, index) => (
+        <path
+          key={d}
+          d={d}
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={trail[index]}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/** Retry (Figma Build/Fail): two arrows round, 12 px. */
+export function RetryFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M7.75028 8.25H10.7503V11.25"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.7182 8.30589C9.86419 10.0489 8.07219 11.2499 6.00019 11.2499C3.16819 11.2499 0.859185 9.00689 0.754185 6.20089"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.24972 3.75H1.24972V0.75"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M1.28237 3.694C2.13637 1.951 3.92837 0.75 6.00037 0.75C8.83237 0.75 11.1414 2.993 11.2464 5.799"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

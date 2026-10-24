@@ -4,6 +4,7 @@ import { formatCost } from "@/components/app/row-meta";
 import { LocateFigmaIcon } from "@/components/ui/lp-icons";
 import { LOCATE_SECTION_EVENT } from "@/lib/builds/preview-anchors";
 import {
+  type Reminder,
   claimAction,
   claimReason,
   findingSection,
@@ -25,78 +26,101 @@ import { CollapsibleSection, PanelSection } from "./panel-section";
  * under the steps): the facts, the copy changes, the claims check and the reminders.
  */
 export function BuildReport({ report }: { report: Report }) {
-  const { copy } = report;
-  const claims = reportClaims(report);
-  const reminders = reportReminders(report);
   return (
     <>
       <Facts rows={reportFacts(report)} />
-
-      {copy.review.length > 0 ? (
-        <div className="pt-4">
-          <CollapsibleSection
-            title={`Copy changes (${copy.review.length})`}
-            defaultOpen
-          >
-            <ol className="flex flex-col gap-1">
-              {copy.review.map((change, index) => (
-                <li
-                  key={index}
-                  className="flex flex-col gap-1.5 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium"
-                >
-                  <del className="text-heading-05">{change.original}</del>
-                  <ins className="pt-1.5 text-heading-02 no-underline divider-t-half">
-                    {change.replacement || "(removed)"}
-                  </ins>
-                </li>
-              ))}
-            </ol>
-          </CollapsibleSection>
-        </div>
-      ) : null}
-
-      <PanelSection
-        title="Claim check"
-        count={claims.length > 0 ? claims.length : undefined}
-        divided
-        className="mt-2"
-      >
-        {claims.length === 0 ? (
-          <p className="rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium text-heading-02">
-            No claims flagged
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2.5">
-            {claims.map((finding) => (
-              <Claim
-                key={`${finding.rule}-${finding.location}-${finding.text}`}
-                finding={finding}
-              />
-            ))}
-          </ul>
-        )}
-      </PanelSection>
-
-      {reminders.length > 0 ? (
-        <PanelSection title="Reminders" className="mt-2">
-          <ul className="flex flex-col gap-2.5">
-            {reminders.map((reminder) => (
-              <li
-                key={reminder.title}
-                className="flex flex-col gap-1.5 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium"
-              >
-                <span className="rounded-sm bg-foreground-02 px-1.5 py-1 text-heading-02">
-                  {reminder.title}
-                </span>
-                {reminder.detail ? (
-                  <span className="text-heading-05">{reminder.detail}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </PanelSection>
-      ) : null}
+      <CopyChanges changes={report.copy.review} />
+      <ClaimCheck claims={reportClaims(report)} />
+      <Reminders reminders={reportReminders(report)} />
     </>
+  );
+}
+
+/**
+ * Copy changes (Figma Build, Copy changes): 16 px down, folding, open at first; each rewritten line
+ * on Foreground-01, the old one struck through in Heading-05 over the new one in Heading-02.
+ */
+export function CopyChanges({
+  changes,
+}: {
+  changes: Report["copy"]["review"];
+}) {
+  if (changes.length === 0) return null;
+  return (
+    <div className="pt-4">
+      <CollapsibleSection
+        title={`Copy changes (${changes.length})`}
+        defaultOpen
+      >
+        <ol className="flex flex-col gap-1">
+          {changes.map((change, index) => (
+            <li
+              key={index}
+              className="flex flex-col gap-1.5 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium"
+            >
+              <del className="text-heading-05">{change.original}</del>
+              <ins className="pt-1.5 text-heading-02 no-underline divider-t-half">
+                {change.replacement || "(removed)"}
+              </ins>
+            </li>
+          ))}
+        </ol>
+      </CollapsibleSection>
+    </div>
+  );
+}
+
+/** Claim check (Figma Build, Claim check): the count, then a card per claim, or "No claims flagged". */
+export function ClaimCheck({ claims }: { claims: ComplianceFinding[] }) {
+  return (
+    <PanelSection
+      title="Claim check"
+      count={claims.length > 0 ? claims.length : undefined}
+      divided
+      className="mt-2"
+    >
+      {claims.length === 0 ? (
+        <p className="rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium text-heading-02">
+          No claims flagged
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2.5">
+          {claims.map((finding) => (
+            <Claim
+              key={`${finding.rule}-${finding.location}-${finding.text}`}
+              finding={finding}
+            />
+          ))}
+        </ul>
+      )}
+    </PanelSection>
+  );
+}
+
+/**
+ * Reminders (Figma Build, Reminders): each a Foreground-01 card with its title on Foreground-02
+ * (Heading-02) and the detail under it in Heading-05.
+ */
+export function Reminders({ reminders }: { reminders: Reminder[] }) {
+  if (reminders.length === 0) return null;
+  return (
+    <PanelSection title="Reminders" className="mt-2">
+      <ul className="flex flex-col gap-2.5">
+        {reminders.map((reminder) => (
+          <li
+            key={reminder.title}
+            className="flex flex-col gap-1.5 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium"
+          >
+            <span className="rounded-sm bg-foreground-02 px-1.5 py-1 text-heading-02">
+              {reminder.title}
+            </span>
+            {reminder.detail ? (
+              <span className="text-heading-05">{reminder.detail}</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </PanelSection>
   );
 }
 

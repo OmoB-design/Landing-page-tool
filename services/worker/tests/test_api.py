@@ -258,6 +258,54 @@ def test_refuses_builds_from_other_orgs_inputs(
     assert response.status_code == 403
 
 
+# ── POST /builds/{id}/retry ───────────────────────────────────────────────────
+
+
+@needs_db
+def test_retries_a_failed_build_once(
+    client: TestClient, user: DbUser, build_inputs: dict[str, Any]
+) -> None:
+    created = client.post("/builds", json=build_inputs, headers=bearer(user)).json()
+    build_id = created["build"]["id"]
+    with transaction() as conn:
+        conn.execute(
+            "update jobs set status = 'failed' where id = %(j)s", {"j": created["job"]["id"]}
+        )
+        conn.execute("update builds set status = 'failed' where id = %(b)s", {"b": build_id})
+    body = {"org_id": build_inputs["org_id"]}
+
+    first = client.post(f"/builds/{build_id}/retry", json=body, headers=bearer(user))
+    second = client.post(f"/builds/{build_id}/retry", json=body, headers=bearer(user))
+    cancel_jobs(user.org_id)
+
+    assert first.status_code == 201, first.text
+    retried = first.json()
+    assert retried["build"]["status"] == "queued" and retried["build"]["id"] == build_id
+    assert retried["job"]["kind"] == "test_build" and retried["job"]["build_id"] == build_id
+    assert retried["job"]["id"] != created["job"]["id"]
+    assert second.status_code == 409
+
+
+@needs_db
+def test_retry_refuses_builds_that_did_not_fail_or_are_not_yours(
+    client: TestClient, user: DbUser, other_org: uuid.UUID, build_inputs: dict[str, Any]
+) -> None:
+    created = client.post("/builds", json=build_inputs, headers=bearer(user)).json()
+    cancel_jobs(user.org_id)
+    build_id = created["build"]["id"]
+    mine = {"org_id": build_inputs["org_id"]}
+
+    still_queued = client.post(f"/builds/{build_id}/retry", json=mine, headers=bearer(user))
+    unknown = client.post(f"/builds/{uuid.uuid4()}/retry", json=mine, headers=bearer(user))
+    other = client.post(
+        f"/builds/{build_id}/retry", json={"org_id": str(other_org)}, headers=bearer(user)
+    )
+
+    assert still_queued.status_code == 409
+    assert unknown.status_code == 404
+    assert other.status_code == 403
+
+
 @needs_db
 def test_rejects_an_invalid_wizard(
     client: TestClient, user: DbUser, build_inputs: dict[str, Any]

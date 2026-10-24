@@ -39,6 +39,8 @@
 | `date-fns` | dates |
 | `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` | section reorder. B1.1b: 6.3.1, 10.0.0, 3.2.2, wrapped in `components/app/sortable-list.tsx` (feature code doesn't import them) |
 | `sonner` | toasts |
+| `dialkit`, `motion` | DialKit 2.0.2 (MIT): live tuning panels in development (`useDialKit`, `<DialRoot>`; framework roots hide themselves in production builds). First used for the build illustration (D82 follow-up 6); `motion` 12.23.24 is its peer and the app's animation library (import from `motion/react`) |
+| `@lucasmarkes/hairline` | isometric line figures that answer the pointer (MIT, no dependencies). D82 follow-up (owner, 2026-10-17): 0.5.1, its `Terminal` is the alternative figure in the build illustration's DialKit panel; the default figure, Assemble, is drawn with the skill and served from `apps/web/public/hairline/` with the skill's engine (`kernel.js`, unchanged). Skills `hairline-create` / `hairline-adopt` in `.claude/skills/` (`npx skills add lucasmarkes/hairline`) draw new figures on its engine |
 | AffectUI components (shadcn registry, MIT) | B0.4c: vendored into `components/ui/` with the shadcn CLI; no npm packages (D48, `THIRD_PARTY_NOTICES.md`) |
 | `cmdk` (via shadcn Command) | command palette |
 | `recharts` | analytics charts |

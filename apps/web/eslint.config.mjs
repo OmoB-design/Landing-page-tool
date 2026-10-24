@@ -56,6 +56,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Hairline's engine, copied unchanged from its skill, and figures drawn on it (D82).
+    "public/hairline/**",
   ]),
 ]);
 

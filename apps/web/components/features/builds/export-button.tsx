@@ -50,6 +50,33 @@ export function ExportButton({
   }, [job, buildId, buildKey]);
 
   return (
+    <ExportButtonView
+      ready={ready}
+      busy={busy}
+      onExport={() =>
+        startJob.mutate(
+          { kind: "export", payload: { build_id: buildId } },
+          {
+            onSuccess: ({ job: started }) => setJobId(started.id),
+            onError: (error) => toast.error(error.message),
+          },
+        )
+      }
+    />
+  );
+}
+
+/** The Export button as it looks: unavailable until the build has a page; a spinner while busy. */
+export function ExportButtonView({
+  ready,
+  busy,
+  onExport,
+}: {
+  ready: boolean;
+  busy: boolean;
+  onExport?: () => void;
+}) {
+  return (
     <Tooltip>
       <TooltipTrigger asChild>
         {/* A span keeps the tooltip working while the button is disabled. */}
@@ -57,15 +84,7 @@ export function ExportButton({
           <button
             type="button"
             disabled={!ready || busy}
-            onClick={() =>
-              startJob.mutate(
-                { kind: "export", payload: { build_id: buildId } },
-                {
-                  onSuccess: ({ job: started }) => setJobId(started.id),
-                  onError: (error) => toast.error(error.message),
-                },
-              )
-            }
+            onClick={onExport}
             className="flex h-8 items-center gap-1.5 rounded-md border-(length:--line-hairline) border-stroke-strong bg-surface-primary px-2.5 py-1 text-type-caption-1 font-medium text-heading-01 shadow-panel transition-transform duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring enabled:hover:bg-foreground-01 enabled:active:scale-97 disabled:cursor-default disabled:text-heading-06"
           >
             {busy ? (

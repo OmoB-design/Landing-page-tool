@@ -45,11 +45,15 @@ const DONE_LINE: Record<string, string> = {
  * moment the build is queued, every step at rest; then each step starts (the loader turns), finishes
  * (it turns blue) and writes its log line; the count chip turns blue when all are done; then the
  * preview and the report appear, as the page does when a real build finishes. Nothing runs and
- * nothing is saved: it plays back this build's own log over a fixed timeline. Replay starts again.
+ * nothing is saved: it plays back this build's own log over a fixed timeline. With `failAt` it
+ * fails at that step until Retry, which runs it again and carries on. Replay starts again.
  */
 export function BuildDemo({
   build,
+  failAt,
 }: {
+  /** Fail at this step (1-based), until Retry. */
+  failAt?: number;
   build: {
     id: string;
     key: string;
@@ -63,20 +67,25 @@ export function BuildDemo({
   // 0: queued; 1–13: step n running; 14: every step done; 15: the page shows its result.
   const [phase, setPhase] = useState(0);
   const [run, setRun] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const [retried, setRetried] = useState(false);
   const { data: job } = useJob(build.jobId);
   const last = OWNED_BUILD_STEPS.length + 2;
 
   useEffect(() => {
-    if (phase >= last) return;
+    if (phase >= last || failed) return;
     const wait =
       phase === 0
         ? QUEUED_MS
         : phase <= OWNED_BUILD_STEPS.length
           ? (STEP_MS[phase - 1] ?? 1000)
           : REVEAL_MS;
-    const timer = setTimeout(() => setPhase((value) => value + 1), wait);
+    const timer = setTimeout(() => {
+      if (failAt !== undefined && !retried && phase === failAt) setFailed(true);
+      else setPhase((value) => value + 1);
+    }, wait);
     return () => clearTimeout(timer);
-  }, [phase, run, last]);
+  }, [phase, run, last, failed, retried, failAt]);
 
   const finished = Math.max(0, Math.min(phase - 1, OWNED_BUILD_STEPS.length));
   const steps: BuildStep[] = OWNED_BUILD_STEPS.map((step, index) => ({
@@ -85,8 +94,14 @@ export function BuildDemo({
       index < finished || phase > OWNED_BUILD_STEPS.length
         ? "done"
         : index === phase - 1
-          ? "running"
+          ? failed
+            ? "failed"
+            : "running"
           : "idle",
+    note:
+      failed && index === phase - 1
+        ? "The brand’s logo couldn’t be downloaded."
+        : undefined,
   }));
   const own = (n: number) =>
     job?.events.find((event) => event.data?.step === n)?.message;
@@ -118,6 +133,21 @@ export function BuildDemo({
             buildId={build.id}
             version={build.updatedAt}
             ready={ready}
+            failed={failed}
+            failedStep={
+              failed ? OWNED_BUILD_STEPS[phase - 1]?.label : undefined
+            }
+            // The steps' progress, half a step for the one running, as on a real build.
+            progress={
+              (finished +
+                (steps.some((step) => step.state === "running") ? 0.5 : 0)) /
+              OWNED_BUILD_STEPS.length
+            }
+            onRetry={() => {
+              // Like a real retry: the failed step runs again, then the rest.
+              setFailed(false);
+              setRetried(true);
+            }}
           />
         }
         panel={
@@ -139,18 +169,22 @@ export function BuildDemo({
       >
         <span>
           Demo build ·{" "}
-          {phase === 0
-            ? "Queued"
-            : revealed
-              ? "Finished"
-              : phase > OWNED_BUILD_STEPS.length
-                ? "Finishing"
-                : `Step ${phase} of ${OWNED_BUILD_STEPS.length}`}
+          {failed
+            ? `Failed at step ${phase}`
+            : phase === 0
+              ? "Queued"
+              : revealed
+                ? "Finished"
+                : phase > OWNED_BUILD_STEPS.length
+                  ? "Finishing"
+                  : `Step ${phase} of ${OWNED_BUILD_STEPS.length}`}
         </span>
         <button
           type="button"
           onClick={() => {
             setPhase(0);
+            setFailed(false);
+            setRetried(false);
             setRun((value) => value + 1);
           }}
           className="rounded-sm px-2 py-1 text-text-link outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring"
