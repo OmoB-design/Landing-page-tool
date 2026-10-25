@@ -601,23 +601,21 @@ export function DeskChoices({ wizard }: { wizard: unknown }) {
   }
   if (rows.length === 0) return null;
   return (
-    <div className="pt-2">
-      <CollapsibleSection title="Your choices">
-        <dl className="flex flex-col gap-1">
-          {rows.map(([label, value]) => (
-            <div
-              key={label}
-              className="flex items-baseline justify-between gap-4 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium"
-            >
-              <dt className="shrink-0 text-heading-02">{label}:</dt>
-              <dd className="min-w-0 text-right text-heading-05">
-                {sentence(value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </CollapsibleSection>
-    </div>
+    <CollapsibleSection title="Your choices">
+      <dl className="flex flex-col gap-1">
+        {rows.map(([label, value]) => (
+          <div
+            key={label}
+            className="flex items-baseline justify-between gap-4 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium"
+          >
+            <dt className="shrink-0 text-heading-02">{label}:</dt>
+            <dd className="min-w-0 text-right text-heading-05">
+              {sentence(value)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </CollapsibleSection>
   );
 }
 

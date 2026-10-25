@@ -12,7 +12,9 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from uuid import UUID
 
+import psycopg
 import structlog
+from psycopg_pool import PoolTimeout
 
 from app.config import Settings
 from app.jobs import queue
@@ -26,6 +28,11 @@ from app.providers.ledger import cost_context
 log = structlog.get_logger()
 
 REAP_EVERY_SECONDS = 15.0
+# The database can drop a connection (a network blip, the pooler restarting). The loop then waits
+# and tries again, 1 s, 2 s, 4 s… up to a minute, instead of exiting.
+DB_RETRY_FIRST_SECONDS = 1.0
+DB_RETRY_MAX_SECONDS = 60.0
+DB_ERRORS = (psycopg.OperationalError, psycopg.InterfaceError, PoolTimeout)
 RETRY_DELAY_SECONDS = 5.0
 GENERIC_FAILURE = "Something went wrong while running this job. Try again."
 
@@ -53,11 +60,23 @@ class Runner:
         heartbeat = threading.Thread(target=self._heartbeat_loop, name="heartbeat", daemon=True)
         heartbeat.start()
         last_reap = 0.0
+        failures = 0
         while not self.stopping.is_set():
-            if time.monotonic() - last_reap >= REAP_EVERY_SECONDS:
-                self.reap()
-                last_reap = time.monotonic()
-            if self._free_slots() > 0 and self.claim_and_submit():
+            try:
+                if time.monotonic() - last_reap >= REAP_EVERY_SECONDS:
+                    self.reap()
+                    last_reap = time.monotonic()
+                claimed = self._free_slots() > 0 and self.claim_and_submit()
+            except DB_ERRORS as exc:
+                failures += 1
+                delay = min(DB_RETRY_MAX_SECONDS, DB_RETRY_FIRST_SECONDS * 2 ** (failures - 1))
+                log.warning("database unreachable; trying again", error=str(exc), retry_in=delay)
+                self.stopping.wait(delay)
+                continue
+            if failures:
+                log.info("database reachable again", after=failures)
+                failures = 0
+            if claimed:
                 continue  # look for more work straight away
             self.stopping.wait(self.settings.lp_poll_seconds)
         self._shutdown()

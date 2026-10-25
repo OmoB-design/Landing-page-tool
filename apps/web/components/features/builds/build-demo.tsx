@@ -13,6 +13,7 @@ import { BuildReport } from "./build-report";
 import { type BuildStep, BuildLog, BuildStepsCard } from "./build-steps";
 import { BuildWorkspace } from "./build-workspace";
 import { ExportButton } from "./export-button";
+import { PanelStack } from "./panel-section";
 
 /** Waiting in the queue before the first step starts. */
 const QUEUED_MS = 1600;
@@ -151,7 +152,7 @@ export function BuildDemo({
           />
         }
         panel={
-          <>
+          <PanelStack>
             <BuildStepsCard
               steps={steps}
               done={steps.filter((step) => step.state === "done").length}
@@ -160,7 +161,7 @@ export function BuildDemo({
             {revealed && build.report ? (
               <BuildReport report={build.report} />
             ) : null}
-          </>
+          </PanelStack>
         }
       />
       <div

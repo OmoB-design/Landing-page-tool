@@ -66,6 +66,15 @@ export function CollapsibleSection({
 }
 
 /**
+ * The right panel's blocks (Figma Review desk/Overview): the steps card, Details, the facts, Copy
+ * changes, Claim check, Reminders, Colours and Your choices, 10 px apart. The facts and Copy
+ * changes add 10 px of their own above, as the frame does.
+ */
+export function PanelStack({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col gap-2.5">{children}</div>;
+}
+
+/**
  * A fixed section of the right panel (Figma Build: Claim check, Reminders): 10 px above and below
  * (a 0.5 px Surface/Stroke line under it when `divided`), the 12 px medium Heading-02 title with
  * an optional count chip (11 px Heading-01 on Foreground-01, 10 px corners), the content 10 px

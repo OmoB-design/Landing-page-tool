@@ -40,7 +40,8 @@ export function BuildReport({ report }: { report: Report }) {
 }
 
 /**
- * Copy changes (Figma Build, Copy changes): 16 px down, folding, open at first; each rewritten line
+ * Copy changes (Figma Build, Copy changes): 10 px down (in the panel's 10 px stack), folding, open
+ * at first; each rewritten line
  * on Foreground-01, the old one struck through in Heading-05 over the new one in Heading-02.
  */
 export function CopyChanges({
@@ -50,7 +51,7 @@ export function CopyChanges({
 }) {
   if (changes.length === 0) return null;
   return (
-    <div className="pt-4">
+    <div className="pt-2.5">
       <CollapsibleSection
         title={`Copy changes (${changes.length})`}
         defaultOpen
@@ -80,7 +81,6 @@ export function ClaimCheck({ claims }: { claims: ComplianceFinding[] }) {
       title="Claim check"
       count={claims.length > 0 ? claims.length : undefined}
       divided
-      className="mt-2"
     >
       {claims.length === 0 ? (
         <p className="rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium text-heading-02">
@@ -107,7 +107,7 @@ export function ClaimCheck({ claims }: { claims: ComplianceFinding[] }) {
 export function Reminders({ reminders }: { reminders: Reminder[] }) {
   if (reminders.length === 0) return null;
   return (
-    <PanelSection title="Reminders" className="mt-2">
+    <PanelSection title="Reminders">
       <ul className="flex flex-col gap-2.5">
         {reminders.map((reminder) => (
           <li
@@ -203,7 +203,7 @@ function reportFacts(report: Report): [string, string][] {
  */
 function Facts({ rows }: { rows: [string, string][] }) {
   return (
-    <dl className="flex flex-col gap-1 pt-4">
+    <dl className="flex flex-col gap-1 pt-2.5">
       {rows.map(([label, value]) => (
         <div
           key={label}

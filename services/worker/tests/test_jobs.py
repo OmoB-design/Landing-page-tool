@@ -311,3 +311,39 @@ def test_runner_loop_claims_and_finishes_jobs(user: DbUser, fast_settings: Setti
         runner.stop()
         thread.join(timeout=10)
     assert [job_row(j)["status"] for j in job_ids] == ["succeeded"] * 3
+
+
+def test_the_loop_waits_out_a_dropped_database_connection(
+    user: DbUser, fast_settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+    import time
+
+    import psycopg
+
+    from app.jobs import runner as runner_module
+
+    monkeypatch.setattr(runner_module, "DB_RETRY_FIRST_SECONDS", 0.01)
+    real_claim = queue.claim
+    drops = {"left": 2}
+
+    def flaky_claim(*args: Any, **kwargs: Any) -> Any:
+        if drops["left"]:
+            drops["left"] -= 1
+            raise psycopg.OperationalError("server closed the connection unexpectedly")
+        return real_claim(*args, **kwargs)
+
+    monkeypatch.setattr(queue, "claim", flaky_claim)
+    job_id = enqueue(user, "test_ok")
+    runner = make_runner(fast_settings)
+    thread = threading.Thread(target=runner.run_forever)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and job_row(job_id)["status"] != "succeeded":
+            time.sleep(0.1)
+    finally:
+        runner.stop()
+        thread.join(timeout=10)
+    assert drops["left"] == 0 and not thread.is_alive()
+    assert job_row(job_id)["status"] == "succeeded"

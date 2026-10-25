@@ -22,6 +22,8 @@ def get_pool() -> ConnectionPool[Connection[DictRow]]:
         max_size=settings.lp_worker_concurrency + 4,
         kwargs={"row_factory": dict_row},
         connection_class=Connection[DictRow],
+        # A connection the server closed while it sat in the pool is replaced before use.
+        check=ConnectionPool.check_connection,
         open=True,
     )
 
