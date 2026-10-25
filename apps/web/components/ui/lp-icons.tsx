@@ -2167,3 +2167,67 @@ export function RetryFigmaIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** A line filled from the brand or product (Figma Review desk, Desk/Line Locked: 12 px). */
+export function LockFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3.83301 5.50033V3.33366C3.83301 2.13699 4.80301 1.16699 5.99967 1.16699C7.19634 1.16699 8.16634 2.13699 8.16634 3.33366V5.50033" />
+        <path d="M6 7.83301V8.49967" />
+        <path d="M8.50033 5.5H3.50033C2.76395 5.5 2.16699 6.09695 2.16699 6.83333V9.5C2.16699 10.2364 2.76395 10.8333 3.50033 10.8333H8.50033C9.23671 10.8333 9.83366 10.2364 9.83366 9.5V6.83333C9.83366 6.09695 9.23671 5.5 8.50033 5.5Z" />
+      </g>
+    </svg>
+  );
+}
+
+/** Approved, in the build page's status chip (Figma Review desk, Desk/Status chip: 12 px, a tick
+ * in a filled circle). */
+export function ApprovedFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M6.00033 0.666992C3.05966 0.666992 0.666992 3.05966 0.666992 6.00033C0.666992 8.94099 3.05966 11.3337 6.00033 11.3337C8.94099 11.3337 11.3337 8.94099 11.3337 6.00033C11.3337 3.05966 8.94099 0.666992 6.00033 0.666992ZM8.56233 4.47233L5.72899 8.13899C5.63833 8.25633 5.50033 8.32766 5.35233 8.33299C5.34566 8.33299 5.33966 8.33299 5.33366 8.33299C5.19233 8.33299 5.05699 8.27299 4.96166 8.16766L3.46166 6.50099C3.27699 6.29566 3.29366 5.97966 3.49899 5.79433C3.70499 5.61033 4.01966 5.62633 4.20566 5.83166L5.30433 7.05299L7.77166 3.86033C7.94033 3.64166 8.25499 3.60166 8.47299 3.77033C8.69166 3.93899 8.73166 4.25299 8.56299 4.47166L8.56233 4.47233Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Search in the review desk's Copy tab (Figma Review desk, Desk/Search: 14 px). */
+export function SearchFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.16667"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12.2495 12.2495L9.05176 9.05176" />
+        <path d="M6.02778 10.3056C8.39028 10.3056 10.3056 8.39028 10.3056 6.02778C10.3056 3.66528 8.39028 1.75 6.02778 1.75C3.66528 1.75 1.75 3.66528 1.75 6.02778C1.75 8.39028 3.66528 10.3056 6.02778 10.3056Z" />
+      </g>
+    </svg>
+  );
+}

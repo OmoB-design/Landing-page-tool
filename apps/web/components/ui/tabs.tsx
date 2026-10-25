@@ -35,14 +35,24 @@ function TabsList({
 
 function TabsTrigger({
   className,
+  variant = "pill",
   ...props
-}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+}: React.ComponentProps<typeof TabsPrimitive.Trigger> & {
+  /** `segmented` (Figma Review desk, the panel's tabs): 12 px medium Heading-02 labels, 6 px corners;
+   * the chosen one Surface-Primary with a 0.5 px Stroke-Strong line and Shadow/Panel (in dark, a
+   * plain Foreground-02 fill). */
+  variant?: "pill" | "segmented";
+}) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-type-body-small whitespace-nowrap text-sub-text outline-none hover:bg-foreground-02 hover:text-body focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        "data-[state=active]:bg-foreground-01 data-[state=active]:font-medium data-[state=active]:text-body data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-1/2 data-[state=active]:after:h-0.5 data-[state=active]:after:w-4 data-[state=active]:after:-translate-x-1/2 data-[state=active]:after:rounded-full data-[state=active]:after:bg-spot-500-indigo",
+        variant === "segmented"
+          ? "inline-flex flex-1 items-center justify-center gap-1 rounded-sm px-1.5 py-1 text-type-caption-1 font-medium whitespace-nowrap text-heading-02 transition-[background-color,color,box-shadow] duration-150 ease-out outline-none hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring data-[state=active]:bg-surface-primary data-[state=active]:shadow-panel data-[state=active]:ring-half data-[state=active]:ring-stroke-strong data-[state=active]:ring-inset dark:data-[state=active]:bg-foreground-02 dark:data-[state=active]:shadow-none dark:data-[state=active]:ring-0"
+          : [
+              "relative inline-flex h-7 items-center gap-1.5 rounded-sm px-2.5 text-type-body-small whitespace-nowrap text-sub-text outline-none hover:bg-foreground-02 hover:text-body focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+              "data-[state=active]:bg-foreground-01 data-[state=active]:font-medium data-[state=active]:text-body data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-1/2 data-[state=active]:after:h-0.5 data-[state=active]:after:w-4 data-[state=active]:after:-translate-x-1/2 data-[state=active]:after:rounded-full data-[state=active]:after:bg-spot-500-indigo",
+            ],
         className,
       )}
       {...props}

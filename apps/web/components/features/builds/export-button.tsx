@@ -80,12 +80,12 @@ export function ExportButtonView({
     <Tooltip>
       <TooltipTrigger asChild>
         {/* A span keeps the tooltip working while the button is disabled. */}
-        <span className="mr-1 inline-flex">
+        <span className="inline-flex">
           <button
             type="button"
             disabled={!ready || busy}
             onClick={onExport}
-            className="flex h-8 items-center gap-1.5 rounded-md border-(length:--line-hairline) border-stroke-strong bg-surface-primary px-2.5 py-1 text-type-caption-1 font-medium text-heading-01 shadow-panel transition-transform duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring enabled:hover:bg-foreground-01 enabled:active:scale-97 disabled:cursor-default disabled:text-heading-06"
+            className="flex h-6.5 items-center gap-1.5 rounded-md border-(length:--line-hairline) border-stroke-strong bg-dashboard px-2.5 py-1 text-type-caption-1 font-medium text-heading-01 shadow-panel transition-transform duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring enabled:hover:bg-foreground-01 enabled:active:scale-97 disabled:cursor-default disabled:text-heading-06"
           >
             {busy ? (
               <Spinner className="size-3.5" label="Exporting" />

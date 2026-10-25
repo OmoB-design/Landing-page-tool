@@ -125,3 +125,28 @@ def reinject(
         node.replace_with(f"{lead}{new}{trail}" if new else "")
         applied += 1
     return serialize(soup), {"applied": applied, "drift": drift}
+
+
+# The element a line belongs to, for grouping lines on the review desk (D84): a paragraph split by
+# a link or a bold word is several fragments in one block.
+BLOCK_KINDS = {
+    "h1": "Headline", "h2": "Headline", "h3": "Headline",
+    "h4": "Subheading", "h5": "Subheading", "h6": "Subheading",
+    "p": "Paragraph", "li": "List item", "blockquote": "Quote", "button": "Button",
+    "summary": "Question", "figcaption": "Caption", "td": "Table", "th": "Table",
+    "dt": "Term", "dd": "Answer", "label": "Label",
+}  # fmt: skip
+
+
+def _block(node: NavigableString) -> Tag | None:
+    for ancestor in node.parents:
+        if not isinstance(ancestor, Tag):
+            continue
+        if ancestor.name in BLOCK_KINDS or (
+            ancestor.name == "a" and ancestor.has_attr("data-lp-cta")
+        ):
+            return ancestor
+        if ancestor.has_attr("data-lp-section") or ancestor.name in ("body", "html"):
+            break
+    parent = node.parent
+    return parent if isinstance(parent, Tag) else None

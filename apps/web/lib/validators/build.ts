@@ -24,6 +24,9 @@ export const complianceFindingSchema = z.object({
   severity: z.enum(["high", "medium", "low"]),
   text: z.string(),
   location: z.string(),
+  /** The sentence it sits in (D84), for the desk to open and outline; null for alt text or older
+   * reports. Ids are for the page as it was when scanned. */
+  fragment: z.string().nullish(),
   reason: z.string(),
 });
 export type ComplianceFinding = z.infer<typeof complianceFindingSchema>;

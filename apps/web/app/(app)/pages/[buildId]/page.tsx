@@ -12,18 +12,31 @@ import {
   BuildStepsCard,
 } from "@/components/features/builds/build-steps";
 import { BuildWorkspace } from "@/components/features/builds/build-workspace";
+import { DeskProvider } from "@/components/features/builds/desk-context";
+import {
+  DeskChoices,
+  DeskPanel,
+} from "@/components/features/builds/desk-panel";
 import { ExportButton } from "@/components/features/builds/export-button";
+import {
+  HeaderDivider,
+  StatusActions,
+} from "@/components/features/builds/status-actions";
 import { PagesIcon } from "@/components/ui/icons";
+import { getBuildDesk } from "@/lib/api/worker";
 import { getSessionContext } from "@/lib/auth/session";
 import { getBuild } from "@/lib/builds/queries";
+import { claimAction, reportClaims } from "@/lib/builds/report";
 import { OWNED_BUILD_STEPS } from "@/lib/builds/steps";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Page" };
 
 /**
  * A built page (Figma Build): the header with the page's key and title and Export; the preview on
  * the left; on the right the build steps, their log, the facts, the copy changes, the claims check
- * and the reminders. The full review desk (copy, inks, legal desk, publish) arrives in B1.4.
+ * and the reminders. Once the page is built it is the review desk (D84): the status and Approve in
+ * the header, the panel's Copy and History tabs, and a preview whose sentences open for editing.
  */
 export default function BuildPage({
   params,
@@ -69,7 +82,7 @@ async function Build({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { buildId } = await params;
-  const { currentOrg } = await getSessionContext();
+  const { currentOrg, user } = await getSessionContext();
   const build = await getBuild(currentOrg.id, buildId);
   if (!build) notFound();
   const failed = build.status === "failed";
@@ -97,13 +110,42 @@ async function Build({
     );
   }
 
-  return (
+  const overview = (
+    <>
+      <BuildSteps jobId={build.jobId} finished={Boolean(build.report)} />
+      {build.report ? <BuildReport report={build.report} /> : null}
+    </>
+  );
+  const page = (desk: boolean) => (
     <div className="flex h-full flex-col">
       <PageHeader
         icon={PagesIcon}
         title={`${build.key} · ${build.title}`}
         actions={
-          <ExportButton buildId={build.id} buildKey={build.key} ready={ready} />
+          // Figma Review desk: Approve and the status, a rule, Export, a rule (then Jobs and
+          // Notifications), 10 px apart.
+          <div className="flex items-center gap-2.5">
+            {desk ? (
+              <>
+                <StatusActions
+                  fixCount={
+                    build.report
+                      ? reportClaims(build.report).filter(
+                          (claim) => claimAction(claim) === "Fix",
+                        ).length
+                      : 0
+                  }
+                />
+                <HeaderDivider />
+              </>
+            ) : null}
+            <ExportButton
+              buildId={build.id}
+              buildKey={build.key}
+              ready={ready}
+            />
+            <HeaderDivider />
+          </div>
         }
       />
       <BuildWorkspace
@@ -117,12 +159,40 @@ async function Build({
           />
         }
         panel={
-          <>
-            <BuildSteps jobId={build.jobId} finished={Boolean(build.report)} />
-            {build.report ? <BuildReport report={build.report} /> : null}
-          </>
+          desk ? (
+            <DeskPanel
+              overview={
+                <>
+                  {overview}
+                  <DeskChoices wizard={build.wizard} />
+                </>
+              }
+            />
+          ) : (
+            overview
+          )
         }
       />
     </div>
   );
+
+  // The review desk, once the page is built (D84). If the worker can't be reached, the page shows
+  // without it.
+  const desk =
+    ready && build.report ? await loadDesk(currentOrg.id, build.id) : null;
+  if (!desk) return page(false);
+  return (
+    <DeskProvider buildId={build.id} meId={user.id} initial={desk}>
+      {page(true)}
+    </DeskProvider>
+  );
+}
+
+async function loadDesk(orgId: string, buildId: string) {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return null;
+  return getBuildDesk(session.access_token, orgId, buildId).catch(() => null);
 }

@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app import builds, templates
+from app import builds, desk, templates
 from app.auth import CurrentUser, require_org_member
 from app.config import get_settings
 from app.jobs import queue
@@ -15,6 +15,13 @@ from app.jobs.models import Job
 from app.jobs.registry import KINDS
 from app.log import configure_logging
 from app.models.build import BuildRequest
+from app.models.desk import (
+    CopyEditRequest,
+    DeskChange,
+    DeskState,
+    SnapshotRestoreRequest,
+    StatusRequest,
+)
 from app.models.template import LayoutAction, TemplateEditorState
 
 configure_logging(get_settings().log_level)
@@ -120,6 +127,84 @@ def retry_build(build_id: UUID, body: RetryBuildRequest, user: CurrentUser) -> B
             status.HTTP_409_CONFLICT, "Only a failed build can be retried."
         ) from exc
     return BuildCreated(build=BuildSummary.model_validate(build), job=job)
+
+
+# ── Review desk (BUILD_SPEC §11.1, D84) ──────────────────────────────────────
+
+PAGE_CHANGED_ELSEWHERE = (
+    "This page changed in another tab or by someone else. Reload to see the latest."
+)
+
+
+def _desk_call(fn: Any, *args: Any) -> Any:
+    try:
+        return fn(*args)
+    except desk.DeskNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That page isn't available.") from exc
+    except desk.DeskConflictError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, PAGE_CHANGED_ELSEWHERE) from exc
+    except desk.DeskEditError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+
+
+@app.get("/builds/{build_id}/desk")
+def build_desk(build_id: UUID, org_id: UUID, user: CurrentUser) -> DeskState:
+    """A finished build's status and version, every sentence of its page, and its snapshots."""
+    require_org_member(user, org_id)
+    state: DeskState = _desk_call(desk.desk_state, org_id, build_id)
+    return state
+
+
+@app.get("/builds/{build_id}/proof")
+def build_proof(build_id: UUID, org_id: UUID, user: CurrentUser) -> Response:
+    """The page with every sentence marked, for the desk's preview (never stored)."""
+    require_org_member(user, org_id)
+    html, version = _desk_call(desk.proof_html, org_id, build_id)
+    return Response(
+        html,
+        media_type="text/html; charset=utf-8",
+        headers={"X-Page-Version": str(version), "Cache-Control": "no-store"},
+    )
+
+
+@app.post("/builds/{build_id}/copy")
+def edit_build_copy(build_id: UUID, body: CopyEditRequest, user: CurrentUser) -> DeskState:
+    """Saves edited sentences, after a snapshot of the page as it was."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(
+        desk.edit_copy, body.org_id, build_id, user.id, body.base_version, body.edits
+    )
+    return state
+
+
+@app.post("/builds/{build_id}/status")
+def set_build_status(build_id: UUID, body: StatusRequest, user: CurrentUser) -> DeskState:
+    """Approve, or send an approved page back to review."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(
+        desk.set_status, body.org_id, build_id, user.id, body.base_version, body.status
+    )
+    return state
+
+
+@app.post("/builds/{build_id}/undo")
+def undo_build_change(build_id: UUID, body: DeskChange, user: CurrentUser) -> DeskState:
+    """Puts back the page before the last change."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(desk.undo, body.org_id, build_id, body.base_version)
+    return state
+
+
+@app.post("/builds/{build_id}/restore")
+def restore_build_snapshot(
+    build_id: UUID, body: SnapshotRestoreRequest, user: CurrentUser
+) -> DeskState:
+    """Makes an earlier page current again (itself undoable)."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(
+        desk.restore, body.org_id, build_id, user.id, body.base_version, body.seq
+    )
+    return state
 
 
 class UseTemplateRequest(BaseModel):

@@ -2,6 +2,11 @@ import { z } from "zod";
 
 import { type BuildCreated, buildCreatedSchema } from "@/lib/validators/build";
 import {
+  type DeskAction,
+  type DeskState,
+  deskStateSchema,
+} from "@/lib/validators/desk";
+import {
   type LayoutAction,
   type TemplateEditorState,
   templateEditorSchema,
@@ -133,6 +138,69 @@ export function retryBuild(
     body,
     buildCreatedSchema,
     "Could not retry the build.",
+  );
+}
+
+// ── Review desk (worker /builds/{id}/…, BUILD_SPEC §11.1, D84) ────────────────
+
+/** A finished build's desk: status and version, every sentence, the snapshots. */
+export function getBuildDesk(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<DeskState> {
+  return callWorker(
+    "GET",
+    `/builds/${encodeURIComponent(buildId)}/desk?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    deskStateSchema,
+    "Could not open the page's desk.",
+  );
+}
+
+/** The page with every sentence marked, for the desk's preview. */
+export async function getBuildProof(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `${workerUrl}/builds/${encodeURIComponent(buildId)}/proof?org_id=${encodeURIComponent(orgId)}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+  } catch {
+    throw new WorkerError(UNREACHABLE, 503);
+  }
+  if (!response.ok) {
+    const json: unknown = await response.json().catch(() => null);
+    throw new WorkerError(
+      detailMessage(json) ?? "Could not load the page.",
+      response.status,
+    );
+  }
+  return response.text();
+}
+
+/** One desk change (an edit, an approval, an undo or a restore); returns the new desk. */
+export function changeBuildDesk(
+  accessToken: string,
+  buildId: string,
+  action: DeskAction,
+  body: Record<string, unknown> & { org_id: string },
+): Promise<DeskState> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/${action}`,
+    accessToken,
+    body,
+    deskStateSchema,
+    "Could not save the change.",
   );
 }
 

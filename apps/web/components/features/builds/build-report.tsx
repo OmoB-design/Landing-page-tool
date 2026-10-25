@@ -1,6 +1,7 @@
 "use client";
 
 import { formatCost } from "@/components/app/row-meta";
+import { RenameIcon } from "@/components/ui/icons";
 import { LocateFigmaIcon } from "@/components/ui/lp-icons";
 import { LOCATE_SECTION_EVENT } from "@/lib/builds/preview-anchors";
 import {
@@ -19,6 +20,7 @@ import type {
   ComplianceFinding,
 } from "@/lib/validators/build";
 
+import { useDeskOptional } from "./desk-context";
 import { CollapsibleSection, PanelSection } from "./panel-section";
 
 /**
@@ -193,6 +195,11 @@ function Facts({ rows }: { rows: [string, string][] }) {
   );
 }
 
+/** A claim card's button (Figma Build, Claim check: 22 px, Surface-Primary, 1 px Stroke-Strong,
+ * Shadow/Panel). */
+const CLAIM_BUTTON =
+  "flex h-5.5 items-center gap-1 rounded-sm border border-stroke-strong bg-surface-primary px-1.5 text-type-caption-1 font-medium text-heading-01 shadow-panel transition-transform duration-150 ease-out outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring active:scale-97";
+
 const ACTION_CLASS = {
   Fix: "bg-highlight-red-50 text-text-danger",
   Check: "bg-highlight-yellow-150 text-highlight-yellow-500",
@@ -208,6 +215,15 @@ const ACTION_CLASS = {
 function Claim({ finding }: { finding: ComplianceFinding }) {
   const action = claimAction(finding);
   const section = findingSection(finding.location);
+  // On the review desk (D84), a claim in page text outlines its own sentence and can be edited.
+  const desk = useDeskOptional();
+  const block =
+    desk && finding.fragment
+      ? desk.blockOf({ fragment: finding.fragment })
+      : null;
+  const sentence = block
+    ? desk?.desk.paragraphs.find((p) => p.number === block)
+    : undefined;
   return (
     <li className="flex gap-1.5 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium">
       <span
@@ -223,21 +239,38 @@ function Claim({ finding }: { finding: ComplianceFinding }) {
         <p className="rounded-md bg-foreground-02 px-1.5 py-1 text-heading-02">
           {claimReason(finding.reason)}
         </p>
-        {section ? (
-          <div className="flex justify-end pt-1 divider-t-half">
-            <button
-              type="button"
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent(LOCATE_SECTION_EVENT, { detail: section }),
-                )
-              }
-              aria-label={`Show in the preview: ${sectionLabel(section)}`}
-              className="flex h-5.5 items-center gap-1 rounded-sm border border-stroke-strong bg-surface-primary px-1.5 text-type-caption-1 font-medium text-heading-01 shadow-panel transition-transform duration-150 ease-out outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring active:scale-97"
-            >
-              <LocateFigmaIcon className="shrink-0 text-icon-system" />
-              {sectionLabel(section)}
-            </button>
+        {section || sentence ? (
+          <div className="flex justify-end gap-1.5 pt-1 divider-t-half">
+            {sentence && !sentence.locked ? (
+              <button
+                type="button"
+                onClick={() => desk?.open({ block: sentence.number })}
+                aria-label={`Edit the line: ${sentence.text}`}
+                className={CLAIM_BUTTON}
+              >
+                <RenameIcon className="size-3 shrink-0 text-icon-system" />
+                Edit line
+              </button>
+            ) : null}
+            {section ? (
+              <button
+                type="button"
+                onClick={() =>
+                  sentence
+                    ? desk?.show({ block: sentence.number })
+                    : window.dispatchEvent(
+                        new CustomEvent(LOCATE_SECTION_EVENT, {
+                          detail: section,
+                        }),
+                      )
+                }
+                aria-label={`Show in the preview: ${sectionLabel(section)}`}
+                className={CLAIM_BUTTON}
+              >
+                <LocateFigmaIcon className="shrink-0 text-icon-system" />
+                {sectionLabel(section)}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

@@ -273,6 +273,7 @@ export type Database = {
           mock_images: boolean
           org_id: string
           origin: Database["public"]["Enums"]["template_origin"]
+          page_version: number
           parent_build_id: string | null
           product_id: string
           report: Json
@@ -299,6 +300,7 @@ export type Database = {
           mock_images?: boolean
           org_id: string
           origin: Database["public"]["Enums"]["template_origin"]
+          page_version?: number
           parent_build_id?: string | null
           product_id: string
           report?: Json
@@ -325,6 +327,7 @@ export type Database = {
           mock_images?: boolean
           org_id?: string
           origin?: Database["public"]["Enums"]["template_origin"]
+          page_version?: number
           parent_build_id?: string | null
           product_id?: string
           report?: Json

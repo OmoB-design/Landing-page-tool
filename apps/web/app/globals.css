@@ -1055,6 +1055,16 @@
     var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
 }
 
+/* Figma Review desk: the thin rule between the build page header's actions (1.5 × 15 px,
+   Foreground-02, 4 px corners). */
+@utility header-divider {
+  width: 1.5px;
+  height: 15px;
+  flex-shrink: 0;
+  border-radius: var(--radius-xsm);
+  background-color: var(--color-foreground-02);
+}
+
 /* Figma Build: a panel section between 0.5 px Surface/Stroke lines above and below (Details,
    Copy changes). */
 @utility divider-y-half {

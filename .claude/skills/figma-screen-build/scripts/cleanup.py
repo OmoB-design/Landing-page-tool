@@ -1,6 +1,6 @@
-"""Deletes a throwaway account made by new_account.py: its builds' stored files (pages and exports),
-then its org (rows cascade) and the user. Refuses anything but a design-check-…@example.test
-account that is alone in its org.
+"""Deletes a throwaway account made by new_account.py: its builds' stored files (pages, desk
+snapshots and exports), then its org (rows cascade) and the user. Refuses anything but a
+design-check-…@example.test account that is alone in its org.
 
     cd services/worker && PYTHONPATH=. uv run python <this file> OUT
 """
@@ -29,15 +29,23 @@ with transaction() as conn:
     ).fetchall()
     for org in orgs:
         assert org["members"] == 1, org
-        paths = [
-            p
-            for row in conn.execute(
-                "select working_html_path, export_html_path from builds where org_id = %(o)s",
-                {"o": org["org_id"]},
-            ).fetchall()
-            for p in (row["working_html_path"], row["export_html_path"])
-            if p
-        ]
+        builds = conn.execute(
+            "select id, working_html_path, export_html_path from builds where org_id = %(o)s",
+            {"o": org["org_id"]},
+        ).fetchall()
+        snapshots = conn.execute(
+            """
+            select s.html_path from build_snapshots s join builds b on b.id = s.build_id
+            where b.org_id = %(o)s
+            """,
+            {"o": org["org_id"]},
+        ).fetchall()
+        # The working page, the export, and every page the review desk kept (D84).
+        paths = sorted(
+            {p for row in builds for p in (row["working_html_path"], row["export_html_path"]) if p}
+            | {row["html_path"] for row in snapshots}
+            | {f"{org['org_id']}/{row['id']}/working.html" for row in builds}
+        )
         if paths:
             storage.remove("builds", paths)
         conn.execute("delete from orgs where id = %(o)s", {"o": org["org_id"]})

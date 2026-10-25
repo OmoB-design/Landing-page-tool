@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { buildCreatedSchema } from "@/lib/validators/build";
 
 import { BuildingIllustration } from "./building-illustration";
+import { useDeskOptional } from "./desk-context";
 
 type Viewport = "desktop" | "phone";
 
@@ -68,7 +69,17 @@ export function BuildPreview({
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [hash, setHash] = useState("");
   const frame = useRef<HTMLDivElement>(null);
+  const iframe = useRef<HTMLIFrameElement>(null);
   const src = `/preview/${buildId}?v=${encodeURIComponent(version)}`;
+  // On the review desk (D84) the frame shows the proof: every sentence clickable, our bridge
+  // script running (allowed by a nonce), the page's own scripts still off.
+  const desk = useDeskOptional();
+  const editSrc = desk
+    ? `/preview/${buildId}?mode=edit&v=${desk.desk.build.page_version}`
+    : null;
+  const frameSrc = editSrc ?? src;
+  const focus = desk?.focus ?? null;
+  const open = desk?.open;
   // The same query the steps poll (one request): the failed step's name, or the build's progress.
   const { data: job } = useJob(ready ? null : jobId);
   const steps = job ? jobStepStates(OWNED_BUILD_STEPS, job) : null;
@@ -92,6 +103,56 @@ export function BuildPreview({
     onSuccess: () => router.refresh(),
     onError: (error) => toast.error(error.message),
   });
+
+  // The desk's preview: a click on a sentence opens it in the Copy tab; when the frame (re)loads,
+  // the outlined paragraph is outlined again.
+  const focusRef = useRef(focus);
+  useEffect(() => {
+    focusRef.current = focus;
+  }, [focus]);
+  useEffect(() => {
+    if (!open) return;
+    const onMessage = (event: MessageEvent) => {
+      const target = iframe.current?.contentWindow;
+      if (!target || event.source !== target) return;
+      const data = event.data as {
+        type?: unknown;
+        id?: unknown;
+        block?: unknown;
+      } | null;
+      if (data?.type === "lp-frag" && typeof data.id === "string") {
+        open({ fragment: data.id }, { scroll: false });
+      } else if (data?.type === "lp-block" && typeof data.block === "number") {
+        open({ block: data.block }, { scroll: false });
+      } else if (data?.type === "lp-ready" && focusRef.current) {
+        target.postMessage(
+          {
+            type: "lp-block-select",
+            block: focusRef.current.block,
+            colour: outline(),
+            scroll: true,
+            instant: true,
+          },
+          "*",
+        );
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [open]);
+  useEffect(() => {
+    iframe.current?.contentWindow?.postMessage(
+      {
+        type: "lp-block-select",
+        block: focus?.block ?? null,
+        colour: outline(),
+        scroll: focus?.scroll ?? false,
+      },
+      "*",
+    );
+    if (focus?.scroll)
+      frame.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focus]);
 
   useEffect(() => {
     let raf = 0;
@@ -181,10 +242,15 @@ export function BuildPreview({
             )}
           >
             <iframe
-              key={src}
-              src={`${src}${hash}`}
-              title="Page preview"
-              sandbox=""
+              ref={iframe}
+              key={frameSrc}
+              src={`${frameSrc}${hash}`}
+              title={
+                editSrc
+                  ? "Page preview: click a line to edit it"
+                  : "Page preview"
+              }
+              sandbox={editSrc ? "allow-scripts" : ""}
               className="size-full border-0 bg-page-canvas"
             />
           </div>
@@ -247,5 +313,14 @@ function DashedFrame({
       </svg>
       {children}
     </div>
+  );
+}
+
+/** The outline colour for the selected sentence: the app's blue (Spot-500-Blue). */
+function outline(): string {
+  return (
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--color-spot-500-blue")
+      .trim() || "Highlight"
   );
 }

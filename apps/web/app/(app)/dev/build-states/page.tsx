@@ -16,8 +16,11 @@ import {
 import { BuildWorkspace } from "@/components/features/builds/build-workspace";
 import { ExportButtonView } from "@/components/features/builds/export-button";
 import {
+  ConflictToastButton,
   ExportErrorToastButton,
+  SampleDeskPanel,
   SampleFailedPreview,
+  SampleStatusActions,
 } from "@/components/features/dev/build-states";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertIcon } from "@/components/ui/icons";
@@ -291,32 +294,29 @@ export default function BuildStatesPage() {
 
         <State
           number={8}
-          title="The page’s status"
-          when="Every page has a status: Building (queued or building), Needs review (finished), Approved, Published or Failed. Pages groups by it. The next build (B1.4, the review desk) adds Approve (Needs review → Approved) and B1.5 adds Publish (Approved → Published, after the publish check)."
+          title="The page’s status and Approve"
+          when="Every page has a status: Building (queued or building), Needs review (finished), Approved, Published or Failed. Pages groups by it. B1.4a (the review desk, D84) puts it back in the header with Approve; B1.5 adds Publish (Approved → Published, after the publish check)."
           shows={[
-            "Before the redesign: the status sat at the right of the header, its glyph and name (below).",
-            "Now: not on the build page (the frames dropped it); only on Pages.",
+            "Designed (Figma Review desk — editing copy): Approve (the blue button), then the status chip (the glyph alone on a phone), a rule, Export, a rule.",
+            "Needs review: Approve. With claims marked Fix it asks first (“Approve anyway”); publishing is where they block.",
+            "Approved: Back to review (outline). Any change to the page sends it back to Needs review on its own.",
           ]}
           design={[
-            "Where the status sits on the build page",
-            "Approve and Publish actions (and going back to review)",
+            "Done: the status chip, Approve and Back to review",
+            "Still to draw: the Fix warning, and Publish when B1.5 arrives",
           ]}
         >
           <div className="flex flex-col gap-6">
-            <Labeled label="Before (the old header)">
-              <div className="overflow-hidden rounded-lg bg-surface-primary edge">
-                <PageHeader
-                  title="BRE-1 · Advertorial: 30-day wear test · OG X Black Cherry Lemonade"
-                  actions={
-                    <span className="flex items-center gap-1.5 text-type-caption-1 text-sub-text">
-                      <StatusGlyph status="needs_review" />
-                      Needs review
-                    </span>
-                  }
-                />
+            <Labeled label="Needs review">
+              <div className="flex gap-6">
+                <SampleStatusActions status="needs_review" />
+                <SampleStatusActions status="needs_review" fixCount={1} />
               </div>
             </Labeled>
-            <Labeled label="Every status">
+            <Labeled label="Approved">
+              <SampleStatusActions status="approved" />
+            </Labeled>
+            <Labeled label="Every status (Pages)">
               <div className="flex flex-wrap gap-6">
                 {STATUS_GROUPS.map((group) => (
                   <span
@@ -330,6 +330,77 @@ export default function BuildStatesPage() {
               </div>
             </Labeled>
           </div>
+        </State>
+
+        <State
+          number={9}
+          title="Editing the copy"
+          when="On a finished page, the panel’s Copy tab lists every line of the page by section. A click on a line, in the panel or on the page in the preview, opens it; a claim’s Edit line opens its line too."
+          shows={[
+            "Designed (Figma Review desk — editing copy): the tab bar, the search and its hint, then each section as a folding block between hairlines (the first open; the others open when clicked, when a line in them is clicked on the page, or when a search matches).",
+            "A paragraph split by a link or bold text stays one card; each piece is edited on its own (so the bold and the link survive).",
+            "Lines at rest, hover, outlined (shown in the preview), edited and locked (names and prices from the brand or product).",
+            "An open line: a field with Cancel and Save (⌘ Enter saves, Esc cancels). Saving snapshots the page first, checks the claims again and reloads the preview; the line stays outlined on the page.",
+          ]}
+          design={[
+            "Done: the tabs, sections, line states and the open line",
+            "The paragraph card (a split paragraph) follows the line’s look until it’s drawn",
+            "Typing on the page itself arrives with the M3 editor",
+          ]}
+        >
+          <div className="flex flex-wrap items-start gap-6">
+            <Labeled label="At rest">
+              <PanelFrame>
+                <SampleDeskPanel tab="copy" />
+              </PanelFrame>
+            </Labeled>
+            <Labeled label="A line open">
+              <PanelFrame>
+                <SampleDeskPanel tab="copy" editing />
+              </PanelFrame>
+            </Labeled>
+          </div>
+        </State>
+
+        <State
+          number={10}
+          title="History and undo"
+          when="Every change (an edit, a recolour, a redraft, a restore) saves the page first. The History tab lists them, newest first; the last 12 are kept."
+          shows={[
+            "Undo, naming the last change, puts back the page before it.",
+            "Each change with when and who; Restore makes the page before it current again (itself a change you can undo).",
+            "With no changes: a line saying each change will be saved here.",
+          ]}
+          design={[
+            "Done: Undo and the list of changes (Figma Review desk — editing copy)",
+            "Still to draw: the empty History",
+          ]}
+        >
+          <div className="flex flex-wrap items-start gap-6">
+            <Labeled label="With changes">
+              <PanelFrame>
+                <SampleDeskPanel tab="history" history />
+              </PanelFrame>
+            </Labeled>
+            <Labeled label="No changes yet">
+              <PanelFrame>
+                <SampleDeskPanel tab="history" />
+              </PanelFrame>
+            </Labeled>
+          </div>
+        </State>
+
+        <State
+          number={11}
+          title="Changed in another tab"
+          when="Someone saves a change to the page (in another tab, or a teammate) after this tab opened it. Every change carries the page version it was made on, so this tab’s next change is refused instead of overwriting theirs."
+          shows={[
+            "An error toast: “This page changed in another tab or by someone else. Reload to see the latest.” with Reload.",
+            "Reload brings in the latest page and its lines; nothing of theirs is lost.",
+          ]}
+          design={["How the clash is told, and the way to catch up"]}
+        >
+          <ConflictToastButton />
         </State>
       </div>
     </>

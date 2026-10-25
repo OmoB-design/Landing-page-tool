@@ -5,8 +5,10 @@ import re
 from dataclasses import asdict, dataclass
 
 from bs4 import Tag
+from bs4.element import NavigableString
 
 from app.engines.compliance_rules import RULES, Rule
+from app.engines.fragments import _nodes
 from app.engines.html import element_path, parse, text_nodes
 
 SNIPPET_CHARS = 140
@@ -23,6 +25,9 @@ class Finding:
     text: str
     location: str
     reason: str
+    # The fragment (sentence) the claim sits in, when it is page text: the review desk opens it
+    # for editing and outlines it in the preview (D84). Ids are for the page as scanned.
+    fragment: str | None = None
 
 
 def _snippet(text: str, match: re.Match[str]) -> str:
@@ -59,21 +64,31 @@ def scan(html: str, *, author_type: str | None = None) -> dict[str, object]:
     rules = _COMPILED + (
         [(CREDENTIALS, re.compile(CREDENTIALS.pattern))] if author_type == "expert" else []
     )
-    sources: list[tuple[str, Tag]] = []
+    fragment_ids = {id(node): f"f{i:04d}" for i, node in enumerate(_nodes(soup), start=1)}
+
+    def block_fragment(block: Tag, needle: str) -> str | None:
+        """The block's fragment holding the matched words, else its first fragment."""
+        inside = [n for n in block.descendants if id(n) in fragment_ids]
+        for node in inside:
+            if needle.lower() in str(node).lower():
+                return fragment_ids[id(node)]
+        return fragment_ids[id(inside[0])] if inside else None
+
+    sources: list[tuple[str, Tag, NavigableString | None]] = []
     for node in text_nodes(soup):
         parent = node.parent
         if isinstance(parent, Tag) and node.strip():
-            sources.append((str(node), parent))
+            sources.append((str(node), parent, node))
     for img in soup.find_all("img", alt=True):
         if isinstance(img, Tag) and str(img["alt"]).strip():
-            sources.append((str(img["alt"]), img))
+            sources.append((str(img["alt"]), img, None))
     # Text split across inline tags ("clinically <b>proven</b>") is checked per block too.
     for block in soup.find_all(["p", "li", "h1", "h2", "h3", "h4", "blockquote", "td", "summary"]):
         if isinstance(block, Tag):
-            sources.append((block.get_text(" ", strip=True), block))
+            sources.append((block.get_text(" ", strip=True), block, None))
 
     seen: set[tuple[str, str]] = set()
-    for text, element in sources:
+    for text, element, text_node in sources:
         for rule, pattern in rules:
             match = pattern.search(text)
             if not match:
@@ -83,6 +98,12 @@ def scan(html: str, *, author_type: str | None = None) -> dict[str, object]:
             if key in seen:
                 continue
             seen.add(key)
+            if text_node is not None:
+                fragment = fragment_ids.get(id(text_node))
+            elif element.name == "img":
+                fragment = None
+            else:
+                fragment = block_fragment(element, match.group(0).split()[0])
             findings.append(
                 Finding(
                     rule.id,
@@ -91,6 +112,7 @@ def scan(html: str, *, author_type: str | None = None) -> dict[str, object]:
                     _snippet(text, match),
                     location,
                     rule.reason,
+                    fragment,
                 )
             )
     order = {"high": 0, "medium": 1, "low": 2}

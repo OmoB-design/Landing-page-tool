@@ -20,6 +20,7 @@ export {
   GripVertical as DragIcon,
   History as HistoryIcon,
   Info as InfoIcon,
+  Lock as LockIcon,
   ArrowDown as MoveDownIcon,
   ArrowRight as NextIcon,
   ArrowUp as MoveUpIcon,

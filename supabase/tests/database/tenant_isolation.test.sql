@@ -4,7 +4,7 @@
 -- Run with: pnpm test:db  (runs on the linked cloud project; everything rolls back at the end)
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(23);
 
 -- Two sign-ups. The on_auth_user_created trigger runs exactly as for a real sign-up.
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -40,10 +40,20 @@ insert into storage.objects (bucket_id, name)
 select 'templates', org_id::text || '/t1/index.html'
 from org_members where user_id = '00000000-0000-4000-8000-00000000000a';
 
+insert into products (org_id, brand_id, handle, name)
+select b.org_id, b.id, 'serum', 'Serum' from brands b where b.prefix = 'LUM';
+insert into builds (org_id, brand_id, product_id, template_id, template_version, key, origin,
+                    title, wizard, status)
+select b.org_id, b.id, p.id, t.id, 1, 'LUM-1', 'owned', 'Test page', '{}', 'needs_review'
+from brands b join products p on p.brand_id = b.id,
+     templates t
+where b.prefix = 'LUM' and t.slug = 'advertorial-classic' and t.org_id is null;
+
 create temp table ids on commit drop as
 select (select org_id from org_members
         where user_id = '00000000-0000-4000-8000-00000000000a') as ada_org,
-       (select id from brands where prefix = 'LUM') as ada_brand;
+       (select id from brands where prefix = 'LUM') as ada_brand,
+       (select id from builds where key = 'LUM-1') as ada_build;
 grant select on ids to authenticated;
 
 -- ── As Ada ──────────────────────────────────────────────────────────────────
@@ -57,6 +67,14 @@ select is((select count(*)::int from storage.objects where bucket_id = 'template
 select lives_ok($$ update orgs set name = 'Ada Co' $$, 'an org owner can rename the org');
 select throws_ok($$ update orgs set settings = '{"proxy_fetch_enabled": true}' $$, '42501', null,
                  'an org owner cannot change platform-controlled settings');
+select is((select count(*)::int from builds), 1, 'Ada sees her org''s build');
+select throws_ok(
+  $$ update builds set status = 'approved' where id = (select ada_build from ids) $$,
+  '42501', null, 'members cannot change a build''s status themselves (D84: the worker does)');
+select throws_ok(
+  $$ insert into build_snapshots (build_id, seq, html_path, reason)
+     select ada_build, 1, 'x.html', 'test' from ids $$,
+  '42501', null, 'members cannot write build snapshots (the worker does)');
 
 -- ── As Bob ──────────────────────────────────────────────────────────────────
 set local request.jwt.claims to '{"sub": "00000000-0000-4000-8000-00000000000b", "role": "authenticated"}';
