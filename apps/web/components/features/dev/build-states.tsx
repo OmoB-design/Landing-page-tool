@@ -6,8 +6,11 @@ import {
   DeskProvider,
   type DeskTab,
 } from "@/components/features/builds/desk-context";
+import { Reminders } from "@/components/features/builds/build-report";
 import { DeskPanel } from "@/components/features/builds/desk-panel";
+import { InksCard } from "@/components/features/builds/inks-card";
 import { StatusActions } from "@/components/features/builds/status-actions";
+import { SAMPLE_DESK_COLORS } from "@/lib/builds/sample-colors";
 import type { DeskState } from "@/lib/validators/desk";
 
 /** /dev/build-states: shows the toast Export raises when an export fails. */
@@ -189,6 +192,8 @@ const SAMPLE_DESK_BASE: Omit<DeskState, "paragraphs"> = {
   ],
   sections: { hero: "Hero", reviews: "Reviews", faq: "FAQ" },
   snapshots: [],
+  redraft: null,
+  colors: SAMPLE_DESK_COLORS,
 };
 
 const SAMPLE_DESK: DeskState = {
@@ -219,21 +224,36 @@ const SAMPLE_SNAPSHOTS: DeskState["snapshots"] = [
 
 const sampleChange = () => toast("Sample only: nothing was saved.");
 
-/** /dev/build-states: the review desk's panel (D84) with sample lines; changes only toast. */
+/** /dev/build-states: the review desk's panel (D84) with sample lines; changes only toast. With
+ * `redrafting`, a redraft of Reviews is running (D86). */
 export function SampleDeskPanel({
   tab,
   editing = false,
   history = false,
+  redrafting = false,
 }: {
   tab: DeskTab;
   editing?: boolean;
   history?: boolean;
+  redrafting?: boolean;
 }) {
   return (
     <DeskProvider
       buildId="sample"
       meId="me"
-      initial={{ ...SAMPLE_DESK, snapshots: history ? SAMPLE_SNAPSHOTS : [] }}
+      initial={{
+        ...SAMPLE_DESK,
+        snapshots: history ? SAMPLE_SNAPSHOTS : [],
+        redraft: redrafting
+          ? {
+              job_id: "sample",
+              status: "queued",
+              scope: "section",
+              section: "reviews",
+              block: null,
+            }
+          : null,
+      }}
       initialTab={tab}
       initialEditing={editing ? 2 : undefined}
       onChange={sampleChange}
@@ -284,5 +304,88 @@ export function ConflictToastButton() {
     >
       Show the toast
     </button>
+  );
+}
+
+/** /dev/build-states: the Overview's Colours card (D86) with a sample page and brand. */
+export function SampleInksCard() {
+  return (
+    <DeskProvider
+      buildId="sample"
+      meId="me"
+      initial={SAMPLE_DESK}
+      onChange={sampleChange}
+    >
+      <InksCard />
+    </DeskProvider>
+  );
+}
+
+/** /dev/build-states: the reminder for copy the build couldn't write, with its Redraft (D86). */
+export function SampleUnwrittenReminder() {
+  return (
+    <DeskProvider
+      buildId="sample"
+      meId="me"
+      initial={SAMPLE_DESK}
+      onChange={sampleChange}
+    >
+      <Reminders
+        reminders={[
+          {
+            title: "Some copy wasn’t rewritten.",
+            detail:
+              "1 of 4 parts of the copy couldn't be rewritten, so they keep the template's text. Redraft them before publishing.",
+            action: "redraft-unwritten",
+          },
+        ]}
+      />
+    </DeskProvider>
+  );
+}
+
+/** /dev/build-states: the toasts a redraft ends with (done, with Undo; failed, with Retry). */
+export function RedraftToastButtons() {
+  const link =
+    "rounded-sm px-2 py-1 text-type-caption-1 font-medium text-text-link outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring";
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() =>
+          toast.success("Redrafted Reviews", {
+            action: { label: "Undo", onClick: () => undefined },
+          })
+        }
+        className={link}
+      >
+        Done
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          toast.success("Redrafted the page", {
+            description:
+              "Some lines couldn’t be redrafted, so they kept their words.",
+            action: { label: "Undo", onClick: () => undefined },
+          })
+        }
+        className={link}
+      >
+        Done, some lines kept
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          toast.error(
+            "Claude couldn't redraft those lines, so they're as they were. Try again.",
+            { action: { label: "Retry", onClick: () => undefined } },
+          )
+        }
+        className={link}
+      >
+        Failed
+      </button>
+    </div>
   );
 }

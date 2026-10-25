@@ -13,6 +13,7 @@ import type { DeskState } from "@/lib/validators/desk";
 
 import { DeskProvider } from "./desk-context";
 import { DeskPanel } from "./desk-panel";
+import { InksCard } from "./inks-card";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -96,19 +97,34 @@ const DESK: DeskState = {
       created_by: "me",
     },
   ],
+  redraft: null,
+  colors: {
+    page: {
+      primary: "#2f6fde",
+      dark: "#1d4ea6",
+      tint: "#eaf1fd",
+      accent: "#2f6fde",
+    },
+    brand: {
+      primary: "#7a2e8f",
+      dark: "#4a1c57",
+      tint: "#f4eaf6",
+      accent: "#7a2e8f",
+    },
+  },
 };
 
-function renderDesk(onChange = vi.fn()) {
+function renderDesk(onChange = vi.fn(), initial: DeskState = DESK) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <DeskProvider
         buildId="b1"
         meId="me"
-        initial={DESK}
+        initial={initial}
         onChange={onChange}
         initialTab="copy"
       >
-        <DeskPanel overview={<p>Overview content</p>} />
+        <DeskPanel overview={<InksCard />} />
       </DeskProvider>
     </QueryClientProvider>,
   );
@@ -178,5 +194,84 @@ describe("DeskPanel", () => {
       seq: 2,
     });
     expect(within(panel).getByText(/· You/)).toBeTruthy();
+  });
+
+  it("redrafts a section after asking, with the note", () => {
+    const onChange = renderDesk();
+    // FAQ's only line was edited by hand, so there's nothing there to redraft.
+    expect(
+      (screen.getByRole("button", { name: "Redraft FAQ" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Redraft Hero" }));
+    expect(
+      screen.getByText(
+        /Claude writes new words for 1 line, in the brand’s voice/,
+      ),
+    ).toBeTruthy();
+    fireEvent.change(
+      screen.getByLabelText("A note for the new words (optional)"),
+      { target: { value: "warmer" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Redraft" }));
+    expect(onChange).toHaveBeenLastCalledWith("redraft", {
+      base_version: 3,
+      scope: "section",
+      section: "hero",
+      note: "warmer",
+    });
+  });
+
+  it("pauses the lines while a redraft runs and shimmers the ones it rewrites", () => {
+    renderDesk(vi.fn(), {
+      ...DESK,
+      redraft: {
+        job_id: "j1",
+        status: "queued",
+        scope: "section",
+        section: "hero",
+        block: null,
+      },
+    });
+    expect(screen.getByText("Redrafting Hero…")).toBeTruthy();
+    expect(screen.getByText(/Waiting for a worker/)).toBeTruthy();
+    const row = screen.getByText("Glow in 7 days").closest("button");
+    expect(row?.disabled).toBe(true);
+    expect(row?.getAttribute("aria-busy")).toBe("true");
+    const other = screen.getByText("Is it gentle?").closest("button");
+    expect(other?.disabled).toBe(true);
+    expect(other?.getAttribute("aria-busy")).toBeNull();
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Redraft the page",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+  });
+
+  it("recolours the page, working out the dark and tint from a new primary", () => {
+    const onChange = renderDesk();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Overview" }));
+    fireEvent.change(screen.getByLabelText("Primary colour"), {
+      target: { value: "#c0392b" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Brand colours" }));
+    // Back to the brand's colours, then recolour to them.
+    fireEvent.click(screen.getByRole("button", { name: "Recolour page" }));
+    expect(onChange).toHaveBeenLastCalledWith("recolor", {
+      base_version: 3,
+      colors: DESK.colors.brand,
+    });
+    fireEvent.change(screen.getByLabelText("Primary colour"), {
+      target: { value: "#c0392b" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Recolour page" }));
+    const sent = onChange.mock.lastCall?.[1] as {
+      colors: Record<string, string>;
+    };
+    expect(sent.colors.primary).toBe("#c0392b");
+    expect(sent.colors.dark).not.toBe(DESK.colors.brand?.dark);
+    expect(sent.colors.accent).toBe(DESK.colors.brand?.accent);
   });
 });

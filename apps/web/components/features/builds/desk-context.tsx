@@ -7,16 +7,24 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { pickDesk } from "@/lib/builds/desk";
+import { isActive } from "@/lib/jobs/progress";
+import { useJob } from "@/lib/queries/jobs";
+import type { JobDetail } from "@/lib/validators/jobs";
 import {
   type DeskAction,
+  type DeskPalette,
+  type DeskRedraft,
   type DeskState,
+  type RedraftScope,
   deskStateSchema,
 } from "@/lib/validators/desk";
 
@@ -27,6 +35,14 @@ export type DeskFocus = { block: number; nonce: number; scroll: boolean };
 
 /** A paragraph by its number, or by one of its fragments (a click in the preview, a claim). */
 export type DeskTarget = { block: number } | { fragment: string };
+
+/** What to redraft (D86): the page, a section, a paragraph, or the lines left unwritten. */
+export type RedraftInput = {
+  scope: RedraftScope;
+  section?: string;
+  block?: number;
+  note?: string;
+};
 
 type DeskContextValue = {
   buildId: string;
@@ -50,6 +66,12 @@ type DeskContextValue = {
   setStatus: (status: "approved" | "needs_review") => void;
   undo: () => void;
   restore: (seq: number) => void;
+  /** Queues a redraft; the Copy tab shows it running and other changes wait until it's done. */
+  redraft: (input: RedraftInput) => Promise<boolean>;
+  /** Recolours the page to these colours (undoable). */
+  recolor: (colors: DeskPalette) => Promise<boolean>;
+  /** The redraft queued or running on the page, with its job (progress) once loaded. */
+  redrafting: { redraft: DeskRedraft; job: JobDetail | undefined } | null;
   pending: DeskAction | null;
 };
 
@@ -71,7 +93,8 @@ export function useDesk(): DeskContextValue {
  * change, then the worker's answer, unless the server has a newer page. Each change goes to
  * /api/builds/[id]/desk/[action]; afterwards the page refreshes so the report (claims, facts)
  * follows. A change made on an outdated page is refused (409), with Reload to catch up.
- * `onChange` replaces the real calls (the states page).
+ * A redraft is a job: its progress is polled, and when it ends the desk catches up and says so
+ * (Undo, or Retry if it failed). `onChange` replaces the real calls (the states page).
  */
 export function DeskProvider({
   buildId,
@@ -148,6 +171,71 @@ export function DeskProvider({
     },
     [desk.build.page_version, mutation, onChange],
   );
+  // Toast actions run later, on the page as it is then.
+  const latestRun = useRef(run);
+  useEffect(() => {
+    latestRun.current = run;
+  }, [run]);
+
+  const redraftInput = useRef<RedraftInput | null>(null);
+  const redraft = useCallback(
+    async (input: RedraftInput) => {
+      redraftInput.current = input;
+      const started = await run("redraft", input);
+      if (started) setEditing(null);
+      return started;
+    },
+    [run],
+  );
+
+  // A redraft's job: polled while it runs; when it ends, the desk catches up once.
+  const job = useJob(onChange ? null : (desk.redraft?.job_id ?? null));
+  const settled = useRef<string | null>(null);
+  useEffect(() => {
+    const finished = job.data;
+    if (!finished || isActive(finished.status)) return;
+    if (settled.current === finished.id) return;
+    settled.current = finished.id;
+    const result = finished.result ?? {};
+    const retry = redraftInput.current;
+    // Say so once the desk has caught up, so Undo and Retry act on the page as it is now.
+    const announce = (version?: number) => {
+      const on = version ? { base_version: version } : {};
+      if (finished.status === "succeeded") {
+        const failedChunks = Number(result.failed_chunks ?? 0);
+        toast.success(String(result.reason ?? "Redrafted"), {
+          description:
+            failedChunks > 0
+              ? "Some lines couldn’t be redrafted, so they kept their words."
+              : undefined,
+          action: {
+            label: "Undo",
+            onClick: () => void latestRun.current("undo", on),
+          },
+        });
+      } else {
+        toast.error(finished.error?.message ?? "The redraft didn’t finish.", {
+          action: retry
+            ? {
+                label: "Retry",
+                onClick: () =>
+                  void latestRun.current("redraft", { ...retry, ...on }),
+              }
+            : undefined,
+        });
+      }
+    };
+    void apiFetch(`/api/builds/${buildId}/desk`, deskStateSchema)
+      .then((next) => {
+        setLocal(next);
+        router.refresh();
+        announce(next.build.page_version);
+      })
+      .catch(() => {
+        router.refresh();
+        announce();
+      });
+  }, [job.data, buildId, router]);
 
   const blockOf = useCallback(
     (target: DeskTarget) => {
@@ -209,6 +297,25 @@ export function DeskProvider({
       setStatus: (status) => void run("status", { status }),
       undo: () => void run("undo", {}),
       restore: (seq) => void run("restore", { seq }),
+      redraft,
+      recolor: async (colors) => {
+        const done = await run("recolor", { colors });
+        if (done && !onChange) {
+          toast.success("Recoloured the page", {
+            action: {
+              label: "Undo",
+              onClick: () => void latestRun.current("undo", {}),
+            },
+          });
+        }
+        return done;
+      },
+      redrafting: desk.redraft
+        ? {
+            redraft: desk.redraft,
+            job: job.data?.id === desk.redraft.job_id ? job.data : undefined,
+          }
+        : null,
       pending: mutation.isPending ? (mutation.variables?.action ?? null) : null,
     }),
     [
@@ -221,6 +328,9 @@ export function DeskProvider({
       show,
       blockOf,
       run,
+      redraft,
+      onChange,
+      job.data,
       mutation.isPending,
       mutation.variables,
     ],

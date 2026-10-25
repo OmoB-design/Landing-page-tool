@@ -35,7 +35,12 @@ export function claimAction(finding: ComplianceFinding): "Fix" | "Check" {
   return finding.severity === "high" ? "Fix" : "Check";
 }
 
-export type Reminder = { title: string; detail?: string };
+export type Reminder = {
+  title: string;
+  detail?: string;
+  /** A fix the review desk offers on the card (D86): redraft the lines left unwritten. */
+  action?: "redraft-unwritten";
+};
 
 /**
  * What to keep in mind before publishing (Figma Build, Reminders): placeholder images, copy that
@@ -54,6 +59,7 @@ export function reportReminders(report: BuildReport): Reminder[] {
     reminders.push({
       title: "Some copy wasn’t rewritten.",
       detail: report.copy.error,
+      action: "redraft-unwritten",
     });
   }
   if (report.copy.skipped) {
@@ -76,6 +82,9 @@ export function reportReminders(report: BuildReport): Reminder[] {
       });
     }
   }
-  for (const warning of report.warnings) reminders.push({ title: warning });
+  for (const warning of report.warnings) {
+    // The copy error has its own card above.
+    if (warning !== report.copy.error) reminders.push({ title: warning });
+  }
   return reminders;
 }

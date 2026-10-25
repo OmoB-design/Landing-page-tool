@@ -1,5 +1,22 @@
 import { z } from "zod";
 
+const hex = z.string().regex(/^#[0-9a-f]{6}$/i, "Use a colour like #1f6feb.");
+
+/** The page's four brand colours (worker DeskPalette). */
+export const deskPaletteSchema = z.object({
+  primary: hex,
+  dark: hex,
+  tint: hex,
+  accent: hex,
+});
+
+export const REDRAFT_SCOPES = [
+  "page",
+  "section",
+  "paragraph",
+  "unwritten",
+] as const;
+
 /** The review desk's view of a finished build (worker GET /builds/{id}/desk, D84). */
 export const deskStateSchema = z.object({
   build: z.object({
@@ -51,12 +68,30 @@ export const deskStateSchema = z.object({
       created_by: z.string().nullable(),
     }),
   ),
+  /** A redraft queued or running (D86): the desk's other changes wait until it's done. */
+  redraft: z
+    .object({
+      job_id: z.string(),
+      status: z.string(),
+      scope: z.enum(REDRAFT_SCOPES),
+      section: z.string().nullable(),
+      block: z.number().int().nullable(),
+    })
+    .nullable(),
+  /** The colours on the page now and the brand's (null when not known). */
+  colors: z.object({
+    page: deskPaletteSchema.nullable(),
+    brand: deskPaletteSchema.nullable(),
+  }),
 });
 
 export type DeskState = z.infer<typeof deskStateSchema>;
 export type DeskFragment = DeskState["fragments"][number];
 export type DeskParagraph = DeskState["paragraphs"][number];
 export type DeskSnapshot = DeskState["snapshots"][number];
+export type DeskPalette = z.infer<typeof deskPaletteSchema>;
+export type DeskRedraft = NonNullable<DeskState["redraft"]>;
+export type RedraftScope = (typeof REDRAFT_SCOPES)[number];
 
 const base = z.object({ base_version: z.number().int().min(1) });
 
@@ -77,6 +112,17 @@ export const deskActionSchemas = {
   status: base.extend({ status: z.enum(["approved", "needs_review"]) }),
   undo: base,
   restore: base.extend({ seq: z.number().int().min(1) }),
+  redraft: base.extend({
+    scope: z.enum(REDRAFT_SCOPES),
+    section: z.string().max(100).optional(),
+    block: z.number().int().min(1).optional(),
+    note: z
+      .string()
+      .trim()
+      .max(200, "Keep the note under 200 characters.")
+      .optional(),
+  }),
+  recolor: base.extend({ colors: deskPaletteSchema }),
 } as const;
 
 export type DeskAction = keyof typeof deskActionSchemas;

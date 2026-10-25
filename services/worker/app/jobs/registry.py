@@ -15,6 +15,7 @@ from app.jobs.kinds import (
     noop_demo,
     product_briefing,
     product_pull,
+    redraft,
 )
 
 Handler = Callable[[JobContext], dict[str, Any] | None]
@@ -88,6 +89,16 @@ KINDS: dict[str, JobKind] = {
             handler=build.run,
             payload_model=build.BuildPayload,
             max_attempts=3,
+        ),
+        # Started by the review desk (POST /builds/{id}/redraft), which checks the page first.
+        # One attempt: a lost worker means trying again from the desk, not paying twice.
+        JobKind(
+            name="redraft",
+            title="Redraft",
+            handler=redraft.run,
+            payload_model=redraft.RedraftPayload,
+            max_attempts=1,
+            dedupe=redraft.dedupe_key,
         ),
     ]
 }

@@ -19,6 +19,8 @@ from app.models.desk import (
     CopyEditRequest,
     DeskChange,
     DeskState,
+    RecolorRequest,
+    RedraftRequest,
     SnapshotRestoreRequest,
     StatusRequest,
 )
@@ -204,6 +206,24 @@ def restore_build_snapshot(
     state: DeskState = _desk_call(
         desk.restore, body.org_id, build_id, user.id, body.base_version, body.seq
     )
+    return state
+
+
+@app.post("/builds/{build_id}/recolor")
+def recolor_build(build_id: UUID, body: RecolorRequest, user: CurrentUser) -> DeskState:
+    """Recolours the page to the given colours (undoable)."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(
+        desk.recolor, body.org_id, build_id, user.id, body.base_version, body.colors
+    )
+    return state
+
+
+@app.post("/builds/{build_id}/redraft")
+def redraft_build(build_id: UUID, body: RedraftRequest, user: CurrentUser) -> DeskState:
+    """Queues a redraft (a job, D86); the desk shows it running and pauses other changes."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(desk.start_redraft, body.org_id, build_id, user.id, body)
     return state
 
 

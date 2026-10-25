@@ -26,13 +26,13 @@ def _money(value: Any) -> str | None:
     return None if value is None else f"{value:.2f}"
 
 
-@node("load_inputs", "Loaded the template, brand and product")
-def load_inputs(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
-    org = ctx.org_id
+def read_inputs(org: UUID, build_id: UUID) -> tuple[dict[str, Any], str]:
+    """The build's template, brand view, product and wizard as the pipeline's state holds them,
+    and the template's HTML (also used by the review desk's redraft)."""
     with transaction() as conn:
         build = conn.execute(
             "select * from builds where id = %(id)s and org_id = %(org)s",
-            {"id": ctx.build_id, "org": org},
+            {"id": build_id, "org": org},
         ).fetchone()
         if build is None:
             raise UserFacingError("That build no longer exists.", code="build_missing")
@@ -76,7 +76,7 @@ def load_inputs(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
         for i in product["images"]
         if i.get("asset_id") or i.get("source_url")
     ]
-    update: dict[str, Any] = {
+    inputs: dict[str, Any] = {
         "template": {
             "id": str(template["id"]),
             "slug": template["slug"],
@@ -137,12 +137,21 @@ def load_inputs(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
         },
         "wizard": build["wizard"] or {},
         "targeting": build["targeting"] or {},
+    }
+    return inputs, html
+
+
+@node("load_inputs", "Loaded the template, brand and product")
+def load_inputs(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
+    inputs, html = read_inputs(ctx.org_id, ctx.build_id)
+    template, product = inputs["template"], inputs["product"]
+    return {
+        **inputs,
         **write_page({**state, "html_rev": 0}, "template", html),
         "_stats": {
             "template": template["slug"],
-            "sections": len(sections),
-            "product_images": len(images),
+            "sections": len(template["sections"]),
+            "product_images": len(product["images"]),
         },
         "_message": f"Loaded {template['name']} for {product['name']}",
     }
-    return update

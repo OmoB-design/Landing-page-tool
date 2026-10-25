@@ -1,8 +1,9 @@
 "use client";
 
 import { formatCost } from "@/components/app/row-meta";
+import { Button } from "@/components/ui/button";
 import { RenameIcon } from "@/components/ui/icons";
-import { LocateFigmaIcon } from "@/components/ui/lp-icons";
+import { LocateFigmaIcon, SparkleFigmaIcon } from "@/components/ui/lp-icons";
 import { LOCATE_SECTION_EVENT } from "@/lib/builds/preview-anchors";
 import {
   type Reminder,
@@ -119,10 +120,33 @@ export function Reminders({ reminders }: { reminders: Reminder[] }) {
             {reminder.detail ? (
               <span className="text-heading-05">{reminder.detail}</span>
             ) : null}
+            {reminder.action === "redraft-unwritten" ? (
+              <RedraftUnwritten />
+            ) : null}
           </li>
         ))}
       </ul>
     </PanelSection>
+  );
+}
+
+/** "Redraft those lines" on the copy-error reminder (D86): only on the review desk. */
+function RedraftUnwritten() {
+  const desk = useDeskOptional();
+  if (!desk) return null;
+  const busy = desk.pending !== null || desk.redrafting !== null;
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="compact"
+      disabled={busy}
+      onClick={() => void desk.redraft({ scope: "unwritten" })}
+      className="self-start"
+    >
+      <SparkleFigmaIcon className="size-3 text-icon-system" />
+      Redraft those lines
+    </Button>
   );
 }
 

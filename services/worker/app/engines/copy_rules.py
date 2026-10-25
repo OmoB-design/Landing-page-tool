@@ -227,6 +227,24 @@ def chunk_prompt(chunk: list[Fragment], everything: list[Fragment], budgets: dic
     )
 
 
+def redraft_prompt(
+    chunk: list[Fragment], everything: list[Fragment], budgets: dict[str, int], note: str | None
+) -> str:
+    """The user turn for a redraft (the review desk): the page's current lines, to be written
+    again with fresh wording, optionally following the editor's note."""
+    items = json.loads(chunk_prompt(chunk, everything, budgets).split("\n", 1)[1])
+    direction = (
+        f" Follow this direction from the editor: {json.dumps(note.strip(), ensure_ascii=False)}."
+        if note and note.strip()
+        else ""
+    )
+    return (
+        "These fragments are the page's current copy. Write a new version of each: the same job "
+        f"and facts, in fresh words.{direction} Return one replacement for every id, each within "
+        "its max_chars.\n" + json.dumps(items, ensure_ascii=False)
+    )
+
+
 def shorten_prompt(over: list[tuple[Fragment, str, int]]) -> str:
     items = [
         {"id": f.id, "text": text, "max_chars": budget, "original": f.text}
@@ -248,15 +266,17 @@ def strict_prompt(unchanged: list[Fragment], budgets: dict[str, int]) -> str:
 
 def mock_reply(prompt: str) -> str:
     """Mock mode (D15): every fragment of three or more words gets a visible [mock] marker, so
-    a mock build shows the copy pass ran without paying for it."""
-    start = prompt.find("[")
+    a mock build shows the copy pass ran without paying for it (once: a redraft doesn't add a
+    second marker)."""
+    newline = prompt.find("\n[")
+    start = newline + 1 if newline >= 0 else prompt.find("[")
     try:
         items = json.loads(prompt[start:]) if start >= 0 else []
     except ValueError:
         items = []
     replacements = []
     for item in items:
-        text = str(item.get("text", ""))
+        text = str(item.get("text", "")).removeprefix("[mock] ")
         replacements.append(
             {"id": item.get("id"), "text": f"[mock] {text}" if len(text.split()) >= 3 else text}
         )

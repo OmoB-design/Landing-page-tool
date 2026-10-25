@@ -129,6 +129,58 @@ def test_recolour_maps_exact_colours_keeping_alpha_and_shifts_the_hue_family() -
     assert int(stats["exact"]) > 5 and int(stats["hue_shifted"]) >= 1  # type: ignore[call-overload]
 
 
+def test_recolour_records_the_colours_it_put_on_the_page() -> None:
+    out, _ = recolor.recolor(
+        PAGE, source_palette=MANIFEST["source_palette"], brand_palette=GRAZA, brand_fonts={}
+    )
+    assert recolor.page_palette(PAGE) is None
+    palette = recolor.page_palette(out)
+    colours = recolor.brand_colors(GRAZA)
+    assert colours is not None and palette == recolor.palette_of(colours)
+
+
+def test_recolouring_again_starts_from_the_page_and_keeps_its_fonts() -> None:
+    fonts = {"heading": "ITC Garamond", "body": None}
+    once, _ = recolor.recolor(
+        PAGE, source_palette=MANIFEST["source_palette"], brand_palette=GRAZA, brand_fonts=fonts
+    )
+    plum = {"primary": "#7a2e8f", "dark": None, "tint": None, "accent": "#7a2e8f"}
+    twice, stats = recolor.recolor(
+        once, source_palette=recolor.page_palette(once), brand_palette=plum, brand_fonts={}
+    )
+    block = tokens(twice)
+    assert "#d1e030" not in twice.lower()  # the first brand's primary is gone everywhere
+    assert "--lp-primary: #7a2e8f" in block
+    assert '--lp-heading-font: "ITC Garamond", Georgia' in block  # kept, and not nested
+    assert block.count("ITC Garamond") == 1
+    assert int(stats["exact"]) > 5  # type: ignore[call-overload]
+    assert (recolor.page_palette(twice) or {})["primary"] == "#7a2e8f"
+
+
+def test_a_colour_shared_by_two_roles_follows_the_primary() -> None:
+    page = '<html><body><a style="background:#2f6fde">Shop</a></body></html>'
+    out, _ = recolor.recolor(
+        page,
+        source_palette={"primary": "#2f6fde", "accent": "#2f6fde"},
+        brand_palette={"primary": "#c0392b", "accent": "#0b3d2e"},
+        brand_fonts={},
+    )
+    assert "background:#c0392b" in out
+
+
+def test_a_grey_source_primary_moves_no_other_colours() -> None:
+    page = (
+        "<html><head><style>.a{color:#777777}</style></head><body>"
+        '<p style="color:#c0392b">red</p><p style="color:#2f6fde">blue</p></body></html>'
+    )
+    out, stats = recolor.recolor(
+        page, source_palette={"primary": "#777777"}, brand_palette=GRAZA, brand_fonts={}
+    )
+    assert ".a{color:#d1e030}" in out  # the exact match still moves
+    assert "#c0392b" in out and "#2f6fde" in out  # a grey has no hue family to sweep
+    assert stats["hue_shifted"] == 0
+
+
 def test_recolour_needs_a_primary_colour() -> None:
     out, stats = recolor.recolor(PAGE, source_palette=None, brand_palette={}, brand_fonts={})
     assert out == PAGE and "no primary colour" in str(stats["skipped"])

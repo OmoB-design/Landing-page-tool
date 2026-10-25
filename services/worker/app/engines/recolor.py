@@ -6,10 +6,17 @@
 2. Exact pass: every colour that equals a source palette colour (hex or rgb[a], in `<style>`
    blocks, inline styles and SVG paint attributes) becomes its brand counterpart, keeping alpha.
 3. Hue sweep: remaining clearly coloured tones in the source primary's hue family move to the
-   brand hue, keeping their lightness. Greys, slate text colours, near-white and near-black stay.
+   brand hue, keeping their lightness. Greys, slate text colours, near-white and near-black stay,
+   and there is no sweep when the source primary is itself a grey (it has no hue to follow).
+
+The four colours put on the page are recorded on
+`<html data-lp-palette="primary:#…;dark:#…;tint:#…;accent:#…">`, so the review desk can recolour
+the page again from what is really on it (`page_palette`); the export strips it with the other
+`data-lp-*` markers.
 """
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from bs4 import Tag
@@ -37,6 +44,8 @@ _COLOR_TOKEN = re.compile(
     r"#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b|rgba?\(\s*[\d.]+[\s,]+[\d.]+[\s,]+[\d.]+(?:\s*[,/]\s*[\d.]+%?)?\s*\)"
 )
 _ROOT_VAR = re.compile(r"(--lp-[a-z-]+)\s*:\s*([^;}]+)")
+TOKENS_ID = "lp-brand-tokens"
+PALETTE_ATTR = "data-lp-palette"
 ROLES = ("primary", "dark", "tint", "accent")
 VAR_FOR_ROLE = {
     "primary": "--lp-primary",
@@ -54,7 +63,7 @@ class BrandColors:
     accent: RGB
 
 
-def brand_colors(palette: dict[str, str | None]) -> BrandColors | None:
+def brand_colors(palette: Mapping[str, str | None]) -> BrandColors | None:
     """The brand's four colours, deriving any that are missing; None without a primary."""
     primary = parse_color(palette.get("primary"))
     if primary is None:
@@ -65,6 +74,36 @@ def brand_colors(palette: dict[str, str | None]) -> BrandColors | None:
         tint=parse_color(palette.get("tint")) or derive_tint(primary),
         accent=parse_color(palette.get("accent")) or primary,
     )
+
+
+def palette_of(colors: BrandColors) -> dict[str, str]:
+    return {role: to_hex(getattr(colors, role)) for role in ROLES}
+
+
+def page_palette(html: str) -> dict[str, str] | None:
+    """The four colours on the page, as the last recolour recorded them: `data-lp-palette` on
+    `<html>`, else the `--lp-*` values in the brand tokens block (pages recoloured before the
+    record existed); None when neither is there."""
+    soup = parse(html)
+    root = soup.find("html")
+    if isinstance(root, Tag) and root.has_attr(PALETTE_ATTR):
+        recorded = dict(
+            part.split(":", 1) for part in str(root[PALETTE_ATTR]).split(";") if ":" in part
+        )
+        found = {role: to_hex(rgb) for role in ROLES if (rgb := parse_color(recorded.get(role)))}
+        if "primary" in found:
+            return found
+    block = soup.find("style", id=TOKENS_ID)
+    if isinstance(block, Tag):
+        declared = dict(_ROOT_VAR.findall(style_text(block)))
+        found = {
+            role: to_hex(rgb)
+            for role, var in VAR_FOR_ROLE.items()
+            if (rgb := parse_color(declared.get(var, "").strip()))
+        }
+        if "primary" in found:
+            return found
+    return None
 
 
 def readable_on(rgb: RGB) -> str:
@@ -111,7 +150,11 @@ def _parse_any_alpha(token: str) -> RGB | None:
 
 class _Recolourer:
     def __init__(self, source: dict[str, RGB], brand: BrandColors) -> None:
-        self.exact = {source[role]: getattr(brand, role) for role in ROLES if role in source}
+        # When two source roles share a colour (accent = primary), the first role wins.
+        self.exact: dict[RGB, RGB] = {}
+        for role in ROLES:
+            if role in source:
+                self.exact.setdefault(source[role], getattr(brand, role))
         self.source_primary = source.get("primary")
         self.brand = brand
         self.exact_count = 0
@@ -125,7 +168,7 @@ class _Recolourer:
         if rgb in self.exact:
             self.exact_count += 1
             return _render(self.exact[rgb], original)
-        if self.source_primary is None or is_neutral(rgb):
+        if self.source_primary is None or is_neutral(self.source_primary) or is_neutral(rgb):
             return original
         h, s, lightness = hsl(rgb)
         if s < SWEEP_MIN_SATURATION or not SWEEP_LIGHTNESS[0] <= lightness <= SWEEP_LIGHTNESS[1]:
@@ -145,9 +188,9 @@ class _Recolourer:
 def recolor(
     html: str,
     *,
-    source_palette: dict[str, str | None] | None,
-    brand_palette: dict[str, str | None],
-    brand_fonts: dict[str, str | None],
+    source_palette: Mapping[str, str | None] | None,
+    brand_palette: Mapping[str, str | None],
+    brand_fonts: Mapping[str, str | None],
 ) -> tuple[str, dict[str, object]]:
     brand = brand_colors(brand_palette)
     fonts: list[str] = []
@@ -157,7 +200,10 @@ def recolor(
         return html, stats
     soup = parse(html)
     styles = [s for s in soup.find_all("style") if isinstance(s, Tag)]
-    declared = dict(_ROOT_VAR.findall(" ".join(style_text(s) for s in styles)))
+    template_styles = [s for s in styles if s.get("id") != TOKENS_ID]
+    # The template's own declarations (fallback fonts come from these, never from an earlier
+    # recolour's tokens, so a second recolour doesn't nest them).
+    declared = dict(_ROOT_VAR.findall(" ".join(style_text(s) for s in template_styles)))
 
     source = {
         role: rgb
@@ -165,9 +211,7 @@ def recolor(
         if role in ROLES and (rgb := parse_color(value)) is not None
     }
     worker = _Recolourer(source, brand)
-    for style in styles:
-        if style.get("id") == "lp-brand-tokens":
-            continue
+    for style in template_styles:
         style.string = worker.text(style_text(style))
     for tag in soup.find_all(True):
         if not isinstance(tag, Tag):
@@ -195,13 +239,16 @@ def recolor(
             tokens[var] = f'"{font}", {declared[var].strip()}'
             fonts.append(font)
     if tokens:
-        existing = soup.find("style", id="lp-brand-tokens")
-        block = (
-            existing if isinstance(existing, Tag) else soup.new_tag("style", id="lp-brand-tokens")
-        )
-        block.string = ":root { " + " ".join(f"{k}: {v};" for k, v in tokens.items()) + " }"
+        existing = soup.find("style", id=TOKENS_ID)
+        block = existing if isinstance(existing, Tag) else soup.new_tag("style", id=TOKENS_ID)
+        # Tokens this recolour doesn't set (fonts, when only colours change) stay as they were.
+        merged = {**dict(_ROOT_VAR.findall(style_text(block))), **tokens}
+        block.string = ":root { " + " ".join(f"{k}: {v.strip()};" for k, v in merged.items()) + " }"
         if not isinstance(existing, Tag):
             ensure_head(soup).append(block)
+    root = soup.find("html")
+    if isinstance(root, Tag):
+        root[PALETTE_ATTR] = ";".join(f"{k}:{v}" for k, v in palette_of(brand).items())
     stats["vars_set"] = sorted(tokens)
     stats["exact"] = worker.exact_count
     stats["hue_shifted"] = worker.hue_count

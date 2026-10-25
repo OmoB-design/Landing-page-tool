@@ -9,174 +9,48 @@ brand's voice, 40 fragments per call, up to 4 calls at once.
   checks each node still holds its original text (drift).
 """
 
-import contextvars
-import time
-from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from typing import Any
-
-import structlog
 
 from app.config import get_settings
 from app.engines import copy_rules as rules
 from app.engines.finalize import fill_names
 from app.engines.fragments import dump, reinject
 from app.models.template import LengthCap
+from app.pipeline import copy_pass
 from app.pipeline.runtime import PipelineContext, node, read_page, write_page
 from app.pipeline.state import BuildState
-from app.providers import anthropic
 
-log = structlog.get_logger()
-MAX_PARALLEL = 4
-ATTEMPT_WAITS = (0, 2, 6)
-SHORTENING_PASSES = 2
-STRICT_PASSES = 2
-MAX_OUTPUT_TOKENS = 8000
 REVIEW_LIMIT = 300
-
-
-def _ask(system: str, prompt: str) -> dict[str, str]:
-    """One call with up to three attempts. Raises the last error if all fail."""
-    last: Exception | None = None
-    for wait in ATTEMPT_WAITS:
-        if wait:
-            time.sleep(wait)
-        try:
-            result = anthropic.generate(
-                role="copy",
-                ledger_kind="copy",
-                system=system,
-                prompt=prompt,
-                max_tokens=MAX_OUTPUT_TOKENS,
-                json_schema=rules.REPLY_SCHEMA,
-                mock_text=rules.mock_reply(prompt),
-            )
-            mapping = rules.parse_reply(result.text)
-            if mapping:
-                return mapping
-            last = ValueError("The reply had no replacements.")
-        except anthropic.LLMRefusalError as exc:  # a refusal won't change on retry
-            raise exc
-        except Exception as exc:
-            last = exc
-            log.warning("copy call failed", error=str(exc))
-    assert last is not None
-    raise last
-
-
-def _parallel(calls: list[Callable[[], dict[str, str]]]) -> list[dict[str, str] | Exception]:
-    """Runs calls up to four at once. Each runs in a copy of this thread's context, so its
-    ledger rows are attributed to this build and node."""
-    if not calls:
-        return []
-    with ThreadPoolExecutor(max_workers=min(MAX_PARALLEL, len(calls))) as pool:
-        futures = [pool.submit(contextvars.copy_context().run, call) for call in calls]
-        results: list[dict[str, str] | Exception] = []
-        for future in futures:
-            try:
-                results.append(future.result())
-            except Exception as exc:
-                results.append(exc)
-    return results
 
 
 @node("copy_rewrite", "Rewrote the copy")
 def copy_rewrite(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
     brand, product, template = state["brand"], state["product"], state["template"]
     html = fill_names(read_page(state), brand_name=brand["name"], product_name=product["name"])
-    # Slots finalize will fill or remove anyway: selling points (when the product has some) and
-    # the promo line (replaced by the brand's promo text, or removed when there's no sale).
-    extra: list[str] = ["data-lp-usp-text"] if product["usps"] else []
-    if brand["promo_text"] or not brand["sale_percent"]:
-        extra.append("data-lp-promo")
-    fragments = dump(html, extra_locked=tuple(extra))
+    fragments = dump(html, extra_locked=copy_pass.extra_locked(brand, product))
     targets = rules.rewritable(fragments)
     instructions = template["instructions"]
     caps = [LengthCap.model_validate(c) for c in instructions.get("length_caps", [])]
     budgets = {f.id: rules.length_budget(f, caps) for f in targets}
     strict = state["origin"] == "cloned"
-    brief = rules.CopyBrief(
-        brand_name=brand["name"],
-        product_name=product["name"],
-        language=brand["language"],
-        product_facts={
-            "price": product["sale_price"] or product["price"],
-            "currency": product["currency"],
-            "description": product["description"],
-            "selling_points": product["usps"],
-            "specs": product["specs"],
-            "selling_context": product["selling_context"],
-            "options": [v["name"] for v in product["variants"][:12]],
-        },
-        voice=brand["voice"],
-        brand_md=brand["brand_md"],
-        brand_context=brand["brand_context"],
-        voice_examples=brand["voice_examples"],
-        cta=brand["cta_text"],
-        targeting=rules.targeting_block(state.get("wizard", {})),
-        template_type=template["type"],
-        template_rules=instructions.get("copy_rules", ""),
-    )
-    system = rules.system_prompt(brief)
+    system = rules.system_prompt(copy_pass.brief(template, brand, product, state.get("wizard", {})))
 
-    # 1. Draft, chunk by chunk.
-    chunk_list = rules.chunks(targets)
-    results = _parallel(
-        [
-            partial(_ask, system, rules.chunk_prompt(chunk, fragments, budgets))
-            for chunk in chunk_list
-        ]
+    # 1-3. Draft chunk by chunk, re-prompt unchanged lines (strict), shorten long ones.
+    result = copy_pass.run(
+        system,
+        targets,
+        lambda chunk: rules.chunk_prompt(chunk, fragments, budgets),
+        budgets,
+        strict=strict,
     )
-    replacements: dict[str, str] = {}
-    failed = 0
-    for result in results:
-        if isinstance(result, Exception):
-            failed += 1
-        else:
-            replacements.update(result)
+    replacements, failed = result.replacements, result.failed
     by_id = {f.id: f for f in targets}
-    replacements = {k: v for k, v in replacements.items() if k in by_id}
     warnings: list[str] = []
-
-    # 2. Strict mode: substantial fragments that came back unchanged get re-prompted.
-    for _ in range(STRICT_PASSES if strict else 0):
-        unchanged = [by_id[i] for i in rules.strict_candidates(targets, replacements)]
-        if not unchanged:
-            break
-        for retry in _parallel(
-            [
-                partial(_ask, system, rules.strict_prompt(chunk, budgets))
-                for chunk in rules.chunks(unchanged)
-            ]
-        ):
-            if not isinstance(retry, Exception):
-                replacements.update({k: v for k, v in retry.items() if k in by_id})
-
-    # 3. Shortening passes for replacements over their budget.
-    for _ in range(SHORTENING_PASSES):
-        over = [
-            (by_id[k], v, budgets[k])
-            for k, v in replacements.items()
-            if len(v.strip()) > budgets[k]
-        ]
-        if not over:
-            break
-        for short in _parallel(
-            [
-                partial(_ask, system, rules.shorten_prompt(batch))
-                for batch in [
-                    over[i : i + rules.CHUNK_SIZE] for i in range(0, len(over), rules.CHUNK_SIZE)
-                ]
-            ]
-        ):
-            if not isinstance(short, Exception):
-                replacements.update({k: v for k, v in short.items() if k in by_id})
-    too_long = [k for k, v in replacements.items() if len(v.strip()) > budgets[k]]
-    if too_long:
+    if result.too_long:
+        count = len(result.too_long)
         warnings.append(
-            f"{len(too_long)} {'line is' if len(too_long) == 1 else 'lines are'} longer than the "
-            "template allows; check them on the page."
+            f"{count} {'line is' if count == 1 else 'lines are'} longer than the template allows; "
+            "check them on the page."
         )
 
     # 4. Protect, then write back.
@@ -194,7 +68,7 @@ def copy_rewrite(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
         if long_ones and done < len(long_ones) / 2:
             warnings.append("Less than half of the longer lines were rewritten.")
     error = (
-        f"{failed} of {len(chunk_list)} parts of the copy couldn't be rewritten, so they keep the "
+        f"{failed} of {result.chunks} parts of the copy couldn't be rewritten, so they keep the "
         "template's text. Redraft them before publishing."
         if failed
         else None
@@ -205,7 +79,7 @@ def copy_rewrite(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
         "eligible": len(targets),
         "fragments": len(fragments),
         "locked": len(fragments) - len(targets),
-        "chunks": len(chunk_list),
+        "chunks": result.chunks,
         "failed_chunks": failed,
         "error": error,
         "warnings": warnings,

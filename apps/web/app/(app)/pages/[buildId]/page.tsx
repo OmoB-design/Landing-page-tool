@@ -18,6 +18,7 @@ import {
   DeskPanel,
 } from "@/components/features/builds/desk-panel";
 import { ExportButton } from "@/components/features/builds/export-button";
+import { InksCard } from "@/components/features/builds/inks-card";
 import {
   HeaderDivider,
   StatusActions,
@@ -164,6 +165,7 @@ async function Build({
               overview={
                 <>
                   {overview}
+                  <InksCard />
                   <DeskChoices wizard={build.wizard} />
                 </>
               }

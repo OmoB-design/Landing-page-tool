@@ -1,5 +1,9 @@
 import { sectionLabel } from "@/lib/builds/report";
-import type { DeskParagraph, DeskState } from "@/lib/validators/desk";
+import type {
+  DeskParagraph,
+  DeskRedraft,
+  DeskState,
+} from "@/lib/validators/desk";
 
 /**
  * The desk to show: the one this tab last saved, unless the server has a newer page (another tab
@@ -52,6 +56,50 @@ export function groupParagraphs(
     }
   }
   return groups;
+}
+
+/**
+ * What a redraft of these paragraphs would do (D86): the lines it writes again, and the ones kept
+ * because they were edited by hand. Lines filled from the brand or product are never counted.
+ */
+export function redraftCounts(paragraphs: DeskParagraph[]): {
+  lines: number;
+  kept: number;
+} {
+  const open = paragraphs.filter((p) => !p.locked);
+  const kept = open.filter((p) => p.edited).length;
+  return { lines: open.length - kept, kept };
+}
+
+/** What a running redraft is rewriting, for the Copy tab: "the page", "Reviews", "a line". */
+export function redraftLabel(
+  redraft: Pick<DeskRedraft, "scope" | "section">,
+  labels: Record<string, string> = {},
+): string {
+  switch (redraft.scope) {
+    case "page":
+      return "the page";
+    case "section":
+      return redraft.section
+        ? (labels[redraft.section] ?? sectionLabel(redraft.section))
+        : "a section";
+    case "paragraph":
+      return "a line";
+    case "unwritten":
+      return "the unwritten lines";
+  }
+}
+
+/** Whether a running redraft is rewriting this paragraph (its row shimmers meanwhile). */
+export function inRedraft(
+  redraft: Pick<DeskRedraft, "scope" | "section" | "block">,
+  paragraph: DeskParagraph,
+): boolean {
+  if (paragraph.locked) return false;
+  if (redraft.scope === "paragraph") return paragraph.number === redraft.block;
+  if (paragraph.edited) return false;
+  if (redraft.scope === "section") return paragraph.section === redraft.section;
+  return redraft.scope === "page";
 }
 
 export const STATUS_LABELS: Record<string, string> = {

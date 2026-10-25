@@ -334,13 +334,13 @@ def test_a_failed_copy_chunk_keeps_the_template_text_and_blocks_publish(
     brand_and_product: tuple[uuid.UUID, uuid.UUID, str, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.pipeline.nodes import copy_rewrite
+    from app.pipeline import copy_pass
 
     def failing(**_: Any) -> Any:
         raise RuntimeError("model unavailable")
 
     monkeypatch.setattr(anthropic, "generate", failing)
-    monkeypatch.setattr(copy_rewrite, "ATTEMPT_WAITS", (0, 0, 0))
+    monkeypatch.setattr(copy_pass, "ATTEMPT_WAITS", (0, 0, 0))
     brand_id, product_id, _, _ = brand_and_product
     report, html = _run_build(user, fast_settings, library_template, brand_id, product_id)
     copy = report["copy"]

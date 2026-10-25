@@ -18,9 +18,12 @@ import { ExportButtonView } from "@/components/features/builds/export-button";
 import {
   ConflictToastButton,
   ExportErrorToastButton,
+  RedraftToastButtons,
   SampleDeskPanel,
   SampleFailedPreview,
+  SampleInksCard,
   SampleStatusActions,
+  SampleUnwrittenReminder,
 } from "@/components/features/dev/build-states";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertIcon } from "@/components/ui/icons";
@@ -401,6 +404,91 @@ export default function BuildStatesPage() {
           design={["How the clash is told, and the way to catch up"]}
         >
           <ConflictToastButton />
+        </State>
+
+        <State
+          number={12}
+          title="Redraft: asking first"
+          when="On a finished page: the sparkle beside the Copy tab’s search redrafts the whole page, the one on a section’s heading redrafts that section, and the one in an open line’s editor rewrites that line. Claude writes new words for the lines, in the brand’s voice (a background job, a few cents)."
+          shows={[
+            "A small card under the button: what it rewrites (“Claude writes new words for 6 lines”), which lines stay (the ones you edited by hand), and that it can be undone.",
+            "An optional note for the new words (“shorter, more playful”), then Cancel or Redraft (Rewrite for one line).",
+            "Bold words, links, prices and names filled from the brand or product always stay as they are.",
+          ]}
+          design={[
+            "The sparkle buttons (page, section, line) and the asking card",
+            "Click a sparkle in the panel to open the card",
+          ]}
+        >
+          <div className="flex flex-wrap items-start gap-6">
+            <Labeled label="Copy tab (click a sparkle)">
+              <PanelFrame>
+                <SampleDeskPanel tab="copy" />
+              </PanelFrame>
+            </Labeled>
+            <Labeled label="A line open (its sparkle rewrites it)">
+              <PanelFrame>
+                <SampleDeskPanel tab="copy" editing />
+              </PanelFrame>
+            </Labeled>
+          </div>
+        </State>
+
+        <State
+          number={13}
+          title="Redrafting"
+          when="While a redraft runs (seconds to a minute). Other changes to the page wait until it’s done: lines don’t open, Undo, Restore, Approve and Recolour are paused."
+          shows={[
+            "A status card at the top of the Copy tab: what’s being redrafted, its latest step (“Writing 6 lines”), and that changes wait.",
+            "The lines being rewritten shimmer.",
+            "When it ends, a toast: done (with Undo), done with some lines kept, or failed (with Retry). The preview reloads with the new words.",
+          ]}
+          design={[
+            "The status card and the shimmering lines",
+            "The three toasts",
+          ]}
+        >
+          <div className="flex flex-wrap items-start gap-6">
+            <Labeled label="Redrafting Reviews">
+              <PanelFrame>
+                <SampleDeskPanel tab="copy" redrafting />
+              </PanelFrame>
+            </Labeled>
+            <Labeled label="When it ends">
+              <RedraftToastButtons />
+            </Labeled>
+          </div>
+        </State>
+
+        <State
+          number={14}
+          title="Colours"
+          when="On a finished page, in the Overview tab before Your choices: the page’s four colours, and the colours to recolour it to (the brand’s, at first)."
+          shows={[
+            "On the page: primary, dark, tint and accent as swatches.",
+            "Recolour to: four colour pickers. Changing the primary works out a new dark and tint, as the brand form does.",
+            "Brand colours (when you’ve picked others) and Recolour page. Recolouring is a change you can undo; text on brand colours turns black or white to stay readable.",
+          ]}
+          design={["The Colours card", "Recoloured: the toast with Undo"]}
+        >
+          <PanelFrame>
+            <SampleInksCard />
+          </PanelFrame>
+        </State>
+
+        <State
+          number={15}
+          title="Copy partly rewritten"
+          when="When the build’s copy pass couldn’t write some lines (Claude failed three times), they keep the template’s words and publishing is blocked."
+          shows={[
+            "A reminder in the Overview saying so, with Redraft those lines.",
+            "Redrafting them clears the reminder and the block.",
+          ]}
+          design={["The reminder with its button"]}
+        >
+          <PanelFrame>
+            <SampleUnwrittenReminder />
+          </PanelFrame>
         </State>
       </div>
     </>

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { groupParagraphs, pickDesk, wizardChoices } from "@/lib/builds/desk";
+import {
+  groupParagraphs,
+  inRedraft,
+  pickDesk,
+  redraftCounts,
+  redraftLabel,
+  wizardChoices,
+} from "@/lib/builds/desk";
 import type { DeskState } from "@/lib/validators/desk";
 
 function desk(version: number, status = "needs_review", id = "b1"): DeskState {
@@ -14,6 +21,8 @@ function desk(version: number, status = "needs_review", id = "b1"): DeskState {
     },
     fragments: [],
     paragraphs: [],
+    redraft: null,
+    colors: { page: null, brand: null },
     sections: {},
     snapshots: [],
   };
@@ -112,5 +121,55 @@ describe("wizardChoices", () => {
       "none",
     ]);
     expect(wizardChoices(null, labels)).toEqual([]);
+  });
+});
+
+describe("redraft helpers", () => {
+  const para = (
+    number: number,
+    section: string,
+    extra: { locked?: boolean; edited?: boolean } = {},
+  ) => ({
+    number,
+    kind: "Paragraph",
+    section,
+    text: `Line ${number}`,
+    locked: extra.locked ?? false,
+    locked_parts: [],
+    edited: extra.edited ?? false,
+    fragments: [],
+  });
+  const lines = [
+    para(1, "hero"),
+    para(2, "hero", { edited: true }),
+    para(3, "hero", { locked: true }),
+    para(4, "faq"),
+  ];
+
+  it("counts the lines a redraft writes and the hand-edited ones it keeps", () => {
+    expect(redraftCounts(lines)).toEqual({ lines: 2, kept: 1 });
+  });
+
+  it("names what is being redrafted", () => {
+    expect(redraftLabel({ scope: "page", section: null })).toBe("the page");
+    expect(
+      redraftLabel({ scope: "section", section: "faq" }, { faq: "FAQ" }),
+    ).toBe("FAQ");
+    expect(redraftLabel({ scope: "section", section: "social_proof" })).toBe(
+      "Social proof",
+    );
+    expect(redraftLabel({ scope: "paragraph", section: null })).toBe("a line");
+  });
+
+  it("knows which rows a running redraft rewrites", () => {
+    const section = { scope: "section", section: "hero", block: null } as const;
+    expect(lines.map((p) => inRedraft(section, p))).toEqual([
+      true,
+      false,
+      false,
+      false,
+    ]);
+    const line = { scope: "paragraph", section: null, block: 2 } as const;
+    expect(inRedraft(line, lines[1]!)).toBe(true);
   });
 });

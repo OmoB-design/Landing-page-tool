@@ -17,11 +17,18 @@ import {
   CardChevronIcon,
   LockFigmaIcon,
   SearchFigmaIcon,
+  SparkleFigmaIcon,
 } from "@/components/ui/lp-icons";
+import { ShimmerText } from "@/components/ui/shimmer-loader";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { groupParagraphs, wizardChoices } from "@/lib/builds/desk";
+import {
+  groupParagraphs,
+  inRedraft,
+  redraftCounts,
+  wizardChoices,
+} from "@/lib/builds/desk";
 import { useHydrated } from "@/lib/use-hydrated";
 import { sentence } from "@/lib/builds/report";
 import { cn } from "@/lib/utils";
@@ -30,6 +37,11 @@ import type { DeskParagraph, DeskSnapshot } from "@/lib/validators/desk";
 
 import { type DeskTab, useDesk } from "./desk-context";
 import { CollapsibleSection, PanelSection } from "./panel-section";
+import {
+  RedraftIconButton,
+  RedraftPopover,
+  RedraftStatus,
+} from "./redraft-controls";
 
 /**
  * The review desk's right panel (D84; Figma Review desk — editing copy): Overview (the build
@@ -100,10 +112,12 @@ function DeskTabTrigger({
  * 18 px chevron, then its paragraphs 4 px apart. A paragraph is one text even when bold words, a
  * link or a price split it; clicking it (here or on the page) turns its row into the field. The
  * first section starts open; the others fold until opened, a paragraph in them is clicked on the
- * page, or a search matches them.
+ * page, or a search matches them. Redraft (D86): the whole page from beside the search, a section
+ * from its heading, a line from its editor; while one runs, its status leads the tab and the rows
+ * wait.
  */
 export function CopyPanel() {
-  const { desk, editing, focus } = useDesk();
+  const { desk, editing, focus, redraft, redrafting, pending } = useDesk();
   const [query, setQuery] = useState("");
   const [folded, setFolded] = useState<Record<string, boolean>>({});
   const [revealed, setRevealed] = useState<number | null>(null);
@@ -133,22 +147,47 @@ export function CopyPanel() {
       ?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }, [editing]);
 
+  const busy = redrafting !== null || pending !== null;
+  const whole = redraftCounts(desk.paragraphs);
+
   return (
     <div className="flex flex-col gap-2.5 pt-1.5">
+      <RedraftStatus />
       <div className="flex flex-col gap-2.5">
         <label htmlFor={searchId} className="sr-only">
           Search the page’s words
         </label>
-        <div className="relative">
-          <SearchFigmaIcon className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-icon-system" />
-          <Input
-            id={searchId}
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search the page’s words"
-            className="h-8 pr-3 pl-8"
-          />
+        <div className="flex items-center gap-1.5">
+          <div className="relative min-w-0 flex-1">
+            <SearchFigmaIcon className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-icon-system" />
+            <Input
+              id={searchId}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search the page’s words"
+              className="h-8 pr-3 pl-8"
+            />
+          </div>
+          <RedraftPopover
+            title="Redraft the page"
+            detail={redraftDetail(whole)}
+            onConfirm={(note) =>
+              void redraft({ scope: "page", note: note || undefined })
+            }
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Redraft the page"
+              title="Redraft the page"
+              disabled={busy || whole.lines === 0}
+              className="rounded-lg"
+            >
+              <SparkleFigmaIcon className="size-3 text-icon-system" />
+            </Button>
+          </RedraftPopover>
         </div>
         <p className="text-type-caption-1 font-medium text-sub-text dark:text-heading-05">
           Click a line, here or on the page, to edit it.
@@ -171,6 +210,15 @@ export function CopyPanel() {
               onToggle={() =>
                 setFolded((current) => ({ ...current, [key]: open }))
               }
+              action={
+                group.section ? (
+                  <SectionRedraft
+                    section={group.section}
+                    label={group.label}
+                    disabled={busy}
+                  />
+                ) : null
+              }
             >
               {group.paragraphs.map((paragraph) => (
                 <ParagraphRow key={paragraph.number} paragraph={paragraph} />
@@ -191,12 +239,15 @@ function CopySection({
   first,
   open,
   onToggle,
+  action,
   children,
 }: {
   label: string;
   first: boolean;
   open: boolean;
   onToggle: () => void;
+  /** Beside the chevron: the section's Redraft. */
+  action?: ReactNode;
   children: ReactNode;
 }) {
   const contentId = useId();
@@ -207,7 +258,7 @@ function CopySection({
         first ? "mt-4 pt-2.5 divider-y-half" : "divider-b-half",
       )}
     >
-      <h3 className="flex">
+      <h3 className="flex items-center gap-1.5">
         <button
           type="button"
           aria-expanded={open}
@@ -226,6 +277,7 @@ function CopySection({
             <CardChevronIcon />
           </span>
         </button>
+        {action}
       </h3>
       <ol id={contentId} hidden={!open} className="flex flex-col gap-1">
         {children}
@@ -238,8 +290,11 @@ function CopySection({
  * paragraph outlined in the preview), Edited and Locked (filled from the brand or product). Open,
  * the row becomes the field. */
 function ParagraphRow({ paragraph }: { paragraph: DeskParagraph }) {
-  const { editing, setEditing, show, focus } = useDesk();
-  const open = editing === paragraph.number && !paragraph.locked;
+  const { editing, setEditing, show, focus, redrafting } = useDesk();
+  const open = editing === paragraph.number && !paragraph.locked && !redrafting;
+  const rewriting = redrafting
+    ? inRedraft(redrafting.redraft, paragraph)
+    : false;
   return (
     <li id={`desk-paragraph-${paragraph.number}`}>
       {open ? (
@@ -251,6 +306,8 @@ function ParagraphRow({ paragraph }: { paragraph: DeskParagraph }) {
             show({ block: paragraph.number });
             setEditing(paragraph.locked ? null : paragraph.number);
           }}
+          disabled={redrafting !== null}
+          aria-busy={rewriting || undefined}
           title={
             paragraph.locked
               ? "Filled from the brand or product: change it there"
@@ -262,9 +319,16 @@ function ParagraphRow({ paragraph }: { paragraph: DeskParagraph }) {
               ? "items-center text-heading-05"
               : "items-start text-heading-02",
             focus?.block === paragraph.number && "ring-1 ring-spot-500-blue",
+            redrafting && "disabled:hover:bg-foreground-01",
           )}
         >
-          <span className="min-w-0 flex-1 break-words">{paragraph.text}</span>
+          <span className="min-w-0 flex-1 break-words">
+            {rewriting ? (
+              <ShimmerText>{paragraph.text}</ShimmerText>
+            ) : (
+              paragraph.text
+            )}
+          </span>
           {paragraph.locked ? (
             <LockFigmaIcon
               aria-label="Locked"
@@ -279,6 +343,46 @@ function ParagraphRow({ paragraph }: { paragraph: DeskParagraph }) {
   );
 }
 
+/** A section heading's Redraft (D86): asks first, then queues the redraft. */
+function SectionRedraft({
+  section,
+  label,
+  disabled,
+}: {
+  section: string;
+  label: string;
+  disabled: boolean;
+}) {
+  const { desk, redraft } = useDesk();
+  const counts = redraftCounts(
+    desk.paragraphs.filter((p) => p.section === section),
+  );
+  return (
+    <RedraftPopover
+      title={`Redraft ${label}`}
+      detail={redraftDetail(counts)}
+      onConfirm={(note) =>
+        void redraft({ scope: "section", section, note: note || undefined })
+      }
+    >
+      <RedraftIconButton
+        label={`Redraft ${label}`}
+        disabled={disabled || counts.lines === 0}
+      />
+    </RedraftPopover>
+  );
+}
+
+/** "Claude writes new words for 6 lines. 2 you edited stay as they are." */
+function redraftDetail({ lines, kept }: { lines: number; kept: number }) {
+  const written = `Claude writes new words for ${lines} ${lines === 1 ? "line" : "lines"}, in the brand’s voice.`;
+  const stay =
+    kept > 0
+      ? ` ${kept} you edited ${kept === 1 ? "stays" : "stay"} as ${kept === 1 ? "it is" : "they are"}.`
+      : "";
+  return `${written}${stay} You can undo it.`;
+}
+
 function EditedChip() {
   return (
     <span className="shrink-0 rounded-lg bg-foreground-02 px-1.5 text-type-caption-2 font-medium text-heading-04">
@@ -291,7 +395,7 @@ function EditedChip() {
  * Spot-500-Blue, 10 px corners, Focus), then ⌘ Enter to save, Cancel and Save. Bold words and links
  * stay with their words; parts filled from data are named and stay as they are. */
 function ParagraphEditor({ paragraph }: { paragraph: DeskParagraph }) {
-  const { saveEdit, setEditing, pending } = useDesk();
+  const { saveEdit, setEditing, pending, redraft } = useDesk();
   const [text, setText] = useState(paragraph.text);
   const field = useRef<HTMLTextAreaElement>(null);
   const saving = pending === "copy";
@@ -342,6 +446,29 @@ function ParagraphEditor({ paragraph }: { paragraph: DeskParagraph }) {
         <span className="min-w-0 flex-1 text-type-caption-2 font-medium text-heading-05">
           ⌘ Enter to save
         </span>
+        <RedraftPopover
+          title="Rewrite this line"
+          detail="Claude writes it again in the brand’s voice, keeping its bold words, links and anything filled from the brand or product. You can undo it."
+          action="Rewrite"
+          onConfirm={(note) =>
+            void redraft({
+              scope: "paragraph",
+              block: paragraph.number,
+              note: note || undefined,
+            })
+          }
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Rewrite this line"
+            title="Rewrite this line"
+            disabled={saving}
+          >
+            <SparkleFigmaIcon className="size-3 text-icon-system" />
+          </Button>
+        </RedraftPopover>
         <Button
           type="button"
           variant="secondary"
@@ -373,14 +500,15 @@ function ParagraphEditor({ paragraph }: { paragraph: DeskParagraph }) {
  * again, itself a change you can undo.
  */
 export function HistoryPanel() {
-  const { desk, undo, restore, pending, meId } = useDesk();
+  const { desk, undo, restore, pending, meId, redrafting } = useDesk();
   const [latest] = desk.snapshots;
+  const busy = pending !== null || redrafting !== null;
   return (
     <div className="flex flex-col pt-1.5">
       <button
         type="button"
         onClick={undo}
-        disabled={!latest || pending !== null}
+        disabled={!latest || busy}
         className="flex items-center gap-1.5 rounded-md border-(length:--line-hairline) border-stroke-strong bg-surface-primary px-2.5 py-1.5 text-left text-type-caption-1 font-medium text-heading-01 shadow-panel transition-transform duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring enabled:hover:bg-foreground-01 enabled:active:scale-97 disabled:text-heading-06"
       >
         {pending === "undo" ? (
@@ -409,7 +537,7 @@ export function HistoryPanel() {
                 key={snapshot.seq}
                 snapshot={snapshot}
                 mine={snapshot.created_by === meId}
-                busy={pending !== null}
+                busy={busy}
                 onRestore={() => restore(snapshot.seq)}
               />
             ))}

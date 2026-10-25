@@ -1,5 +1,7 @@
-"""The review desk (BUILD_SPEC §11.1, D84): copy edits, approval, snapshots and undo for a finished
-build, as quick direct calls (no AI, no job).
+"""The review desk (BUILD_SPEC §11.1, D84, D86): copy edits, recolours, approval, snapshots and undo
+for a finished build, as quick direct calls (no AI), and redrafts, which run as a job (`redraft`)
+and are saved here when they finish. While a redraft is queued or running, the page's other
+changes wait (the redraft would overwrite them).
 
 Each state of a build's page is its own file. A change writes the new page to
 `<org>/<build>/pages/v<version>.html`, records the page it replaces as the newest snapshot, and
@@ -13,17 +15,25 @@ import re
 from typing import Any
 from uuid import UUID
 
+from psycopg import errors
 from psycopg.types.json import Jsonb
 
 from app.db import transaction
 from app.engines import compliance, fragments, paragraphs, proof
+from app.engines import recolor as recolor_engine
+from app.jobs import queue
 from app.models.desk import (
     CopyEdit,
     DeskBuild,
+    DeskColors,
     DeskFragment,
+    DeskPalette,
     DeskParagraph,
+    DeskRedraft,
     DeskSnapshot,
     DeskState,
+    RecolorColors,
+    RedraftRequest,
 )
 from app.providers import storage
 
@@ -49,8 +59,8 @@ class DeskEditError(Exception):
 def _load(conn: Any, org_id: UUID, build_id: UUID, *, lock: bool = False) -> dict[str, Any]:
     build = conn.execute(
         f"""
-        select id, org_id, template_id, status, page_version, working_html_path, approved_at,
-               approved_by, report, wizard
+        select id, org_id, brand_id, template_id, status, page_version, working_html_path,
+               approved_at, approved_by, report, wizard
         from builds
         where id = %(b)s and org_id = %(o)s and deleted_at is null
         {"for update" if lock else ""}
@@ -75,6 +85,49 @@ def _snapshots(conn: Any, build_id: UUID) -> list[dict[str, Any]]:
     ]
 
 
+def _redraft(conn: Any, build_id: UUID) -> dict[str, Any] | None:
+    """The redraft queued or running on this build, if any."""
+    row = conn.execute(
+        """
+        select id, status, payload from jobs
+        where build_id = %(b)s and kind = 'redraft' and status in ('queued', 'running')
+        order by created_at desc limit 1
+        """,
+        {"b": build_id},
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def _colors(conn: Any, build: dict[str, Any], html: str) -> DeskColors:
+    """The page's four colours (as recorded on it; for pages built before the record, the
+    brand's colours the build put on it, or the template's when it wasn't recoloured) and the
+    brand's."""
+    row = conn.execute(
+        """
+        select b.palette, t.source_palette from brands b, templates t
+        where b.id = %(brand)s and b.org_id = %(o)s and t.id = %(t)s
+        """,
+        {"brand": build["brand_id"], "o": build["org_id"], "t": build["template_id"]},
+    ).fetchone()
+    brand = recolor_engine.brand_colors(row["palette"] or {}) if row else None
+    brand_palette = recolor_engine.palette_of(brand) if brand else None
+    page = recolor_engine.page_palette(html)
+    if page is None:
+        recoloured = (build["report"] or {}).get("brand", {}).get("recolor", {})
+        if recoloured and not recoloured.get("skipped") and brand_palette:
+            page = brand_palette
+        elif row and (source := recolor_engine.brand_colors(row["source_palette"] or {})):
+            page = recolor_engine.palette_of(source)
+    full = page if page and set(page) == set(recolor_engine.ROLES) else None
+    if page and full is None:
+        filled = recolor_engine.brand_colors(page)
+        full = recolor_engine.palette_of(filled) if filled else None
+    return DeskColors(
+        page=DeskPalette(**full) if full else None,
+        brand=DeskPalette(**brand_palette) if brand_palette else None,
+    )
+
+
 def _page(build: dict[str, Any]) -> str:
     return storage.download(BUCKET, build["working_html_path"]).decode("utf-8")
 
@@ -90,7 +143,12 @@ def _labels(conn: Any, template_id: UUID) -> dict[str, str]:
 
 
 def _state(
-    build: dict[str, Any], snapshots: list[dict[str, Any]], html: str, labels: dict[str, str]
+    build: dict[str, Any],
+    snapshots: list[dict[str, Any]],
+    html: str,
+    labels: dict[str, str],
+    redraft: dict[str, Any] | None,
+    colors: DeskColors,
 ) -> DeskState:
     edited = set((build["report"] or {}).get("desk", {}).get("edited", []))
     paras = paragraphs.paragraphs(html)
@@ -139,6 +197,16 @@ def _state(
             )
             for s in snapshots
         ],
+        redraft=DeskRedraft(
+            job_id=redraft["id"],
+            status=redraft["status"],
+            scope=redraft["payload"].get("scope", "page"),
+            section=redraft["payload"].get("section"),
+            block=redraft["payload"].get("block"),
+        )
+        if redraft
+        else None,
+        colors=colors,
     )
 
 
@@ -149,7 +217,10 @@ def desk_state(org_id: UUID, build_id: UUID) -> DeskState:
         build = _load(conn, org_id, build_id)
         snapshots = _snapshots(conn, build_id)
         labels = _labels(conn, build["template_id"])
-    return _state(build, snapshots, _page(build), labels)
+        redraft = _redraft(conn, build_id)
+        html = _page(build)
+        colors = _colors(conn, build, html)
+    return _state(build, snapshots, html, labels, redraft, colors)
 
 
 def proof_html(org_id: UUID, build_id: UUID) -> tuple[str, int]:
@@ -159,11 +230,16 @@ def proof_html(org_id: UUID, build_id: UUID) -> tuple[str, int]:
     return proof.mark(_page(build)), build["page_version"]
 
 
-def _check(build: dict[str, Any], base_version: int) -> None:
+REDRAFTING = "The page is being redrafted. Changes wait until that's done."
+
+
+def _check(conn: Any, build: dict[str, Any], base_version: int) -> None:
     if build["status"] not in EDITABLE:
         raise DeskEditError("This page can't be changed while it builds or after it failed.")
     if build["page_version"] != base_version:
         raise DeskConflictError
+    if _redraft(conn, build["id"]) is not None:
+        raise DeskEditError(REDRAFTING)
 
 
 def _change(
@@ -175,11 +251,13 @@ def _change(
     html: str | None = None,
     html_path: str | None = None,
     edited: list[str] | None = None,
+    clear_copy_error: bool = False,
 ) -> list[str]:
     """Saves a change: the current page becomes the newest snapshot (`reason` says what the change
     does), the build points at the new page (`html` to store, or an existing `html_path`), its
     version goes up, an approval is withdrawn, the claims are checked again and the export is
-    marked out of date. Returns files to delete after the commit."""
+    marked out of date. `clear_copy_error` drops the build's "copy wasn't rewritten" error (a
+    redraft wrote those lines). Returns files to delete after the commit."""
     version = build["page_version"] + 1
     if html is not None:
         html_path = f"{build['org_id']}/{build['id']}/pages/v{version}.html"
@@ -207,6 +285,9 @@ def _change(
         desk = dict(report.get("desk") or {})
         desk["edited"] = (list(desk.get("edited", [])) + edited)[-MAX_EDITED:]
         report["desk"] = desk
+    if clear_copy_error and (error := (report.get("copy") or {}).get("error")):
+        report["copy"] = {**report["copy"], "error": None}
+        report["warnings"] = [w for w in report.get("warnings", []) if w != error]
     conn.execute(
         """
         update builds set working_html_path = %(path)s, page_version = %(v)s, report = %(report)s,
@@ -255,7 +336,7 @@ def edit_copy(
     nothing is saved."""
     with transaction() as conn:
         build = _load(conn, org_id, build_id, lock=True)
-        _check(build, base_version)
+        _check(conn, build, base_version)
         html = _page(build)
         sections: list[str | None] = []
         written: list[str] = []
@@ -291,6 +372,8 @@ def set_status(
         build = _load(conn, org_id, build_id, lock=True)
         if build["page_version"] != base_version:
             raise DeskConflictError
+        if _redraft(conn, build_id) is not None:
+            raise DeskEditError(REDRAFTING)
         allowed = {"approved": "needs_review", "needs_review": "approved"}
         if build["status"] != allowed[status]:
             raise DeskEditError(
@@ -314,7 +397,7 @@ def undo(org_id: UUID, build_id: UUID, base_version: int) -> DeskState:
     """Puts back the page before the last change and drops its snapshot."""
     with transaction() as conn:
         build = _load(conn, org_id, build_id, lock=True)
-        _check(build, base_version)
+        _check(conn, build, base_version)
         snapshots = _snapshots(conn, build_id)
         if not snapshots:
             raise DeskEditError("Nothing to undo.")
@@ -351,7 +434,7 @@ def restore(
     """Makes an older page current again, as a new change (so it can be undone)."""
     with transaction() as conn:
         build = _load(conn, org_id, build_id, lock=True)
-        _check(build, base_version)
+        _check(conn, build, base_version)
         target = next((s for s in _snapshots(conn, build_id) if s["seq"] == seq), None)
         if target is None:
             raise DeskEditError("That snapshot isn't kept any more.")
@@ -360,3 +443,105 @@ def restore(
             user_id=user_id, html_path=target["html_path"],
         )  # fmt: skip
     return _finish(org_id, build_id, stale)
+
+
+def recolor(
+    org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int, colors: RecolorColors
+) -> DeskState:
+    """Recolours the page from the colours on it now to `colors` (exact matches, then the
+    primary's hue family; text on brand colours switches to black or white). Fonts stay."""
+    with transaction() as conn:
+        build = _load(conn, org_id, build_id, lock=True)
+        _check(conn, build, base_version)
+        html = _page(build)
+        current = _colors(conn, build, html).page
+        if current is None:
+            raise DeskEditError("This page's colours aren't known, so it can't be recoloured.")
+        target = colors.model_dump()
+        if target == current.model_dump():
+            raise DeskEditError("Those are the page's colours already.")
+        new_html, stats = recolor_engine.recolor(
+            html, source_palette=current.model_dump(), brand_palette=target, brand_fonts={}
+        )
+        if not (stats["exact"] or stats["hue_shifted"] or stats["vars_set"]):
+            raise DeskEditError("No colours on this page matched, so nothing changed.")
+        stale = _change(conn, build, reason="Recoloured the page", user_id=user_id, html=new_html)
+    return _finish(org_id, build_id, stale)
+
+
+def start_redraft(
+    org_id: UUID, build_id: UUID, user_id: UUID | None, request: RedraftRequest
+) -> DeskState:
+    """Queues a redraft of the page, a section, a paragraph or the lines still in the template's
+    words. One at a time per page; the desk's other changes wait until it's done."""
+    with transaction() as conn:
+        build = _load(conn, org_id, build_id, lock=True)
+        _check(conn, build, request.base_version)
+        paras = paragraphs.paragraphs(_page(build))
+        if request.scope == "section" and not any(p.section == request.section for p in paras):
+            raise DeskEditError("That section isn't on the page any more.")
+        if request.scope == "paragraph":
+            paragraph = next((p for p in paras if p.number == request.block), None)
+            if paragraph is None:
+                raise DeskConflictError
+            if paragraph.locked:
+                raise DeskEditError(
+                    "That line is filled from the brand or product, so change it there."
+                )
+        if request.scope == "unwritten" and not (build["report"] or {}).get("copy", {}).get(
+            "error"
+        ):
+            raise DeskEditError("Every line was written, so there's nothing to redraft.")
+        payload = {
+            "build_id": str(build_id),
+            "base_version": request.base_version,
+            "scope": request.scope,
+            "section": request.section if request.scope == "section" else None,
+            "block": request.block if request.scope == "paragraph" else None,
+            "note": (request.note or "").strip() or None,
+        }
+        try:
+            queue.enqueue(
+                org_id=org_id,
+                kind="redraft",
+                payload=payload,
+                created_by=user_id,
+                dedupe_key=f"redraft:{build_id}",
+                build_id=build_id,
+                max_attempts=1,
+                conn=conn,
+            )
+        except errors.UniqueViolation as exc:
+            raise DeskEditError(REDRAFTING) from exc
+    return desk_state(org_id, build_id)
+
+
+def save_redraft(
+    org_id: UUID,
+    build_id: UUID,
+    user_id: UUID | None,
+    base_version: int,
+    html: str,
+    reason: str,
+    *,
+    clear_copy_error: bool,
+) -> int:
+    """Saves a finished redraft as one change (the redraft job calls this). Returns the page's new
+    version. Refused if the page changed since the redraft started."""
+    with transaction() as conn:
+        build = _load(conn, org_id, build_id, lock=True)
+        if build["status"] not in EDITABLE or build["page_version"] != base_version:
+            raise DeskConflictError
+        stale = _change(
+            conn, build, reason=reason, user_id=user_id, html=html,
+            clear_copy_error=clear_copy_error,
+        )  # fmt: skip
+        version = int(build["page_version"]) + 1
+    _remove(stale)
+    return version
+
+
+def section_labels(org_id: UUID, build_id: UUID) -> dict[str, str]:
+    with transaction() as conn:
+        build = _load(conn, org_id, build_id)
+        return _labels(conn, build["template_id"])

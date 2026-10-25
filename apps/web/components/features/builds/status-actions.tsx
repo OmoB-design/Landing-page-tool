@@ -24,15 +24,16 @@ import { useDesk } from "./desk-context";
  * first: approving is allowed, publishing is where they block (B1.5).
  */
 export function StatusActions({ fixCount }: { fixCount: number }) {
-  const { desk, setStatus, pending } = useDesk();
+  const { desk, setStatus, pending, redrafting } = useDesk();
   const status = desk.build.status;
+  const busy = pending !== null || redrafting !== null;
   return (
     <div className="flex items-center gap-1.5">
       {status === "needs_review" ? (
         <ApproveButton
           fixCount={fixCount}
           busy={pending === "status"}
-          disabled={pending !== null}
+          disabled={busy}
           onApprove={() => setStatus("approved")}
         />
       ) : status === "approved" ? (
@@ -40,7 +41,7 @@ export function StatusActions({ fixCount }: { fixCount: number }) {
           type="button"
           variant="outline"
           size="compact"
-          disabled={pending !== null}
+          disabled={busy}
           onClick={() => setStatus("needs_review")}
           className="px-3"
         >

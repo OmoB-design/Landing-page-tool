@@ -11,8 +11,9 @@ import { deskActionSchemas, isDeskAction } from "@/lib/validators/desk";
 /**
  * POST /api/builds/[buildId]/desk/[action]: one review desk change (D84), passed to the worker,
  * which checks the token, membership, the build's state and the page version, takes a snapshot
- * and saves. `action` is copy (edited sentences), status (approve / back to review), undo or
- * restore. Answers with the new desk; 409 when the page changed in another tab.
+ * and saves. `action` is copy (edited sentences), status (approve / back to review), undo,
+ * restore, recolor (D86) or redraft (queues the job; the desk then shows it running). Answers
+ * with the new desk; 409 when the page changed in another tab.
  */
 export async function POST(
   request: Request,

@@ -52,6 +52,30 @@ class DeskBuild(BaseModel):
     approved_by: UUID | None
 
 
+class DeskRedraft(BaseModel):
+    """A redraft queued or running on the page: the desk pauses changes until it's done."""
+
+    job_id: UUID
+    status: str
+    scope: str
+    section: str | None
+    block: int | None
+
+
+class DeskPalette(BaseModel):
+    primary: str
+    dark: str
+    tint: str
+    accent: str
+
+
+class DeskColors(BaseModel):
+    # The four colours on the page now (None when the page's colours aren't known).
+    page: DeskPalette | None
+    # The brand's colours, with any missing ones derived.
+    brand: DeskPalette | None
+
+
 class DeskState(BaseModel):
     build: DeskBuild
     # The page's fragments (for the preview's clicks and the claims), each with its paragraph.
@@ -61,6 +85,8 @@ class DeskState(BaseModel):
     sections: dict[str, str]
     # Newest first; Undo puts back the first.
     snapshots: list[DeskSnapshot]
+    redraft: DeskRedraft | None
+    colors: DeskColors
 
 
 class DeskChange(BaseModel):
@@ -92,3 +118,30 @@ class StatusRequest(DeskChange):
 
 class SnapshotRestoreRequest(DeskChange):
     seq: int = Field(ge=1)
+
+
+HEX = r"^#[0-9a-fA-F]{6}$"
+
+
+class RedraftRequest(DeskChange):
+    """Starts a redraft (a job): the whole page, a section, a paragraph, or the lines the build's
+    copy pass couldn't write."""
+
+    scope: Literal["page", "section", "paragraph", "unwritten"]
+    section: str | None = Field(default=None, max_length=100)
+    block: int | None = Field(default=None, ge=1)
+    # The editor's direction for the new words ("shorter, more playful").
+    note: str | None = Field(default=None, max_length=200)
+
+
+class RecolorColors(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    primary: str = Field(pattern=HEX)
+    dark: str = Field(pattern=HEX)
+    tint: str = Field(pattern=HEX)
+    accent: str = Field(pattern=HEX)
+
+
+class RecolorRequest(DeskChange):
+    colors: RecolorColors

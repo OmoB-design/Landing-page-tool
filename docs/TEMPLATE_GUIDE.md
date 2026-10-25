@@ -23,8 +23,9 @@ Seed entries carried from the reference tool:
 - A promo line written around a discount ("30% off today only") reads broken once the discount is
   removed for a brand with no sale; wrap the whole promo in `data-lp-promo` so it goes as a unit.
 - The hue sweep leaves slate and blue-grey text colours alone (saturation under 0.35), but any
-  clearly blue element in the template moves to the brand hue. Use `data-lp-keep` or a neutral for
-  colours that must not follow the brand.
+  clearly blue element in the template moves to the brand hue, `data-lp-keep` icons included (the
+  check marks are meant to follow the brand; `data-lp-keep` only stops an image being a slot). Use
+  a neutral, or a hue away from the template's primary, for colours that must not follow the brand.
 - Sites exported from site builders (Webflow and similar) embed their fonts as base64
   `@font-face` blocks, often commercial ones (Gilroy, Circular, Interdisplay). The importer drops
   them; it links the free families from Google Fonts and swaps the rest for free stand-ins, which
