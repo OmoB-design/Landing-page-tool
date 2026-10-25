@@ -2,6 +2,7 @@ import { type ReactNode, Suspense } from "react";
 
 import { MobileSidebar } from "./mobile-sidebar";
 import { RememberPath } from "./remember-path";
+import { ShellSidebar } from "./settings-sidebar";
 import { SidebarNav, SidebarSkeleton } from "./sidebar";
 import { SidebarProvider } from "./sidebar-state";
 
@@ -14,9 +15,11 @@ import { SidebarProvider } from "./sidebar-state";
 export function AppShell({ children }: { children: ReactNode }) {
   // The links show at once; the workspace, brands and profile arrive together.
   const sidebar = (
-    <Suspense fallback={<SidebarSkeleton />}>
-      <SidebarNav />
-    </Suspense>
+    <ShellSidebar>
+      <Suspense fallback={<SidebarSkeleton />}>
+        <SidebarNav />
+      </Suspense>
+    </ShellSidebar>
   );
   return (
     <SidebarProvider>

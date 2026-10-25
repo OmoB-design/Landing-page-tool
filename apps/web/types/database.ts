@@ -806,6 +806,7 @@ export type Database = {
       }
       orgs: {
         Row: {
+          allow_placeholder_publish: boolean
           clone_terms_accepted_at: string | null
           clone_terms_accepted_by: string | null
           created_at: string
@@ -816,6 +817,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_placeholder_publish?: boolean
           clone_terms_accepted_at?: string | null
           clone_terms_accepted_by?: string | null
           created_at?: string
@@ -826,6 +828,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_placeholder_publish?: boolean
           clone_terms_accepted_at?: string | null
           clone_terms_accepted_by?: string | null
           created_at?: string

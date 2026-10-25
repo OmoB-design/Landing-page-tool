@@ -1,0 +1,80 @@
+import { z } from "zod";
+
+/** The org's Vercel connection and testing switch (worker GET /integrations, D87). */
+export const integrationsStateSchema = z.object({
+  vercel: z
+    .object({
+      account: z.string(),
+      team_id: z.string().nullable(),
+      token_last4: z.string().nullable(),
+      connected_at: z.string(),
+      connected_by: z.string().nullable().optional(),
+      /** One project per brand, made on the brand's first publish (D87). */
+      projects: z
+        .array(z.object({ brand_id: z.string(), name: z.string() }))
+        .default([]),
+    })
+    .nullable(),
+  /** The owner's switch: pages with placeholder images may be published (testing, until B1.3). */
+  allow_placeholder_publish: z.boolean(),
+  role: z.enum(["owner", "admin", "member"]),
+});
+export type IntegrationsState = z.infer<typeof integrationsStateSchema>;
+
+export const publicationSchema = z.object({
+  id: z.string(),
+  destination: z.string(),
+  status: z.enum(["pending", "succeeded", "failed"]),
+  url: z.string().nullable(),
+  created_at: z.string(),
+  created_by: z.string().nullable(),
+  gate_overridden: z.boolean(),
+  override_reasons: z.array(z.string()),
+  error: z.string().nullable(),
+  page_version: z.number().int().nullable(),
+  project: z.string().nullable().optional(),
+  seconds: z.number().int().nullable().optional(),
+});
+export type Publication = z.infer<typeof publicationSchema>;
+
+/** A build's publishing (worker GET /builds/{id}/publishing). */
+export const publishingStateSchema = z.object({
+  build_id: z.string(),
+  status: z.string(),
+  page_version: z.number().int(),
+  /** What blocks publishing now; `overridable` ones pass with "Publish anyway". */
+  gate: z.array(
+    z.object({
+      code: z.string(),
+      message: z.string(),
+      overridable: z.boolean(),
+    }),
+  ),
+  vercel_connected: z.boolean(),
+  live: publicationSchema.nullable(),
+  running: publicationSchema.nullable(),
+  job_id: z.string().nullable(),
+  publications: z.array(publicationSchema),
+});
+export type PublishingState = z.infer<typeof publishingStateSchema>;
+
+/** Browser → POST /api/integrations/vercel (the route adds the org). */
+export const vercelConnectSchema = z.object({
+  token: z
+    .string()
+    .trim()
+    .min(10, "Paste the whole token.")
+    .max(200, "That's longer than a Vercel token."),
+  team_id: z.string().trim().max(100).optional(),
+});
+
+export const testingSwitchSchema = z.object({
+  allow_placeholder_publish: z.boolean(),
+});
+
+/** Browser → POST /api/builds/[id]/publish. */
+export const publishSchema = z.object({
+  base_version: z.number().int().min(1),
+  destination: z.literal("vercel"),
+  override: z.boolean().default(false),
+});

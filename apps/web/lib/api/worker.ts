@@ -7,6 +7,12 @@ import {
   deskStateSchema,
 } from "@/lib/validators/desk";
 import {
+  type IntegrationsState,
+  type PublishingState,
+  integrationsStateSchema,
+  publishingStateSchema,
+} from "@/lib/validators/publishing";
+import {
   type LayoutAction,
   type TemplateEditorState,
   templateEditorSchema,
@@ -48,7 +54,7 @@ function detailMessage(body: unknown): string | undefined {
 }
 
 async function callWorker<T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "DELETE",
   path: string,
   accessToken: string,
   body: unknown,
@@ -289,5 +295,100 @@ export function restoreTemplateVersion(
     body,
     templateEditorSchema,
     "Could not restore that version.",
+  );
+}
+
+// ── Publishing (D87) ─────────────────────────────────────────────────────────
+
+/** The org's Vercel connection (never the token) and the testing switch. */
+export function getIntegrations(
+  accessToken: string,
+  orgId: string,
+): Promise<IntegrationsState> {
+  return callWorker(
+    "GET",
+    `/integrations?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    integrationsStateSchema,
+    "Could not load the integrations.",
+  );
+}
+
+/** Checks a Vercel token with Vercel and stores it in Vault. */
+export function connectVercel(
+  accessToken: string,
+  body: { org_id: string; token: string; team_id?: string },
+): Promise<IntegrationsState> {
+  return postToWorker(
+    "/integrations/vercel",
+    accessToken,
+    body,
+    integrationsStateSchema,
+    "Could not connect Vercel.",
+  );
+}
+
+export function disconnectVercel(
+  accessToken: string,
+  orgId: string,
+): Promise<IntegrationsState> {
+  return callWorker(
+    "DELETE",
+    `/integrations/vercel?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    integrationsStateSchema,
+    "Could not disconnect Vercel.",
+  );
+}
+
+export function setTestingSwitch(
+  accessToken: string,
+  orgId: string,
+  allow: boolean,
+): Promise<IntegrationsState> {
+  return postToWorker(
+    `/orgs/${encodeURIComponent(orgId)}/testing`,
+    accessToken,
+    { allow_placeholder_publish: allow },
+    integrationsStateSchema,
+    "Could not change the setting.",
+  );
+}
+
+/** What blocks publishing a build, its live page, a publish in progress and its history. */
+export function getPublishing(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<PublishingState> {
+  return callWorker(
+    "GET",
+    `/builds/${encodeURIComponent(buildId)}/publishing?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    publishingStateSchema,
+    "Could not load the page's publishing.",
+  );
+}
+
+/** Queues a publish to Vercel (the worker checks the gate first). */
+export function startPublish(
+  accessToken: string,
+  buildId: string,
+  body: {
+    org_id: string;
+    base_version: number;
+    destination: "vercel";
+    override: boolean;
+  },
+): Promise<PublishingState> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/publish`,
+    accessToken,
+    body,
+    publishingStateSchema,
+    "Could not start publishing.",
   );
 }

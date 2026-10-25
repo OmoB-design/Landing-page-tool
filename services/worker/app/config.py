@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     lp_fetch_timeout_seconds: float = 20.0
     lp_fetch_max_bytes: int = 6_000_000
 
+    # Publishing (BUILD_SPEC §12, D87). Clones under this residue score are blocked (D28).
+    lp_residue_min_score: int = 85
+
     # Job loop (BUILD_SPEC §6.1)
     lp_worker_concurrency: int = 3
     lp_org_concurrency: int = 2

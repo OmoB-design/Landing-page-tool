@@ -20,12 +20,19 @@ import {
 import { ExportButton } from "@/components/features/builds/export-button";
 import { InksCard } from "@/components/features/builds/inks-card";
 import { PanelStack } from "@/components/features/builds/panel-section";
+import { PublishProvider } from "@/components/features/builds/publish-context";
+import {
+  LiveButton,
+  PublishButton,
+  PublishedModal,
+  Publications,
+} from "@/components/features/builds/publish-controls";
 import {
   HeaderDivider,
   StatusActions,
 } from "@/components/features/builds/status-actions";
 import { PagesIcon } from "@/components/ui/icons";
-import { getBuildDesk } from "@/lib/api/worker";
+import { getBuildDesk, getPublishing } from "@/lib/api/worker";
 import { getSessionContext } from "@/lib/auth/session";
 import { getBuild } from "@/lib/builds/queries";
 import { claimAction, reportClaims } from "@/lib/builds/report";
@@ -118,7 +125,7 @@ async function Build({
       {build.report ? <BuildReport report={build.report} /> : null}
     </>
   );
-  const page = (desk: boolean) => (
+  const page = (desk: boolean, publish: boolean) => (
     <div className="flex h-full flex-col">
       <PageHeader
         icon={PagesIcon}
@@ -138,6 +145,13 @@ async function Build({
                       : 0
                   }
                 />
+                {publish ? (
+                  <>
+                    <PublishButton />
+                    <LiveButton />
+                    <PublishedModal />
+                  </>
+                ) : null}
                 <HeaderDivider />
               </>
             ) : null}
@@ -166,6 +180,7 @@ async function Build({
               overview={
                 <PanelStack>
                   {overview}
+                  {publish ? <Publications /> : null}
                   <InksCard />
                   <DeskChoices wizard={build.wizard} />
                 </PanelStack>
@@ -183,19 +198,48 @@ async function Build({
   // without it.
   const desk =
     ready && build.report ? await loadDesk(currentOrg.id, build.id) : null;
-  if (!desk) return page(false);
+  if (!desk) return page(false, false);
+  // Publishing (D87): without it (the worker unreachable) the desk still works.
+  const publishing = await loadPublishing(currentOrg.id, build.id);
   return (
     <DeskProvider buildId={build.id} meId={user.id} initial={desk}>
-      {page(true)}
+      {publishing ? (
+        <PublishProvider
+          buildId={build.id}
+          initial={publishing}
+          page={{
+            key: build.key,
+            title: build.title,
+            brand: build.brand?.name ?? null,
+            product: build.product?.name ?? null,
+            template: build.report?.template.name ?? null,
+          }}
+        >
+          {page(true, true)}
+        </PublishProvider>
+      ) : (
+        page(true, false)
+      )}
     </DeskProvider>
   );
 }
 
-async function loadDesk(orgId: string, buildId: string) {
+async function accessToken() {
   const supabase = await createClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  if (!session) return null;
-  return getBuildDesk(session.access_token, orgId, buildId).catch(() => null);
+  return session?.access_token ?? null;
+}
+
+async function loadDesk(orgId: string, buildId: string) {
+  const token = await accessToken();
+  if (!token) return null;
+  return getBuildDesk(token, orgId, buildId).catch(() => null);
+}
+
+async function loadPublishing(orgId: string, buildId: string) {
+  const token = await accessToken();
+  if (!token) return null;
+  return getPublishing(token, orgId, buildId).catch(() => null);
 }

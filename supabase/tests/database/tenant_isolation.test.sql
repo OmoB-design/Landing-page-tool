@@ -4,7 +4,7 @@
 -- Run with: pnpm test:db  (runs on the linked cloud project; everything rolls back at the end)
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(25);
 
 -- Two sign-ups. The on_auth_user_created trigger runs exactly as for a real sign-up.
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -75,6 +75,12 @@ select throws_ok(
   $$ insert into build_snapshots (build_id, seq, html_path, reason)
      select ada_build, 1, 'x.html', 'test' from ids $$,
   '42501', null, 'members cannot write build snapshots (the worker does)');
+select throws_ok(
+  $$ insert into publications (org_id, build_id, destination, status, gate_overridden)
+     select o.id, ada_build, 'vercel', 'succeeded', false from ids, orgs o $$,
+  '42501', null, 'members cannot record a publication (D87: the worker does, with the gate''s overrides)');
+select throws_ok($$ update orgs set allow_placeholder_publish = true $$, '42501', null,
+                 'an org owner cannot flip the placeholder testing switch directly (the worker does)');
 
 -- ── As Bob ──────────────────────────────────────────────────────────────────
 set local request.jwt.claims to '{"sub": "00000000-0000-4000-8000-00000000000b", "role": "authenticated"}';

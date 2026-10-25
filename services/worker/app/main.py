@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app import builds, desk, templates
+from app import builds, desk, publishing, templates
 from app.auth import CurrentUser, require_org_member
 from app.config import get_settings
 from app.jobs import queue
@@ -23,6 +23,13 @@ from app.models.desk import (
     RedraftRequest,
     SnapshotRestoreRequest,
     StatusRequest,
+)
+from app.models.publishing import (
+    IntegrationsState,
+    PublishingState,
+    PublishRequest,
+    TestingSwitchRequest,
+    VercelConnectRequest,
 )
 from app.models.template import LayoutAction, TemplateEditorState
 
@@ -224,6 +231,78 @@ def redraft_build(build_id: UUID, body: RedraftRequest, user: CurrentUser) -> De
     """Queues a redraft (a job, D86); the desk shows it running and pauses other changes."""
     require_org_member(user, body.org_id)
     state: DeskState = _desk_call(desk.start_redraft, body.org_id, build_id, user.id, body)
+    return state
+
+
+# ── Publishing (BUILD_SPEC §12, D87) ─────────────────────────────────────────
+
+
+def _publish_call(fn: Any, *args: Any) -> Any:
+    try:
+        return fn(*args)
+    except publishing.PublishNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That page isn't available.") from exc
+    except publishing.PublishConflictError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, PAGE_CHANGED_ELSEWHERE) from exc
+    except publishing.PublishError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+
+
+def _require_role(user_id: UUID, org_id: UUID, roles: set[str], what: str) -> None:
+    if publishing.role_of(org_id, user_id) not in roles:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Only {what} can do that.")
+
+
+@app.get("/integrations")
+def get_integrations(org_id: UUID, user: CurrentUser) -> IntegrationsState:
+    """The org's Vercel connection (never the token) and the testing switch."""
+    require_org_member(user, org_id)
+    return publishing.integrations_state(org_id, user.id)
+
+
+@app.post("/integrations/vercel")
+def connect_vercel(body: VercelConnectRequest, user: CurrentUser) -> IntegrationsState:
+    """Checks the token with Vercel and stores it in Vault. Owners and admins."""
+    require_org_member(user, body.org_id)
+    _require_role(user.id, body.org_id, {"owner", "admin"}, "owners and admins")
+    _publish_call(publishing.connect_vercel, body.org_id, user.id, body.token, body.team_id)
+    return publishing.integrations_state(body.org_id, user.id)
+
+
+@app.delete("/integrations/vercel")
+def disconnect_vercel(org_id: UUID, user: CurrentUser) -> IntegrationsState:
+    require_org_member(user, org_id)
+    _require_role(user.id, org_id, {"owner", "admin"}, "owners and admins")
+    publishing.disconnect_vercel(org_id)
+    return publishing.integrations_state(org_id, user.id)
+
+
+@app.post("/orgs/{org_id}/testing")
+def set_testing_switch(
+    org_id: UUID, body: TestingSwitchRequest, user: CurrentUser
+) -> IntegrationsState:
+    """The owner's switch that lets pages with placeholder images be published (D87)."""
+    require_org_member(user, org_id)
+    _require_role(user.id, org_id, {"owner"}, "the owner")
+    publishing.set_testing_switch(org_id, body.allow_placeholder_publish)
+    return publishing.integrations_state(org_id, user.id)
+
+
+@app.get("/builds/{build_id}/publishing")
+def build_publishing(build_id: UUID, org_id: UUID, user: CurrentUser) -> PublishingState:
+    """What blocks publishing, the live page, a publish in progress and the history."""
+    require_org_member(user, org_id)
+    state: PublishingState = _publish_call(publishing.publishing_state, org_id, build_id)
+    return state
+
+
+@app.post("/builds/{build_id}/publish")
+def publish_build(build_id: UUID, body: PublishRequest, user: CurrentUser) -> PublishingState:
+    """Queues a publish to Vercel after the gate (passing it with `override` is recorded)."""
+    require_org_member(user, body.org_id)
+    state: PublishingState = _publish_call(
+        publishing.start_publish, body.org_id, build_id, user.id, body.base_version, body.override
+    )
     return state
 
 

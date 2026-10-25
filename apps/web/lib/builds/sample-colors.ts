@@ -17,3 +17,7 @@ export const SAMPLE_DESK_COLORS: DeskState["colors"] = {
     accent: "#7a2e8f",
   },
 };
+
+// SAMPLE PUBLISHING for /dev/build-states: a page published to an invented brand's project. The
+// live address is example.com, which can be shown in a frame.
+export const SAMPLE_LIVE_URL = "https://example.com/";

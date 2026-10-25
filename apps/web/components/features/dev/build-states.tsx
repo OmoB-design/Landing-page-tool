@@ -9,8 +9,20 @@ import {
 import { Reminders } from "@/components/features/builds/build-report";
 import { DeskPanel } from "@/components/features/builds/desk-panel";
 import { InksCard } from "@/components/features/builds/inks-card";
+import { PublishProvider } from "@/components/features/builds/publish-context";
+import {
+  LiveButton,
+  PublishButton,
+  PublishedModal,
+  Publications,
+} from "@/components/features/builds/publish-controls";
+import { Connections } from "@/components/features/settings/connections";
 import { StatusActions } from "@/components/features/builds/status-actions";
-import { SAMPLE_DESK_COLORS } from "@/lib/builds/sample-colors";
+import {
+  SAMPLE_DESK_COLORS,
+  SAMPLE_LIVE_URL,
+} from "@/lib/builds/sample-colors";
+import type { PublishingState } from "@/lib/validators/publishing";
 import type { DeskState } from "@/lib/validators/desk";
 
 /** /dev/build-states: shows the toast Export raises when an export fails. */
@@ -387,5 +399,139 @@ export function RedraftToastButtons() {
         Failed
       </button>
     </div>
+  );
+}
+
+const SAMPLE_PUBLICATION = {
+  id: "pub-1",
+  destination: "vercel",
+  status: "succeeded" as const,
+  url: SAMPLE_LIVE_URL,
+  created_at: "2026-10-25T09:00:00.000Z",
+  created_by: "me",
+  gate_overridden: true,
+  override_reasons: ["placeholder_images"],
+  error: null,
+  page_version: 4,
+  project: "lp-lum",
+  seconds: 14,
+};
+
+const SAMPLE_PUBLISHING: PublishingState = {
+  build_id: "sample",
+  status: "approved",
+  page_version: 4,
+  gate: [],
+  vercel_connected: true,
+  live: null,
+  running: null,
+  job_id: null,
+  publications: [],
+};
+
+const SAMPLE_PAGE = {
+  key: "LUM-12",
+  title: "Calm skin in a week",
+  brand: "Lumé",
+  product: "Calming serum",
+  template: "Advertorial, long form",
+};
+
+/** /dev/build-states: Publish in the header (D87) in one of its states; publishing only toasts. */
+export function SamplePublish({
+  state,
+}: {
+  state: "ready" | "gated" | "blocked" | "unconnected" | "running" | "live";
+}) {
+  const publishing: PublishingState = {
+    ...SAMPLE_PUBLISHING,
+    vercel_connected: state !== "unconnected",
+    gate:
+      state === "gated"
+        ? [
+            {
+              code: "claims",
+              message: "1 claim is marked Fix in the claim check.",
+              overridable: true,
+            },
+            {
+              code: "placeholder_images",
+              message:
+                "The page still has placeholder images. Your testing switch allows publishing it.",
+              overridable: true,
+            },
+          ]
+        : state === "blocked"
+          ? [
+              {
+                code: "placeholder_images",
+                message: "The page still has placeholder images.",
+                overridable: false,
+              },
+            ]
+          : [],
+    running:
+      state === "running"
+        ? { ...SAMPLE_PUBLICATION, status: "pending", url: null }
+        : null,
+    live: state === "live" ? SAMPLE_PUBLICATION : null,
+    publications: state === "live" ? [SAMPLE_PUBLICATION] : [],
+  };
+  return (
+    <DeskProvider
+      buildId="sample"
+      meId="me"
+      initial={{
+        ...SAMPLE_DESK,
+        build: {
+          ...SAMPLE_DESK.build,
+          status: state === "live" ? "published" : "approved",
+        },
+      }}
+      onChange={sampleChange}
+    >
+      <PublishProvider
+        buildId="sample"
+        page={SAMPLE_PAGE}
+        initial={publishing}
+        onPublish={() => toast("Sample only: nothing was published.")}
+      >
+        <div className="flex flex-col items-start gap-3">
+          <div className="flex items-center gap-2.5">
+            <PublishButton />
+            <LiveButton />
+          </div>
+          <PublishedModal />
+          {state === "live" ? (
+            <div className="w-80">
+              <Publications />
+            </div>
+          ) : null}
+        </div>
+      </PublishProvider>
+    </DeskProvider>
+  );
+}
+
+/** /dev/build-states: Settings → Connections, connected or not (changes go nowhere here). */
+export function SampleConnections({ connected }: { connected: boolean }) {
+  return (
+    <Connections
+      brands={{ "brand-1": "Lumé" }}
+      initial={{
+        vercel: connected
+          ? {
+              account: "ada",
+              team_id: null,
+              token_last4: "a1b2",
+              connected_at: "2026-10-24T09:00:00.000Z",
+              connected_by: "Ada Lovelace",
+              projects: [{ brand_id: "brand-1", name: "lp-lum" }],
+            }
+          : null,
+        allow_placeholder_publish: connected,
+        role: "owner",
+      }}
+    />
   );
 }

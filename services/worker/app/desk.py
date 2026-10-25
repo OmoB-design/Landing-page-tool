@@ -40,8 +40,10 @@ from app.providers import storage
 BUCKET = "builds"
 MAX_SNAPSHOTS = 12  # BUILD_SPEC §11.2: keep 12 snapshots
 MAX_EDITED = 300
-# A page can be changed on the desk once it is built (not while it builds or after it failed).
-EDITABLE = {"needs_review", "approved"}
+# A page can be changed on the desk once it is built (not while it builds or after it failed). A
+# change to an approved or published page sends it back to Needs review (a published page stays
+# live as it was until it is published again, D87).
+EDITABLE = {"needs_review", "approved", "published"}
 
 
 class DeskNotFoundError(Exception):
@@ -292,9 +294,12 @@ def _change(
         """
         update builds set working_html_path = %(path)s, page_version = %(v)s, report = %(report)s,
                export_html_path = null,
-               status = case when status = 'approved' then 'needs_review' else status end,
-               approved_at = case when status = 'approved' then null else approved_at end,
-               approved_by = case when status = 'approved' then null else approved_by end
+               status = case when status in ('approved', 'published')
+                             then 'needs_review'::build_status else status end,
+               approved_at = case when status in ('approved', 'published') then null
+                             else approved_at end,
+               approved_by = case when status in ('approved', 'published') then null
+                             else approved_by end
         where id = %(b)s and org_id = %(o)s
         """,
         {
@@ -415,9 +420,12 @@ def undo(org_id: UUID, build_id: UUID, base_version: int) -> DeskState:
             """
             update builds set working_html_path = %(path)s, page_version = page_version + 1,
                    report = %(report)s, export_html_path = null,
-                   status = case when status = 'approved' then 'needs_review' else status end,
-                   approved_at = case when status = 'approved' then null else approved_at end,
-                   approved_by = case when status = 'approved' then null else approved_by end
+                   status = case when status in ('approved', 'published')
+                             then 'needs_review'::build_status else status end,
+                   approved_at = case when status in ('approved', 'published') then null
+                             else approved_at end,
+                   approved_by = case when status in ('approved', 'published') then null
+                             else approved_by end
             where id = %(b)s and org_id = %(o)s
             """,
             {"path": newest["html_path"], "report": Jsonb(report), "b": build_id, "o": org_id},

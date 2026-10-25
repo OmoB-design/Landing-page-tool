@@ -22,6 +22,8 @@ import {
   SampleDeskPanel,
   SampleFailedPreview,
   SampleInksCard,
+  SampleConnections,
+  SamplePublish,
   SampleStatusActions,
   SampleUnwrittenReminder,
 } from "@/components/features/dev/build-states";
@@ -489,6 +491,95 @@ export default function BuildStatesPage() {
           <PanelFrame>
             <SampleUnwrittenReminder />
           </PanelFrame>
+        </State>
+
+        <State
+          number={16}
+          title="Publish: asking first"
+          when="On an approved (or published) page, Publish sits after Approve in the header. A card asks first: where the page goes (the brand’s Vercel project), then anything that blocks it."
+          shows={[
+            "Ready: a line saying the page goes live at its own address, then Cancel / Publish.",
+            "Blocked by reasons that can be passed (claims marked Fix, copy in the template’s words, placeholder images with the testing switch on): each listed, and “Publish anyway”, recorded with your name.",
+            "Blocked by placeholder images with the testing switch off: Publish stays off, with where to allow it.",
+            "Vercel not connected: a link to Settings.",
+          ]}
+          design={["The Publish button and the asking card in its four states"]}
+        >
+          <div className="flex flex-wrap items-start gap-6">
+            <Labeled label="Ready">
+              <SamplePublish state="ready" />
+            </Labeled>
+            <Labeled label="Reasons to pass">
+              <SamplePublish state="gated" />
+            </Labeled>
+            <Labeled label="Blocked">
+              <SamplePublish state="blocked" />
+            </Labeled>
+            <Labeled label="Vercel not connected">
+              <SamplePublish state="unconnected" />
+            </Labeled>
+          </div>
+        </State>
+
+        <State
+          number={17}
+          title="Publishing"
+          when="While the page is being published (packing it, setting up the brand’s project, uploading, Vercel deploying, checking the address opens): usually under a minute."
+          shows={[
+            "The button turns to “Publishing…” with a spinner; hovering it shows the current step.",
+            "If it fails, an error toast says why (for example, Vercel refused the token).",
+          ]}
+          design={["The publishing button", "The failure toast"]}
+        >
+          <SamplePublish state="running" />
+        </State>
+
+        <State
+          number={18}
+          title="Published"
+          when="When Vercel says the page is ready and its address opens, a modal opens by itself (and again from Live in the header)."
+          shows={[
+            "Left: the live page itself, shown small in a browser frame; a click opens it.",
+            "Right: the page, brand, product, template, who published it and when, the Vercel project, and the address with Copy.",
+            "Below: Live on Vercel (and how long it took) beside Publish to Shopify (arrives with B1.5b) and Open page.",
+            "If the page changed since, the modal says the live one is the version you published.",
+            "The Overview lists every publish (Live, Failed, Publishing) with any reasons passed.",
+          ]}
+          design={[
+            "The published modal",
+            "Live in the header",
+            "The Published list",
+          ]}
+        >
+          <SamplePublish state="live" />
+        </State>
+
+        <State
+          number={19}
+          title="Settings: Connections"
+          when="Settings has its own sidebar (Back to app; Personal, Workspace and Tools, as Quality arranges its settings; settings not built yet show Soon). Connections lists the services pages are published to; the testing switch is in General."
+          shows={[
+            "Cards two to a row (logo tile, name, Connected or Soon, two lines, a small button), the connected ones first.",
+            "Connect opens a modal: the Vercel mark, Connect Vercel and what it does, the access token (with where to make one) and an optional team id; Cancel and Connect, the error in the footer if Vercel refuses the token.",
+            "View connection opens Vercel’s page: connected on, account, connected by, Replace token and Disconnect, and the brand projects with Open.",
+          ]}
+          design={[
+            "The settings sidebar",
+            "The Connections cards, the connect modal and the connection page",
+          ]}
+        >
+          <div className="flex flex-wrap items-start gap-6">
+            <Labeled label="Not connected (Connect opens the modal)">
+              <div className="w-xl">
+                <SampleConnections connected={false} />
+              </div>
+            </Labeled>
+            <Labeled label="Connected (View connection opens its page)">
+              <div className="w-xl">
+                <SampleConnections connected />
+              </div>
+            </Labeled>
+          </div>
         </State>
       </div>
     </>

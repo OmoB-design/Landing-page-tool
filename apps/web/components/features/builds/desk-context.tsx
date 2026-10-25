@@ -70,6 +70,8 @@ type DeskContextValue = {
   redraft: (input: RedraftInput) => Promise<boolean>;
   /** Recolours the page to these colours (undoable). */
   recolor: (colors: DeskPalette) => Promise<boolean>;
+  /** Fetches the desk again (publishing changes the status without a new page version). */
+  reload: () => Promise<void>;
   /** The redraft queued or running on the page, with its job (progress) once loaded. */
   redrafting: { redraft: DeskRedraft; job: JobDetail | undefined } | null;
   pending: DeskAction | null;
@@ -298,6 +300,15 @@ export function DeskProvider({
       undo: () => void run("undo", {}),
       restore: (seq) => void run("restore", { seq }),
       redraft,
+      reload: async () => {
+        if (onChange) return;
+        const next = await apiFetch(
+          `/api/builds/${buildId}/desk`,
+          deskStateSchema,
+        ).catch(() => null);
+        if (next) setLocal(next);
+        router.refresh();
+      },
       recolor: async (colors) => {
         const done = await run("recolor", { colors });
         if (done && !onChange) {
@@ -330,6 +341,7 @@ export function DeskProvider({
       run,
       redraft,
       onChange,
+      router,
       job.data,
       mutation.isPending,
       mutation.variables,

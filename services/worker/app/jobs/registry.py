@@ -15,6 +15,7 @@ from app.jobs.kinds import (
     noop_demo,
     product_briefing,
     product_pull,
+    publish_vercel,
     redraft,
 )
 
@@ -99,6 +100,15 @@ KINDS: dict[str, JobKind] = {
             payload_model=redraft.RedraftPayload,
             max_attempts=1,
             dedupe=redraft.dedupe_key,
+        ),
+        # Started by POST /builds/{id}/publish, which checks the gate and records the publication.
+        JobKind(
+            name="publish_vercel",
+            title="Publish to Vercel",
+            handler=publish_vercel.run,
+            payload_model=publish_vercel.PublishVercelPayload,
+            max_attempts=1,
+            dedupe=publish_vercel.dedupe_key,
         ),
     ]
 }

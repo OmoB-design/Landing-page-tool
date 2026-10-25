@@ -412,6 +412,7 @@
   --spacing-menu-header: 280px; /* Figma: Jobs, Notification (w-menu-header) */
   --spacing-pages: 1100px; /* Figma All Pages: the content column (max-w-pages) */
   --spacing-brands: 871px; /* Figma Brands: the column inside the 1100 px one (max-w-brands) */
+  --spacing-settings: 544px; /* Settings pages: Quality's settings column (max-w-settings, D88) */
   --spacing-menu-display: 200px; /* Pages → Display menu (w-menu-display); not in a frame yet */
   --spacing-menu-row: 132px; /* Figma All Pages: the row ⋯ menu (w-menu-row) */
   --spacing-home-card: 285px; /* Figma Home: a getting-started card (w-home-card) */
