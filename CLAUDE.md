@@ -239,7 +239,8 @@ vercel deploy --target preview   # preview build on Vercel's servers; prints the
 # built from services/worker/Dockerfile: the API (https://landing-page-tool-production.up.railway.app, /health)
 # and the job loop (start command `python worker.py`). Variables are the worker's .env, set by the owner in
 # Railway. Pushes to main rebuild them once Railway's GitHub app can see the repo. A local `pnpm dev` job loop
-# also claims jobs from the same database: stop it when testing the live site.
+# also claims jobs from the same database: stop it when testing the live site. Worker tests use their own job
+# queue (D85), so the live job loop never runs their jobs.
 ```
 
 `apps/web/.env.local` and `services/worker/.env` hold the cloud project's URL and keys (gitignored). To recreate them, copy the `.env.example` files and fill in the values from the dashboard: Project Settings → API Keys (publishable key for the web app, secret key for the worker), and Connect → Session pooler for `DATABASE_URL`.

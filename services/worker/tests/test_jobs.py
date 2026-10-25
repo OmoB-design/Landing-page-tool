@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from app.config import Settings
+from app.config import Settings, get_settings
 from app.db import transaction
 from app.jobs import queue
 from app.jobs.context import JobContext
@@ -130,6 +130,17 @@ def test_claim_respects_the_org_limit(user: DbUser) -> None:
 def test_claim_only_takes_kinds_the_worker_knows(user: DbUser) -> None:
     enqueue(user, "test_ok")
     assert queue.claim("w", 2, ["some_other_kind"]) is None
+
+
+def test_claim_only_takes_jobs_from_its_own_queue(user: DbUser) -> None:
+    live = enqueue(user, "test_ok")
+    with transaction() as conn:  # as if the live worker had queued it
+        conn.execute("update jobs set queue = 'main' where id = %(id)s", {"id": live})
+    assert queue.claim("w", 2, ["test_ok"]) is None
+    ours = enqueue(user, "test_ok")
+    claimed = queue.claim("w", 2, ["test_ok"])
+    assert claimed is not None and claimed.id == ours
+    assert claimed.queue == get_settings().lp_job_queue != "main"
 
 
 # ── runner outcomes ───────────────────────────────────────────────────────────

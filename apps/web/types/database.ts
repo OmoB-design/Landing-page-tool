@@ -535,6 +535,7 @@ export type Database = {
           max_attempts: number
           org_id: string
           payload: Json
+          queue: string
           result: Json | null
           run_after: string
           started_at: string | null
@@ -556,6 +557,7 @@ export type Database = {
           max_attempts?: number
           org_id: string
           payload?: Json
+          queue?: string
           result?: Json | null
           run_after?: string
           started_at?: string | null
@@ -577,6 +579,7 @@ export type Database = {
           max_attempts?: number
           org_id?: string
           payload?: Json
+          queue?: string
           result?: Json | null
           run_after?: string
           started_at?: string | null

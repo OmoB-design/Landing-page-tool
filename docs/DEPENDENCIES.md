@@ -126,6 +126,7 @@ Never expose the secret (service-role) key to the web app.
 | `LP_RESIDUE_MIN_SCORE` | `85` | publish gate threshold |
 | `LP_WORKER_CONCURRENCY` | `3` | jobs per worker process |
 | `LP_ORG_CONCURRENCY` | `2` | concurrent jobs per org |
+| `LP_JOB_QUEUE` | `main` | the queue this worker's jobs go into and come from (D85); the worker tests set their own |
 | `LP_PROVIDER_LOCK_MINUTES` | `10` | how long image calls stay paused after fal reports a locked / unfunded account |
 | `SHOPIFY_API_VERSION` | current stable at implementation time | Admin GraphQL version |
 | `APP_URL` | — | for OAuth redirect URIs |

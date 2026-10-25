@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     lp_heartbeat_seconds: float = 10.0
     lp_stale_after_seconds: float = 90.0
     lp_poll_seconds: float = 1.0
+    # The queue this worker's jobs go into and come from (D85): 'main' live and on a developer's
+    # machine; the tests set their own, so the live worker never runs their jobs.
+    lp_job_queue: str = "main"
 
     log_level: str = "info"
 

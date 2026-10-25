@@ -11,6 +11,7 @@ from psycopg import Connection
 from psycopg.rows import DictRow
 from psycopg.types.json import Jsonb
 
+from app.config import get_settings
 from app.db import transaction
 from app.jobs.models import EventLevel, Job, JobEvent
 
@@ -30,21 +31,24 @@ def enqueue(
     max_attempts: int = 2,
     conn: Connection[DictRow] | None = None,
 ) -> tuple[Job, bool]:
-    """Queues a job. If a queued or running job in the org has the same dedupe key, returns that
-    job instead (so one build is never paid for twice). Returns (job, created). With `conn`, the
-    insert joins the caller's transaction (e.g. a build and its job are created together)."""
+    """Queues a job on this worker's queue (LP_JOB_QUEUE, D85). If a queued or running job in the
+    org has the same dedupe key, returns that job instead (so one build is never paid for twice).
+    Returns (job, created). With `conn`, the insert joins the caller's transaction (e.g. a build
+    and its job are created together)."""
+    job_queue = get_settings().lp_job_queue
     if conn is not None:
         row = conn.execute(
             """
-            insert into jobs (org_id, kind, payload, dedupe_key, build_id, max_attempts, created_by)
+            insert into jobs (org_id, kind, payload, dedupe_key, build_id, max_attempts, created_by,
+                              queue)
             values (%(org_id)s, %(kind)s, %(payload)s, %(dedupe_key)s, %(build_id)s,
-                    %(max_attempts)s, %(created_by)s)
+                    %(max_attempts)s, %(created_by)s, %(queue)s)
             returning *
             """,
             {
                 "org_id": org_id, "kind": kind, "payload": Jsonb(payload),
                 "dedupe_key": dedupe_key, "build_id": build_id,
-                "max_attempts": max_attempts, "created_by": created_by,
+                "max_attempts": max_attempts, "created_by": created_by, "queue": job_queue,
             },
         ).fetchone()  # fmt: skip
         assert row is not None
@@ -52,9 +56,10 @@ def enqueue(
     with transaction() as conn:
         row = conn.execute(
             """
-            insert into jobs (org_id, kind, payload, dedupe_key, build_id, max_attempts, created_by)
+            insert into jobs (org_id, kind, payload, dedupe_key, build_id, max_attempts, created_by,
+                              queue)
             values (%(org_id)s, %(kind)s, %(payload)s, %(dedupe_key)s, %(build_id)s,
-                    %(max_attempts)s, %(created_by)s)
+                    %(max_attempts)s, %(created_by)s, %(queue)s)
             on conflict (org_id, dedupe_key)
               where status in ('queued', 'running') and dedupe_key is not null
               do nothing
@@ -68,6 +73,7 @@ def enqueue(
                 "build_id": build_id,
                 "max_attempts": max_attempts,
                 "created_by": created_by,
+                "queue": job_queue,
             },
         ).fetchone()
         if row is not None:
@@ -94,15 +100,15 @@ def enqueue(
 
 
 def claim(worker_id: str, org_limit: int, kinds: list[str]) -> Job | None:
-    """Claims the oldest runnable job of one of `kinds` (the kinds this worker can run) whose
-    org has fewer than `org_limit` jobs running. The org limit is soft: two workers claiming at
-    the same instant can exceed it by one."""
+    """Claims the oldest runnable job of this worker's queue (D85) and one of `kinds` (the kinds
+    this worker can run) whose org has fewer than `org_limit` jobs running. The org limit is soft:
+    two workers claiming at the same instant can exceed it by one."""
     with transaction() as conn:
         row = conn.execute(
             """
             with candidate as (
               select j.id from jobs j
-              where j.status = 'queued' and j.run_after <= now()
+              where j.status = 'queued' and j.queue = %(queue)s and j.run_after <= now()
                 and j.kind = any(%(kinds)s)
                 and (select count(*) from jobs r
                      where r.org_id = j.org_id and r.status = 'running') < %(org_limit)s
@@ -117,7 +123,12 @@ def claim(worker_id: str, org_limit: int, kinds: list[str]) -> Job | None:
             from candidate where jobs.id = candidate.id
             returning jobs.*
             """,
-            {"worker": worker_id, "org_limit": org_limit, "kinds": kinds},
+            {
+                "worker": worker_id,
+                "org_limit": org_limit,
+                "kinds": kinds,
+                "queue": get_settings().lp_job_queue,
+            },
         ).fetchone()
     return Job.model_validate(row) if row else None
 
@@ -190,14 +201,14 @@ def release(job: Job, worker_id: str) -> Job | None:
 
 
 def reap(stale_after_seconds: float) -> list[Job]:
-    """Requeues running jobs whose heartbeat stopped (crashed or killed worker), or fails them
-    when they have used all their attempts. Returns the jobs it changed."""
+    """Requeues this queue's running jobs whose heartbeat stopped (crashed or killed worker), or
+    fails them when they have used all their attempts. Returns the jobs it changed."""
     with transaction() as conn:
         rows = conn.execute(
             """
             with stale as (
               select id from jobs
-              where status = 'running'
+              where status = 'running' and queue = %(queue)s
                 and heartbeat_at < now() - make_interval(secs => %(stale)s)
               for update skip locked
             )
@@ -210,7 +221,11 @@ def reap(stale_after_seconds: float) -> list[Job]:
             from stale where j.id = stale.id
             returning j.*
             """,
-            {"stale": stale_after_seconds, "lost": Jsonb(LOST_ERROR)},
+            {
+                "stale": stale_after_seconds,
+                "lost": Jsonb(LOST_ERROR),
+                "queue": get_settings().lp_job_queue,
+            },
         ).fetchall()
     return [Job.model_validate(row) for row in rows]
 

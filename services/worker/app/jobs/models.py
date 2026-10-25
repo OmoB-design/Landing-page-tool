@@ -30,6 +30,7 @@ class Job(BaseModel):
     created_at: datetime
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    queue: str = "main"
 
 
 class JobEvent(BaseModel):

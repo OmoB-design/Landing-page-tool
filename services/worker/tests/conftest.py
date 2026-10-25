@@ -3,13 +3,16 @@ D73) and are skipped when it cannot be reached. Each test works in its own throw
 deleted afterwards."""
 
 import os
+import uuid
 
 # Tests never call live providers (D15), whatever services/worker/.env says: environment
 # variables outrank the .env file in pydantic-settings, and this runs before app.config loads.
 os.environ["LP_MOCK_LLM"] = "1"
 os.environ["LP_MOCK_IMAGES"] = "1"
+# Their jobs go into a queue of their own (D85): the live worker, which shares this database,
+# never claims them, and a test never claims a real job.
+os.environ["LP_JOB_QUEUE"] = f"test-{uuid.uuid4().hex[:8]}"
 
-import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
