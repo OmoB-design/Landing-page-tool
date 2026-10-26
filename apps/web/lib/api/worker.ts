@@ -9,8 +9,10 @@ import {
 import {
   type IntegrationsState,
   type PublishingState,
+  type ShopifyTemplate,
   integrationsStateSchema,
   publishingStateSchema,
+  shopifyTemplateSchema,
 } from "@/lib/validators/publishing";
 import {
   type LayoutAction,
@@ -380,7 +382,7 @@ export function startPublish(
   body: {
     org_id: string;
     base_version: number;
-    destination: "vercel";
+    destination: "vercel" | "shopify_page";
     override: boolean;
   },
 ): Promise<PublishingState> {
@@ -390,5 +392,69 @@ export function startPublish(
     body,
     publishingStateSchema,
     "Could not start publishing.",
+  );
+}
+
+/** Queues taking the page down from Vercel (D89); the brand's other pages stay up. */
+export function startUnpublish(
+  accessToken: string,
+  buildId: string,
+  orgId: string,
+): Promise<PublishingState> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/unpublish`,
+    accessToken,
+    { org_id: orgId },
+    publishingStateSchema,
+    "Could not start unpublishing.",
+  );
+}
+
+/** Checks a brand's store owner app with Shopify and keeps it (D90). */
+export function connectShopify(
+  accessToken: string,
+  body: {
+    org_id: string;
+    brand_id: string;
+    shop_domain: string;
+    client_id: string;
+    client_secret: string;
+  },
+): Promise<IntegrationsState> {
+  return postToWorker(
+    "/integrations/shopify",
+    accessToken,
+    body,
+    integrationsStateSchema,
+    "Could not connect the store.",
+  );
+}
+
+export function disconnectShopify(
+  accessToken: string,
+  orgId: string,
+  brandId: string,
+): Promise<IntegrationsState> {
+  return callWorker(
+    "DELETE",
+    `/integrations/shopify?org_id=${encodeURIComponent(orgId)}&brand_id=${encodeURIComponent(brandId)}`,
+    accessToken,
+    undefined,
+    integrationsStateSchema,
+    "Could not disconnect the store.",
+  );
+}
+
+/** The full-width template's two files, for the store owner to add to their theme (D90). */
+export function getShopifyTemplate(
+  accessToken: string,
+): Promise<ShopifyTemplate> {
+  return callWorker(
+    "GET",
+    "/integrations/shopify/template",
+    accessToken,
+    undefined,
+    shopifyTemplateSchema,
+    "Could not load the template.",
   );
 }

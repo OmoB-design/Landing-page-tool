@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +35,8 @@ class Settings(BaseSettings):
 
     # Publishing (BUILD_SPEC §12, D87). Clones under this residue score are blocked (D28).
     lp_residue_min_score: int = 85
+    # Shopify Admin GraphQL (B1.5b, D90): the current stable version, as Shopify names it.
+    shopify_api_version: str = "2026-10"
 
     # Job loop (BUILD_SPEC §6.1)
     lp_worker_concurrency: int = 3
@@ -46,6 +49,12 @@ class Settings(BaseSettings):
     lp_job_queue: str = "main"
 
     log_level: str = "info"
+
+    @field_validator("shopify_api_version")
+    @classmethod
+    def _shopify_version(cls, value: str) -> str:
+        # A blank SHOPIFY_API_VERSION (the old .env had one) means the default.
+        return value.strip() or "2026-10"
 
     @property
     def jwks_url(self) -> str:

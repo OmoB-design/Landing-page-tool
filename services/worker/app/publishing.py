@@ -21,9 +21,11 @@ from app.models.publishing import (
     IntegrationsState,
     Publication,
     PublishingState,
+    ShopifyStore,
     VercelConnection,
     VercelProject,
 )
+from app.providers import shopify
 from app.providers.vercel import VercelClient, VercelError
 from app.publish import gate
 
@@ -73,6 +75,14 @@ def integrations_state(org_id: UUID, user_id: UUID) -> IntegrationsState:
             {"o": org_id},
         ).fetchone()
         role = _role(conn, org_id, user_id)
+        stores = conn.execute(
+            """
+            select s.brand_id, b.name as brand_name, s.shop_domain, s.connected_at, s.scopes
+            from store_connections s join brands b on b.id = s.brand_id
+            where s.org_id = %(o)s and s.status = 'connected' order by b.name
+            """,
+            {"o": org_id},
+        ).fetchall()
     vercel = None
     if row and row["created_at"]:
         meta = row["meta"] or {}
@@ -89,6 +99,16 @@ def integrations_state(org_id: UUID, user_id: UUID) -> IntegrationsState:
         )
     return IntegrationsState(
         vercel=vercel,
+        shopify=[
+            ShopifyStore(
+                brand_id=r["brand_id"],
+                brand_name=r["brand_name"],
+                shop_domain=r["shop_domain"],
+                connected_at=r["connected_at"],
+                missing_scopes=shopify.missing_scopes(r["scopes"] or ""),
+            )
+            for r in stores
+        ],
         allow_placeholder_publish=bool(row and row["allow_placeholder_publish"]),
         role=role,  # type: ignore[arg-type]
     )
@@ -145,6 +165,81 @@ def disconnect_vercel(org_id: UUID) -> None:
             vault.remove(conn, row["vault_secret_id"])
 
 
+def shopify_client(shop: str, token: str) -> shopify.ShopifyClient:
+    """The Shopify client (tests replace it, and `shopify_token`, with fakes)."""
+    return shopify.ShopifyClient(shop, token)
+
+
+def shopify_token(shop: str, client_id: str, client_secret: str) -> shopify.Token:
+    return shopify.get_token(shop, client_id, client_secret)
+
+
+def connect_shopify(
+    org_id: UUID,
+    user_id: UUID,
+    brand_id: UUID,
+    domain: str,
+    client_id: str,
+    client_secret: str,
+) -> None:
+    """Checks the store owner's app with Shopify (a token, and the scopes it was granted), then
+    keeps its client id and, in Vault, its secret (D90). One store per brand."""
+    try:
+        shop = shopify.shop_domain(domain)
+        token = shopify_token(shop, client_id.strip(), client_secret.strip())
+    except shopify.ShopifyError as exc:
+        raise PublishError(exc.message) from exc
+    lacking = [s for s in shopify.missing_scopes(token.scope) if s != "write_themes"]
+    if lacking:
+        raise PublishError(
+            "The app is missing "
+            + ", ".join(lacking)
+            + ". Add it in the Dev Dashboard (the app → Versions → Scopes), release, and try again."
+        )
+    with transaction() as conn:
+        brand = conn.execute(
+            "select 1 from brands where id = %(b)s and org_id = %(o)s and deleted_at is null",
+            {"b": brand_id, "o": org_id},
+        ).fetchone()
+        if brand is None:
+            raise PublishNotFoundError
+        old = conn.execute(
+            "select vault_secret_id from store_connections "
+            "where brand_id = %(b)s and org_id = %(o)s",
+            {"b": brand_id, "o": org_id},
+        ).fetchone()
+        secret_id = vault.store(conn, client_secret.strip(), label=f"shopify:{brand_id}")
+        conn.execute(
+            """
+            insert into store_connections (org_id, brand_id, shop_domain, client_id,
+                                           vault_secret_id, token_last4, scopes, status,
+                                           connected_at)
+            values (%(o)s, %(b)s, %(shop)s, %(cid)s, %(s)s, %(l)s, %(scopes)s, 'connected', now())
+            on conflict (brand_id) do update set
+              shop_domain = excluded.shop_domain, client_id = excluded.client_id,
+              vault_secret_id = excluded.vault_secret_id, token_last4 = excluded.token_last4,
+              scopes = excluded.scopes, status = 'connected', connected_at = now()
+            """,
+            {
+                "o": org_id, "b": brand_id, "shop": shop, "cid": client_id.strip(),
+                "s": secret_id, "l": vault.last4(client_id.strip()), "scopes": token.scope,
+            },
+        )  # fmt: skip
+        if old:
+            vault.remove(conn, old["vault_secret_id"])
+
+
+def disconnect_shopify(org_id: UUID, brand_id: UUID) -> None:
+    with transaction() as conn:
+        row = conn.execute(
+            "delete from store_connections where brand_id = %(b)s and org_id = %(o)s "
+            "returning vault_secret_id",
+            {"b": brand_id, "o": org_id},
+        ).fetchone()
+        if row:
+            vault.remove(conn, row["vault_secret_id"])
+
+
 def set_testing_switch(org_id: UUID, allow: bool) -> None:
     with transaction() as conn:
         conn.execute(
@@ -192,6 +287,7 @@ def _publication(row: dict[str, Any]) -> Publication:
     return Publication(
         id=row["id"],
         destination=row["destination"],
+        action="unpublish" if details.get("action") == "unpublish" else "publish",
         status=row["status"],
         url=row["url"],
         created_at=row["created_at"],
@@ -202,7 +298,19 @@ def _publication(row: dict[str, Any]) -> Publication:
         page_version=details.get("page_version"),
         project=details.get("project"),
         seconds=details.get("seconds"),
+        admin_url=row.get("admin_url"),
+        full_width=_full_width(row["destination"], details),
     )
+
+
+def _full_width(destination: str, details: dict[str, Any]) -> bool | None:
+    """Shopify drafts: whether the full-width template was used (drafts made before
+    `full_width` was recorded tell by their template)."""
+    if destination != "shopify_page":
+        return None
+    if "full_width" in details:
+        return bool(details["full_width"])
+    return details["template"] is not None if "template" in details else None
 
 
 def publishing_state(org_id: UUID, build_id: UUID) -> PublishingState:
@@ -212,8 +320,8 @@ def publishing_state(org_id: UUID, build_id: UUID) -> PublishingState:
             dict(r)
             for r in conn.execute(
                 """
-                select id, destination, status, url, created_at, created_by, gate_overridden,
-                       override_reasons, details, job_id
+                select id, destination, status, url, admin_url, created_at, created_by,
+                       gate_overridden, override_reasons, details, job_id
                 from publications where build_id = %(b)s and org_id = %(o)s
                 order by created_at desc limit 50
                 """,
@@ -223,9 +331,25 @@ def publishing_state(org_id: UUID, build_id: UUID) -> PublishingState:
         connected = conn.execute(
             "select 1 from integrations where org_id = %(o)s and kind = 'vercel'", {"o": org_id}
         ).fetchone()
+        store = conn.execute(
+            "select shop_domain from store_connections where brand_id = %(b)s and org_id = %(o)s "
+            "and status = 'connected'",
+            {"b": build["brand_id"], "o": org_id},
+        ).fetchone()
     running = next((r for r in rows if r["status"] == "pending"), None)
-    live = next(
-        (r for r in rows if r["status"] == "succeeded" and r["destination"] == "vercel"), None
+    # Live on Vercel: the newest Vercel publication that finished is a publish, not an unpublish.
+    finished = next(
+        (
+            r
+            for r in rows
+            if r["destination"] == "vercel" and r["status"] in ("succeeded", "unpublished")
+        ),
+        None,
+    )
+    live = finished if finished and finished["status"] == "succeeded" else None
+    draft = next(
+        (r for r in rows if r["destination"] == "shopify_page" and r["status"] == "succeeded"),
+        None,
     )
     return PublishingState(
         build_id=build["id"],
@@ -240,11 +364,18 @@ def publishing_state(org_id: UUID, build_id: UUID) -> PublishingState:
         running=_publication(running) if running else None,
         job_id=running["job_id"] if running else None,
         publications=[_publication(r) for r in rows],
+        shopify_domain=store["shop_domain"] if store else None,
+        shopify_draft=_publication(draft) if draft else None,
     )
 
 
 def start_publish(
-    org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int, override: bool
+    org_id: UUID,
+    build_id: UUID,
+    user_id: UUID | None,
+    base_version: int,
+    override: bool,
+    destination: str = "vercel",
 ) -> PublishingState:
     """Checks the page and the gate, records the publication (pending, with any override) and
     queues the job, in one transaction."""
@@ -254,7 +385,14 @@ def start_publish(
             raise PublishConflictError
         if build["status"] not in PUBLISHABLE:
             raise PublishError("Approve the page before publishing it.")
-        if not conn.execute(
+        if destination == "shopify_page":
+            if not conn.execute(
+                "select 1 from store_connections where brand_id = %(b)s and org_id = %(o)s "
+                "and status = 'connected'",
+                {"b": build["brand_id"], "o": org_id},
+            ).fetchone():
+                raise PublishError("Connect this brand's Shopify store first.")
+        elif not conn.execute(
             "select 1 from integrations where org_id = %(o)s and kind = 'vercel'", {"o": org_id}
         ).fetchone():
             raise PublishError("Connect Vercel in Settings first.")
@@ -266,11 +404,11 @@ def start_publish(
             """
             insert into publications (org_id, build_id, destination, status, gate_overridden,
                                       override_reasons, details, created_by)
-            values (%(o)s, %(b)s, 'vercel', 'pending', %(over)s, %(reasons)s, %(details)s, %(u)s)
+            values (%(o)s, %(b)s, %(dest)s, 'pending', %(over)s, %(reasons)s, %(details)s, %(u)s)
             returning id
             """,
             {
-                "o": org_id, "b": build_id, "over": bool(found),
+                "o": org_id, "b": build_id, "dest": destination, "over": bool(found),
                 "reasons": Jsonb([b.code for b in found]) if found else None,
                 "details": Jsonb({"page_version": build["page_version"]}), "u": user_id,
             },
@@ -279,12 +417,58 @@ def start_publish(
         try:
             job, _ = queue.enqueue(
                 org_id=org_id,
-                kind="publish_vercel",
+                kind="publish_shopify_page" if destination == "shopify_page" else "publish_vercel",
                 payload={
                     "build_id": str(build_id),
                     "publication_id": str(row["id"]),
                     "page_version": build["page_version"],
                 },
+                created_by=user_id,
+                dedupe_key=f"publish:{build_id}",
+                build_id=build_id,
+                max_attempts=1,
+                conn=conn,
+            )
+        except errors.UniqueViolation as exc:
+            raise PublishError("This page is being published already.") from exc
+        conn.execute(
+            "update publications set job_id = %(j)s where id = %(p)s", {"j": job.id, "p": row["id"]}
+        )
+    return publishing_state(org_id, build_id)
+
+
+def start_unpublish(org_id: UUID, build_id: UUID, user_id: UUID | None) -> PublishingState:
+    """Queues taking the page down from Vercel (the brand's other pages stay up), recorded as a
+    publication of its own (D89)."""
+    with transaction() as conn:
+        _load(conn, org_id, build_id, lock=True)
+        latest = conn.execute(
+            """
+            select status from publications
+            where build_id = %(b)s and org_id = %(o)s and destination = 'vercel'
+              and status in ('succeeded', 'unpublished', 'pending')
+            order by created_at desc limit 1
+            """,
+            {"b": build_id, "o": org_id},
+        ).fetchone()
+        if latest is None or latest["status"] == "unpublished":
+            raise PublishError("This page isn't live, so there's nothing to unpublish.")
+        if latest["status"] == "pending":
+            raise PublishError("This page is being published already.")
+        row = conn.execute(
+            """
+            insert into publications (org_id, build_id, destination, status, details, created_by)
+            values (%(o)s, %(b)s, 'vercel', 'pending', %(details)s, %(u)s)
+            returning id
+            """,
+            {"o": org_id, "b": build_id, "details": Jsonb({"action": "unpublish"}), "u": user_id},
+        ).fetchone()
+        assert row is not None
+        try:
+            job, _ = queue.enqueue(
+                org_id=org_id,
+                kind="unpublish_vercel",
+                payload={"build_id": str(build_id), "publication_id": str(row["id"])},
                 created_by=user_id,
                 dedupe_key=f"publish:{build_id}",
                 build_id=build_id,

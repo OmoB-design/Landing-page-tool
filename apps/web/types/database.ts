@@ -1400,7 +1400,7 @@ export type Database = {
         | "other"
       member_role: "owner" | "admin" | "member"
       publish_dest: "export" | "vercel" | "shopify_page" | "shopify_editable"
-      publish_status: "pending" | "succeeded" | "failed"
+      publish_status: "pending" | "succeeded" | "failed" | "unpublished"
       section_role:
         | "hero"
         | "problem"
@@ -1576,7 +1576,7 @@ export const Constants = {
       ],
       member_role: ["owner", "admin", "member"],
       publish_dest: ["export", "vercel", "shopify_page", "shopify_editable"],
-      publish_status: ["pending", "succeeded", "failed"],
+      publish_status: ["pending", "succeeded", "failed", "unpublished"],
       section_role: [
         "hero",
         "problem",

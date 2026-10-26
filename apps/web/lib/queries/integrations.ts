@@ -10,11 +10,13 @@ import {
 
 const KEY = ["integrations"] as const;
 
-/** The org's connections and testing switch, from the server's copy (refetched after changes). */
-export function useIntegrations(initial: IntegrationsState) {
+/** The org's connections and testing switch, from the server's copy (refetched after changes).
+ * `sample` (the states page) keeps a sample's data to itself and never fetches. */
+export function useIntegrations(initial: IntegrationsState, sample?: string) {
   return useQuery({
-    queryKey: KEY,
+    queryKey: sample ? [...KEY, "sample", sample] : KEY,
     queryFn: () => apiFetch("/api/integrations", integrationsStateSchema),
+    enabled: !sample,
     initialData: initial,
     // The server's copy is fresh; "static" also keeps React Query from reading the clock while
     // the page prerenders.

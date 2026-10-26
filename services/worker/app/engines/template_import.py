@@ -21,6 +21,7 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 from soupsieve import SelectorSyntaxError
 
+from app.engines.css import blocks as _blocks
 from app.engines.html import parse, serialize, style_text
 
 DATA_URI = re.compile(
@@ -72,37 +73,6 @@ class ImportResult:
 
 
 # ── CSS ──────────────────────────────────────────────────────────────────────
-
-
-def _blocks(css: str) -> list[tuple[str, str]]:
-    """Top-level (prelude, body) pairs of a stylesheet; body is None-equivalent '' for
-    statements like @import. Brace matching skips quoted strings."""
-    out: list[tuple[str, str]] = []
-    i, n, start = 0, len(css), 0
-    while i < n:
-        ch = css[i]
-        if ch in "\"'":
-            end = css.find(ch, i + 1)
-            i = n if end == -1 else end + 1
-            continue
-        if ch == ";" and css[start:i].lstrip().startswith("@"):
-            out.append((css[start : i + 1].strip(), ""))
-            start = i = i + 1
-            continue
-        if ch == "{":
-            depth, j = 1, i + 1
-            while j < n and depth:
-                if css[j] in "\"'":
-                    end = css.find(css[j], j + 1)
-                    j = n if end == -1 else end + 1
-                    continue
-                depth += {"{": 1, "}": -1}.get(css[j], 0)
-                j += 1
-            out.append((css[start:i].strip(), css[i + 1 : j - 1]))
-            start = i = j
-            continue
-        i += 1
-    return [(p, b) for p, b in out if p]
 
 
 def _selector_used(selector: str, soup: BeautifulSoup, cache: dict[str, bool]) -> bool:

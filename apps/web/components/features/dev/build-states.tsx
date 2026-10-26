@@ -405,6 +405,7 @@ export function RedraftToastButtons() {
 const SAMPLE_PUBLICATION = {
   id: "pub-1",
   destination: "vercel",
+  action: "publish" as const,
   status: "succeeded" as const,
   url: SAMPLE_LIVE_URL,
   created_at: "2026-10-25T09:00:00.000Z",
@@ -427,9 +428,12 @@ const SAMPLE_PUBLISHING: PublishingState = {
   running: null,
   job_id: null,
   publications: [],
+  shopify_domain: null,
+  shopify_draft: null,
 };
 
 const SAMPLE_PAGE = {
+  brandId: "brand-1",
   key: "LUM-12",
   title: "Calm skin in a week",
   brand: "Lumé",
@@ -441,8 +445,28 @@ const SAMPLE_PAGE = {
 export function SamplePublish({
   state,
 }: {
-  state: "ready" | "gated" | "blocked" | "unconnected" | "running" | "live";
+  state:
+    | "ready"
+    | "gated"
+    | "blocked"
+    | "unconnected"
+    | "running"
+    | "live"
+    | "live-shopify"
+    | "live-draft";
 }) {
+  const live = state.startsWith("live");
+  const draft = {
+    ...SAMPLE_PUBLICATION,
+    id: "pub-2",
+    destination: "shopify_page",
+    url: "https://lume.myshopify.com/pages/lum-12",
+    admin_url: "https://admin.shopify.com/store/lume/pages/77",
+    full_width: false,
+    gate_overridden: false,
+    override_reasons: [],
+    project: null,
+  };
   const publishing: PublishingState = {
     ...SAMPLE_PUBLISHING,
     vercel_connected: state !== "unconnected",
@@ -474,8 +498,15 @@ export function SamplePublish({
       state === "running"
         ? { ...SAMPLE_PUBLICATION, status: "pending", url: null }
         : null,
-    live: state === "live" ? SAMPLE_PUBLICATION : null,
-    publications: state === "live" ? [SAMPLE_PUBLICATION] : [],
+    live: live ? SAMPLE_PUBLICATION : null,
+    publications:
+      state === "live-draft"
+        ? [draft, SAMPLE_PUBLICATION]
+        : live
+          ? [SAMPLE_PUBLICATION]
+          : [],
+    shopify_domain: state === "live" ? null : "lume.myshopify.com",
+    shopify_draft: state === "live-draft" ? draft : null,
   };
   return (
     <DeskProvider
@@ -485,7 +516,7 @@ export function SamplePublish({
         ...SAMPLE_DESK,
         build: {
           ...SAMPLE_DESK.build,
-          status: state === "live" ? "published" : "approved",
+          status: live ? "published" : "approved",
         },
       }}
       onChange={sampleChange}
@@ -495,6 +526,7 @@ export function SamplePublish({
         page={SAMPLE_PAGE}
         initial={publishing}
         onPublish={() => toast("Sample only: nothing was published.")}
+        onUnpublish={() => toast("Sample only: nothing was unpublished.")}
       >
         <div className="flex flex-col items-start gap-3">
           <div className="flex items-center gap-2.5">
@@ -502,7 +534,7 @@ export function SamplePublish({
             <LiveButton />
           </div>
           <PublishedModal />
-          {state === "live" ? (
+          {live ? (
             <div className="w-80">
               <Publications />
             </div>
@@ -517,6 +549,7 @@ export function SamplePublish({
 export function SampleConnections({ connected }: { connected: boolean }) {
   return (
     <Connections
+      sample={connected ? "connected" : "unconnected"}
       brands={{ "brand-1": "Lumé" }}
       initial={{
         vercel: connected
@@ -529,6 +562,17 @@ export function SampleConnections({ connected }: { connected: boolean }) {
               projects: [{ brand_id: "brand-1", name: "lp-lum" }],
             }
           : null,
+        shopify: connected
+          ? [
+              {
+                brand_id: "brand-1",
+                brand_name: "Lumé",
+                shop_domain: "lume.myshopify.com",
+                connected_at: "2026-10-26T09:00:00.000Z",
+                missing_scopes: [],
+              },
+            ]
+          : [],
         allow_placeholder_publish: connected,
         role: "owner",
       }}

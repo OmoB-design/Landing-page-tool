@@ -17,6 +17,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { STATUS_LABELS } from "@/lib/builds/desk";
 
 import { useDesk } from "./desk-context";
+import { usePublishOptional } from "./publish-context";
 
 /**
  * The page's status in the header (D84; Figma Review desk): Approve (blue) while it needs review,
@@ -25,6 +26,7 @@ import { useDesk } from "./desk-context";
  */
 export function StatusActions({ fixCount }: { fixCount: number }) {
   const { desk, setStatus, pending, redrafting } = useDesk();
+  const publish = usePublishOptional();
   const status = desk.build.status;
   const busy = pending !== null || redrafting !== null;
   return (
@@ -51,7 +53,10 @@ export function StatusActions({ fixCount }: { fixCount: number }) {
           Back to review
         </Button>
       ) : null}
-      <StatusChip status={status} />
+      {/* A live page shows Live instead (D89); without publishing, the chip says Published. */}
+      {status === "published" && publish?.publishing.live ? null : (
+        <StatusChip status={status} />
+      )}
     </div>
   );
 }

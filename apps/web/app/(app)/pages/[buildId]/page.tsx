@@ -210,6 +210,7 @@ async function Build({
           page={{
             key: build.key,
             title: build.title,
+            brandId: build.brand?.id ?? null,
             brand: build.brand?.name ?? null,
             product: build.product?.name ?? null,
             template: build.report?.template.name ?? null,

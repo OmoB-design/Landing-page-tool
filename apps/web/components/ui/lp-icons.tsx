@@ -2316,3 +2316,85 @@ export function ShopifyLogo(props: IconProps) {
     </svg>
   );
 }
+
+/** Verified badge (Figma 633:15060, the published modal's title): a scalloped badge with a tick,
+ * filled in the text colour (Figma: near-black). */
+export function VerifiedFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M15.1111 7.99978C15.1111 7.02467 14.6062 6.12067 13.8089 5.59356C14 4.65667 13.7174 3.66023 13.0285 2.97134C12.3396 2.28245 11.3422 1.99978 10.4062 2.19089C9.87825 1.39356 8.97514 0.888672 8.00003 0.888672C7.02492 0.888672 6.12092 1.39356 5.59381 2.19089C4.65425 1.99712 3.66047 2.28245 2.97158 2.97134C2.2818 3.66112 2.00003 4.65667 2.19114 5.59356C1.3938 6.12067 0.888916 7.02378 0.888916 7.99978C0.888916 8.97578 1.3938 9.87801 2.19114 10.406C2.00003 11.3429 2.2818 12.3384 2.97158 13.0282C3.66047 13.718 4.65603 13.9989 5.59381 13.8087C6.12092 14.606 7.02403 15.1109 8.00003 15.1109C8.97603 15.1109 9.87825 14.606 10.4062 13.8087C11.3405 13.9998 12.3387 13.7171 13.0285 13.0282C13.7182 12.3393 14 11.3429 13.8089 10.406C14.6062 9.87889 15.1111 8.97489 15.1111 7.99978ZM11.416 5.96245L7.63825 10.8513C7.51736 11.0078 7.33336 11.1029 7.13603 11.11C7.12714 11.11 7.11914 11.11 7.11114 11.11C6.92269 11.11 6.74225 11.03 6.61514 10.8896L4.61514 8.66734C4.36892 8.39356 4.39114 7.97223 4.66492 7.72512C4.93958 7.47978 5.36003 7.50112 5.60714 7.77489L7.07203 9.40334L10.3618 5.14645C10.5867 4.85489 11.0062 4.80156 11.2969 5.02645C11.5885 5.25134 11.6418 5.67 11.4169 5.96156L11.416 5.96245Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Close (Figma 633:15068, the published modal): a 16 px cross in icon-system grey. */
+export function CloseFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12.4446 3.55469L3.55566 12.4436" />
+        <path d="M3.55566 3.55469L12.4446 12.4436" />
+      </g>
+    </svg>
+  );
+}
+
+/** Desktop preview (Figma 633:15072, the published modal's width switch): a laptop, 12 px. */
+export function LaptopFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2.83333 9.83398C2.09667 9.83398 1.5 9.23732 1.5 8.50065V3.16732C1.5 2.43065 2.09667 1.83398 2.83333 1.83398H9.16667C9.90333 1.83398 10.5 2.43065 10.5 3.16732V8.50065C10.5 9.23732 9.90333 9.83398 9.16667 9.83398" />
+        <path d="M0.5 9.83398H11.5" />
+      </g>
+    </svg>
+  );
+}
+
+/** Phone preview (Figma 633:15076, the published modal's width switch): a phone, 12 px. */
+export function PhoneFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 1.33398H5V1.83398H7V1.33398Z" />
+        <path d="M8.16667 1.16602H3.83333C3.09693 1.16602 2.5 1.76295 2.5 2.49935V9.49935C2.5 10.2357 3.09693 10.8327 3.83333 10.8327H8.16667C8.90307 10.8327 9.5 10.2357 9.5 9.49935V2.49935C9.5 1.76295 8.90307 1.16602 8.16667 1.16602Z" />
+      </g>
+    </svg>
+  );
+}

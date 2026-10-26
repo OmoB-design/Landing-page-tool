@@ -9,6 +9,7 @@ import type { PublishingState } from "@/lib/validators/publishing";
 import { DeskProvider } from "./desk-context";
 import { PublishProvider } from "./publish-context";
 import { LiveButton, PublishButton, PublishedModal } from "./publish-controls";
+import { StatusActions } from "./status-actions";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -40,11 +41,14 @@ const BASE: PublishingState = {
   running: null,
   job_id: null,
   publications: [],
+  shopify_domain: null,
+  shopify_draft: null,
 };
 
 const LIVE = {
   id: "p1",
   destination: "vercel",
+  action: "publish" as const,
   status: "succeeded" as const,
   url: "https://lp-lum.vercel.app/lum-1",
   created_at: "2026-10-25T09:00:00.000Z",
@@ -61,6 +65,7 @@ function renderPublish(
   publishing: PublishingState,
   onPublish = vi.fn(),
   status = "approved",
+  onUnpublish = vi.fn(),
 ) {
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -74,7 +79,9 @@ function renderPublish(
           buildId="b1"
           initial={publishing}
           onPublish={onPublish}
+          onUnpublish={onUnpublish}
           page={{
+            brandId: "brand-1",
             key: "LUM-1",
             title: "Calm skin",
             brand: "Lumé",
@@ -82,6 +89,7 @@ function renderPublish(
             template: "Advertorial",
           }}
         >
+          <StatusActions fixCount={0} />
           <PublishButton />
           <LiveButton />
           <PublishedModal />
@@ -111,7 +119,7 @@ describe("Publish", () => {
     expect((publish as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByLabelText(/Publish anyway/));
     fireEvent.click(publish);
-    expect(onPublish).toHaveBeenCalledWith(true);
+    expect(onPublish).toHaveBeenCalledWith(true, "vercel");
   });
 
   it("can't pass placeholder images without the testing switch", () => {
@@ -136,7 +144,7 @@ describe("Publish", () => {
     expect(screen.queryByRole("button", { name: "Publish" })).toBeNull();
   });
 
-  it("opens the published modal from Live with the page's details", () => {
+  it("opens the published modal from Live with where it's published", () => {
     renderPublish(
       { ...BASE, status: "published", live: LIVE, publications: [LIVE] },
       vi.fn(),
@@ -144,17 +152,178 @@ describe("Publish", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Live" }));
     expect(screen.getByText("Your page is live")).toBeTruthy();
-    expect(screen.getByText("LUM-1 · Calm skin")).toBeTruthy();
-    expect(screen.getByText("lp-lum")).toBeTruthy();
+    expect(
+      screen.getByText("LUM-1 · Calm skin · Lumé · Serum · Advertorial"),
+    ).toBeTruthy();
+    expect(screen.getByText("Live · lp-lum")).toBeTruthy();
     expect(screen.getByTitle("The live page").getAttribute("src")).toBe(
       LIVE.url,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Phone" }));
+    expect(screen.getByTitle("The live page").className).toContain("w-97.5");
+    expect(screen.getByText("Not connected")).toBeTruthy();
+  });
+
+  it("connects Shopify from the modal, for this page's brand", () => {
+    renderPublish(
+      { ...BASE, status: "published", live: LIVE, publications: [LIVE] },
+      vi.fn(),
+      "published",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect Shopify" }));
+    expect(screen.getByText("Connect Lumé’s Shopify store")).toBeTruthy();
+    expect(screen.getByLabelText("Client secret")).toBeTruthy();
+  });
+
+  it("sends the page to Shopify, asking first when there are reasons", () => {
+    const onPublish = vi.fn();
+    const live = {
+      ...BASE,
+      status: "published",
+      live: LIVE,
+      publications: [LIVE],
+      shopify_domain: "lume.myshopify.com",
+    };
+    renderPublish(live, onPublish, "published");
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    fireEvent.click(screen.getByRole("button", { name: "Publish to Shopify" }));
+    expect(onPublish).toHaveBeenCalledWith(false, "shopify_page");
+    cleanup();
+
+    const gated = vi.fn();
+    renderPublish(
+      {
+        ...live,
+        gate: [
+          {
+            code: "claims",
+            message: "1 claim is marked Fix in the claim check.",
+            overridable: true,
+          },
+        ],
+      },
+      gated,
+      "published",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    fireEvent.click(screen.getByRole("button", { name: "Publish to Shopify" }));
+    expect(gated).not.toHaveBeenCalled();
     expect(
-      (
-        screen.getByRole("button", {
-          name: "Publish to Shopify",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+      screen.getByText("1 claim is marked Fix in the claim check."),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Send anyway" }));
+    expect(gated).toHaveBeenCalledWith(true, "shopify_page");
+  });
+
+  it("shows a Shopify draft with Open in admin and Update draft", () => {
+    const draft = {
+      ...LIVE,
+      id: "p2",
+      destination: "shopify_page",
+      url: "https://lume.myshopify.com/pages/lum-1",
+      admin_url: "https://admin.shopify.com/store/lume/pages/77",
+      project: null,
+      full_width: true,
+    };
+    renderPublish(
+      {
+        ...BASE,
+        status: "published",
+        live: LIVE,
+        publications: [draft, LIVE],
+        shopify_domain: "lume.myshopify.com",
+        shopify_draft: draft,
+      },
+      vi.fn(),
+      "published",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    expect(screen.getByText("Draft · lum-1")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open in admin" }).getAttribute("href"),
+    ).toBe(draft.admin_url);
+    expect(screen.getByRole("button", { name: "Update draft" })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", {
+        name: "Set up full width for an exact fit",
+      }),
+    ).toBeNull();
+  });
+
+  it("offers the full-width setup when the draft uses the theme's layout", () => {
+    const draft = {
+      ...LIVE,
+      id: "p2",
+      destination: "shopify_page",
+      url: "https://lume.myshopify.com/pages/lum-1",
+      admin_url: "https://admin.shopify.com/store/lume/pages/77",
+      project: null,
+      full_width: false,
+    };
+    renderPublish(
+      {
+        ...BASE,
+        status: "published",
+        live: LIVE,
+        publications: [draft, LIVE],
+        shopify_domain: "lume.myshopify.com",
+        shopify_draft: draft,
+      },
+      vi.fn(),
+      "published",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    expect(screen.getByText(/Fitted into the theme’s page/)).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Set up full width for an exact fit",
+      }),
+    );
+    expect(screen.getByText("Show pages full width")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "Online Store → Themes" })
+        .getAttribute("href"),
+    ).toBe("https://lume.myshopify.com/admin/themes");
+  });
+
+  it("unpublishes only after asking", () => {
+    const onUnpublish = vi.fn();
+    renderPublish(
+      { ...BASE, status: "published", live: LIVE, publications: [LIVE] },
+      vi.fn(),
+      "published",
+      onUnpublish,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish" }));
+    expect(screen.getByText(/Take LUM-1 down from/)).toBeTruthy();
+    expect(onUnpublish).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Keep it live" }));
+    expect(screen.queryByText(/Take LUM-1 down from/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish" }));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Unpublish" }).at(-1)!,
+    );
+    expect(onUnpublish).toHaveBeenCalledOnce();
+  });
+
+  it("shows Live, with its pulsing dot, instead of the Published chip", () => {
+    renderPublish(
+      { ...BASE, status: "published", live: LIVE, publications: [LIVE] },
+      vi.fn(),
+      "published",
+    );
+    expect(screen.queryByText("Published")).toBeNull();
+    const live = screen.getByRole("button", { name: "Live" });
+    expect(
+      live.querySelector(".motion-safe\\:animate-live-pulse"),
+    ).toBeTruthy();
+  });
+
+  it("keeps the status chip while the page isn't live", () => {
+    renderPublish(BASE);
+    expect(screen.getByText("Approved")).toBeTruthy();
   });
 });

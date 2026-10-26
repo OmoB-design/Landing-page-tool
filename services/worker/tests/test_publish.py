@@ -192,13 +192,13 @@ def fake_vercel(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeVercel]:
         "vercel_client",
         lambda token, team_id: VercelClient(token, team_id, transport=httpx.MockTransport(fake)),
     )
-    monkeypatch.setattr(publish_vercel, "_opens", lambda url: 200)
+    monkeypatch.setattr(publish_vercel, "_answers", lambda url, want=200: want)
     yield fake
 
 
-def run_publish() -> dict[str, Any]:
+def run_publish(kind: str = "publish_vercel") -> dict[str, Any]:
     runner = Runner(get_settings(), kinds=KINDS, worker_id=f"test-{uuid.uuid4().hex[:6]}")
-    claimed = queue.claim(runner.worker_id, 5, ["publish_vercel"])
+    claimed = queue.claim(runner.worker_id, 5, [kind])
     assert claimed is not None
     runner.execute(claimed)
     return job_row(claimed.id)
@@ -365,3 +365,50 @@ def test_a_second_page_of_the_brand_keeps_the_first_one_live(
             {"o": org},
         ).fetchall()
     storage.remove("builds", [r["details"]["html_path"] for r in rows] + [path])
+
+
+@needs_db
+def test_unpublishing_takes_the_page_down_and_keeps_the_history(
+    client: TestClient, user: DbUser, finished: dict[str, Any], fake_vercel: FakeVercel
+) -> None:
+    org = finished["org_id"]
+    assert connect(client, user, org).status_code == 200
+    nothing = post(client, user, finished, "unpublish")
+    assert nothing.status_code == 422  # not live yet
+    with transaction() as conn:
+        conn.execute(
+            "update builds set status = 'approved' where id = %(b)s", {"b": finished["id"]}
+        )
+    state = publishing_state(client, user, finished)
+    started = post(client, user, finished, "publish", base_version=state["page_version"],
+                   destination="vercel")  # fmt: skip
+    assert started.status_code == 200, started.text
+    assert run_publish()["status"] == "succeeded"
+    assert publishing_state(client, user, finished)["status"] == "published"
+
+    fake_vercel.polls = 0
+    down = post(client, user, finished, "unpublish")
+    assert down.status_code == 200, down.text
+    assert down.json()["running"]["action"] == "unpublish"
+    job = run_publish("unpublish_vercel")
+    assert job["status"] == "succeeded", job["error"]
+    # The brand had only this page: the site is left empty, the page answers 404.
+    assert {f["file"] for f in fake_vercel.deployed[-1]["files"]} == {"vercel.json", "404.html"}
+    after = publishing_state(client, user, finished)
+    assert after["status"] == "approved" and after["live"] is None
+    assert [(p["action"], p["status"]) for p in after["publications"]] == [
+        ("unpublish", "unpublished"),
+        ("publish", "succeeded"),
+    ]
+    again = post(client, user, finished, "unpublish")
+    assert again.status_code == 422  # already down
+
+    with transaction() as conn:
+        paths = [
+            r["details"]["html_path"]
+            for r in conn.execute(
+                "select details from publications where build_id = %(b)s and status = 'succeeded'",
+                {"b": finished["id"]},
+            ).fetchall()
+        ]
+    storage.remove("builds", paths)

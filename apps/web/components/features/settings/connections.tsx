@@ -28,11 +28,14 @@ import {
 } from "@/lib/validators/publishing";
 
 import { SettingsDivider, SettingsPage } from "./settings-page";
+import {
+  SHOPIFY_DESCRIPTION,
+  ShopifyConnectDialog,
+  ShopifyDetail,
+} from "./shopify";
 
 const VERCEL_DESCRIPTION =
   "Publish pages to your Vercel account: one project per brand, each page at its own address.";
-const SHOPIFY_DESCRIPTION =
-  "Publish pages to a brand’s Shopify store as draft pages, ready to check and switch on.";
 const TOKENS_URL = "https://vercel.com/account/settings/tokens";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
@@ -42,30 +45,47 @@ const MICRO = "self-start rounded-sm text-type-caption-1";
 /**
  * Settings → Connections (D88; Quality's Connections): the services pages are published to, as
  * cards two to a row, the connected ones first. Connect opens a modal for the service's details
- * (Vercel: an access token); a connected card's View connection opens its page (when and by whom
- * it was connected, its brand projects, Replace token and Disconnect). Shopify arrives with B1.5b.
+ * (Vercel: an access token; Shopify: a brand's store and its app, D90); a connected card's View
+ * connection opens its page (Vercel: when and by whom, the brand projects, Replace token and
+ * Disconnect; Shopify: each brand's store, Disconnect and Connect a store).
  */
 export function Connections({
   initial,
   brands,
+  sample,
 }: {
   initial: IntegrationsState;
-  /** Brand names by id, for the Vercel projects list. */
+  /** Brand names by id, for the Vercel projects and the Shopify brand choice. */
   brands: Record<string, string>;
+  /** The states page: a name that keeps this sample's data apart. */
+  sample?: string;
 }) {
-  const { data } = useIntegrations(initial);
-  const [view, setView] = useState<"list" | "vercel">("list");
+  const { data } = useIntegrations(initial, sample);
+  const [view, setView] = useState<"list" | "vercel" | "shopify">("list");
   const [direction, setDirection] = useState(1);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [shopifyOpen, setShopifyOpen] = useState(false);
   const canManage = data.role !== "member";
   const vercel = data.vercel;
-  const open = (next: "list" | "vercel") => {
+  const stores = data.shopify;
+  const open = (next: "list" | "vercel" | "shopify") => {
     setDirection(next === "list" ? -1 : 1);
     setView(next);
   };
+  const shown =
+    view === "vercel" && vercel
+      ? "vercel"
+      : view === "shopify" && stores.length > 0
+        ? "shopify"
+        : "list";
+  const brandList = Object.entries(brands).map(([id, name]) => ({ id, name }));
+  const unconnected = brandList.filter(
+    (brand) => !stores.some((store) => store.brand_id === brand.id),
+  );
 
   const vercelCard = (
     <ConnectionCard
+      key="vercel"
       logo={<VercelLogo className="w-6 text-heading-01" />}
       name="Vercel"
       description={VERCEL_DESCRIPTION}
@@ -77,26 +97,39 @@ export function Connections({
   );
   const shopifyCard = (
     <ConnectionCard
+      key="shopify"
       logo={<ShopifyLogo className="h-6" />}
       name="Shopify"
       description={SHOPIFY_DESCRIPTION}
-      state="soon"
-      action="Connect"
+      state={stores.length > 0 ? "connected" : "connect"}
+      action={stores.length > 0 ? "View connection" : "Connect"}
+      disabled={stores.length === 0 && (!canManage || brandList.length === 0)}
+      onAction={() =>
+        stores.length > 0 ? open("shopify") : setShopifyOpen(true)
+      }
     />
   );
+  const connected = [
+    vercel ? vercelCard : null,
+    stores.length > 0 ? shopifyCard : null,
+  ].filter(Boolean);
+  const others = [
+    vercel ? null : vercelCard,
+    stores.length > 0 ? null : shopifyCard,
+  ].filter(Boolean);
 
   return (
     <MotionConfig reducedMotion="user">
       <AnimatePresence mode="popLayout" initial={false} custom={direction}>
         <motion.div
-          key={view === "vercel" && vercel ? "vercel" : "list"}
+          key={shown}
           custom={direction}
           initial={{ opacity: 0, x: direction * 16 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: direction * -16 }}
           transition={{ duration: 0.2, ease: EASE }}
         >
-          {view === "vercel" && vercel ? (
+          {shown === "vercel" ? (
             <VercelDetail
               state={data}
               brands={brands}
@@ -105,35 +138,39 @@ export function Connections({
               onReplace={() => setConnectOpen(true)}
               onDisconnected={() => open("list")}
             />
+          ) : shown === "shopify" ? (
+            <ShopifyDetail
+              state={data}
+              canManage={canManage}
+              onBack={() => open("list")}
+              onConnect={() => setShopifyOpen(true)}
+            />
           ) : (
             <SettingsPage
               title="Connections"
               description="Connect the services your pages are published to. Each is connected once for the whole workspace."
             >
-              {vercel ? (
+              {connected.length > 0 ? (
                 <>
                   <section className="flex flex-col gap-3">
                     <h2 className="text-type-body-small font-medium text-heading-01">
                       Connected
                     </h2>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {vercelCard}
-                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">{connected}</div>
                   </section>
-                  <SettingsDivider />
+                  {others.length > 0 ? <SettingsDivider /> : null}
                 </>
               ) : null}
-              <section className="flex flex-col gap-4">
-                {vercel ? (
-                  <h2 className="text-type-body-small font-medium text-heading-01">
-                    Connect other services
-                  </h2>
-                ) : null}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {vercel ? null : vercelCard}
-                  {shopifyCard}
-                </div>
-              </section>
+              {others.length > 0 ? (
+                <section className="flex flex-col gap-4">
+                  {connected.length > 0 ? (
+                    <h2 className="text-type-body-small font-medium text-heading-01">
+                      Connect other services
+                    </h2>
+                  ) : null}
+                  <div className="grid gap-4 sm:grid-cols-2">{others}</div>
+                </section>
+              ) : null}
               {!canManage ? (
                 <p className="text-type-caption-1 font-medium text-heading-05">
                   Only owners and admins can connect services.
@@ -147,6 +184,11 @@ export function Connections({
         open={connectOpen}
         onOpenChange={setConnectOpen}
         replacing={Boolean(vercel)}
+      />
+      <ShopifyConnectDialog
+        open={shopifyOpen}
+        onOpenChange={setShopifyOpen}
+        brands={unconnected.length > 0 ? unconnected : brandList}
       />
     </MotionConfig>
   );

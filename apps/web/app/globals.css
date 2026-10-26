@@ -28,6 +28,12 @@
   /* Letter marks on workspaces, people and brands (Figma: Geist Medium). */
   --font-mark:
     var(--font-geist), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Dialog titles (Figma: Inter Tight Medium). */
+  --font-tight:
+    var(--font-inter-tight), var(--font-inter), ui-sans-serif, sans-serif;
+  /* Web addresses (Figma: Geist Mono). */
+  --font-address:
+    var(--font-geist-mono), var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 /* Primitives (Figma: Primitives collection). Plain variables the tokens point at; feature code
@@ -221,6 +227,9 @@
   --text-type-body-large: 0.875rem; /* 14px Body large: page header titles */
   --text-type-h6: 1rem; /* 16px H6: section titles */
   --text-type-h6--line-height: calc(1.75 / 1.125);
+  --text-type-dialog-title: 1rem; /* 16px Inter Tight Medium: dialog titles (published modal) */
+  --text-type-dialog-title--line-height: 1.21;
+  --text-type-dialog-title--letter-spacing: -0.01em;
   --text-type-h5: 1.375rem; /* 22px H5: titles in empty states */
   --text-type-h5--line-height: calc(1.75 / 1.25);
   --text-type-title: 1.75rem; /* 28px Title: list page titles (Pages); not a Figma text style yet */
@@ -382,6 +391,7 @@
   --line-hairline: 0.5px;
 
   /* Radius (Figma: Radius). Radius-L is --radius-lg because Tailwind's rounded-l means left corners. */
+  --radius-xxs: 2px; /* Figma published modal: the selected item in its width switch */
   --radius-xsm: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -392,7 +402,7 @@
   --radius-panel: 16px; /* the content panel, as Quality's content frame (its 2xl radius, 1rem) */
   --radius-card: 18px; /* Figma Home: getting-started cards (Numbers/18) */
   --radius-item: 12px; /* Figma Brands Details: briefing audience cards and list items */
-  --radius-well: 14px; /* Figma template cards: the picture well's bottom corners */
+  --radius-well: 14px; /* Figma template cards: the picture well's bottom corners; the published modal's rim */
   --radius-icon: 5px; /* Figma Create new page: the icon tile on option cards */
 
   /* Layout (Figma: Size). Tailwind v4 only builds w-/h-/size- utilities from the --spacing-*
@@ -456,6 +466,20 @@
   --shadow-raise: 0 1px 3px 0 rgb(0 0 0 / 0.06); /* Figma: closed getting-started card */
   --shadow-lift: 0 -1px 6.6px 0 var(--color-lift-shadow); /* Figma Notis: footer on hover */
   --shadow-wizard-footer: 0 -1px 13.1px 0 var(--color-wizard-footer-shadow);
+  /* The live dot (D89): a ring grows from the dot and fades, every 2 s, so a live page reads as
+     live; transform and opacity only, and off under reduced motion (motion-safe:). */
+  --animate-live-pulse: live-pulse 2s var(--ease-out) infinite;
+  @keyframes live-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    70%,
+    100% {
+      transform: scale(2.8);
+      opacity: 0;
+    }
+  }
   /* A step's content as it arrives: a 4 px rise and a fade (Emil: ease-out, under 300 ms). */
   --animate-step-in: step-in 220ms var(--ease-out) both;
   @keyframes step-in {

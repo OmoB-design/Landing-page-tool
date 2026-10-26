@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
-import { Crimson_Pro, Geist, Inter, JetBrains_Mono } from "next/font/google";
+import {
+  Crimson_Pro,
+  Geist,
+  Geist_Mono,
+  Inter,
+  Inter_Tight,
+  JetBrains_Mono,
+} from "next/font/google";
 
 import { InlineScript } from "@/components/app/inline-script";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +25,18 @@ const geist = Geist({
   subsets: ["latin"],
   weight: ["500"],
   variable: "--font-geist",
+});
+// Dialog titles (Figma: Inter Tight Medium; the published modal).
+const interTight = Inter_Tight({
+  subsets: ["latin"],
+  weight: ["500"],
+  variable: "--font-inter-tight",
+});
+// Web addresses (Figma: Geist Mono; the published modal).
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-geist-mono",
 });
 // Page greetings and big titles (D67).
 const crimsonPro = Crimson_Pro({
@@ -41,6 +60,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         jetbrainsMono.variable,
         crimsonPro.variable,
         geist.variable,
+        interTight.variable,
+        geistMono.variable,
       )}
     >
       <head>

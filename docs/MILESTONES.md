@@ -87,7 +87,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 ### B1.5 — Publish: export, Vercel, Shopify draft page
 - Publish gate with override dialog.
 - Vercel connection (token in Vault), per-brand project, READY polling, URL recorded.
-- Shopify connection (custom app credentials → Vault, OAuth install/callback with DB state), Files CDN offload, draft page.
+- Shopify connection (custom app credentials → Vault, OAuth install/callback with DB state), Files CDN offload, draft page. *B1.5b (D90): the store owner's own Dev Dashboard app with the client credentials grant replaces the custom app and OAuth install; a free Shopify Partner account and a development store to test.*
 - `publications` history on the build.
 - **Owner actions:** Vercel token; a Shopify development store and custom app (exact steps in the Build Report).
 

@@ -539,19 +539,30 @@ export default function BuildStatesPage() {
           title="Published"
           when="When Vercel says the page is ready and its address opens, a modal opens by itself (and again from Live in the header)."
           shows={[
-            "Left: the live page itself, shown small in a browser frame; a click opens it.",
-            "Right: the page, brand, product, template, who published it and when, the Vercel project, and the address with Copy.",
-            "Below: Live on Vercel (and how long it took) beside Publish to Shopify (arrives with B1.5b) and Open page.",
-            "If the page changed since, the modal says the live one is the version you published.",
-            "The Overview lists every publish (Live, Failed, Publishing) with any reasons passed.",
+            "A success header: Your page is live, when, by whom and how fast (or that the live page is an older version).",
+            "The live page itself in a browser frame with a Desktop / Phone switch; it scrolls (scripts stay off).",
+            "The address with Copy.",
+            "Where it’s published: Vercel (Live, the project, Unpublish, which asks first and then takes the page down while the brand’s other pages stay up) and Shopify (not connected: Connect Shopify opens the connect modal for this brand; connected: Publish to Shopify, which asks first when there are reasons to pass; publishing: a spinner; a draft: Open in admin and Update draft).",
+            "The page’s details on one line; Done and Open page.",
+            "The Overview lists every publish and unpublish.",
           ]}
           design={[
-            "The published modal",
-            "Live in the header",
-            "The Published list",
+            "The published modal (the owner’s Figma frame 635:15084; dark crafted to match)",
+            "Unpublish’s question and the Unpublishing state",
+            "Live in the header; the Published list",
           ]}
         >
-          <SamplePublish state="live" />
+          <div className="flex flex-wrap items-start gap-6">
+            <Labeled label="Shopify not connected">
+              <SamplePublish state="live" />
+            </Labeled>
+            <Labeled label="Shopify connected">
+              <SamplePublish state="live-shopify" />
+            </Labeled>
+            <Labeled label="A Shopify draft">
+              <SamplePublish state="live-draft" />
+            </Labeled>
+          </div>
         </State>
 
         <State

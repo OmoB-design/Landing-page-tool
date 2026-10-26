@@ -28,10 +28,15 @@ from app.models.publishing import (
     IntegrationsState,
     PublishingState,
     PublishRequest,
+    ShopifyConnectRequest,
+    ShopifyTemplate,
     TestingSwitchRequest,
+    ThemeFile,
+    UnpublishRequest,
     VercelConnectRequest,
 )
 from app.models.template import LayoutAction, TemplateEditorState
+from app.publish import shopify_page
 
 configure_logging(get_settings().log_level)
 
@@ -277,6 +282,40 @@ def disconnect_vercel(org_id: UUID, user: CurrentUser) -> IntegrationsState:
     return publishing.integrations_state(org_id, user.id)
 
 
+@app.post("/integrations/shopify")
+def connect_shopify(body: ShopifyConnectRequest, user: CurrentUser) -> IntegrationsState:
+    """Checks a brand's store owner app with Shopify, then keeps it (the secret in Vault)."""
+    require_org_member(user, body.org_id)
+    _require_role(user.id, body.org_id, {"owner", "admin"}, "owners and admins")
+    _publish_call(
+        publishing.connect_shopify,
+        body.org_id,
+        user.id,
+        body.brand_id,
+        body.shop_domain,
+        body.client_id,
+        body.client_secret,
+    )
+    return publishing.integrations_state(body.org_id, user.id)
+
+
+@app.get("/integrations/shopify/template")
+def shopify_template(user: CurrentUser) -> ShopifyTemplate:
+    """The full-width template's two files, for the store owner to add to their theme once."""
+    del user  # signed in is enough: the files are the same for everyone
+    return ShopifyTemplate(
+        files=[ThemeFile(path=path, body=body) for path, body in shopify_page.THEME_FILES.items()]
+    )
+
+
+@app.delete("/integrations/shopify")
+def disconnect_shopify(org_id: UUID, brand_id: UUID, user: CurrentUser) -> IntegrationsState:
+    require_org_member(user, org_id)
+    _require_role(user.id, org_id, {"owner", "admin"}, "owners and admins")
+    publishing.disconnect_shopify(org_id, brand_id)
+    return publishing.integrations_state(org_id, user.id)
+
+
 @app.post("/orgs/{org_id}/testing")
 def set_testing_switch(
     org_id: UUID, body: TestingSwitchRequest, user: CurrentUser
@@ -301,7 +340,23 @@ def publish_build(build_id: UUID, body: PublishRequest, user: CurrentUser) -> Pu
     """Queues a publish to Vercel after the gate (passing it with `override` is recorded)."""
     require_org_member(user, body.org_id)
     state: PublishingState = _publish_call(
-        publishing.start_publish, body.org_id, build_id, user.id, body.base_version, body.override
+        publishing.start_publish,
+        body.org_id,
+        build_id,
+        user.id,
+        body.base_version,
+        body.override,
+        body.destination,
+    )
+    return state
+
+
+@app.post("/builds/{build_id}/unpublish")
+def unpublish_build(build_id: UUID, body: UnpublishRequest, user: CurrentUser) -> PublishingState:
+    """Queues taking the page down from Vercel (D89); the brand's other pages stay up."""
+    require_org_member(user, body.org_id)
+    state: PublishingState = _publish_call(
+        publishing.start_unpublish, body.org_id, build_id, user.id
     )
     return state
 

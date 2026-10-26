@@ -15,6 +15,7 @@ from app.jobs.kinds import (
     noop_demo,
     product_briefing,
     product_pull,
+    publish_shopify,
     publish_vercel,
     redraft,
 )
@@ -109,6 +110,20 @@ KINDS: dict[str, JobKind] = {
             payload_model=publish_vercel.PublishVercelPayload,
             max_attempts=1,
             dedupe=publish_vercel.dedupe_key,
+        ),
+        JobKind(
+            name="publish_shopify_page",
+            title="Publish to Shopify",
+            handler=publish_shopify.run,
+            payload_model=publish_shopify.PublishShopifyPayload,
+            max_attempts=1,
+        ),
+        JobKind(
+            name="unpublish_vercel",
+            title="Unpublish from Vercel",
+            handler=publish_vercel.run_unpublish,
+            payload_model=publish_vercel.UnpublishVercelPayload,
+            max_attempts=1,
         ),
     ]
 }

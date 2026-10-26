@@ -26,6 +26,8 @@ import { useDeskOptional } from "./desk-context";
 /** What the published modal shows beside the page. */
 export type PublishedPage = {
   key: string;
+  /** The page's brand (its Shopify store is the brand's, D90). */
+  brandId: string | null;
   title: string;
   brand: string | null;
   product: string | null;
@@ -38,7 +40,14 @@ type PublishContextValue = {
   publishing: PublishingState;
   /** The running publish's job (its steps), once loaded. */
   job: JobDetail | undefined;
-  publish: (override: boolean) => Promise<boolean>;
+  publish: (
+    override: boolean,
+    destination?: "vercel" | "shopify_page",
+  ) => Promise<boolean>;
+  /** Fetches the publishing state again (after connecting a store). */
+  refresh: () => void;
+  /** Takes the page down from Vercel (D89). */
+  unpublish: () => Promise<boolean>;
   starting: boolean;
   /** The published modal (opens by itself when a publish finishes). */
   modalOpen: boolean;
@@ -69,13 +78,15 @@ export function PublishProvider({
   initial,
   initialModalOpen = false,
   onPublish,
+  onUnpublish,
   children,
 }: {
   buildId: string;
   page: PublishedPage;
   initial: PublishingState;
   initialModalOpen?: boolean;
-  onPublish?: (override: boolean) => void;
+  onPublish?: (override: boolean, destination: string) => void;
+  onUnpublish?: () => void;
   children: ReactNode;
 }) {
   const desk = useDeskOptional();
@@ -100,20 +111,35 @@ export function PublishProvider({
   const job = useJob(onPublish ? null : publishing.job_id);
 
   const mutation = useMutation({
-    mutationFn: (override: boolean) =>
+    mutationFn: ({
+      override,
+      destination,
+    }: {
+      override: boolean;
+      destination: "vercel" | "shopify_page";
+    }) =>
       apiFetch(`/api/builds/${buildId}/publish`, publishingStateSchema, {
         method: "POST",
         body: JSON.stringify({
           base_version: publishing.page_version,
-          destination: "vercel",
+          destination,
           override,
         }),
       }),
     onSuccess: () => void query.refetch(),
     onError: (error) => toast.error(error.message),
   });
+  const takeDown = useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/builds/${buildId}/unpublish`, publishingStateSchema, {
+        method: "POST",
+      }),
+    onSuccess: () => void query.refetch(),
+    onError: (error) => toast.error(error.message),
+  });
 
-  // A publish that was running has finished: catch up, then open the modal or say what failed.
+  // A publish (or unpublish) that was running has finished: catch up, then open the modal (or
+  // close it, once the page is down) or say what failed.
   const watching = useRef<string | null>(initial.running?.id ?? null);
   useEffect(() => {
     if (publishing.running) {
@@ -125,29 +151,62 @@ export function PublishProvider({
     watching.current = null;
     const done = publishing.publications.find((p) => p.id === id);
     void desk?.reload();
-    if (done?.status === "succeeded") setModalOpen(true);
-    else if (done?.status === "failed")
-      toast.error(done.error ?? "Publishing didn’t finish.");
-  }, [publishing, desk]);
+    if (done?.status === "succeeded" && done.destination === "shopify_page") {
+      setModalOpen(true);
+      toast.success("Draft saved in Shopify", {
+        action: done.admin_url
+          ? {
+              label: "Open in admin",
+              onClick: () => window.open(done.admin_url ?? "", "_blank"),
+            }
+          : undefined,
+      });
+    } else if (done?.status === "succeeded") setModalOpen(true);
+    else if (done?.status === "unpublished") {
+      setModalOpen(false);
+      toast.success(`${page.key} is unpublished`, {
+        description: "The brand’s other pages are still live.",
+      });
+    } else if (done?.status === "failed")
+      toast.error(
+        done.error ??
+          (done.action === "unpublish"
+            ? "Unpublishing didn’t finish."
+            : "Publishing didn’t finish."),
+      );
+  }, [publishing, desk, page.key]);
 
   const value: PublishContextValue = {
     buildId,
     page,
     publishing,
     job: job.data?.id === publishing.job_id ? job.data : undefined,
-    publish: async (override) => {
+    publish: async (override, destination = "vercel") => {
       if (onPublish) {
-        onPublish(override);
+        onPublish(override, destination);
         return true;
       }
       try {
-        await mutation.mutateAsync(override);
+        await mutation.mutateAsync({ override, destination });
         return true;
       } catch {
         return false;
       }
     },
-    starting: mutation.isPending,
+    refresh: () => void query.refetch(),
+    unpublish: async () => {
+      if (onUnpublish) {
+        onUnpublish();
+        return true;
+      }
+      try {
+        await takeDown.mutateAsync();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    starting: mutation.isPending || takeDown.isPending,
     modalOpen,
     setModalOpen,
   };
