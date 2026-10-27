@@ -2,17 +2,11 @@
 
 import { formatDistanceToNowStrict } from "date-fns";
 import Link from "next/link";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogClose } from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -26,14 +20,17 @@ import {
   VercelLogo,
   VerifiedFigmaIcon,
 } from "@/components/ui/lp-icons";
+import {
+  ModalStack,
+  ModalStackDescription,
+  ModalStackTitle,
+  useModalStack,
+} from "@/components/ui/modal-stack";
 import { Spinner } from "@/components/ui/spinner";
 import { useHydrated } from "@/lib/use-hydrated";
 import type { Publication } from "@/lib/validators/publishing";
 
-import {
-  ShopifyConnectDialog,
-  ShopifyFullWidthDialog,
-} from "../settings/shopify";
+import { ShopifyConnectForm, ShopifyFullWidthSteps } from "../settings/shopify";
 
 import { useDesk } from "./desk-context";
 import { PanelSection } from "./panel-section";
@@ -267,9 +264,48 @@ function RowConfirm({ children }: { children: ReactNode }) {
  */
 function ShopifyRow() {
   const { publishing, page, publish, starting, refresh } = usePublish();
-  const [connectOpen, setConnectOpen] = useState(false);
-  const [fullWidthOpen, setFullWidthOpen] = useState(false);
+  const stack = useModalStack();
   const [asking, setAsking] = useState(false);
+  // After connecting, the focus lands on Publish to Shopify once the row shows the store.
+  const [justConnected, setJustConnected] = useState(false);
+  const publishButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!justConnected || !publishing.shopify_domain) return;
+    publishButton.current?.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a one-shot flag
+    setJustConnected(false);
+  }, [justConnected, publishing.shopify_domain]);
+  const connect = () =>
+    page.brandId &&
+    stack?.push({
+      key: "shopify-connect",
+      label: "Connect Shopify",
+      render: () => (
+        <ShopifyConnectForm
+          stacked
+          brands={[{ id: page.brandId!, name: page.brand ?? "this brand" }]}
+          brandId={page.brandId!}
+          onCancel={() => stack.pop()}
+          onConnected={() => {
+            setJustConnected(true);
+            refresh();
+            stack.pop();
+          }}
+        />
+      ),
+    });
+  const fullWidth = () =>
+    stack?.push({
+      key: "shopify-full-width",
+      label: "Show pages full width",
+      render: () => (
+        <ShopifyFullWidthSteps
+          stacked
+          shop={publishing.shopify_domain}
+          onDone={() => stack.pop()}
+        />
+      ),
+    });
   const running = publishing.running?.destination === "shopify_page";
   const draft = publishing.shopify_draft;
   const stuck = publishing.gate.filter((b) => !b.overridable);
@@ -308,7 +344,7 @@ function ShopifyRow() {
         size="sm"
         className={ROW_ACTION}
         disabled={!page.brandId}
-        onClick={() => setConnectOpen(true)}
+        onClick={connect}
       >
         Connect Shopify
       </Button>
@@ -324,6 +360,7 @@ function ShopifyRow() {
           </Button>
         ) : null}
         <Button
+          ref={publishButton}
           type="button"
           variant="outline"
           size="sm"
@@ -347,18 +384,13 @@ function ShopifyRow() {
           Fitted into the theme’s page, its header and footer hidden.{" "}
           <button
             type="button"
-            onClick={() => setFullWidthOpen(true)}
+            onClick={fullWidth}
             className="font-medium text-text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
           >
             Set up full width for an exact fit
           </button>
         </p>
       ) : null}
-      <ShopifyFullWidthDialog
-        open={fullWidthOpen}
-        onOpenChange={setFullWidthOpen}
-        shop={publishing.shopify_domain}
-      />
       {asking ? (
         <RowConfirm>
           {publishing.gate.map((blocker) => (
@@ -391,15 +423,6 @@ function ShopifyRow() {
           </div>
         </RowConfirm>
       ) : null}
-      {page.brandId ? (
-        <ShopifyConnectDialog
-          open={connectOpen}
-          onOpenChange={setConnectOpen}
-          brands={[{ id: page.brandId, name: page.brand ?? "this brand" }]}
-          brandId={page.brandId}
-          onConnected={refresh}
-        />
-      ) : null}
     </DestinationRow>
   );
 }
@@ -410,8 +433,9 @@ const VIEWPORTS = [
 ] as const;
 
 /**
- * The published modal (D87; redesigned D89; the owner's Figma frame 635:15084, light, with its
- * dark values crafted to match). A white rim around the panel; a header band (verified badge,
+ * The published modal (D87; redesigned D89; the owner's Figma frames 635:15084, light, and
+ * 644:14830, dark: there the rim is Surface-Primary, the panel and footer Dashboard, the band
+ * solid Surface-Primary, the details Surface-Modal and the address field 28 px). A white rim around the panel; a header band (verified badge,
  * when, by whom, how fast; close); the live page in a browser frame with a Desktop / Phone switch
  * (it scrolls; scripts stay off); a washed band with the address and Copy, then where the page is
  * published, one row per destination (Vercel: Live and Unpublish, which asks first; Shopify,
@@ -459,217 +483,214 @@ export function PublishedModal() {
     />
   );
   return (
-    <Dialog
+    <ModalStack
       open={modalOpen}
       onOpenChange={(open) => {
         setModalOpen(open);
         if (!open) setConfirming(false);
       }}
+      label="Your page is live"
+      className="sm:max-w-151.5"
     >
-      <DialogContent
-        showCloseButton={false}
-        className="gap-0 rounded-well bg-surface-primary p-1 ring-0 sm:max-w-151.5 dark:bg-surface-modal dark:ring-1 dark:ring-stroke"
-      >
-        <div className="flex flex-col gap-4 overflow-hidden rounded-lg bg-surface-modal shadow-float ring-half ring-stroke">
-          <div className="flex flex-col">
-            <div className="flex items-start gap-3 bg-foreground-01 px-5 py-2.5 dark:bg-surface-primary">
-              <div className="flex min-w-0 flex-1 items-start gap-1.5">
-                <VerifiedFigmaIcon className="size-4 shrink-0 text-heading-01" />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <DialogTitle className="font-tight text-type-dialog-title font-medium text-heading-01">
-                    Your page is live
-                  </DialogTitle>
-                  <DialogDescription className="truncate text-type-caption-1 font-medium text-heading-05">
-                    {stale
-                      ? "This is the version you published; publish again to put your latest changes live."
-                      : `Published ${hydrated ? `${ago(live.created_at)} ` : ""}by ${who}${live.seconds ? ` · ready in ${live.seconds} s` : ""}`}
-                  </DialogDescription>
-                </div>
-              </div>
-              <DialogClose
-                aria-label="Close"
-                className="rounded-xsm text-icon-system transition-colors duration-150 ease-out outline-none hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <CloseFigmaIcon className="size-4" />
-              </DialogClose>
-            </div>
-
-            <div className="px-5 pt-4">
-              <div className="overflow-hidden rounded-lg bg-foreground-01 ring-half ring-stroke dark:bg-surface-primary">
-                <div className="flex items-center gap-2 px-3 py-1 divider-b-half">
-                  <span aria-hidden className="flex w-6.5 gap-1">
-                    <span className="size-1.5 rounded-full bg-highlight-red-500" />
-                    <span className="size-1.5 rounded-full bg-icon-explainer" />
-                    <span className="size-1.5 rounded-full bg-highlight-green-500" />
-                  </span>
-                  <div className="flex min-w-0 flex-1 justify-center">
-                    <span className="truncate rounded-md bg-foreground-02 px-4 py-1 text-type-caption-2 font-medium text-heading-05">
-                      {hostAndPath(url)}
-                    </span>
-                  </div>
-                  <div
-                    role="group"
-                    aria-label="Preview width"
-                    className="flex rounded-xsm bg-surface-primary p-0.5 shadow-light ring-half ring-stroke dark:bg-foreground-01"
-                  >
-                    {VIEWPORTS.map(([id, label, Icon]) => (
-                      <button
-                        key={id}
-                        type="button"
-                        aria-pressed={viewport === id}
-                        aria-label={label}
-                        title={label}
-                        onClick={() => setViewport(id)}
-                        className="flex items-center justify-center rounded-xxs px-1 py-0.5 text-heading-01 transition-colors duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-foreground-02 dark:aria-pressed:bg-foreground-03"
-                      >
-                        <Icon className="size-3" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="relative h-80 overflow-hidden bg-surface-primary">
-                  {viewport === "desktop" ? (
-                    frame(
-                      "desktop",
-                      "absolute top-0 left-0 h-182 w-317.25 origin-top-left scale-44 border-0",
-                    )
-                  ) : (
-                    <div className="mx-auto h-full w-73 overflow-hidden edge-hairline">
-                      {frame(
-                        "phone",
-                        "h-106.5 w-97.5 origin-top-left scale-75 border-0",
-                      )}
-                    </div>
-                  )}
-                </div>
+      <div className="flex flex-col gap-4 dark:bg-dashboard">
+        <div className="flex flex-col">
+          <div className="flex items-start gap-3 bg-foreground-01 px-5 py-2.5 dark:bg-surface-primary">
+            <div className="flex min-w-0 flex-1 items-start gap-1.5">
+              <VerifiedFigmaIcon className="size-4 shrink-0 text-heading-01" />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <ModalStackTitle className="font-tight text-type-dialog-title font-medium text-heading-01">
+                  Your page is live
+                </ModalStackTitle>
+                <ModalStackDescription className="truncate text-type-caption-1 font-medium text-heading-05">
+                  {stale
+                    ? "This is the version you published; publish again to put your latest changes live."
+                    : `Published ${hydrated ? `${ago(live.created_at)} ` : ""}by ${who}${live.seconds ? ` · ready in ${live.seconds} s` : ""}`}
+                </ModalStackDescription>
               </div>
             </div>
+            <DialogClose
+              aria-label="Close"
+              className="-m-1 rounded-sm p-1 text-icon-system transition-colors duration-150 ease-out outline-none hover:bg-foreground-02 hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <CloseFigmaIcon className="size-4" />
+            </DialogClose>
           </div>
 
-          <div className="flex flex-col">
-            <div className="bg-dashboard divider-y-half dark:bg-surface-primary/50">
-              <div className="flex items-center gap-2 px-5 pt-3 pb-2">
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex min-w-0 flex-1 items-center rounded-sm bg-foreground-02 px-2.5 py-2 font-address text-type-caption-1 leading-4 text-text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+          <div className="px-5 pt-4">
+            <div className="overflow-hidden rounded-lg bg-foreground-01 ring-half ring-stroke dark:bg-surface-primary">
+              <div className="flex items-center gap-2 px-3 py-1 divider-b-half">
+                <span aria-hidden className="flex w-6.5 gap-1">
+                  <span className="size-1.5 rounded-full bg-highlight-red-500" />
+                  <span className="size-1.5 rounded-full bg-icon-explainer" />
+                  <span className="size-1.5 rounded-full bg-highlight-green-500" />
+                </span>
+                <div className="flex min-w-0 flex-1 justify-center">
+                  <span className="truncate rounded-md bg-foreground-02 px-4 py-1 text-type-caption-2 font-medium text-heading-05">
+                    {hostAndPath(url)}
+                  </span>
+                </div>
+                <div
+                  role="group"
+                  aria-label="Preview width"
+                  className="flex rounded-xsm bg-surface-primary p-0.5 shadow-light ring-half ring-stroke dark:bg-foreground-01"
                 >
-                  <span className="truncate">{hostAndPath(url)}</span>
-                </a>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={ROW_ACTION}
-                  onClick={copy}
-                >
-                  Copy
-                </Button>
+                  {VIEWPORTS.map(([id, label, Icon]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={viewport === id}
+                      aria-label={label}
+                      title={label}
+                      onClick={() => setViewport(id)}
+                      className="flex items-center justify-center rounded-xxs px-1 py-0.5 text-heading-01 transition-colors duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-foreground-02 dark:aria-pressed:bg-foreground-03"
+                    >
+                      <Icon className="size-3" />
+                    </button>
+                  ))}
+                </div>
               </div>
-
-              <section className="flex flex-col gap-2 px-5 pt-5 pb-3">
-                <h3 className="text-type-caption-1 font-medium text-heading-05">
-                  Where it’s published
-                </h3>
-                <ul className="flex flex-col overflow-hidden rounded-lg edge-hairline">
-                  <DestinationRow
-                    logo={<VercelLogo className="w-3.5 text-heading-01" />}
-                    name="Vercel"
-                    status={
-                      unpublishing ? (
-                        <>
-                          <Spinner className="size-3" label="Unpublishing" />
-                          Unpublishing…
-                        </>
-                      ) : (
-                        <span className="truncate">
-                          Live{live.project ? ` · ${live.project}` : ""}
-                        </span>
-                      )
-                    }
-                    action={
-                      confirming ? null : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className={ROW_ACTION}
-                          disabled={unpublishing}
-                          onClick={() => setConfirming(true)}
-                        >
-                          Unpublish
-                        </Button>
-                      )
-                    }
-                  >
-                    {confirming ? (
-                      <RowConfirm>
-                        <p className="text-heading-02">
-                          Take {page.key} down from {hostAndPath(url)}?
-                        </p>
-                        <p className="text-heading-05">
-                          The brand’s other pages stay up. You can publish it
-                          again any time.
-                        </p>
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="compact"
-                            disabled={unpublishing}
-                            onClick={() => setConfirming(false)}
-                          >
-                            Keep it live
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="compact"
-                            disabled={unpublishing}
-                            onClick={() => void unpublish()}
-                          >
-                            {unpublishing ? (
-                              <Spinner
-                                className="size-3.5"
-                                label="Unpublishing"
-                              />
-                            ) : null}
-                            Unpublish
-                          </Button>
-                        </div>
-                      </RowConfirm>
-                    ) : null}
-                  </DestinationRow>
-                  <ShopifyRow />
-                </ul>
-              </section>
-            </div>
-
-            <p className="truncate px-5 pt-4 pb-5 text-type-caption-1 text-heading-04">
-              {details}
-            </p>
-
-            <div className="flex items-center justify-end gap-2 bg-foreground-01 px-5 py-3.5 divider-t-half dark:bg-surface-primary">
-              <Button
-                type="button"
-                variant="outline"
-                size="compact"
-                className="rounded-sm px-2.5"
-                onClick={() => setModalOpen(false)}
-              >
-                Done
-              </Button>
-              <Button asChild size="compact" className="rounded-sm px-3">
-                <a href={url} target="_blank" rel="noreferrer">
-                  Open page
-                </a>
-              </Button>
+              <div className="relative h-80 overflow-hidden bg-surface-primary">
+                {viewport === "desktop" ? (
+                  frame(
+                    "desktop",
+                    "absolute top-0 left-0 h-182 w-317.25 origin-top-left scale-44 border-0",
+                  )
+                ) : (
+                  <div className="mx-auto h-full w-73 overflow-hidden edge-hairline">
+                    {frame(
+                      "phone",
+                      "h-106.5 w-97.5 origin-top-left scale-75 border-0",
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        <div className="flex flex-col">
+          <div className="bg-dashboard divider-y-half dark:bg-surface-primary">
+            <div className="flex items-center gap-2 px-5 pt-3 pb-2">
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-w-0 flex-1 items-center rounded-sm bg-foreground-02 px-2.5 py-2 font-address text-type-caption-1 leading-4 text-text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring dark:py-1.5"
+              >
+                <span className="truncate">{hostAndPath(url)}</span>
+              </a>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={ROW_ACTION}
+                onClick={copy}
+              >
+                Copy
+              </Button>
+            </div>
+
+            <section className="flex flex-col gap-2 px-5 pt-5 pb-3">
+              <h3 className="text-type-caption-1 font-medium text-heading-05">
+                Where it’s published
+              </h3>
+              <ul className="flex flex-col overflow-hidden rounded-lg edge-hairline">
+                <DestinationRow
+                  logo={<VercelLogo className="w-3.5 text-heading-01" />}
+                  name="Vercel"
+                  status={
+                    unpublishing ? (
+                      <>
+                        <Spinner className="size-3" label="Unpublishing" />
+                        Unpublishing…
+                      </>
+                    ) : (
+                      <span className="truncate">
+                        Live{live.project ? ` · ${live.project}` : ""}
+                      </span>
+                    )
+                  }
+                  action={
+                    confirming ? null : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={ROW_ACTION}
+                        disabled={unpublishing}
+                        onClick={() => setConfirming(true)}
+                      >
+                        Unpublish
+                      </Button>
+                    )
+                  }
+                >
+                  {confirming ? (
+                    <RowConfirm>
+                      <p className="text-heading-02">
+                        Take {page.key} down from {hostAndPath(url)}?
+                      </p>
+                      <p className="text-heading-05">
+                        The brand’s other pages stay up. You can publish it
+                        again any time.
+                      </p>
+                      <div className="flex justify-end gap-1.5">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="compact"
+                          disabled={unpublishing}
+                          onClick={() => setConfirming(false)}
+                        >
+                          Keep it live
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="compact"
+                          disabled={unpublishing}
+                          onClick={() => void unpublish()}
+                        >
+                          {unpublishing ? (
+                            <Spinner
+                              className="size-3.5"
+                              label="Unpublishing"
+                            />
+                          ) : null}
+                          Unpublish
+                        </Button>
+                      </div>
+                    </RowConfirm>
+                  ) : null}
+                </DestinationRow>
+                <ShopifyRow />
+              </ul>
+            </section>
+          </div>
+
+          <p className="truncate px-5 pt-4 pb-5 text-type-caption-1 text-heading-04 dark:bg-surface-modal">
+            {details}
+          </p>
+
+          <div className="flex items-center justify-end gap-2 bg-foreground-01 px-5 py-3.5 divider-t-half dark:bg-dashboard">
+            <Button
+              type="button"
+              variant="outline"
+              size="compact"
+              className="rounded-sm px-2.5"
+              onClick={() => setModalOpen(false)}
+            >
+              Done
+            </Button>
+            <Button asChild size="compact" className="rounded-sm px-3">
+              <a href={url} target="_blank" rel="noreferrer">
+                Open page
+              </a>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </ModalStack>
   );
 }
 

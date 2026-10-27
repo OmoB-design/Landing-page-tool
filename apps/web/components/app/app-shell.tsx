@@ -37,9 +37,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           {sidebar}
         </aside>
         <div className="flex min-w-0 flex-1 p-1.5">
+          {/* relative: absolutely placed children (sr-only text in long tables) stay inside the
+              panel's scroll; without it they're placed against the window and stretch it, and
+              the whole shell scrolls away. */}
           <main
             id="main"
-            className="min-w-0 flex-1 scrollbar-stable overflow-y-auto rounded-panel bg-surface-primary edge"
+            className="relative min-w-0 flex-1 scrollbar-stable overflow-y-auto rounded-panel bg-surface-primary edge"
           >
             {children}
           </main>

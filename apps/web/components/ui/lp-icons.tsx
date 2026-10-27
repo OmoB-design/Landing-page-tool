@@ -2398,3 +2398,23 @@ export function PhoneFigmaIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** "Needs review" in the desk's status chip (Figma Desk/Status chip, 576:13485): a 12 px ring
+ * with a fine stroke, centred in 16 px; drawn in the text colour (Spot-500-Blue there). */
+export function StatusChipRingFigmaIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <path
+        d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2C11.3137 2 14 4.68629 14 8ZM3.15151 8C3.15151 10.6777 5.32225 12.8485 8 12.8485C10.6777 12.8485 12.8485 10.6777 12.8485 8C12.8485 5.32225 10.6777 3.15151 8 3.15151C5.32225 3.15151 3.15151 5.32225 3.15151 8Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}

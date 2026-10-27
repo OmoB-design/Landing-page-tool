@@ -101,7 +101,8 @@ export function ClaimCheck({ claims }: { claims: ComplianceFinding[] }) {
 }
 
 /**
- * Reminders (Figma Build, Reminders): each a Foreground-01 card with its title on Foreground-02
+ * Reminders (Figma Review desk/Overview, Reminders): each a Foreground-01 card with its title on
+ * Foreground-03
  * (Heading-02) and the detail under it in Heading-05.
  */
 export function Reminders({ reminders }: { reminders: Reminder[] }) {
@@ -114,7 +115,7 @@ export function Reminders({ reminders }: { reminders: Reminder[] }) {
             key={reminder.title}
             className="flex flex-col gap-1.5 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium"
           >
-            <span className="rounded-sm bg-foreground-02 px-1.5 py-1 text-heading-02">
+            <span className="rounded-sm bg-foreground-03 px-1.5 py-1 text-heading-02">
               {reminder.title}
             </span>
             {reminder.detail ? (
@@ -232,7 +233,7 @@ const ACTION_CLASS = {
 /**
  * A flagged claim (Figma Build, Claim check): a Foreground-01 card, 8 px corners, 6 px in. "Fix"
  * (Highlight-Red-50 / Text-Danger) or "Check" (Highlight-Yellow-150 / Highlight-Yellow-500) in
- * an 11 px chip, then the quoted line in Heading-05, the reason on Foreground-02 in Heading-02, and
+ * an 11 px chip, then the quoted line in Heading-05, the reason on Foreground-03 in Heading-02 (Review desk/Overview), and
  * under a 0.5 px line the section's button (22 px, Surface-Primary, 1 px Stroke-Strong, Shadow/Panel,
  * the locate icon and the section's name) that shows the line in the preview.
  */
@@ -260,7 +261,7 @@ function Claim({ finding }: { finding: ComplianceFinding }) {
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <p className="text-heading-05">“{finding.text}”</p>
-        <p className="rounded-md bg-foreground-02 px-1.5 py-1 text-heading-02">
+        <p className="rounded-md bg-foreground-03 px-1.5 py-1 text-heading-02">
           {claimReason(finding.reason)}
         </p>
         {section || sentence ? (

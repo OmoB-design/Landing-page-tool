@@ -10,8 +10,10 @@ const buttonVariants = cva(
       variant: {
         // The blue button (Figma: Button Primary States; the button-primary utility in globals.css).
         default: "button-primary text-button-primary-text",
+        // Dark: a raised fill and a visible edge, so it reads the same size as the blue button
+        // beside it (owner, 2026-10-26).
         outline:
-          "border-stroke-strong bg-surface-primary text-body shadow-control hover:bg-foreground-02 aria-expanded:bg-foreground-02",
+          "border-stroke-strong bg-surface-primary text-body shadow-control hover:bg-foreground-02 aria-expanded:bg-foreground-02 dark:border-foreground-03 dark:bg-foreground-01 dark:hover:bg-foreground-02",
         secondary:
           "bg-foreground-02 text-body hover:bg-foreground-03 aria-expanded:bg-foreground-03",
         ghost:

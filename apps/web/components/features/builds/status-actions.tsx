@@ -7,7 +7,10 @@ import {
   type StatusGlyphKind,
 } from "@/components/app/status-glyph";
 import { Button } from "@/components/ui/button";
-import { ApprovedFigmaIcon, StatusRingIcon } from "@/components/ui/lp-icons";
+import {
+  ApprovedFigmaIcon,
+  StatusChipRingFigmaIcon,
+} from "@/components/ui/lp-icons";
 import {
   Popover,
   PopoverContent,
@@ -74,7 +77,7 @@ export function StatusChip({ status }: { status: string }) {
         {status === "approved" ? (
           <ApprovedFigmaIcon />
         ) : status === "needs_review" ? (
-          <StatusRingIcon className="size-4" />
+          <StatusChipRingFigmaIcon className="size-4" />
         ) : (
           <StatusGlyph status={status as StatusGlyphKind} />
         )}
