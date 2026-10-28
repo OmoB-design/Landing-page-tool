@@ -1,7 +1,9 @@
 "use client";
 
 // Stacked modals (the owner's reference: Emil Kowalski's "stacked modals"). One dialog holds a
-// stack of layers; each layer is a card (the published modal's rim and panel). Pushing a layer
+// stack of layers; each layer is a card (ModalFrame: a white rim, then a grey frame that the
+// card's header and footer sit on, around its content in one white ModalCard; the owner's frame
+// 686:15456). Pushing a layer
 // brings a new card to the front while the one below steps back: a little smaller, raised so a
 // strip of its top edge shows above the new card, and dimmed. Every card in the stack takes the
 // front card's height (the dialog's height follows it), so one surface reads as going a level
@@ -60,12 +62,50 @@ export function ModalStackDescription(props: ComponentProps<"p">) {
   return front ? <DialogPrimitive.Description {...props} /> : <p {...props} />;
 }
 
+/**
+ * A modal's card (the owner's frame 686:15456): a white rim, then a grey frame (Dashboard in dark)
+ * that the header and footer sit on, around the content in a ModalCard. Every card of a stack has
+ * one; a plain dialog can wear it too.
+ */
+export function ModalFrame({
+  className,
+  children,
+  ...props
+}: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-0 flex-col rounded-well bg-surface-primary p-1 dark:ring-1 dark:ring-stroke",
+        className,
+      )}
+      {...props}
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-foreground-01 p-1 dark:bg-dashboard">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** The white card between a modal's header and footer, on its grey frame (Surface-Modal in dark). */
+export function ModalCard({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-well bg-surface-primary ring-half ring-stroke dark:bg-surface-modal",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 // Emil: an Apple-style spring with no bounce for things moving on screen; about 300 ms.
 const SPRING = { type: "spring", duration: 0.32, bounce: 0 } as const;
 const PEEK = 12; // px of each card's top edge that shows above the next
 const SHRINK = 0.04; // each level back is 4 % smaller
 const GUTTER = 16; // the least space kept above and below the dialog
-const RIM = 8; // the card's rim (4 px all round) around its panel
+const FRAME = 16; // the rim and the grey frame (4 px each, all round) around a card's content
 const EASE_OUT = [0.23, 1, 0.32, 1] as const; // Emil's strong ease-out
 
 function useViewportHeight() {
@@ -113,7 +153,7 @@ function StackCard({
   useLayoutEffect(() => {
     const node = content.current;
     if (!node) return;
-    const report = () => onMeasure(layerKey, node.offsetHeight + RIM);
+    const report = () => onMeasure(layerKey, node.offsetHeight + FRAME);
     report();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(report);
@@ -175,15 +215,15 @@ function StackCard({
       style={{ zIndex: 10 - depth, transformOrigin: "50% 0%" }}
       className="absolute inset-x-0 top-0 overflow-hidden rounded-well"
     >
-      <div
+      <ModalFrame
         inert={!front}
         aria-hidden={front ? undefined : true}
-        className="h-full rounded-well bg-surface-primary p-1 dark:ring-1 dark:ring-stroke"
+        className="h-full"
       >
-        <div className="h-full overflow-hidden rounded-lg bg-surface-modal shadow-float ring-half ring-stroke">
-          <div ref={content}>{children}</div>
+        <div ref={content} className="shrink-0">
+          {children}
         </div>
-      </div>
+      </ModalFrame>
       {/* The dimming of a card that stepped back: solid, so nothing shows through it. */}
       <motion.div
         aria-hidden

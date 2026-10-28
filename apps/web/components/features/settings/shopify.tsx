@@ -11,6 +11,8 @@ import { BackIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { ShopifyLogo } from "@/components/ui/lp-icons";
 import {
+  ModalCard,
+  ModalFrame,
   ModalStackDescription,
   ModalStackTitle,
 } from "@/components/ui/modal-stack";
@@ -69,10 +71,11 @@ function Field({
  * Connect a Shopify store (D90; the Vercel modal's layout): the brand it's for (fixed when opened
  * from a page), the store's myshopify address, and the client id and secret of the store owner's
  * app in Shopify's Dev Dashboard. How to make the app comes first, under the header (the order of
- * the work, as in Emil's stacked modal), then the fields. Colours as the published modal's bands:
- * grey header and footer, the steps on white, the fields in the washed band. The worker asks Shopify for access straight away and names any scope
- * the app lacks. Its own dialog in Settings; a card stacked on the published modal (`stacked`:
- * ← Back, and no toast, since the modal's Shopify row changing says it).
+ * the work, as in Emil's stacked modal), then the fields. The published modal's structure (the
+ * owner's frame 686:15456): the header and footer on the grey frame, the steps and the fields (in
+ * the washed band) in the white card. The worker asks Shopify for access straight away and names
+ * any scope the app lacks. Its own dialog in Settings; a card stacked on the published modal
+ * (`stacked`: ← Back, and no toast, since the modal's Shopify row changing says it).
  */
 export function ShopifyConnectForm({
   brands,
@@ -142,7 +145,7 @@ export function ShopifyConnectForm({
     >
       <div
         className={cn(
-          "flex flex-col gap-6 bg-foreground-01 px-6 pb-6 dark:bg-surface-primary",
+          "flex flex-col gap-6 px-6 pb-6",
           stacked ? "pt-4" : "pt-8",
         )}
       >
@@ -163,95 +166,99 @@ export function ShopifyConnectForm({
           </div>
         </div>
       </div>
-      <section
-        aria-labelledby={ids.steps}
-        className="flex flex-col gap-2 px-6 py-4 text-type-caption-1 divider-y-half"
-      >
-        <h3 id={ids.steps} className="font-medium text-heading-02">
-          First, make the app in Shopify
-        </h3>
-        <ol className="flex list-decimal flex-col gap-1 pl-4 text-heading-05">
-          <li>
-            In{" "}
-            <a
-              href={DEV_DASHBOARD_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-text-link hover:underline"
-            >
-              Shopify’s Dev Dashboard
-            </a>
-            , create an app (Start from Dev Dashboard).
-          </li>
-          <li>
-            In Versions, add the scopes write_content, write_files and
-            write_themes, then Release.
-          </li>
-          <li>In Installs, install it on the store.</li>
-          <li>From the app’s Settings, copy the Client ID and secret below.</li>
-        </ol>
-      </section>
-      <div className="flex flex-col gap-6 bg-dashboard p-6 dark:bg-surface-primary/50">
-        {brandId ? null : (
-          <Field id={ids.brand} label="Brand">
-            <Select value={brand} onValueChange={setBrand}>
-              <SelectTrigger id={ids.brand} className="h-8 w-full">
-                <SelectValue placeholder="Choose a brand" />
-              </SelectTrigger>
-              <SelectContent>
-                {brands.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        )}
-        <Field
-          id={ids.shop}
-          label="Store address"
-          hint="Its myshopify address, from Shopify admin → Settings → Domains."
+      <ModalCard>
+        <section
+          aria-labelledby={ids.steps}
+          className="flex flex-col gap-2 px-6 py-4 text-type-caption-1"
         >
-          <Input
+          <h3 id={ids.steps} className="font-medium text-heading-02">
+            First, make the app in Shopify
+          </h3>
+          <ol className="flex list-decimal flex-col gap-1 pl-4 text-heading-05">
+            <li>
+              In{" "}
+              <a
+                href={DEV_DASHBOARD_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-text-link hover:underline"
+              >
+                Shopify’s Dev Dashboard
+              </a>
+              , create an app (Start from Dev Dashboard).
+            </li>
+            <li>
+              In Versions, add the scopes write_content, write_files and
+              write_themes, then Release.
+            </li>
+            <li>In Installs, install it on the store.</li>
+            <li>
+              From the app’s Settings, copy the Client ID and secret below.
+            </li>
+          </ol>
+        </section>
+        <div className="flex flex-col gap-6 bg-dashboard p-6 divider-t-half dark:bg-surface-primary/50">
+          {brandId ? null : (
+            <Field id={ids.brand} label="Brand">
+              <Select value={brand} onValueChange={setBrand}>
+                <SelectTrigger id={ids.brand} className="h-8 w-full">
+                  <SelectValue placeholder="Choose a brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  {brands.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+          <Field
             id={ids.shop}
-            data-autofocus
-            spellCheck={false}
-            value={shop}
-            onChange={(event) => setShop(event.target.value)}
-            placeholder="your-store.myshopify.com"
-            className="h-8 px-2.5 font-mono"
-          />
-        </Field>
-        <Field id={ids.client} label="Client ID">
-          <Input
-            id={ids.client}
-            spellCheck={false}
-            autoComplete="off"
-            value={clientId}
-            onChange={(event) => setClientId(event.target.value)}
-            placeholder="From the app’s Settings"
-            className="h-8 px-2.5 font-mono"
-          />
-        </Field>
-        <Field
-          id={ids.secret}
-          label="Client secret"
-          hint="Checked with Shopify, then kept encrypted."
-        >
-          <Input
+            label="Store address"
+            hint="Its myshopify address, from Shopify admin → Settings → Domains."
+          >
+            <Input
+              id={ids.shop}
+              data-autofocus
+              spellCheck={false}
+              value={shop}
+              onChange={(event) => setShop(event.target.value)}
+              placeholder="your-store.myshopify.com"
+              className="h-8 px-2.5 font-mono"
+            />
+          </Field>
+          <Field id={ids.client} label="Client ID">
+            <Input
+              id={ids.client}
+              spellCheck={false}
+              autoComplete="off"
+              value={clientId}
+              onChange={(event) => setClientId(event.target.value)}
+              placeholder="From the app’s Settings"
+              className="h-8 px-2.5 font-mono"
+            />
+          </Field>
+          <Field
             id={ids.secret}
-            type="password"
-            autoComplete="new-password"
-            spellCheck={false}
-            value={secret}
-            onChange={(event) => setSecret(event.target.value)}
-            placeholder="Paste the secret"
-            className="h-8 px-2.5 font-mono"
-          />
-        </Field>
-      </div>
-      <div className="flex items-center gap-2 bg-foreground-01 px-6 py-4 divider-t-half dark:bg-surface-primary">
+            label="Client secret"
+            hint="Checked with Shopify, then kept encrypted."
+          >
+            <Input
+              id={ids.secret}
+              type="password"
+              autoComplete="new-password"
+              spellCheck={false}
+              value={secret}
+              onChange={(event) => setSecret(event.target.value)}
+              placeholder="Paste the secret"
+              className="h-8 px-2.5 font-mono"
+            />
+          </Field>
+        </div>
+      </ModalCard>
+      <div className="flex items-center gap-2 px-6 py-4">
         {error ? (
           <p
             role="alert"
@@ -298,16 +305,18 @@ export function ShopifyConnectDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-        <ShopifyConnectForm
-          brands={brands}
-          brandId={brandId}
-          onCancel={() => onOpenChange(false)}
-          onConnected={(next) => {
-            onConnected?.(next);
-            onOpenChange(false);
-          }}
-        />
+      <DialogContent className="block bg-transparent p-0 ring-0 sm:max-w-md">
+        <ModalFrame>
+          <ShopifyConnectForm
+            brands={brands}
+            brandId={brandId}
+            onCancel={() => onOpenChange(false)}
+            onConnected={(next) => {
+              onConnected?.(next);
+              onOpenChange(false);
+            }}
+          />
+        </ModalFrame>
       </DialogContent>
     </Dialog>
   );
@@ -481,7 +490,8 @@ function TemplateFile({ path, body }: { path: string; body: string }) {
 /**
  * Show pages full width (D90): Shopify lets apps write theme files only with an exemption, so the
  * store owner adds the full-width template's two files to the theme once; publishing then finds
- * and uses them. The steps, then each file with Copy.
+ * and uses them. The steps, then each file with Copy, in the white card between the header and
+ * footer on the grey frame (the published modal's structure).
  */
 export function ShopifyFullWidthSteps({
   shop,
@@ -503,10 +513,10 @@ export function ShopifyFullWidthSteps({
   });
   const [layout, page] = template.data?.files ?? [];
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
       <div
         className={cn(
-          "flex shrink-0 flex-col gap-6 bg-foreground-01 px-6 pb-6 divider-b-half dark:bg-surface-primary",
+          "flex shrink-0 flex-col gap-6 px-6 pb-6",
           stacked ? "pt-4" : "pt-8",
         )}
       >
@@ -527,70 +537,67 @@ export function ShopifyFullWidthSteps({
           </div>
         </div>
       </div>
-      <div className="flex min-h-0 min-w-0 flex-col gap-6 overflow-y-auto px-6 pt-6 pb-6">
-        <ol className="flex min-w-0 list-decimal flex-col gap-3 pl-4 text-type-caption-1 text-heading-04">
-          <li>
-            In Shopify admin, open{" "}
-            {shop ? (
-              <a
-                href={`https://${shop}/admin/themes`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium text-text-link hover:underline"
-              >
-                Online Store → Themes
-              </a>
-            ) : (
-              "Online Store → Themes"
-            )}
-            . On the current theme, click ⋯ → Edit code.
-          </li>
-          <li className="min-w-0">
-            <div className="flex min-w-0 flex-col gap-2">
-              <span>
-                In the layout folder, create a new file named lp-full.liquid.
-                Paste this into it, then Save.
-              </span>
-              {layout ? <TemplateFile {...layout} /> : null}
-            </div>
-          </li>
-          <li className="min-w-0">
-            <div className="flex min-w-0 flex-col gap-2">
-              <span>
-                In the templates folder, create a new file named
-                page.lp-full.liquid. Paste this into it, then Save. Leave
-                theme.liquid as it is.
-              </span>
-              {page ? <TemplateFile {...page} /> : null}
-            </div>
-          </li>
-          <li>
-            Back here, click Update draft. The page switches to the full-width
-            template. A new theme needs the two files again.
-          </li>
-        </ol>
-        {template.isPending ? (
-          <Spinner className="size-4 self-center" label="Loading the files" />
-        ) : template.isError ? (
-          <p
-            role="alert"
-            className="text-type-caption-1 font-medium text-text-danger"
-          >
-            {template.error.message}
-          </p>
-        ) : null}
-      </div>
-      <div className="flex shrink-0 justify-end bg-foreground-01 px-6 py-4 divider-t-half dark:bg-surface-primary">
-        <Button
-          type="button"
-          size="compact"
-          className="rounded-sm px-3"
-          onClick={onDone}
-        >
+      <ModalCard className="flex min-h-0 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-col gap-6 overflow-y-auto p-6">
+          <ol className="flex min-w-0 list-decimal flex-col gap-3 pl-4 text-type-caption-1 text-heading-04">
+            <li>
+              In Shopify admin, open{" "}
+              {shop ? (
+                <a
+                  href={`https://${shop}/admin/themes`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-text-link hover:underline"
+                >
+                  Online Store → Themes
+                </a>
+              ) : (
+                "Online Store → Themes"
+              )}
+              . On the current theme, click ⋯ → Edit code.
+            </li>
+            <li className="min-w-0">
+              <div className="flex min-w-0 flex-col gap-2">
+                <span>
+                  In the layout folder, create a new file named lp-full.liquid.
+                  Paste this into it, then Save.
+                </span>
+                {layout ? <TemplateFile {...layout} /> : null}
+              </div>
+            </li>
+            <li className="min-w-0">
+              <div className="flex min-w-0 flex-col gap-2">
+                <span>
+                  In the templates folder, create a new file named
+                  page.lp-full.liquid. Paste this into it, then Save. Leave
+                  theme.liquid as it is.
+                </span>
+                {page ? <TemplateFile {...page} /> : null}
+              </div>
+            </li>
+            <li>
+              Back here, click Update draft. The page switches to the full-width
+              template. A new theme needs the two files again.
+            </li>
+          </ol>
+          {template.isPending ? (
+            <Spinner className="size-4 self-center" label="Loading the files" />
+          ) : template.isError ? (
+            <p
+              role="alert"
+              className="text-type-caption-1 font-medium text-text-danger"
+            >
+              {template.error.message}
+            </p>
+          ) : null}
+        </div>
+      </ModalCard>
+      <div className="flex shrink-0 justify-end px-6 py-4">
+        <Button type="button" size="compact" onClick={onDone}>
           Done
         </Button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -606,8 +613,13 @@ export function ShopifyFullWidthDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-11/12 flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <ShopifyFullWidthSteps shop={shop} onDone={() => onOpenChange(false)} />
+      <DialogContent className="flex max-h-11/12 flex-col gap-0 bg-transparent p-0 ring-0 sm:max-w-lg">
+        <ModalFrame>
+          <ShopifyFullWidthSteps
+            shop={shop}
+            onDone={() => onOpenChange(false)}
+          />
+        </ModalFrame>
       </DialogContent>
     </Dialog>
   );

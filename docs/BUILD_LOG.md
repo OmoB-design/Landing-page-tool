@@ -717,3 +717,9 @@ as new entries.
 - **Summary:** the desk's "Needs review" chip uses the Figma glyph (a 12 px ring with a fine stroke in 16 px, `StatusChipRingFigmaIcon`) instead of the scaled 20 px status ring; the claim's reason and the reminder's title sit on Foreground-03 (Review desk/Overview frames); the dark published modal follows the owner's frame 644:14830 (rim Surface-Primary, panel and footer Dashboard, the band solid Surface-Primary, the details Surface-Modal, the address field 28 px).
 - **Verification:** web typecheck, lint, tokens, vitest 158/158; the chip ring and the Foreground-03 rows checked in the browser (dark: grey-700).
 
+### Follow-up — Modal structure from Figma 686:15456 (2026-10-27)
+- **Status:** complete (owner)
+- **Summary:** every modal card is now a white rim, then a grey frame that the header and footer sit on, around one white bordered card (`ModalFrame` and `ModalCard` in `components/ui/modal-stack.tsx`; the stack measures 16 px of frame). The published modal puts the browser frame, the address band and the details in the card (606 px wide, as before; the desktop preview scaled to the narrower frame); Connect Shopify and Show pages full width keep their header on the frame and put the steps and fields (or files) in the card; their Settings dialogs wear the same frame. Colours unchanged; dark: the frame Dashboard, the card Surface-Modal.
+- **Deviation:** Done and Cancel stay outline buttons (the frames draw them plain), as the owner said colours don't change; the Shopify card follows 686:15456's structure (header on the frame), not the earlier frame 683:15139 (header inside the card).
+- **Verification:** web typecheck, lint, tokens, vitest 158/158; screenshots in light and dark of the live modal, Unpublish asking, and both stacked Shopify cards.
+
