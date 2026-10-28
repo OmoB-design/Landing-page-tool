@@ -8,7 +8,8 @@
 // strip of its top edge shows above the new card, and dimmed. Every card in the stack takes the
 // front card's height (the dialog's height follows it), so one surface reads as going a level
 // deeper; the contents cross-fade with a slight blur. Back (Esc, ← Back, or the peeking edge)
-// reverses it. Springs keep it interruptible; reduced motion keeps only the fade.
+// reverses it. Each animation picks up from where it is, so a quick Back reverses mid-step; reduced
+// motion keeps only the fade.
 //
 // The dialog's top stays where the first card put it (it only moves up if a deeper card wouldn't
 // fit), so a stack grows and shrinks downward instead of re-centring on every step.
@@ -100,8 +101,11 @@ export function ModalCard({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
-// Emil: an Apple-style spring with no bounce for things moving on screen; about 300 ms.
-const SPRING = { type: "spring", duration: 0.32, bounce: 0 } as const;
+// Timed against Emil's clip at 60 fps (2026-10-28): a step settles in about 220 ms and starts at
+// full speed (half the way in 33 ms, 80 % in 85 ms), the new card is opaque in about 100 ms, and a
+// leaving card is gone in about 100 ms. A spring starts from rest, so it lagged in exactly the
+// first 100 ms people watch; his strong ease-out over 250 ms traces his curve.
+const MOVE = { duration: 0.25, ease: [0.23, 1, 0.32, 1] } as const;
 const PEEK = 12; // px of each card's top edge that shows above the next
 const SHRINK = 0.04; // each level back is 4 % smaller
 const GUTTER = 16; // the least space kept above and below the dialog
@@ -173,9 +177,10 @@ function StackCard({
     target?.focus({ preventScroll: true });
   }, [front, entering]);
 
-  const fade = { duration: reduce ? 0.15 : 0.2, ease: EASE_OUT };
-  const blur = { duration: reduce ? 0 : 0.2, ease: EASE_OUT };
-  const motionSpring = reduce ? { duration: 0 } : SPRING;
+  const fade = { duration: reduce ? 0.15 : 0.12, ease: EASE_OUT };
+  const fadeOut = { duration: reduce ? 0.15 : 0.1, ease: EASE_OUT };
+  const blur = { duration: reduce ? 0 : 0.15, ease: EASE_OUT };
+  const step = reduce ? { duration: 0 } : MOVE;
   const variants = {
     // Leaving (a pop): it fades and blurs while settling to the new front card's height.
     exit: (toHeight: number | undefined) => ({
@@ -183,7 +188,7 @@ function StackCard({
       filter: "blur(4px)",
       transform: "translateY(8px) scale(1)",
       ...(toHeight ? { height: toHeight } : {}),
-      transition: { default: motionSpring, opacity: fade, filter: blur },
+      transition: { default: step, opacity: fadeOut, filter: blur },
     }),
   };
   return (
@@ -207,8 +212,8 @@ function StackCard({
       }}
       exit="exit"
       transition={{
-        default: motionSpring,
-        height: reduce || !moving ? { duration: 0 } : SPRING,
+        default: step,
+        height: reduce || !moving ? { duration: 0 } : MOVE,
         opacity: fade,
         filter: blur,
       }}
@@ -229,7 +234,7 @@ function StackCard({
         aria-hidden
         initial={false}
         animate={{ opacity: front ? 0 : depth === 1 ? 0.7 : 1 }}
-        transition={{ duration: reduce ? 0 : 0.24 }}
+        transition={{ duration: reduce ? 0 : 0.15, ease: EASE_OUT }}
         className="pointer-events-none absolute inset-0 rounded-well bg-overlay/12 dark:bg-overlay/55"
       />
       {/* The peeking edge of the card just behind the front one goes back to it. */}
@@ -282,7 +287,7 @@ export function ModalStack({
   const move = useCallback(() => {
     setMoving(true);
     window.clearTimeout(settle.current);
-    settle.current = window.setTimeout(() => setMoving(false), 450);
+    settle.current = window.setTimeout(() => setMoving(false), 300);
   }, []);
   const push = useCallback(
     (layer: StackLayer) => {
@@ -380,8 +385,8 @@ export function ModalStack({
               top: top ?? "50%",
             }}
             transition={{
-              top: instant ? { duration: 0 } : SPRING,
-              height: instant || !moving ? { duration: 0 } : SPRING,
+              top: instant ? { duration: 0 } : MOVE,
+              height: instant || !moving ? { duration: 0 } : MOVE,
             }}
             className={cn(
               "fixed left-1/2 z-50 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 outline-none",
