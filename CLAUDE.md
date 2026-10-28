@@ -235,7 +235,8 @@ pnpm gen:types                   # regenerate apps/web/types/database.ts from th
 vercel deploy --target preview   # preview build on Vercel's servers; prints the URL. Always pass --target preview:
                                  # the CLI made the first deploy Production. Never production without the owner's go
 
-# Railway: the worker (D77). Project enchanting-fulfillment, two services from the repo, root /services/worker,
+# Railway: the worker (D77), in EU West (Amsterdam) beside the database (D91). Project enchanting-fulfillment,
+# two services from the repo, root /services/worker,
 # built from services/worker/Dockerfile: the API (https://landing-page-tool-production.up.railway.app, /health)
 # and the job loop (start command `python worker.py`). Variables are the worker's .env, set by the owner in
 # Railway. Pushes to main rebuild them once Railway's GitHub app can see the repo. A local `pnpm dev` job loop

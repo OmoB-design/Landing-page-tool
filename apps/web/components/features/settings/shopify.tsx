@@ -71,9 +71,9 @@ function Field({
  * Connect a Shopify store (D90; the Vercel modal's layout): the brand it's for (fixed when opened
  * from a page), the store's myshopify address, and the client id and secret of the store owner's
  * app in Shopify's Dev Dashboard. How to make the app comes first, under the header (the order of
- * the work, as in Emil's stacked modal), then the fields. The published modal's structure (the
- * owner's frame 686:15456): the header and footer on the grey frame, the steps and the fields (in
- * the washed band) in the white card. The worker asks Shopify for access straight away and names
+ * the work, as in Emil's stacked modal), then the fields. The owner's frame 683:15139: the header,
+ * the steps on a washed band between hairlines, and the fields, all in the white card; the footer
+ * on the grey frame (the stack's rim around it). The worker asks Shopify for access straight away and names
  * any scope the app lacks. Its own dialog in Settings; a card stacked on the published modal
  * (`stacked`: ← Back, and no toast, since the modal's Shopify row changing says it).
  */
@@ -143,33 +143,20 @@ export function ShopifyConnectForm({
         else connect.mutate();
       }}
     >
-      <div
-        className={cn(
-          "flex flex-col gap-6 px-6 pb-6",
-          stacked ? "pt-4" : "pt-8",
-        )}
-      >
-        {stacked ? <BackLink onClick={onCancel} /> : null}
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex size-13.5 shrink-0 items-center justify-center rounded-md bg-surface-primary ring-half ring-stroke dark:bg-foreground-02">
-            <ShopifyLogo className="h-7" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <ModalStackTitle className="text-type-body-small font-medium text-heading-01">
-              {brandId && brandName
-                ? `Connect ${brandName}’s Shopify store`
-                : "Connect a Shopify store"}
-            </ModalStackTitle>
-            <ModalStackDescription className="text-type-caption-1 text-heading-05">
-              Pages go to the store as drafts. One store per brand.
-            </ModalStackDescription>
-          </div>
-        </div>
-      </div>
-      <ModalCard>
+      <ModalCard className="rounded-lg pt-2 pb-2.5">
+        <ShopifyCardHeader
+          onBack={stacked ? onCancel : undefined}
+          title={
+            brandId && brandName
+              ? `Connect ${brandName}’s Shopify store`
+              : "Connect a Shopify store"
+          }
+        >
+          Pages go to the store as drafts. One store per brand.
+        </ShopifyCardHeader>
         <section
           aria-labelledby={ids.steps}
-          className="flex flex-col gap-2 px-6 py-4 text-type-caption-1"
+          className="flex flex-col gap-2 bg-dashboard px-6 py-4 text-type-caption-1 divider-y-half dark:bg-surface-primary"
         >
           <h3 id={ids.steps} className="font-medium text-heading-02">
             First, make the app in Shopify
@@ -197,7 +184,7 @@ export function ShopifyConnectForm({
             </li>
           </ol>
         </section>
-        <div className="flex flex-col gap-6 bg-dashboard p-6 divider-t-half dark:bg-surface-primary/50">
+        <div className="flex flex-col gap-6 p-6">
           {brandId ? null : (
             <Field id={ids.brand} label="Brand">
               <Select value={brand} onValueChange={setBrand}>
@@ -226,7 +213,7 @@ export function ShopifyConnectForm({
               value={shop}
               onChange={(event) => setShop(event.target.value)}
               placeholder="your-store.myshopify.com"
-              className="h-8 px-2.5 font-mono"
+              className="h-8 px-2.5 font-mono placeholder:text-caption-2"
             />
           </Field>
           <Field id={ids.client} label="Client ID">
@@ -237,7 +224,7 @@ export function ShopifyConnectForm({
               value={clientId}
               onChange={(event) => setClientId(event.target.value)}
               placeholder="From the app’s Settings"
-              className="h-8 px-2.5 font-mono"
+              className="h-8 px-2.5 font-mono placeholder:text-caption-2"
             />
           </Field>
           <Field
@@ -253,7 +240,7 @@ export function ShopifyConnectForm({
               value={secret}
               onChange={(event) => setSecret(event.target.value)}
               placeholder="Paste the secret"
-              className="h-8 px-2.5 font-mono"
+              className="h-8 px-2.5 font-mono placeholder:text-caption-2"
             />
           </Field>
         </div>
@@ -492,8 +479,8 @@ function TemplateFile({ path, body }: { path: string; body: string }) {
 /**
  * Show pages full width (D90): Shopify lets apps write theme files only with an exemption, so the
  * store owner adds the full-width template's two files to the theme once; publishing then finds
- * and uses them. The steps, then each file with Copy, in the white card between the header and
- * footer on the grey frame (the published modal's structure).
+ * and uses them. The header, then the steps with each file and Copy, in the white card; Done on the
+ * grey frame (laid out like the connect card, Figma 683:15139).
  */
 export function ShopifyFullWidthSteps({
   shop,
@@ -516,31 +503,16 @@ export function ShopifyFullWidthSteps({
   const [layout, page] = template.data?.files ?? [];
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div
-        className={cn(
-          "flex shrink-0 flex-col gap-6 px-6 pb-6",
-          stacked ? "pt-4" : "pt-8",
-        )}
-      >
-        {stacked ? <BackLink onClick={onDone} /> : null}
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex size-13.5 shrink-0 items-center justify-center rounded-md bg-surface-primary ring-half ring-stroke dark:bg-foreground-02">
-            <ShopifyLogo className="h-7" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <ModalStackTitle className="text-type-body-small font-medium text-heading-01">
-              Show pages full width
-            </ModalStackTitle>
-            <ModalStackDescription className="text-type-caption-1 text-heading-05">
-              Pages already fit into most themes. These two files make the fit
-              exact on any theme: add them once. Shopify doesn’t let apps write
-              theme files, so it’s a copy and paste.
-            </ModalStackDescription>
-          </div>
-        </div>
-      </div>
-      <ModalCard className="flex min-h-0 flex-col">
-        <div className="flex min-h-0 min-w-0 flex-col gap-6 overflow-y-auto p-6">
+      <ModalCard className="flex min-h-0 flex-col rounded-lg pt-2">
+        <ShopifyCardHeader
+          onBack={stacked ? onDone : undefined}
+          title="Show pages full width"
+        >
+          Pages already fit into most themes. These two files make the fit exact
+          on any theme: add them once. Shopify doesn’t let apps write theme
+          files, so it’s a copy and paste.
+        </ShopifyCardHeader>
+        <div className="flex min-h-0 min-w-0 flex-col gap-6 overflow-y-auto p-6 divider-t-half">
           <ol className="flex min-w-0 list-decimal flex-col gap-3 pl-4 text-type-caption-1 text-heading-04">
             <li>
               In Shopify admin, open{" "}
@@ -628,6 +600,47 @@ export function ShopifyFullWidthDialog({
 }
 
 /** ← Back at the top of a stacked card. */
+/**
+ * A Shopify card's header, inside its white card (Figma 683:15111): ← Back when it's stacked, the
+ * bag on a white tile inside a washed one, the title and the line under it, centred.
+ */
+function ShopifyCardHeader({
+  onBack,
+  title,
+  children,
+}: {
+  /** Stacked on the published modal: ← Back goes back to it. */
+  onBack?: () => void;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 flex-col gap-6 px-6 pb-6",
+        onBack ? "pt-4" : "pt-6",
+      )}
+    >
+      {onBack ? <BackLink onClick={onBack} /> : null}
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="rounded-md bg-dashboard p-0.5 ring-half ring-stroke dark:bg-surface-primary">
+          <div className="flex size-10 items-center justify-center rounded-sm bg-surface-primary ring-half ring-stroke dark:bg-foreground-02">
+            <ShopifyLogo className="h-5.25" />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <ModalStackTitle className="text-type-body-small font-medium text-heading-01">
+            {title}
+          </ModalStackTitle>
+          <ModalStackDescription className="text-type-caption-1 text-heading-05">
+            {children}
+          </ModalStackDescription>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BackLink({ onClick }: { onClick: () => void }) {
   return (
     <button
