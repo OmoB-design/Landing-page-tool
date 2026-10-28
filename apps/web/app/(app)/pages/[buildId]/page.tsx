@@ -194,13 +194,14 @@ async function Build({
     </div>
   );
 
-  // The review desk, once the page is built (D84). If the worker can't be reached, the page shows
-  // without it.
-  const desk =
-    ready && build.report ? await loadDesk(currentOrg.id, build.id) : null;
+  // The review desk, once the page is built (D84), and its publishing (D87), asked of the worker
+  // together. If the worker can't be reached, the page shows without the desk; without publishing
+  // the desk still works.
+  const [desk, publishing] =
+    ready && build.report
+      ? await loadDeskAndPublishing(currentOrg.id, build.id)
+      : [null, null];
   if (!desk) return page(false, false);
-  // Publishing (D87): without it (the worker unreachable) the desk still works.
-  const publishing = await loadPublishing(currentOrg.id, build.id);
   return (
     <DeskProvider buildId={build.id} meId={user.id} initial={desk}>
       {publishing ? (
@@ -233,14 +234,11 @@ async function accessToken() {
   return session?.access_token ?? null;
 }
 
-async function loadDesk(orgId: string, buildId: string) {
+async function loadDeskAndPublishing(orgId: string, buildId: string) {
   const token = await accessToken();
-  if (!token) return null;
-  return getBuildDesk(token, orgId, buildId).catch(() => null);
-}
-
-async function loadPublishing(orgId: string, buildId: string) {
-  const token = await accessToken();
-  if (!token) return null;
-  return getPublishing(token, orgId, buildId).catch(() => null);
+  if (!token) return [null, null] as const;
+  return Promise.all([
+    getBuildDesk(token, orgId, buildId).catch(() => null),
+    getPublishing(token, orgId, buildId).catch(() => null),
+  ]);
 }

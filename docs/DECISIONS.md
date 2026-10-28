@@ -376,6 +376,7 @@ Since January 2026 a store's admin can't hand out a custom app's token, so each 
 **D91 — The worker runs beside the database.** Locked (owner, 2026-10-28).
 Both Railway services (the API and the job loop) run in EU West (Amsterdam), next to Supabase (eu-west-1, Ireland) and Vercel's functions (dub1, Dublin). They had been in US East (Virginia), so every database step the worker took crossed the Atlantic: a simple worker read (membership check plus the data, about a dozen round trips) took about 1.7 s of worker time; in Amsterdam it takes about 0.25 s (measured from outside, 2026-10-28). Railway has no Ireland region, so a round trip to the database is still about 20 ms; fewer round trips per request is the next lever.
 *Why:* the review desk, its preview, every edit, publishing, Settings → Connections, the template editor and every build go through the worker; distance to the database was most of their wait.
+*Follow-up (owner, same day; the speed pass):* the worker's pool keeps two connections open and tests a connection before use only when it has sat idle for 30 s or more (`app/db.py`), saving a round trip on almost every database use; the build page asks the worker for the desk and publishing together; the desk preview's address names its version (the page's version and the build's last update), so the browser keeps it for an hour (`private`, `Vary: Cookie`).
 
 **O5 resolved — Expert author allowed, without credentials.** Locked (owner, B1.2, 2026-10-09). See D66.
 

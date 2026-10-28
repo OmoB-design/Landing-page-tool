@@ -74,8 +74,10 @@ export function BuildPreview({
   // On the review desk (D84) the frame shows the proof: every sentence clickable, our bridge
   // script running (allowed by a nonce), the page's own scripts still off.
   const desk = useDeskOptional();
+  // The page's version changes with every edit and the build's last update with every rebuild, so
+  // together they name one version of the proof, which the browser may keep (see the route).
   const editSrc = desk
-    ? `/preview/${buildId}?mode=edit&v=${desk.desk.build.page_version}`
+    ? `/preview/${buildId}?mode=edit&v=${desk.desk.build.page_version}&u=${encodeURIComponent(version)}`
     : null;
   const frameSrc = editSrc ?? src;
   const focus = desk?.focus ?? null;

@@ -58,12 +58,21 @@ const DESK_BRIDGE = `(function () {
   parent.postMessage({ type: "lp-ready" }, "*");
 })();`;
 
-function page(html: string, nonce: string | null) {
+/**
+ * `versioned`: the address names this exact version of the page (it changes with every edit and
+ * every rebuild), so the browser may keep it for an hour: going back to a page, or opening it
+ * again, shows the preview without asking the worker. Only this browser keeps it (`private`), and
+ * only for the same sign-in (`Vary: Cookie`).
+ */
+function page(html: string, nonce: string | null, versioned: boolean) {
   const storage = new URL(publicEnv.supabaseUrl).origin;
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "private, no-store",
+      "Cache-Control": versioned
+        ? "private, max-age=3600"
+        : "private, no-store",
+      Vary: "Cookie",
       "X-Content-Type-Options": "nosniff",
       "Content-Security-Policy": [
         nonce ? "sandbox allow-scripts" : "sandbox",
@@ -90,7 +99,8 @@ export async function GET(
   { params }: RouteContext<"/preview/[buildId]">,
 ) {
   const { buildId } = await params;
-  if (new URL(request.url).searchParams.get("mode") === "edit") {
+  const query = new URL(request.url).searchParams;
+  if (query.get("mode") === "edit") {
     const session = await getApiSession();
     if (!session) return new Response("Not found", { status: 404 });
     let html: string;
@@ -113,6 +123,8 @@ export async function GET(
         ? marked + script
         : marked.slice(0, end) + script + marked.slice(end),
       nonce,
+      // The page's version (edits) and the build's last update (rebuilds) together.
+      query.has("v") && query.has("u"),
     );
   }
 
@@ -129,5 +141,5 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
   // Section ids for the claims check's section buttons to jump to (preview only).
-  return page(addSectionAnchors(await data.text()), null);
+  return page(addSectionAnchors(await data.text()), null, query.has("v"));
 }
