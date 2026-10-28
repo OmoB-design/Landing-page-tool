@@ -147,8 +147,8 @@ async function Build({
                 />
                 {publish ? (
                   <>
-                    <PublishButton />
                     <LiveButton />
+                    <PublishButton />
                     <PublishedModal />
                   </>
                 ) : null}

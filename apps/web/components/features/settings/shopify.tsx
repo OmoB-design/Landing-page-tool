@@ -269,10 +269,12 @@ export function ShopifyConnectForm({
         ) : (
           <span className="flex-1" />
         )}
+        {/* Figma 686:15456: Cancel is plain text on the frame, as the published modal's Done. */}
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="compact"
+          className="text-body"
           disabled={connect.isPending}
           onClick={onCancel}
         >

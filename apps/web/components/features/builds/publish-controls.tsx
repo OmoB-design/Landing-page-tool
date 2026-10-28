@@ -213,8 +213,9 @@ export function LiveButton() {
   );
 }
 
-/** A destination row's action (Figma 631:14872): 12 px label, light shadow. */
-const ROW_ACTION = "text-type-caption-1 shadow-light";
+/** A destination row's action (Figma 631:14872): 12 px label (the light shadow is the outline
+ * button's own). */
+const ROW_ACTION = "text-type-caption-1";
 
 /** A destination row (Figma 631:14865): the logo on its tile, the name, its state, an action. */
 function DestinationRow({
@@ -674,10 +675,12 @@ export function PublishedModal() {
         </ModalCard>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4">
+          {/* Figma 686:15362: Done is plain text on the frame, no fill or edge. */}
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="compact"
+            className="text-body"
             onClick={() => setModalOpen(false)}
           >
             Done

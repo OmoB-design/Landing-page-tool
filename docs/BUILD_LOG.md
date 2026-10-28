@@ -723,3 +723,8 @@ as new entries.
 - **Deviation:** Done and Cancel stay outline buttons (the frames draw them plain), as the owner said colours don't change; the Shopify card follows 686:15456's structure (header on the frame), not the earlier frame 683:15139 (header inside the card).
 - **Verification:** web typecheck, lint, tokens, vitest 158/158; screenshots in light and dark of the live modal, Unpublish asking, and both stacked Shopify cards.
 
+
+### Follow-up — Header order and quieter buttons (2026-10-28)
+- **Status:** complete (owner; pushed)
+- **Summary:** the build page header shows Live before Publish again (also on /dev/build-states). Outline buttons everywhere now look like the published modal's row buttons (Figma 631:14872): a true 0.5 px Stroke-Strong edge drawn as a ring (Chrome draws a 0.5 px border a whole pixel wide) and the light shadow instead of the control shadow, which added a second ring; the raised fill and brighter edge in dark mode (2026-10-26) are gone. The published modal's Done and the Shopify connect card's Cancel are plain text buttons on the frame, as Figma 686:15456 draws them (this ends the deviation noted on 2026-10-27).
+- **Verification:** computed in the browser, light and dark: outline buttons have no border, a 0.5 px ring and the light shadow; Done and Cancel have no fill or edge; screenshots of the header, the modal's footer and rows, and the Shopify card's footer. Web typecheck, lint, tokens, prettier; vitest 156/158 in the full run (two slow DOM tests timed out under load, both pass when run alone).
