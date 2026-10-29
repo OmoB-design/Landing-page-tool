@@ -39,6 +39,9 @@ const row: ProductRow = {
   pulled_at: null,
   pull_source: "shopify_json",
   deleted_at: null,
+  deleted_by: null,
+  trashed_with: null,
+  purged_at: null,
   created_at: "2026-10-08T12:00:00Z",
   updated_at: "2026-10-08T12:00:00Z",
 };

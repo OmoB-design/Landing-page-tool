@@ -34,6 +34,9 @@ from app.providers.shopify import ShopifyError, admin_page_url
 from app.publish import shopify_page
 
 TOTAL = 5
+STORAGE_FAILED = (
+    "Couldn't save the page in storage (the connection was too slow or dropped). Try again."
+)
 FILE_WAIT_SECONDS = 60.0
 FILE_POLL_SECONDS = 2.0
 
@@ -63,6 +66,9 @@ def run(ctx: JobContext) -> dict[str, Any]:
     org_id = ctx.job.org_id
     try:
         return _publish(ctx, payload, org_id)
+    except storage.StorageError as exc:
+        _fail(payload.publication_id, org_id, STORAGE_FAILED)
+        raise UserFacingError(STORAGE_FAILED, code="storage") from exc
     except ShopifyError as exc:
         _fail(payload.publication_id, org_id, exc.message)
         raise UserFacingError(exc.message, code="shopify") from exc
@@ -139,15 +145,17 @@ def _publish(ctx: JobContext, payload: PublishShopifyPayload, org_id: UUID) -> d
             else None
         )
         secret = vault.read(conn, store["vault_secret_id"]) if store else None
-        previous = conn.execute(
+        # The draft to update: the newest one, unless it was removed since (then a new page).
+        last = conn.execute(
             """
-            select details->>'page_id' as page_id from publications
+            select status, details->>'page_id' as page_id from publications
             where build_id = %(b)s and org_id = %(o)s and destination = 'shopify_page'
-              and status = 'succeeded' and details ? 'page_id'
+              and status in ('succeeded', 'unpublished')
             order by created_at desc limit 1
             """,
             {"b": payload.build_id, "o": org_id},
         ).fetchone()
+        previous = last if last and last["status"] == "succeeded" and last["page_id"] else None
     if build is None or not build["working_html_path"]:
         raise UserFacingError("That page isn't there any more.", code="build_missing")
     if store is None or not secret:
@@ -219,3 +227,88 @@ def _publish(ctx: JobContext, payload: PublishShopifyPayload, org_id: UUID) -> d
         )  # fmt: skip
     ctx.progress("The draft is in Shopify", data={"step": 5, "total": TOTAL})
     return {"build_id": str(build["id"]), "admin_url": admin_url, "template": template}
+
+
+# ── removing the draft ────────────────────────────────────────────────────────
+
+
+class UnpublishShopifyPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    build_id: UUID
+    publication_id: UUID
+
+
+def run_unpublish(ctx: JobContext) -> dict[str, Any]:
+    """`unpublish_shopify_page`: deletes the draft page from the brand's store (a page already
+    deleted in Shopify counts as removed) and records it; the images it moved stay in the store's
+    files."""
+    payload = UnpublishShopifyPayload.model_validate(ctx.job.payload)
+    org_id = ctx.job.org_id
+    try:
+        return _unpublish(ctx, payload, org_id)
+    except ShopifyError as exc:
+        _fail(payload.publication_id, org_id, exc.message)
+        raise UserFacingError(exc.message, code="shopify") from exc
+    except UserFacingError as exc:
+        _fail(payload.publication_id, org_id, exc.message)
+        raise
+    except Exception:
+        _fail(payload.publication_id, org_id, "Something went wrong while removing the draft.")
+        raise
+
+
+def _unpublish(ctx: JobContext, payload: UnpublishShopifyPayload, org_id: UUID) -> dict[str, Any]:
+    with transaction() as conn:
+        draft = conn.execute(
+            """
+            select p.url, p.details->>'page_id' as page_id, b.brand_id
+            from publications p join builds b on b.id = p.build_id
+            where p.build_id = %(b)s and p.org_id = %(o)s and p.destination = 'shopify_page'
+              and p.status = 'succeeded' and p.details ? 'page_id'
+            order by p.created_at desc limit 1
+            """,
+            {"b": payload.build_id, "o": org_id},
+        ).fetchone()
+        store = (
+            conn.execute(
+                """
+                select shop_domain, client_id, vault_secret_id from store_connections
+                where brand_id = %(brand)s and org_id = %(o)s and status = 'connected'
+                """,
+                {"brand": draft["brand_id"], "o": org_id},
+            ).fetchone()
+            if draft
+            else None
+        )
+        secret = vault.read(conn, store["vault_secret_id"]) if store else None
+    if draft is None:
+        raise UserFacingError("This page has no Shopify draft to remove.", code="no_draft")
+    if store is None or not secret:
+        raise UserFacingError("This brand's Shopify store isn't connected any more.")
+    shop = store["shop_domain"]
+    token = publishing.shopify_token(shop, store["client_id"], secret)
+    client = publishing.shopify_client(shop, token.access_token)
+    try:
+        existed = client.delete_page(draft["page_id"])
+    finally:
+        client.close()
+    ctx.progress(
+        "Removed the draft from Shopify" if existed else "The draft was already gone from Shopify",
+        data={"step": 1, "total": 1},
+    )
+    with transaction() as conn:
+        conn.execute(
+            """
+            update publications set status = 'unpublished', url = %(url)s,
+                   details = coalesce(details, '{}'::jsonb) || %(d)s
+            where id = %(p)s and org_id = %(o)s
+            """,
+            {
+                "url": draft["url"], "p": payload.publication_id, "o": org_id,
+                "d": Jsonb({
+                    "page_id": draft["page_id"], "shop": shop, "already_gone": not existed,
+                }),
+            },
+        )  # fmt: skip
+    return {"build_id": str(payload.build_id), "removed": existed}

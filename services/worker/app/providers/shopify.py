@@ -281,6 +281,27 @@ class ShopifyClient:
             raise ShopifyError("Shopify didn't return the page.")
         return page
 
+    def delete_page(self, page_id: str) -> bool:
+        """Deletes the page; False when the store no longer has it (deleted in Shopify already)."""
+        data = self.graphql(
+            """
+            mutation Delete($id: ID!) {
+              pageDelete(id: $id) { deletedPageId userErrors { code field message } }
+            }
+            """,
+            {"id": page_id},
+        )
+        result = data.get("pageDelete") or {}
+        errors = result.get("userErrors") or []
+        if errors:
+            message = str(errors[0].get("message") or "")
+            if str(errors[0].get("code") or "").upper() == "NOT_FOUND" or (
+                "not exist" in message.lower() or "not found" in message.lower()
+            ):
+                return False
+            raise ShopifyError(f"Shopify refused to delete the page: {message}.")
+        return True
+
 
 def _throttled(body: dict[str, Any]) -> bool:
     return any(

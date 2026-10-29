@@ -38,22 +38,3 @@ export async function updateProduct(
   if (!data) return { error: "That product no longer exists." };
   return { ok: true };
 }
-
-/** Removes a product from the brand (soft delete; adding it again restores it). */
-export async function removeProduct(
-  productId: string,
-): Promise<ProductActionResult> {
-  const { currentOrg } = await getSessionContext();
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", productId)
-    .eq("org_id", currentOrg.id)
-    .is("deleted_at", null)
-    .select("id")
-    .maybeSingle();
-  if (error) return { error: `Couldn't remove the product: ${error.message}` };
-  if (!data) return { error: "That product no longer exists." };
-  return { ok: true };
-}

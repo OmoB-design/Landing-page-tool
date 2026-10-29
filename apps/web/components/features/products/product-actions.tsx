@@ -15,7 +15,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { removeProduct } from "@/lib/products/actions";
+import { restoreItem, trashItem } from "@/lib/trash/actions";
 import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
 import { useJob, useStartJob } from "@/lib/queries/jobs";
 
@@ -29,7 +29,7 @@ export const PULL_AGAIN =
 /**
  * The product's actions (Figma Brands Details: product detail page), 30 px buttons 6 px apart:
  * New Page for this product (blue), Pull again (re-reads the product page, replacing the details;
- * Surface-Primary on a Stroke line) and Remove (no frame); each change asks first.
+ * Surface-Primary on a Stroke line) and Remove (no frame; to Trash, D92); each change asks first.
  */
 export function ProductActions({
   brandId,
@@ -62,9 +62,19 @@ export function ProductActions({
 
   const remove = () =>
     startRemoving(async () => {
-      const result = await removeProduct(productId);
+      const result = await trashItem("product", productId);
       if (result.ok) {
-        toast.success(`Removed ${name}`);
+        toast.success(`${name} moved to Trash`, {
+          action: {
+            label: "Undo",
+            onClick: () =>
+              void restoreItem("product", productId).then((back) =>
+                back.ok
+                  ? (toast.success(`${name} restored`), router.refresh())
+                  : toast.error(back.error ?? "Couldn’t restore it."),
+              ),
+          },
+        });
         router.push(`/brands/${brandId}/products`);
       } else {
         setRemoveError(result.error ?? "Couldn't remove the product.");
@@ -116,10 +126,10 @@ export function ProductActions({
           </PopoverTrigger>
           <PopoverContent align="start" className="w-80">
             <PopoverHeader>
-              <PopoverTitle>Remove {name}?</PopoverTitle>
+              <PopoverTitle>Move {name} to Trash?</PopoverTitle>
               <PopoverDescription>
-                It leaves this brand&apos;s products. Adding it again from its
-                page brings it back.
+                It leaves the brand&apos;s products; pages made with it keep
+                working. You can restore it from Settings → Trash for 7 days.
               </PopoverDescription>
             </PopoverHeader>
             <Button
@@ -129,7 +139,7 @@ export function ProductActions({
               onClick={remove}
               disabled={removing}
             >
-              Remove product
+              Move to Trash
             </Button>
           </PopoverContent>
         </Popover>

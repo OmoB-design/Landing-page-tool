@@ -265,9 +265,12 @@ function RowConfirm({ children }: { children: ReactNode }) {
  * back are asked about first), publishing, and a draft (Open in admin, Update draft).
  */
 function ShopifyRow() {
-  const { publishing, page, publish, starting, refresh } = usePublish();
+  const { publishing, page, publish, unpublish, starting, refresh } =
+    usePublish();
   const stack = useModalStack();
   const [asking, setAsking] = useState(false);
+  // Remove draft asks first, in the row (as Unpublish does for Vercel).
+  const [removing, setRemoving] = useState(false);
   // After connecting, the focus lands on Publish to Shopify once the row shows the store.
   const [justConnected, setJustConnected] = useState(false);
   const publishButton = useRef<HTMLButtonElement>(null);
@@ -309,7 +312,11 @@ function ShopifyRow() {
       ),
     });
   const running = publishing.running?.destination === "shopify_page";
+  const removingNow = running && publishing.running?.action === "unpublish";
   const draft = publishing.shopify_draft;
+  const remove = async () => {
+    if (await unpublish("shopify_page")) setRemoving(false);
+  };
   const stuck = publishing.gate.filter((b) => !b.overridable);
   const passable = publishing.gate.filter((b) => b.overridable);
   const send = async (override: boolean) => {
@@ -318,7 +325,14 @@ function ShopifyRow() {
   const start = () =>
     publishing.gate.length > 0 ? setAsking(true) : void send(false);
   let status: ReactNode = "Not connected";
-  if (running)
+  if (removingNow)
+    status = (
+      <>
+        <Spinner className="size-3" label="Removing the draft" />
+        Removing the draft…
+      </>
+    );
+  else if (running)
     status = (
       <>
         <Spinner className="size-3" label="Publishing to Shopify" />
@@ -351,9 +365,21 @@ function ShopifyRow() {
         Connect Shopify
       </Button>
     );
-  else if (!asking)
+  else if (!asking && !removing)
     action = (
       <div className="flex gap-1.5">
+        {draft && !running ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={ROW_ACTION}
+            disabled={starting}
+            onClick={() => setRemoving(true)}
+          >
+            Remove draft
+          </Button>
+        ) : null}
         {draft?.admin_url ? (
           <Button asChild variant="outline" size="sm" className={ROW_ACTION}>
             <a href={draft.admin_url} target="_blank" rel="noreferrer">
@@ -381,7 +407,7 @@ function ShopifyRow() {
       status={status}
       action={action}
     >
-      {draft?.full_width === false && !asking ? (
+      {draft?.full_width === false && !asking && !removing ? (
         <p className="pl-11 text-type-caption-1 text-heading-05">
           Fitted into the theme’s page, its header and footer hidden.{" "}
           <button
@@ -392,6 +418,41 @@ function ShopifyRow() {
             Set up full width for an exact fit
           </button>
         </p>
+      ) : null}
+      {removing && draft ? (
+        <RowConfirm>
+          <p className="text-heading-02">
+            Remove {page.key}’s draft from{" "}
+            {publishing.shopify_domain ?? "the store"}?
+          </p>
+          <p className="text-heading-05">
+            The draft page is deleted from the store. You can publish it again
+            any time.
+          </p>
+          <div className="flex justify-end gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="compact"
+              disabled={starting}
+              onClick={() => setRemoving(false)}
+            >
+              Keep it
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="compact"
+              disabled={starting}
+              onClick={() => void remove()}
+            >
+              {starting ? (
+                <Spinner className="size-3.5" label="Removing" />
+              ) : null}
+              Remove draft
+            </Button>
+          </div>
+        </RowConfirm>
       ) : null}
       {asking ? (
         <RowConfirm>
@@ -734,12 +795,16 @@ function PublicationRow({
   const shopify = p.destination === "shopify_page";
   const label =
     p.status === "unpublished"
-      ? "Unpublished"
+      ? shopify
+        ? "Removed"
+        : "Unpublished"
       : p.status === "failed"
         ? "Failed"
         : p.status === "pending"
           ? p.action === "unpublish"
-            ? "Unpublishing"
+            ? shopify
+              ? "Removing"
+              : "Unpublishing"
             : "Publishing"
           : shopify
             ? "Draft"
@@ -752,13 +817,17 @@ function PublicationRow({
         </span>
         {p.url ? (
           <a
-            href={shopify && p.admin_url ? p.admin_url : p.url}
+            href={
+              shopify && p.admin_url && p.action !== "unpublish"
+                ? p.admin_url
+                : p.url
+            }
             target="_blank"
             rel="noreferrer"
             className="min-w-0 flex-1 truncate text-text-link hover:underline"
           >
             {shopify
-              ? `Shopify draft · ${hostAndPath(p.url)}`
+              ? `${p.action === "unpublish" ? "Removed from Shopify" : "Shopify draft"} · ${hostAndPath(p.url)}`
               : hostAndPath(p.url)}
           </a>
         ) : (

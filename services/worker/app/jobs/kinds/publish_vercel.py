@@ -34,6 +34,10 @@ from app.providers.vercel import VercelClient, VercelError, production_host
 from app.publish import site
 from app.publish.assets import resolver
 
+STORAGE_FAILED = (
+    "Couldn't save the page in storage (the connection was too slow or dropped). Try again."
+)
+
 TOTAL = 5
 CHECK_ATTEMPTS = 6
 CHECK_WAIT_SECONDS = 2.0
@@ -117,6 +121,9 @@ def run(ctx: JobContext) -> dict[str, Any]:
     org_id = ctx.job.org_id
     try:
         return _publish(ctx, payload, org_id)
+    except storage.StorageError as exc:
+        _fail(payload.publication_id, org_id, STORAGE_FAILED)
+        raise UserFacingError(STORAGE_FAILED, code="storage") from exc
     except VercelError as exc:
         _fail(payload.publication_id, org_id, exc.message)
         raise UserFacingError(exc.message, code="vercel") from exc
@@ -238,6 +245,9 @@ def run_unpublish(ctx: JobContext) -> dict[str, Any]:
     org_id = ctx.job.org_id
     try:
         return _unpublish(ctx, payload, org_id)
+    except storage.StorageError as exc:
+        _fail(payload.publication_id, org_id, STORAGE_FAILED)
+        raise UserFacingError(STORAGE_FAILED, code="storage") from exc
     except VercelError as exc:
         _fail(payload.publication_id, org_id, exc.message)
         raise UserFacingError(exc.message, code="vercel") from exc

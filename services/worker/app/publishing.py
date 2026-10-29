@@ -347,9 +347,17 @@ def publishing_state(org_id: UUID, build_id: UUID) -> PublishingState:
         None,
     )
     live = finished if finished and finished["status"] == "succeeded" else None
-    draft = next(
-        (r for r in rows if r["destination"] == "shopify_page" and r["status"] == "succeeded"),
+    # A Shopify draft: the same, for the store (a removed draft is an unpublish).
+    shopify_finished = next(
+        (
+            r
+            for r in rows
+            if r["destination"] == "shopify_page" and r["status"] in ("succeeded", "unpublished")
+        ),
         None,
+    )
+    draft = (
+        shopify_finished if shopify_finished and shopify_finished["status"] == "succeeded" else None
     )
     return PublishingState(
         build_id=build["id"],
@@ -437,37 +445,47 @@ def start_publish(
     return publishing_state(org_id, build_id)
 
 
-def start_unpublish(org_id: UUID, build_id: UUID, user_id: UUID | None) -> PublishingState:
-    """Queues taking the page down from Vercel (the brand's other pages stay up), recorded as a
-    publication of its own (D89)."""
+def start_unpublish(
+    org_id: UUID, build_id: UUID, user_id: UUID | None, destination: str = "vercel"
+) -> PublishingState:
+    """Queues taking the page down from Vercel (the brand's other pages stay up; D89), or removing
+    its draft page from the brand's Shopify store; recorded as a publication of its own."""
+    shopify_draft = destination == "shopify_page"
     with transaction() as conn:
         _load(conn, org_id, build_id, lock=True)
         latest = conn.execute(
             """
             select status from publications
-            where build_id = %(b)s and org_id = %(o)s and destination = 'vercel'
+            where build_id = %(b)s and org_id = %(o)s and destination = %(d)s
               and status in ('succeeded', 'unpublished', 'pending')
             order by created_at desc limit 1
             """,
-            {"b": build_id, "o": org_id},
+            {"b": build_id, "o": org_id, "d": destination},
         ).fetchone()
         if latest is None or latest["status"] == "unpublished":
-            raise PublishError("This page isn't live, so there's nothing to unpublish.")
+            raise PublishError(
+                "This page has no Shopify draft to remove."
+                if shopify_draft
+                else "This page isn't live, so there's nothing to unpublish."
+            )
         if latest["status"] == "pending":
             raise PublishError("This page is being published already.")
         row = conn.execute(
             """
             insert into publications (org_id, build_id, destination, status, details, created_by)
-            values (%(o)s, %(b)s, 'vercel', 'pending', %(details)s, %(u)s)
+            values (%(o)s, %(b)s, %(d)s, 'pending', %(details)s, %(u)s)
             returning id
             """,
-            {"o": org_id, "b": build_id, "details": Jsonb({"action": "unpublish"}), "u": user_id},
-        ).fetchone()
+            {
+                "o": org_id, "b": build_id, "d": destination,
+                "details": Jsonb({"action": "unpublish"}), "u": user_id,
+            },
+        ).fetchone()  # fmt: skip
         assert row is not None
         try:
             job, _ = queue.enqueue(
                 org_id=org_id,
-                kind="unpublish_vercel",
+                kind="unpublish_shopify_page" if shopify_draft else "unpublish_vercel",
                 payload={"build_id": str(build_id), "publication_id": str(row["id"])},
                 created_by=user_id,
                 dedupe_key=f"publish:{build_id}",

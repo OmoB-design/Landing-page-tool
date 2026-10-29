@@ -1,19 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
-import { toast } from "@/components/app/toaster";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +13,8 @@ import {
   RowMoreIcon,
   TrashFigmaIcon,
 } from "@/components/ui/lp-icons";
-import { deleteTemplate } from "@/lib/templates/actions";
+
+import { MoveToTrashDialog } from "../trash/move-to-trash-dialog";
 
 // Figma Template/Yours: 26 px rows on 4 px corners, 4 px in, a 14 px icon 4 px from a 12 px
 // medium label; Foreground-03 on hover and focus.
@@ -34,8 +23,9 @@ const ITEM =
 
 /**
  * The ⋯ beside Use Template on your own templates (Figma: Template/Yours): a 28 x 26 button on
- * Foreground-02 with 8 px corners, and its 132 px menu, Preview and Delete, with the app's menu
- * frame (2 px padding, 6 px corners, the float shadow and a 0.5 px edge). Delete asks first.
+ * Foreground-02 with 8 px corners, and its 132 px menu, Preview and Move to Trash, with the app's
+ * menu frame (2 px padding, 6 px corners, the float shadow and a 0.5 px edge). Moving to Trash asks
+ * first (D92); pages built from the template keep working.
  */
 export function TemplateCardMenu({
   templateId,
@@ -46,21 +36,7 @@ export function TemplateCardMenu({
   name: string;
   previewHref: string;
 }) {
-  const router = useRouter();
-  const [confirming, setConfirming] = useState(false);
-  const [pending, startTransition] = useTransition();
-
-  const remove = () =>
-    startTransition(async () => {
-      const result = await deleteTemplate(templateId);
-      if (result.ok) {
-        setConfirming(false);
-        toast.success(`Deleted ${name}`);
-        router.refresh();
-      } else {
-        toast.error(result.error ?? "Couldn't delete the template.");
-      }
-    });
+  const [trashing, setTrashing] = useState(false);
 
   return (
     <>
@@ -86,41 +62,19 @@ export function TemplateCardMenu({
               <span className="sr-only">(opens in a new tab)</span>
             </a>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className={ITEM}
-            onSelect={() => setConfirming(true)}
-          >
+          <DropdownMenuItem className={ITEM} onSelect={() => setTrashing(true)}>
             <TrashFigmaIcon />
-            Delete
+            Move to Trash
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Dialog open={confirming} onOpenChange={setConfirming}>
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>Delete {name}?</DialogTitle>
-            <DialogDescription>
-              Pages already built from it keep working. You can add it again
-              from the library.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" size="sm">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={pending}
-              onClick={remove}
-            >
-              Delete template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MoveToTrashDialog
+        open={trashing}
+        onOpenChange={setTrashing}
+        kind="template"
+        id={templateId}
+        name={name}
+      />
     </>
   );
 }

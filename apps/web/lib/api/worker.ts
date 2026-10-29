@@ -2,6 +2,11 @@ import { z } from "zod";
 
 import { type BuildCreated, buildCreatedSchema } from "@/lib/validators/build";
 import {
+  type TrashKind,
+  type TrashState,
+  trashStateSchema,
+} from "@/lib/validators/trash";
+import {
   type DeskAction,
   type DeskState,
   deskStateSchema,
@@ -395,16 +400,18 @@ export function startPublish(
   );
 }
 
-/** Queues taking the page down from Vercel (D89); the brand's other pages stay up. */
+/** Queues taking the page down from Vercel (D89; the brand's other pages stay up), or removing its
+ * draft from the brand's Shopify store. */
 export function startUnpublish(
   accessToken: string,
   buildId: string,
   orgId: string,
+  destination: "vercel" | "shopify_page" = "vercel",
 ): Promise<PublishingState> {
   return postToWorker(
     `/builds/${encodeURIComponent(buildId)}/unpublish`,
     accessToken,
-    { org_id: orgId },
+    { org_id: orgId, destination },
     publishingStateSchema,
     "Could not start unpublishing.",
   );
@@ -456,5 +463,71 @@ export function getShopifyTemplate(
     undefined,
     shopifyTemplateSchema,
     "Could not load the template.",
+  );
+}
+
+// ── Trash (B1.6a, D92) ───────────────────────────────────────────────────────
+
+/** What's in the workspace's Trash (7 days), newest first. */
+export function getTrash(
+  accessToken: string,
+  orgId: string,
+): Promise<TrashState> {
+  return callWorker(
+    "GET",
+    `/trash?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    trashStateSchema,
+    "Could not load Trash.",
+  );
+}
+
+/** Moves a page, brand, product or template to Trash (refused while a page is building or
+ * published; a brand takes its pages and products with it). */
+export function moveToTrash(
+  accessToken: string,
+  orgId: string,
+  kind: TrashKind,
+  id: string,
+): Promise<null> {
+  return postToWorker(
+    `/trash/${kind}/${encodeURIComponent(id)}`,
+    accessToken,
+    { org_id: orgId },
+    z.null(),
+    "Could not move it to Trash.",
+  );
+}
+
+export function restoreFromTrash(
+  accessToken: string,
+  orgId: string,
+  kind: TrashKind,
+  id: string,
+): Promise<TrashState> {
+  return postToWorker(
+    `/trash/${kind}/${encodeURIComponent(id)}/restore`,
+    accessToken,
+    { org_id: orgId },
+    trashStateSchema,
+    "Could not restore it.",
+  );
+}
+
+/** Deletes it for good, with its stored files (owners and admins). */
+export function deleteFromTrash(
+  accessToken: string,
+  orgId: string,
+  kind: TrashKind,
+  id: string,
+): Promise<TrashState> {
+  return callWorker(
+    "DELETE",
+    `/trash/${kind}/${encodeURIComponent(id)}?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    trashStateSchema,
+    "Could not delete it for good.",
   );
 }

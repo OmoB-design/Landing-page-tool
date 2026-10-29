@@ -92,6 +92,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 - **Owner actions:** Vercel token; a Shopify development store and custom app (exact steps in the Build Report).
 
 ### B1.6 — Library, analytics, notifications, hardening
+*Split (owner, 2026-10-28): **B1.6a** removing a Shopify draft and Trash (D92); **B1.6b** Library, Analytics and per-brand AI budgets; **B1.6c** hardening (rate limits, empty and error states) and the end-to-end test.*
 - Library archive, analytics roll-ups, notifications, soft delete/restore (7 days), empty states, error states, rate limits, e2e test.
 - Per-brand monthly AI budget (BUILD_SPEC §6.5, D54).
 - **Acceptance:** a new user can sign up, create a brand, build from a library template, edit, and publish to Vercel without help.

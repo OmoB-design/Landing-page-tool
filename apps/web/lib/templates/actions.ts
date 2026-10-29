@@ -45,25 +45,6 @@ export async function addTemplate(
   }
 }
 
-/** Removes one of the org's templates (soft delete; builds made from it keep working). */
-export async function deleteTemplate(
-  templateId: string,
-): Promise<TemplateActionResult> {
-  const { currentOrg } = await getSessionContext();
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("templates")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", templateId)
-    .eq("org_id", currentOrg.id)
-    .is("deleted_at", null)
-    .select("id")
-    .maybeSingle();
-  if (error) return { error: `Couldn't delete the template: ${error.message}` };
-  if (!data) return { error: "That template no longer exists." };
-  return { ok: true };
-}
-
 // ── Section editor (BUILD_SPEC §8.3) ─────────────────────────────────────────
 
 export type EditorActionResult = {

@@ -127,7 +127,7 @@ function PageRow({
           ) : null}
         </>
       }
-      actions={<PageRowMenu pageKey={page.key} href={href} />}
+      actions={<PageRowMenu buildId={page.id} pageKey={page.key} href={href} />}
     >
       {children}
     </ListRow>

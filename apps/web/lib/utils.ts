@@ -26,6 +26,8 @@ export const cn = createCn({
         "menu-display",
         "home-card",
         "home-row",
+        "settings",
+        "settings-wide",
       ],
       radius: ["xsm", "xxl", "max", "card", "panel", "item", "well", "icon"],
       // Without these, shadow-edge etc. read as a shadow colour and shadcn's shadow-md stays.

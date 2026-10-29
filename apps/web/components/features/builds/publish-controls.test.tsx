@@ -309,6 +309,45 @@ describe("Publish", () => {
     expect(onUnpublish).toHaveBeenCalledOnce();
   });
 
+  it("removes the Shopify draft only after asking", () => {
+    const draft = {
+      ...LIVE,
+      id: "p2",
+      destination: "shopify_page",
+      url: "https://lume.myshopify.com/pages/lum-1",
+      admin_url: "https://admin.shopify.com/store/lume/pages/77",
+      project: null,
+      full_width: true,
+    };
+    const onUnpublish = vi.fn();
+    renderPublish(
+      {
+        ...BASE,
+        status: "published",
+        live: LIVE,
+        publications: [draft, LIVE],
+        shopify_domain: "lume.myshopify.com",
+        shopify_draft: draft,
+      },
+      vi.fn(),
+      "published",
+      onUnpublish,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove draft" }));
+    expect(
+      screen.getByText("Remove LUM-1’s draft from lume.myshopify.com?"),
+    ).toBeTruthy();
+    expect(onUnpublish).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Keep it" }));
+    expect(screen.queryByText(/draft from lume/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Remove draft" }));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Remove draft" }).at(-1)!,
+    );
+    expect(onUnpublish).toHaveBeenCalledWith("shopify_page");
+  });
+
   it("shows Live, with its pulsing dot, instead of the Published chip", () => {
     renderPublish(
       { ...BASE, status: "published", live: LIVE, publications: [LIVE] },

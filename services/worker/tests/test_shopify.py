@@ -125,6 +125,8 @@ class FakeStore:
         self.saved: list[dict[str, Any]] = []
         self.theme_files_written: dict[str, str] = {}
         self.upserts = 0
+        self.deleted: list[str] = []
+        self.gone: set[str] = set()  # pages deleted in Shopify by hand
 
     def close(self) -> None:
         pass
@@ -150,7 +152,12 @@ class FakeStore:
 
     def save_page(self, **page: Any) -> dict[str, Any]:
         self.saved.append(page)
-        return {"id": page["page_id"] or "gid://shopify/Page/77", "handle": page["handle"]}
+        new_id = f"gid://shopify/Page/{77 + len(self.deleted)}"
+        return {"id": page["page_id"] or new_id, "handle": page["handle"]}
+
+    def delete_page(self, page_id: str) -> bool:
+        self.deleted.append(page_id)
+        return page_id not in self.gone
 
 
 @pytest.fixture
@@ -166,9 +173,9 @@ def fake_store(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeStore]:
     yield store
 
 
-def run_job() -> dict[str, Any]:
+def run_job(kind: str = "publish_shopify_page") -> dict[str, Any]:
     runner = Runner(get_settings(), kinds=KINDS, worker_id=f"test-{uuid.uuid4().hex[:6]}")
-    claimed = queue.claim(runner.worker_id, 5, ["publish_shopify_page"])
+    claimed = queue.claim(runner.worker_id, 5, [kind])
     assert claimed is not None
     runner.execute(claimed)
     return job_row(claimed.id)
@@ -308,3 +315,66 @@ def test_the_template_files_are_served_for_the_store_owner(
     paths = [f["path"] for f in response.json()["files"]]
     assert paths == list(shopify_page.THEME_FILES)
     assert "content_for_header" in response.json()["files"][0]["body"]
+
+
+def remove_draft(client: TestClient, user: DbUser, build: dict[str, Any]) -> Any:
+    return client.post(
+        f"/builds/{build['id']}/unpublish",
+        json={"org_id": build["org_id"], "destination": "shopify_page"},
+        headers=bearer(user),
+    )
+
+
+@needs_db
+def test_removing_the_draft_deletes_the_page_and_the_next_publish_makes_a_new_one(
+    client: TestClient, user: DbUser, finished: dict[str, Any], fake_store: FakeStore
+) -> None:
+    with transaction() as conn:
+        conn.execute(
+            "update builds set status = 'approved' where id = %(b)s", {"b": finished["id"]}
+        )
+    version = state(client, user, finished)["page_version"]
+    assert connect(client, user, finished).status_code == 200
+    nothing = remove_draft(client, user, finished)
+    assert nothing.status_code == 422 and "no Shopify draft" in nothing.json()["detail"]
+
+    def publish() -> None:
+        started = post(client, user, finished, "publish", base_version=version,
+                       destination="shopify_page")  # fmt: skip
+        assert started.status_code == 200, started.text
+        assert run_job()["status"] == "succeeded"
+
+    publish()
+    assert state(client, user, finished)["shopify_draft"]["admin_url"].endswith("/pages/77")
+    removing = remove_draft(client, user, finished)
+    assert removing.status_code == 200, removing.text
+    assert removing.json()["running"]["action"] == "unpublish"
+    job = run_job("unpublish_shopify_page")
+    assert job["status"] == "succeeded", job["error"]
+    assert fake_store.deleted == ["gid://shopify/Page/77"]
+    after = state(client, user, finished)
+    assert after["shopify_draft"] is None and after["running"] is None
+    assert after["publications"][0]["action"] == "unpublish"
+    assert after["publications"][0]["status"] == "unpublished"
+
+    # Publishing again makes a new page rather than updating the deleted one.
+    publish()
+    assert fake_store.saved[-1]["page_id"] is None
+    assert state(client, user, finished)["shopify_draft"]["admin_url"].endswith("/pages/78")
+
+    # Deleted in Shopify by hand already: removing it still succeeds.
+    fake_store.gone.add("gid://shopify/Page/78")
+    assert remove_draft(client, user, finished).status_code == 200
+    assert run_job("unpublish_shopify_page")["status"] == "succeeded"
+    assert state(client, user, finished)["shopify_draft"] is None
+
+
+def test_deleting_a_page_that_shopify_no_longer_has_counts_as_removed() -> None:
+    def store(request: httpx.Request) -> httpx.Response:
+        error = {"code": "NOT_FOUND", "field": ["id"], "message": "Page does not exist"}
+        return httpx.Response(
+            200, json={"data": {"pageDelete": {"deletedPageId": None, "userErrors": [error]}}}
+        )
+
+    client = ShopifyClient("fouru.myshopify.com", "t", transport=httpx.MockTransport(store))
+    assert client.delete_page("gid://shopify/Page/1") is False

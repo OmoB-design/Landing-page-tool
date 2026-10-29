@@ -1,10 +1,19 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { PagesList } from "@/components/features/pages/pages-list";
 import { groupPagesByStatus } from "@/lib/pages/list";
 import { samplePages } from "@/lib/pages/sample";
+
+// The row menu's Move to Trash (D92) calls server actions and the router.
+vi.mock("@/lib/trash/actions", () => ({
+  trashItem: vi.fn(),
+  restoreItem: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
 
 const now = new Date("2026-10-08T12:00:00Z");
 

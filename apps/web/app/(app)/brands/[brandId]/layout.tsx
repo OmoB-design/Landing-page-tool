@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { BrandMark } from "@/components/app/brand-mark";
 import { BrandTabs, BrandTabsPlaceholder } from "@/components/app/brand-tabs";
 import { PageHeader } from "@/components/app/page-header";
+import { BrandMenu } from "@/components/features/brands/brand-menu";
 import { SkeletonMark, SkeletonText } from "@/components/app/skeletons";
 import { BrandsIcon } from "@/components/ui/icons";
 
@@ -63,6 +64,7 @@ async function BrandHeader({
         />
       }
       title={brand.row.name}
+      actions={<BrandMenu brandId={brand.row.id} name={brand.row.name} />}
     />
   );
 }

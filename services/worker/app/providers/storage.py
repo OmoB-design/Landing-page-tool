@@ -29,6 +29,21 @@ class StorageError(RuntimeError):
     pass
 
 
+# Exports inline every image, so a page can be megabytes: uploads get minutes, not httpx's 5 s
+# default (a slow link timed out publishing, 2026-10-28).
+TIMEOUT = httpx.Timeout(15.0, read=120.0, write=300.0)
+
+
+def _send(method: str, url: str, action: str, **kwargs: Any) -> httpx.Response:
+    try:
+        response = httpx.request(method, url, timeout=TIMEOUT, **kwargs)
+    except httpx.TimeoutException as exc:
+        raise StorageError(f"Storage {action} timed out.") from exc
+    except httpx.HTTPError as exc:
+        raise StorageError(f"Couldn't reach storage ({action}).") from exc
+    return _check(response, action)
+
+
 def _base() -> str:
     return f"{get_settings().supabase_url.rstrip('/')}/storage/v1"
 
@@ -48,20 +63,57 @@ def _check(response: httpx.Response, action: str) -> httpx.Response:
 
 def upload(bucket: str, path: str, data: bytes, content_type: str, *, upsert: bool = False) -> None:
     headers = {**_headers(), "Content-Type": content_type, "x-upsert": str(upsert).lower()}
-    response = httpx.post(f"{_base()}/object/{bucket}/{path}", content=data, headers=headers)
-    _check(response, "upload")
+    _send("POST", f"{_base()}/object/{bucket}/{path}", "upload", content=data, headers=headers)
 
 
 def download(bucket: str, path: str) -> bytes:
-    response = httpx.get(f"{_base()}/object/{bucket}/{path}", headers=_headers())
-    return _check(response, "download").content
+    return _send("GET", f"{_base()}/object/{bucket}/{path}", "download", headers=_headers()).content
 
 
 def remove(bucket: str, paths: list[str]) -> None:
-    response = httpx.request(
-        "DELETE", f"{_base()}/object/{bucket}", json={"prefixes": paths}, headers=_headers()
+    _send(
+        "DELETE",
+        f"{_base()}/object/{bucket}",
+        "delete",
+        json={"prefixes": paths},
+        headers=_headers(),
     )
-    _check(response, "delete")
+
+
+LIST_PAGE = 1000
+
+
+def list_files(bucket: str, folder: str) -> list[str]:
+    """Every file under a folder, its subfolders too, as full paths (for removing a folder)."""
+    found: list[str] = []
+    folders = [folder.strip("/")]
+    while folders:
+        current = folders.pop()
+        offset = 0
+        while True:
+            entries: list[dict[str, Any]] = _send(
+                "POST",
+                f"{_base()}/object/list/{bucket}",
+                "list",
+                json={"prefix": current, "limit": LIST_PAGE, "offset": offset},
+                headers=_headers(),
+            ).json()
+            for entry in entries:
+                path = f"{current}/{entry['name']}"
+                # Folders come back without an id.
+                (found if entry.get("id") else folders).append(path)
+            if len(entries) < LIST_PAGE:
+                break
+            offset += LIST_PAGE
+    return found
+
+
+def remove_folder(bucket: str, folder: str) -> int:
+    """Removes every file under a folder; returns how many."""
+    paths = list_files(bucket, folder)
+    for start in range(0, len(paths), LIST_PAGE):
+        remove(bucket, paths[start : start + LIST_PAGE])
+    return len(paths)
 
 
 def public_url(bucket: str, path: str) -> str:

@@ -55,7 +55,7 @@ export const SETTINGS_GROUPS: { label: string; items: SettingsItem[] }[] = [
         icon: BillingIcon,
         soon: true,
       },
-      { href: "/settings/trash", label: "Trash", icon: TrashIcon, soon: true },
+      { href: "/settings/trash", label: "Trash", icon: TrashIcon },
     ],
   },
   {

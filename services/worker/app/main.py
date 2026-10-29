@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app import builds, desk, publishing, templates
+from app import builds, desk, publishing, templates, trash
 from app.auth import CurrentUser, require_org_member
 from app.config import get_settings
 from app.jobs import queue
@@ -36,6 +36,7 @@ from app.models.publishing import (
     VercelConnectRequest,
 )
 from app.models.template import LayoutAction, TemplateEditorState
+from app.models.trash import TrashKind, TrashRequest, TrashState
 from app.publish import shopify_page
 
 configure_logging(get_settings().log_level)
@@ -353,12 +354,67 @@ def publish_build(build_id: UUID, body: PublishRequest, user: CurrentUser) -> Pu
 
 @app.post("/builds/{build_id}/unpublish")
 def unpublish_build(build_id: UUID, body: UnpublishRequest, user: CurrentUser) -> PublishingState:
-    """Queues taking the page down from Vercel (D89); the brand's other pages stay up."""
+    """Queues taking the page down from Vercel (D89; the brand's other pages stay up) or removing
+    its draft from the brand's Shopify store."""
     require_org_member(user, body.org_id)
     state: PublishingState = _publish_call(
-        publishing.start_unpublish, body.org_id, build_id, user.id
+        publishing.start_unpublish, body.org_id, build_id, user.id, body.destination
     )
     return state
+
+
+# ── Trash (B1.6a, D92) ────────────────────────────────────────────────────────
+
+
+def _trash_call(fn: Any, *args: Any) -> None:
+    try:
+        fn(*args)
+    except trash.TrashNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except trash.TrashError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+
+
+def _trash_state(org_id: UUID, user_id: UUID) -> TrashState:
+    return TrashState(
+        items=trash.list_trash(org_id),
+        can_permanently_delete=publishing.role_of(org_id, user_id) in {"owner", "admin"},
+    )
+
+
+@app.get("/trash")
+def get_trash(org_id: UUID, user: CurrentUser) -> TrashState:
+    """What's in the workspace's Trash (7 days), newest first."""
+    require_org_member(user, org_id)
+    return _trash_state(org_id, user.id)
+
+
+@app.post("/trash/{kind}/{item_id}")
+def move_to_trash(kind: TrashKind, item_id: UUID, body: TrashRequest, user: CurrentUser) -> None:
+    """Moves a page, brand, product or template to Trash (a page can't while it's building or
+    published; a brand takes its pages and products with it)."""
+    require_org_member(user, body.org_id)
+    _trash_call(trash.move_to_trash, body.org_id, kind, item_id, user.id)
+
+
+@app.post("/trash/{kind}/{item_id}/restore")
+def restore_from_trash(
+    kind: TrashKind, item_id: UUID, body: TrashRequest, user: CurrentUser
+) -> TrashState:
+    require_org_member(user, body.org_id)
+    _trash_call(trash.restore, body.org_id, kind, item_id)
+    return _trash_state(body.org_id, user.id)
+
+
+@app.delete("/trash/{kind}/{item_id}")
+def delete_from_trash(
+    kind: TrashKind, item_id: UUID, org_id: UUID, user: CurrentUser
+) -> TrashState:
+    """Deletes it for good, with its stored files. Owners and admins."""
+    require_org_member(user, org_id)
+    _require_role(user.id, org_id, {"owner", "admin"}, "owners and admins")
+    _trash_call(trash.delete_for_good, org_id, kind, item_id)
+    return _trash_state(org_id, user.id)
 
 
 class UseTemplateRequest(BaseModel):

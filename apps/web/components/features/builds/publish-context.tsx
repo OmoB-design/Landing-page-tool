@@ -46,8 +46,8 @@ type PublishContextValue = {
   ) => Promise<boolean>;
   /** Fetches the publishing state again (after connecting a store). */
   refresh: () => void;
-  /** Takes the page down from Vercel (D89). */
-  unpublish: () => Promise<boolean>;
+  /** Takes the page down from Vercel (D89), or removes its Shopify draft. */
+  unpublish: (destination?: "vercel" | "shopify_page") => Promise<boolean>;
   starting: boolean;
   /** The published modal (opens by itself when a publish finishes). */
   modalOpen: boolean;
@@ -86,7 +86,7 @@ export function PublishProvider({
   initial: PublishingState;
   initialModalOpen?: boolean;
   onPublish?: (override: boolean, destination: string) => void;
-  onUnpublish?: () => void;
+  onUnpublish?: (destination: string) => void;
   children: ReactNode;
 }) {
   const desk = useDeskOptional();
@@ -130,9 +130,10 @@ export function PublishProvider({
     onError: (error) => toast.error(error.message),
   });
   const takeDown = useMutation({
-    mutationFn: () =>
+    mutationFn: (destination: "vercel" | "shopify_page") =>
       apiFetch(`/api/builds/${buildId}/unpublish`, publishingStateSchema, {
         method: "POST",
+        body: JSON.stringify({ destination }),
       }),
     onSuccess: () => void query.refetch(),
     onError: (error) => toast.error(error.message),
@@ -162,6 +163,11 @@ export function PublishProvider({
           : undefined,
       });
     } else if (done?.status === "succeeded") setModalOpen(true);
+    else if (
+      done?.status === "unpublished" &&
+      done.destination === "shopify_page"
+    )
+      toast.success("Draft removed from Shopify");
     else if (done?.status === "unpublished") {
       setModalOpen(false);
       toast.success(`${page.key} is unpublished`, {
@@ -171,7 +177,9 @@ export function PublishProvider({
       toast.error(
         done.error ??
           (done.action === "unpublish"
-            ? "Unpublishing didn’t finish."
+            ? done.destination === "shopify_page"
+              ? "Removing the draft didn’t finish."
+              : "Unpublishing didn’t finish."
             : "Publishing didn’t finish."),
       );
   }, [publishing, desk, page.key]);
@@ -194,13 +202,13 @@ export function PublishProvider({
       }
     },
     refresh: () => void query.refetch(),
-    unpublish: async () => {
+    unpublish: async (destination = "vercel") => {
       if (onUnpublish) {
-        onUnpublish();
+        onUnpublish(destination);
         return true;
       }
       try {
-        await takeDown.mutateAsync();
+        await takeDown.mutateAsync(destination);
         return true;
       } catch {
         return false;

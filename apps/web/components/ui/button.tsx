@@ -21,6 +21,10 @@ const buttonVariants = cva(
           "hover:bg-foreground-02 hover:text-body aria-expanded:bg-foreground-02 aria-expanded:text-body",
         destructive:
           "bg-button-danger text-button-danger-text shadow-edge hover:bg-button-danger-active focus-visible:ring-spot-500-red/30",
+        // Quality's quieter red button (Trash's Permanently delete, D92): red text on a pale red
+        // fill; in dark, pale text on a deep red.
+        "destructive-secondary":
+          "bg-highlight-red-50 text-text-danger hover:opacity-80 focus-visible:ring-spot-500-red/30",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

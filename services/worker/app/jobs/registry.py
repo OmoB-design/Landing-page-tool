@@ -125,5 +125,13 @@ KINDS: dict[str, JobKind] = {
             payload_model=publish_vercel.UnpublishVercelPayload,
             max_attempts=1,
         ),
+        # Started by POST /builds/{id}/unpublish with destination shopify_page.
+        JobKind(
+            name="unpublish_shopify_page",
+            title="Remove the Shopify draft",
+            handler=publish_shopify.run_unpublish,
+            payload_model=publish_shopify.UnpublishShopifyPayload,
+            max_attempts=1,
+        ),
     ]
 }

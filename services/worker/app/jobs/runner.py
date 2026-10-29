@@ -16,6 +16,7 @@ import psycopg
 import structlog
 from psycopg_pool import PoolTimeout
 
+from app import trash
 from app.config import Settings
 from app.jobs import queue
 from app.jobs.context import JobContext
@@ -28,6 +29,9 @@ from app.providers.ledger import cost_context
 log = structlog.get_logger()
 
 REAP_EVERY_SECONDS = 15.0
+# Trash (D92): what has been there over 7 days is deleted for good, checked hourly (first an hour
+# after the loop starts).
+PURGE_EVERY_SECONDS = 3600.0
 # The database can drop a connection (a network blip, the pooler restarting). The loop then waits
 # and tries again, 1 s, 2 s, 4 s… up to a minute, instead of exiting.
 DB_RETRY_FIRST_SECONDS = 1.0
@@ -60,12 +64,18 @@ class Runner:
         heartbeat = threading.Thread(target=self._heartbeat_loop, name="heartbeat", daemon=True)
         heartbeat.start()
         last_reap = 0.0
+        last_purge = time.monotonic()
         failures = 0
         while not self.stopping.is_set():
             try:
                 if time.monotonic() - last_reap >= REAP_EVERY_SECONDS:
                     self.reap()
                     last_reap = time.monotonic()
+                if time.monotonic() - last_purge >= PURGE_EVERY_SECONDS:
+                    last_purge = time.monotonic()
+                    purged = trash.purge_expired()
+                    if purged:
+                        log.info("emptied trash", items=purged)
                 claimed = self._free_slots() > 0 and self.claim_and_submit()
             except DB_ERRORS as exc:
                 failures += 1

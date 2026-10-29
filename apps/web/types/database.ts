@@ -108,6 +108,7 @@ export type Database = {
           created_by: string | null
           cta_text: string | null
           deleted_at: string | null
+          deleted_by: string | null
           emoji: string | null
           favicon_asset_id: string | null
           fonts: Json
@@ -140,6 +141,7 @@ export type Database = {
           created_by?: string | null
           cta_text?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           emoji?: string | null
           favicon_asset_id?: string | null
           fonts?: Json
@@ -172,6 +174,7 @@ export type Database = {
           created_by?: string | null
           cta_text?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           emoji?: string | null
           favicon_asset_id?: string | null
           fonts?: Json
@@ -267,6 +270,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           deleted_at: string | null
+          deleted_by: string | null
           export_html_path: string | null
           id: string
           key: string
@@ -282,6 +286,7 @@ export type Database = {
           template_id: string
           template_version: number
           title: string
+          trashed_with: string | null
           updated_at: string
           wizard: Json
           working_html_path: string | null
@@ -294,6 +299,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           export_html_path?: string | null
           id?: string
           key: string
@@ -309,6 +315,7 @@ export type Database = {
           template_id: string
           template_version: number
           title: string
+          trashed_with?: string | null
           updated_at?: string
           wizard: Json
           working_html_path?: string | null
@@ -321,6 +328,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           export_html_path?: string | null
           id?: string
           key?: string
@@ -336,6 +344,7 @@ export type Database = {
           template_id?: string
           template_version?: number
           title?: string
+          trashed_with?: string | null
           updated_at?: string
           wizard?: Json
           working_html_path?: string | null
@@ -891,6 +900,7 @@ export type Database = {
           created_at: string
           currency: string | null
           deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           handle: string
           id: string
@@ -901,9 +911,11 @@ export type Database = {
           pricing_lines: Json
           pull_source: string | null
           pulled_at: string | null
+          purged_at: string | null
           sale_price: number | null
           selling_context: string | null
           specs: Json
+          trashed_with: string | null
           updated_at: string
           url: string | null
           usps: Json
@@ -914,6 +926,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           handle: string
           id?: string
@@ -924,9 +937,11 @@ export type Database = {
           pricing_lines?: Json
           pull_source?: string | null
           pulled_at?: string | null
+          purged_at?: string | null
           sale_price?: number | null
           selling_context?: string | null
           specs?: Json
+          trashed_with?: string | null
           updated_at?: string
           url?: string | null
           usps?: Json
@@ -937,6 +952,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           handle?: string
           id?: string
@@ -947,9 +963,11 @@ export type Database = {
           pricing_lines?: Json
           pull_source?: string | null
           pulled_at?: string | null
+          purged_at?: string | null
           sale_price?: number | null
           selling_context?: string | null
           specs?: Json
+          trashed_with?: string | null
           updated_at?: string
           url?: string | null
           usps?: Json
@@ -1266,6 +1284,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           editor_map: Json | null
           html_path: string
@@ -1276,6 +1295,7 @@ export type Database = {
           origin: Database["public"]["Enums"]["template_origin"]
           parent_template_id: string | null
           platform: string | null
+          purged_at: string | null
           slug: string
           source_host: string | null
           source_html_path: string | null
@@ -1294,6 +1314,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           editor_map?: Json | null
           html_path: string
@@ -1304,6 +1325,7 @@ export type Database = {
           origin: Database["public"]["Enums"]["template_origin"]
           parent_template_id?: string | null
           platform?: string | null
+          purged_at?: string | null
           slug: string
           source_host?: string | null
           source_html_path?: string | null
@@ -1322,6 +1344,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           editor_map?: Json | null
           html_path?: string
@@ -1332,6 +1355,7 @@ export type Database = {
           origin?: Database["public"]["Enums"]["template_origin"]
           parent_template_id?: string | null
           platform?: string | null
+          purged_at?: string | null
           slug?: string
           source_host?: string | null
           source_html_path?: string | null
