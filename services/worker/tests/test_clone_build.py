@@ -250,3 +250,23 @@ def test_css_comments_with_a_foreign_address_go() -> None:
     )
     html, _ = cb.purge_foreign_assets(page, HOSTS, target_url=TARGET, copied={})
     assert "swiperjs" not in html and "plain note" in html and ".a{color:red}" in html
+
+
+def test_a_picture_keeps_its_image_when_its_foreign_source_goes() -> None:
+    """lxml nests an <img> inside the <source> before it; `parse` moves it back out, so dropping
+    the source's foreign <source> no longer drops the brand's image (the BRE-3 bug)."""
+    swapped = f"{STORAGE}/assets/drizzle.png"
+    page = (
+        "<html><body><section data-lp-section='hero'><picture>"
+        '<source media="(width &gt; 1024px)" srcset="https://img.resilia.test/hero.webp">'
+        '<source srcset="https://img.resilia.test/hero-2.webp">'
+        f'<img src="{swapped}" alt="Drizzle"></picture><p>Copy</p></section></body></html>'
+    )
+    soup = parse(page)
+    assert all(not s.contents for s in soup.find_all("source"))
+    html, stats = cb.purge_foreign_assets(page, HOSTS, target_url=TARGET, copied={})
+    soup = parse(html)
+    assert soup.find("source") is None and stats["removed"] == 2
+    img = soup.select_one("picture > img")
+    assert img is not None and img["src"] == swapped
+    assert soup.find("p", string="Copy") is not None

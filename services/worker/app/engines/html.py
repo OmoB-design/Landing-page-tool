@@ -42,8 +42,23 @@ def restore_svg_case(markup: str) -> str:
     return _SVG_NAME.sub(lambda m: m.group(1) + _SVG_CASE[m.group(2)], markup)
 
 
+# Elements that never hold anything. lxml's parser predates HTML5 and doesn't know some of
+# them, so `<picture><source …><img …></picture>` comes out with the <img> inside the <source>;
+# removing a foreign <source> then took its image with it (B2.3). `parse` moves such children
+# out to where a browser puts them.
+VOID_TAGS = [
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "keygen", "link", "meta",
+    "param", "source", "track", "wbr",
+]  # fmt: skip
+
+
 def parse(html: str) -> BeautifulSoup:
-    return BeautifulSoup(html, "lxml")
+    soup = BeautifulSoup(html, "lxml")
+    for tag in soup.find_all(VOID_TAGS):
+        if isinstance(tag, Tag) and tag.contents:
+            for child in reversed(list(tag.contents)):
+                tag.insert_after(child.extract())
+    return soup
 
 
 def serialize(soup: BeautifulSoup | Tag) -> str:
