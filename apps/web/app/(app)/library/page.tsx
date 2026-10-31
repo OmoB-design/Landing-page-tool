@@ -1,10 +1,30 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { PageStub } from "@/components/app/page-stub";
-import { LibraryIcon } from "@/components/ui/icons";
+import {
+  LibraryView,
+  LibraryViewSkeleton,
+} from "@/components/features/library/library-view";
+import { LIBRARY_PAGE, parseLibraryFilters } from "@/lib/library/href";
 
 export const metadata: Metadata = { title: "Library" };
 
-export default function LibraryPage() {
-  return <PageStub title="Library" icon={LibraryIcon} arrivesIn="B1.6" />;
+/** /library: every page with what it cost (BUILD_SPEC §14). */
+export default function LibraryPage({ searchParams }: PageProps<"/library">) {
+  return (
+    <Suspense fallback={<LibraryViewSkeleton />}>
+      <Library searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function Library({
+  searchParams,
+}: Pick<PageProps<"/library">, "searchParams">) {
+  const params = await searchParams;
+  const show = Math.min(
+    Math.max(Number(params.show) || LIBRARY_PAGE, LIBRARY_PAGE),
+    1000,
+  );
+  return <LibraryView filters={parseLibraryFilters(params)} show={show} />;
 }

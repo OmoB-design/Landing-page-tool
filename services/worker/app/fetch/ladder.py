@@ -3,10 +3,11 @@
 1. a plain GET with a desktop Chrome user agent (no Accept-Language, so Shopify Markets does not
    localise prices to the fetcher's country);
 2. on 403/429, one retry after Retry-After, capped at 8 s;
-3. a real browser (Playwright Chromium) when the response is blocked or looks like a bot wall.
+3. a real browser (Playwright Chromium) when the response is blocked or looks like a bot wall;
+4. only when the caller passes a proxy (the org's proxy_fetch_enabled flag and LP_FETCH_PROXY,
+   both off by default, D4): steps 1 to 3 again through the residential proxy.
 
-The residential proxy step is M2 and off by default (D4). Every URL, including each redirect,
-passes the SSRF guard.
+Every URL, including each redirect, passes the SSRF guard.
 """
 
 import time
@@ -34,7 +35,9 @@ HEADERS = {
     "User-Agent": USER_AGENT,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
-WALL_MARKERS = ("just a moment", "cf-chl", "captcha", "access denied", "attention required")
+WALL_MARKERS = (
+    "just a moment", "cf-chl", "captcha", "access denied", "attention required", "px-captcha",
+)  # fmt: skip
 MAX_REDIRECTS = 5
 
 
@@ -64,12 +67,12 @@ def looks_like_bot_wall(status: int, html: str) -> bool:
 
 
 @contextmanager
-def _client(client: httpx.Client | None) -> Iterator[httpx.Client]:
+def _client(client: httpx.Client | None, proxy: str | None = None) -> Iterator[httpx.Client]:
     if client is not None:
         yield client
         return
     with httpx.Client(
-        headers=HEADERS, timeout=get_settings().lp_fetch_timeout_seconds
+        headers=HEADERS, timeout=get_settings().lp_fetch_timeout_seconds, proxy=proxy or None
     ) as new_client:
         yield new_client
 
@@ -98,15 +101,34 @@ def fetch_page(
     client: httpx.Client | None = None,
     use_browser: bool = True,
     max_bytes: int | None = None,
+    proxy: str | None = None,
 ) -> FetchedPage:
-    """The page's HTML, from a plain request or, if that is blocked, a real browser.
-    `max_bytes` raises the size limit (template imports: page-builder exports run to 10 MB)."""
+    """The page's HTML, from a plain request or, if that is blocked, a real browser; then, if a
+    `proxy` is given, both again through it. `max_bytes` raises the size limit (template
+    imports and clones: page-builder exports run to 10 MB)."""
     check_public_url(url)
-    host = urlsplit(url).hostname or url
     max_bytes = max_bytes or get_settings().lp_fetch_max_bytes
+    try:
+        return _climb(url, client=client, use_browser=use_browser, max_bytes=max_bytes)
+    except FetchError:
+        if not proxy:
+            raise
+    log.info("blocked without the proxy; trying through it", url=url)
+    return _climb(url, client=None, use_browser=use_browser, max_bytes=max_bytes, proxy=proxy)
+
+
+def _climb(
+    url: str,
+    *,
+    client: httpx.Client | None,
+    use_browser: bool,
+    max_bytes: int,
+    proxy: str | None = None,
+) -> FetchedPage:
+    host = urlsplit(url).hostname or url
     reason = ""
     try:
-        with _client(client) as http:
+        with _client(client, proxy) as http:
             final, status, body, headers = _get(http, url, max_bytes)
             if status in (403, 429):
                 time.sleep(retry_delay(headers.get("retry-after")))
@@ -120,7 +142,7 @@ def fetch_page(
     log.info("plain fetch blocked; trying a browser", url=url, reason=reason)
 
     if use_browser:
-        final, status, html = browser.fetch_html(url)
+        final, status, html = browser.fetch_html(url, proxy=proxy)
         if 200 <= status < 300 and not looks_like_bot_wall(status, html):
             return FetchedPage(final, status, html, "browser")
         if looks_like_bot_wall(status, html):

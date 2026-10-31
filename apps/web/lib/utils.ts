@@ -13,6 +13,7 @@ export const cn = createCn({
     theme: {
       spacing: [
         "sidebar",
+        "rail",
         "topbar",
         "header",
         "row",
@@ -50,7 +51,7 @@ export const cn = createCn({
     classGroups: {
       // Figma's 0.7 px outline (@utility in globals.css): a ring width, so it replaces shadcn's
       // ring-1 and isn't read as a ring colour.
-      "ring-w": [{ ring: ["thin", "half"] }],
+      "ring-w": [{ ring: ["thin", "half", "hair"] }],
       // The Figma type scale (D68); without this, text-type-* would read as a text colour.
       "font-size": [
         {

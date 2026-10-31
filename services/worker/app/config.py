@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     lp_allow_private_fetch: bool = False
     lp_fetch_timeout_seconds: float = 20.0
     lp_fetch_max_bytes: int = 6_000_000
+    # The residential proxy for the fetch ladder's last step (BUILD_SPEC §8.4, D4): used only
+    # for orgs whose proxy_fetch_enabled flag is on. Off when empty (the default).
+    # Form: http://user:password@host:port
+    lp_fetch_proxy: str = ""
 
     # Publishing (BUILD_SPEC §12, D87). Clones under this residue score are blocked (D28).
     lp_residue_min_score: int = 85
@@ -47,6 +51,14 @@ class Settings(BaseSettings):
     # The queue this worker's jobs go into and come from (D85): 'main' live and on a developer's
     # machine; the tests set their own, so the live worker never runs their jobs.
     lp_job_queue: str = "main"
+    # Hourly caps per workspace on starting work (B1.6c, D94); 0 = no cap.
+    lp_limit_builds_per_hour: int = 20
+    lp_limit_redrafts_per_hour: int = 60
+    lp_limit_intake_per_hour: int = 60
+    lp_limit_publishes_per_hour: int = 30
+    lp_limit_exports_per_hour: int = 60
+    lp_limit_clones_per_hour: int = 30
+    lp_limit_analyses_per_hour: int = 30
 
     log_level: str = "info"
 

@@ -112,6 +112,7 @@ def generate(
     if output_config:
         params["output_config"] = output_config
 
+    ledger.check_budget()  # the brand's monthly AI budget (D54): refused before any charge
     client = _client()
     response: Any  # Message or BetaMessage; both expose the fields read below
     if model in FALLBACK_MODELS:

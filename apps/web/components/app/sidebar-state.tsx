@@ -7,6 +7,7 @@ import {
   useContext,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import { SidebarCollapseIcon } from "@/components/ui/lp-icons";
@@ -26,12 +27,37 @@ type SidebarState = {
   setMobileOpen: (open: boolean) => void;
   /** Desktop: collapse or expand the sidebar column (remembered in a cookie). Mobile: open or close the sheet. */
   toggle: () => void;
+  /** Whether the desktop column is the icon rail now (D97); false before hydration. */
+  rail: boolean;
 };
+
+// The rail state lives on <html> (see toggle), so components read it from there.
+function subscribeRail(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-sidebar"],
+  });
+  const desktop = window.matchMedia(DESKTOP_QUERY);
+  desktop.addEventListener("change", onChange);
+  return () => {
+    observer.disconnect();
+    desktop.removeEventListener("change", onChange);
+  };
+}
+
+function readRail() {
+  return (
+    document.documentElement.getAttribute("data-sidebar") === "collapsed" &&
+    window.matchMedia(DESKTOP_QUERY).matches
+  );
+}
 
 const SidebarContext = createContext<SidebarState | null>(null);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const rail = useSyncExternalStore(subscribeRail, readRail, () => false);
 
   const toggle = useCallback(() => {
     if (!window.matchMedia(DESKTOP_QUERY).matches) {
@@ -39,7 +65,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
       return;
     }
     // The collapsed state lives on <html> (set before paint from the cookie), so CSS alone
-    // shows or hides the column and there is no hydration flash.
+    // narrows the column to its rail and there is no hydration flash.
     const root = document.documentElement;
     const collapse = root.getAttribute("data-sidebar") !== "collapsed";
     if (collapse) root.setAttribute("data-sidebar", "collapsed");
@@ -48,8 +74,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ mobileOpen, setMobileOpen, toggle }),
-    [mobileOpen, toggle],
+    () => ({ mobileOpen, setMobileOpen, toggle, rail }),
+    [mobileOpen, toggle, rail],
   );
   return <SidebarContext value={value}>{children}</SidebarContext>;
 }
@@ -57,6 +83,11 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 /** Whether this renders inside the app shell (component tests render pieces without it). */
 export function useInShell(): boolean {
   return useContext(SidebarContext) !== null;
+}
+
+/** Whether the desktop sidebar is the icon rail now (false outside the app shell). */
+export function useRail(): boolean {
+  return useContext(SidebarContext)?.rail ?? false;
 }
 
 export function useSidebar(): SidebarState {

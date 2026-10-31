@@ -36,11 +36,14 @@ export function ProductActions({
   productId,
   name,
   url,
+  loading = false,
 }: {
   brandId: string;
   productId: string;
   name: string;
   url: string | null;
+  /** While the product loads: the same buttons, out of reach (the skeleton). */
+  loading?: boolean;
 }) {
   const router = useRouter();
   const startJob = useStartJob();
@@ -82,7 +85,11 @@ export function ProductActions({
     });
 
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      inert={loading}
+      aria-hidden={loading || undefined}
+      className="flex flex-col gap-3"
+    >
       <div className="flex flex-wrap gap-1.5">
         <NewPageLink brandId={brandId} productId={productId} />
         {url ? (

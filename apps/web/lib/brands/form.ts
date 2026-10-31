@@ -28,6 +28,7 @@ export const EMPTY_BRAND_FORM: BrandFormValues = {
   promo_text: "",
   support_email: "",
   meta_title: "",
+  monthly_budget_usd: "",
   meta_description: "",
 };
 
@@ -90,6 +91,8 @@ export function rowToForm(row: BrandRow): BrandFormValues {
     support_email: row.support_email ?? "",
     meta_title: row.meta_title ?? "",
     meta_description: row.meta_description ?? "",
+    monthly_budget_usd:
+      row.monthly_budget_usd === null ? "" : String(row.monthly_budget_usd),
   };
 }
 
@@ -130,5 +133,9 @@ export function formToRow(values: BrandFormValues): BrandWrite {
     support_email: orNull(values.support_email),
     meta_title: orNull(values.meta_title),
     meta_description: orNull(values.meta_description),
+    monthly_budget_usd:
+      values.monthly_budget_usd.trim() === ""
+        ? null
+        : Number(values.monthly_budget_usd),
   };
 }

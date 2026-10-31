@@ -182,6 +182,10 @@ pnpm lint                        # web: eslint · token check · prettier --chec
 pnpm lint:tokens                 # no raw colours / arbitrary Tailwind values outside components/ui (D38); no retired token names anywhere (D68)
 pnpm test                        # web: vitest run · worker: pytest
 pnpm format                      # prettier --write · ruff check --fix · ruff format
+pnpm e2e                         # M1's acceptance in a browser (scripts/e2e.py): sign up → brand → build → edit →
+                                 # approve → export → Publish asks for Vercel. Starts its own mock-mode worker + job
+                                 # loop (own queue) and a production build on :3001/:8001, cleans up its account; ~2 min.
+                                 # --reuse runs against servers you started; --headed shows the browser. Logs: .e2e-logs/
 
 # shadcn components (run in apps/web). Radix base (D37). After adding, switch `from "cn"` to
 # `from "@/lib/utils"` and remap any `bg-accent`/`text-accent-foreground` hover classes.

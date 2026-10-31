@@ -8,7 +8,8 @@ import { SidebarProvider } from "./sidebar-state";
 
 /**
  * The signed-in workspace (DESIGN.md §2, D67; Figma: Home): the 240 px sidebar on the grey canvas
- * (workspace menu, navigation, getting started, account) and the page in a panel 6 px in from
+ * (workspace menu, navigation, getting started, account; a 44 px icon rail when collapsed, D97)
+ * and the page in a panel 6 px in from
  * every edge, the sidebar included, drawn exactly as Quality's content frame: 16 px corners, a
  * 0.5 px Border-on-bg stroke (`edge`) and no shadow (D72).
  */
@@ -30,9 +31,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <div className="flex h-dvh bg-dashboard text-body">
+        {/* Collapsed, the column narrows to the 44 px icon rail (D97); its contents follow its
+            width, labels fade, and the page panel widens with it. */}
         <aside
           aria-label="Sidebar"
-          className="hidden w-sidebar shrink-0 lg:flex lg:sidebar-collapsed:hidden"
+          data-sidebar-desktop=""
+          className="hidden w-sidebar shrink-0 overflow-hidden transition-rail lg:flex lg:sidebar-collapsed:w-rail"
         >
           {sidebar}
         </aside>

@@ -71,13 +71,16 @@ export function EditorPreview({
   return (
     <section
       aria-label="Preview"
-      className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 p-4 lg:px-8 lg:py-5"
+      className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 p-4 lg:px-6 lg:py-5"
     >
       <div className="flex items-center justify-between gap-3">
+        {/* Figma 739:16891 (light): a Foreground-03 track with a 0.4 px Stroke edge, 26 px segments
+            in 12 px Heading-02, the chosen one Surface-Primary. Dark keeps 739:16489's colours: a
+            Foreground-01 track and the chosen segment on Letter-Paper, raised. */}
         <div
           role="group"
           aria-label="Preview width"
-          className="flex items-center gap-0.5 rounded-md bg-foreground-01 p-0.5"
+          className="flex items-center rounded-md bg-foreground-03 p-0.5 ring-hair ring-stroke ring-inset dark:bg-foreground-01 dark:ring-0"
         >
           {(
             [
@@ -91,9 +94,12 @@ export function EditorPreview({
               size="sm"
               aria-pressed={viewport === id}
               onClick={() => setViewport(id)}
-              className="h-7 text-sub-text hover:bg-transparent hover:text-body aria-pressed:bg-surface-primary aria-pressed:text-body aria-pressed:shadow-sm"
+              className="group/view h-6.5 gap-1 rounded-sm px-1.5 text-type-caption-1 font-medium text-heading-02 hover:bg-transparent hover:text-body aria-pressed:bg-surface-primary dark:text-sub-text dark:aria-pressed:bg-letter-paper dark:aria-pressed:text-body dark:aria-pressed:shadow-sm"
             >
-              <ViewIcon aria-hidden />
+              <ViewIcon
+                aria-hidden
+                className="size-3.5 text-icon-system group-aria-pressed/view:text-stroke-input-active"
+              />
               {label}
             </Button>
           ))}
@@ -103,7 +109,9 @@ export function EditorPreview({
           min read
         </p>
       </div>
-      <div className="flex min-h-0 flex-1 justify-center overflow-hidden rounded-lg border border-stroke bg-surface-primary">
+      {/* The page sits 12 px inside a square well with a 0.7 px line: Foreground-02 in light
+          (Figma 739:16891), Surface-Modal in dark (722:14843). */}
+      <div className="flex min-h-0 flex-1 justify-center overflow-hidden bg-foreground-02 p-3 ring-thin ring-stroke ring-inset dark:bg-surface-modal">
         <iframe
           ref={frame}
           key={src}

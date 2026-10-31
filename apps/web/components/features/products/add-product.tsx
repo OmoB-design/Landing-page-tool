@@ -6,11 +6,7 @@ import { type ReactNode, useState } from "react";
 import { authLinkClass } from "@/components/app/auth-frame";
 import { JobSteps } from "@/components/app/job-steps";
 import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
-import {
-  SkeletonButton,
-  SkeletonField,
-  SkeletonStatus,
-} from "@/components/app/skeletons";
+import { SkeletonField, SkeletonStatus } from "@/components/app/skeletons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -202,13 +198,14 @@ function PullResult({
   );
 }
 
-/** The Products tab while the brand loads: the same form, its field and button not ready yet. */
+/** The Products tab while the brand loads: the same form, its field's example still to come. */
 export function AddProductSkeleton({ children }: { children: ReactNode }) {
   return (
     <BrandFrame
       header={
         <div
           aria-hidden
+          inert
           className="mx-auto flex w-full max-w-100 flex-col gap-4 py-1.5"
         >
           <SkeletonField
@@ -216,7 +213,10 @@ export function AddProductSkeleton({ children }: { children: ReactNode }) {
             hint="Adding the same product again updates it."
             value="62%"
           />
-          <SkeletonButton width="100%" height={34} radius="var(--radius-md)" />
+          {/* The real button, waiting: only the field's example address depends on the brand. */}
+          <Button type="button" size="compact" className="h-8.5 w-full">
+            Add product
+          </Button>
         </div>
       }
     >

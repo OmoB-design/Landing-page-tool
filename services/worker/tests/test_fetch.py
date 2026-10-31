@@ -95,7 +95,7 @@ def test_a_429_is_retried_once(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_a_blocked_page_falls_back_to_the_browser(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.fetch.ladder.time.sleep", lambda s: None)
     monkeypatch.setattr(
-        browser, "fetch_html", lambda url: ("https://brand.test/", 200, FIXTURE * 3)
+        browser, "fetch_html", lambda url, proxy=None: ("https://brand.test/", 200, FIXTURE * 3)
     )
     page = ladder.fetch_page(
         "https://brand.test/",
@@ -107,7 +107,7 @@ def test_a_blocked_page_falls_back_to_the_browser(monkeypatch: pytest.MonkeyPatc
 def test_a_bot_wall_in_the_browser_too_is_explained(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.fetch.ladder.time.sleep", lambda s: None)
     monkeypatch.setattr(
-        browser, "fetch_html", lambda url: (url, 200, "<title>Just a moment...</title>")
+        browser, "fetch_html", lambda url, proxy=None: (url, 200, "<title>Just a moment...</title>")
     )
     with pytest.raises(ladder.FetchError, match="bot protection"):
         ladder.fetch_page(

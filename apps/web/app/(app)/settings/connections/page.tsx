@@ -3,7 +3,10 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
 import { SkeletonStatus } from "@/components/app/skeletons";
-import { Connections } from "@/components/features/settings/connections";
+import {
+  Connections,
+  ConnectionsSkeleton,
+} from "@/components/features/settings/connections";
 import { Unreachable } from "@/components/features/settings/unreachable";
 import { SettingsIcon } from "@/components/ui/icons";
 import { getSessionContext } from "@/lib/auth/session";
@@ -18,7 +21,14 @@ export default function ConnectionsPage() {
   return (
     <>
       <PageHeader icon={SettingsIcon} title="Settings" />
-      <Suspense fallback={<SkeletonStatus label="Loading connections" />}>
+      <Suspense
+        fallback={
+          <>
+            <SkeletonStatus label="Loading connections" />
+            <ConnectionsSkeleton />
+          </>
+        }
+      >
         <ConnectionsContent />
       </Suspense>
     </>

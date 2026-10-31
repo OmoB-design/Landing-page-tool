@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
 import { SkeletonStatus, SkeletonViewTabs } from "@/components/app/skeletons";
 import { type ViewTab, ViewTabs } from "@/components/app/view-tabs";
+import { RefreshWhileAnalysing } from "@/components/features/templates/refresh-while-analysing";
 import {
   TemplateCard,
   TemplateCardSkeleton,
 } from "@/components/features/templates/template-card";
+import { Button } from "@/components/ui/button";
 import { TemplatesIcon } from "@/components/ui/icons";
+import { PlusFigmaIcon } from "@/components/ui/lp-icons";
 import { getSessionContext } from "@/lib/auth/session";
 import { getLibraryTemplates, getOrgTemplates } from "@/lib/templates/queries";
 
@@ -60,7 +64,11 @@ async function Templates({
   ];
   return (
     <>
-      <PageHeader icon={TemplatesIcon} title="Templates" />
+      <PageHeader
+        icon={TemplatesIcon}
+        title="Templates"
+        actions={<CloneButton />}
+      />
       <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-8 px-6 py-12">
         <div className="flex flex-col gap-1">
           <TemplatesTitle />
@@ -68,6 +76,9 @@ async function Templates({
             <ViewTabs label="Template views" tabs={tabs} active={view} />
           </div>
         </div>
+        {yours.some((t) => t.analysis === "running") ? (
+          <RefreshWhileAnalysing />
+        ) : null}
         {templates.length === 0 ? (
           <EmptyState
             icon={TemplatesIcon}
@@ -76,7 +87,7 @@ async function Templates({
             }
           >
             {view === "yours"
-              ? "Choose Use Template on a library template to add it here."
+              ? "Choose Use Template on a library template, or clone a page, to add it here."
               : "Library templates are loaded with pnpm seed:library."}
           </EmptyState>
         ) : (
@@ -93,6 +104,18 @@ async function Templates({
         )}
       </div>
     </>
+  );
+}
+
+/** Clone a page (B2.1): a competitor's page into Yours. */
+function CloneButton() {
+  return (
+    <Button asChild size="compact" className="h-7.5">
+      <Link href="/templates/clone">
+        <PlusFigmaIcon />
+        Clone a page
+      </Link>
+    </Button>
   );
 }
 
@@ -114,7 +137,11 @@ function TemplatesTitle() {
 function TemplatesFallback() {
   return (
     <>
-      <PageHeader icon={TemplatesIcon} title="Templates" />
+      <PageHeader
+        icon={TemplatesIcon}
+        title="Templates"
+        actions={<CloneButton />}
+      />
       <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-8 px-6 py-12">
         <div className="flex flex-col gap-1">
           <TemplatesTitle />

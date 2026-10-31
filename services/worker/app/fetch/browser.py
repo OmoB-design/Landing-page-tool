@@ -5,13 +5,16 @@ One browser at a time per worker process (the owner's machine has 8 GB). Every r
 makes is checked by the SSRF guard; requests to private or local addresses are aborted.
 """
 
+import io
 import threading
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 import structlog
-from playwright.sync_api import Page, Route, sync_playwright
+from playwright.sync_api import Page, ProxySettings, Route, sync_playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from pydantic import BaseModel, Field
 
 from app.fetch.safety import check_public_url, is_public_url
@@ -34,10 +37,22 @@ def _guard(route: Route) -> None:
         route.abort()
 
 
+def _proxy_settings(proxy: str) -> ProxySettings:
+    """Playwright wants the proxy's server and credentials apart: http://user:pass@host:port."""
+    parts = urlsplit(proxy)
+    settings: ProxySettings = {
+        "server": f"{parts.scheme or 'http'}://{parts.hostname}:{parts.port}"
+    }
+    if parts.username:
+        settings["username"] = unquote(parts.username)
+        settings["password"] = unquote(parts.password or "")
+    return settings
+
+
 @contextmanager
-def open_page() -> Iterator[Page]:
+def open_page(proxy: str | None = None) -> Iterator[Page]:
     with _ONE_BROWSER, sync_playwright() as playwright:
-        browser = playwright.chromium.launch()
+        browser = playwright.chromium.launch(proxy=_proxy_settings(proxy) if proxy else None)
         try:
             context = browser.new_context(
                 user_agent=USER_AGENT, viewport={"width": 1440, "height": 900}
@@ -49,13 +64,32 @@ def open_page() -> Iterator[Page]:
             browser.close()
 
 
-def fetch_html(url: str) -> tuple[str, int, str]:
+def fetch_html(url: str, proxy: str | None = None) -> tuple[str, int, str]:
     """(final url, status, html) as a browser sees them."""
     check_public_url(url)
-    with open_page() as page:
+    with open_page(proxy) as page:
         response = page.goto(url, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS)
         page.wait_for_timeout(1500)  # late redirects and challenge scripts
         return page.url, response.status if response else 0, page.content()
+
+
+def screenshot_html(html: str) -> bytes:
+    """An 800x600 JPEG of the top of a page at desktop width, for a template card. Unlike the
+    library's thumbnails (our own pages), this is someone else's page, so every request it makes
+    passes the SSRF guard."""
+    from PIL import Image
+
+    with open_page() as page:
+        page.set_viewport_size({"width": 1280, "height": 960})
+        # A slow image or font: take what has drawn.
+        with suppress(PlaywrightTimeoutError):
+            page.set_content(html, wait_until="load", timeout=NAV_TIMEOUT_MS)
+        page.wait_for_timeout(800)  # web fonts and scripted layout
+        shot = page.screenshot(clip={"x": 0, "y": 0, "width": 1280, "height": 960})
+    image = Image.open(io.BytesIO(shot)).convert("RGB").resize((800, 600))
+    out = io.BytesIO()
+    image.save(out, format="JPEG", quality=82, optimize=True)
+    return out.getvalue()
 
 
 class ColorSample(BaseModel):

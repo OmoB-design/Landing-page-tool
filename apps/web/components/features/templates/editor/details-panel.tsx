@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 
@@ -14,22 +15,41 @@ import { HistoryIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { saveTemplateDetails } from "@/lib/templates/actions";
+import { cn } from "@/lib/utils";
 import {
   type TemplateDetails,
   type TemplateEditorState,
   templateDetailsSchema,
 } from "@/lib/validators/template";
 
-/** The Details tab: name and description, where the template came from, and its saved
- * versions (the newest 12) with Restore. */
+import { QUIET } from "./analysis-bar";
+
+const PLATFORMS: Record<string, string> = {
+  shopify: "Shopify",
+  replo: "Replo",
+  webflow: "Webflow",
+  clickfunnels: "ClickFunnels",
+  funnelish: "Funnelish",
+  wordpress: "WordPress",
+  framer: "Framer",
+};
+
+/** The Details tab: name and description, where the template came from (and, for a clone, its
+ * analysis), and its saved versions (the newest 12) with Restore. */
 export function DetailsPanel({
   state,
   pending,
+  analysing = false,
+  onAnalyse,
   onRestore,
   onSaved,
 }: {
   state: TemplateEditorState;
   pending: boolean;
+  /** A clone's analysis is running. */
+  analysing?: boolean;
+  /** Analyse again (clones). */
+  onAnalyse?: () => void;
   onRestore: (version: number) => void;
   onSaved: (details: TemplateDetails) => void;
 }) {
@@ -43,11 +63,34 @@ export function DetailsPanel({
     },
   });
   const errors = form.formState.errors;
-  const facts = [
+  const source = template.source;
+  const analysis = template.analysis;
+  const facts: [string, string][] = [
     ["Type", templateTypeLabel(template.type)],
-    ["From", template.parent_name ? `${template.parent_name} (library)` : "—"],
+    [
+      "From",
+      source
+        ? `${source.host} (cloned${source.platform ? `, ${PLATFORMS[source.platform] ?? source.platform}` : ""})`
+        : template.parent_name
+          ? `${template.parent_name} (library)`
+          : "—",
+    ],
+    ...(analysis
+      ? ([
+          [
+            "Analysed",
+            `${format(new Date(analysis.analysed_at), "d MMM yyyy")} · ${analysis.ai === "mock" ? "mock" : analysis.model}`,
+          ],
+          [
+            "Confirmed",
+            analysis.reviewed_at
+              ? `${format(new Date(analysis.reviewed_at), "d MMM yyyy")}${analysis.reviewed_by ? ` · ${analysis.reviewed_by}` : ""}`
+              : "Not yet",
+          ],
+        ] as [string, string][])
+      : []),
     ["Version", String(template.version)],
-  ] as const;
+  ];
 
   return (
     <div className="flex flex-col gap-6 p-4">
@@ -104,6 +147,26 @@ export function DetailsPanel({
           Save details
         </Button>
       </form>
+
+      {source && onAnalyse ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-type-body-small font-medium">Analysis</h2>
+          <p className="text-type-caption-1 text-sub-text">
+            Reads the page again for its sections, colours, brand words and
+            rules (one Claude call, a few cents). The sections and rules are
+            replaced, and it needs confirming again.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn("h-8 self-start", QUIET)}
+            disabled={analysing}
+            onClick={onAnalyse}
+          >
+            {analysing ? "Analysing…" : analysis ? "Analyse again" : "Analyse"}
+          </Button>
+        </section>
+      ) : null}
 
       <dl className="flex flex-col gap-1.5">
         {facts.map(([label, value]) => (

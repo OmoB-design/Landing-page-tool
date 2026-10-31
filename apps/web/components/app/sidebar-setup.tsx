@@ -69,7 +69,9 @@ export function SidebarSetup({
     <Collapsible
       open={open}
       onOpenChange={toggle}
-      className="flex flex-col gap-3 rounded-lg bg-surface-primary p-3 edge"
+      // In the desktop column it keeps its width while the column narrows to the rail, where it
+      // fades away (D97).
+      className="rail-gone flex rail-label flex-col gap-3 rounded-lg bg-surface-primary p-3 edge in-sidebar:w-56"
     >
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">

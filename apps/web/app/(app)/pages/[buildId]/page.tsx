@@ -5,7 +5,10 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { SkeletonStatus, SkeletonText } from "@/components/app/skeletons";
 import { BuildDemo } from "@/components/features/builds/build-demo";
-import { BuildPreview } from "@/components/features/builds/build-preview";
+import {
+  BuildPreview,
+  BuildPreviewSkeleton,
+} from "@/components/features/builds/build-preview";
 import { BuildReport } from "@/components/features/builds/build-report";
 import {
   BuildSteps,
@@ -54,8 +57,8 @@ export default function BuildPage({
   return (
     <Suspense
       fallback={
-        // The same page while the build loads: the title waits, the preview well stays empty and
-        // the steps show at rest with their count waiting.
+        // The same page while the build loads: the title waits, the preview's toolbar is in place
+        // over the empty well and the steps show at rest with their count waiting.
         <div className="flex h-full flex-col">
           <PageHeader
             icon={PagesIcon}
@@ -64,7 +67,7 @@ export default function BuildPage({
           />
           <SkeletonStatus label="Loading the page" />
           <BuildWorkspace
-            preview={<div className="flex-1 bg-foreground-02" />}
+            preview={<BuildPreviewSkeleton />}
             panel={
               <BuildStepsCard
                 steps={OWNED_BUILD_STEPS.map((step) => ({

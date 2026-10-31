@@ -2418,3 +2418,165 @@ export function StatusChipRingFigmaIcon(props: IconProps) {
     </svg>
   );
 }
+
+/* Figma section editor (722:14843): the top bar's back arrow, Undo and Redo, and the selected
+   section's move up, move down, duplicate and remove. Paths as exported, in currentColor. */
+
+export function BackArrowFigmaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" {...props}>
+      <path
+        d="M13.5556 8.66732H2.66667C2.29867 8.66732 2 8.36865 2 8.00065C2 7.63265 2.29867 7.33398 2.66667 7.33398H13.5556C13.9236 7.33398 14.2222 7.63265 14.2222 8.00065C14.2222 8.36865 13.9236 8.66732 13.5556 8.66732Z"
+        fill="currentColor"
+      />
+      <path
+        d="M6.2223 12.4453C6.05163 12.4453 5.88096 12.3804 5.75119 12.2498L1.97341 8.47197C1.71297 8.21153 1.71297 7.78931 1.97341 7.52886L5.75119 3.75197C6.01163 3.49153 6.43385 3.49153 6.6943 3.75197C6.95474 4.01242 6.95474 4.43464 6.6943 4.69509L3.38763 8.00175L6.6943 11.3084C6.95474 11.5689 6.95474 11.9911 6.6943 12.2515C6.56452 12.3813 6.39385 12.4471 6.22319 12.4471L6.2223 12.4453Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+export function UndoFigmaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" {...props}>
+      <path
+        d="M1.45801 6.125H9.62468C11.2358 6.125 12.5413 7.4305 12.5413 9.04167C12.5413 10.6528 11.2358 11.9583 9.62468 11.9583H8.16634"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.95866 9.91537L1.16699 6.1237L4.95866 2.33203"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function RedoFigmaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" {...props}>
+      <path
+        d="M14 5.55469H5.33333C3.49244 5.55469 2 7.04713 2 8.88802C2 10.7289 3.49244 12.2214 5.33333 12.2214H8.66667"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.8887 8.66753L13.9998 5.55642L10.8887 2.44531"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function MoveUpFigmaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" {...props}>
+      <path
+        d="M7.99992 14.2222C7.63192 14.2222 7.33325 13.9236 7.33325 13.5556V2.66667C7.33325 2.29867 7.63192 2 7.99992 2C8.36792 2 8.66659 2.29867 8.66659 2.66667V13.5556C8.66659 13.9236 8.36792 14.2222 7.99992 14.2222Z"
+        fill="currentColor"
+      />
+      <path
+        d="M11.7778 6.89019C11.6072 6.89019 11.4365 6.8253 11.3067 6.69463L8.00004 3.38796L4.69338 6.69463C4.43293 6.95507 4.01071 6.95507 3.75026 6.69463C3.48982 6.43419 3.48982 6.01196 3.75026 5.75152L7.52893 1.97463C7.78938 1.71419 8.2116 1.71419 8.47204 1.97463L12.2498 5.75241C12.5103 6.01285 12.5103 6.43507 12.2498 6.69552C12.12 6.8253 11.9494 6.89107 11.7787 6.89107L11.7778 6.89019Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+export function MoveDownFigmaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" {...props}>
+      <path
+        d="M8 13.5564V2.44531"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.778 9.7793L8.00019 13.5571L4.22241 9.7793"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function DuplicateFigmaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" {...props}>
+      <path
+        d="M9.55566 7.55469V11.5547"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11.5557 9.55469H7.55566"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.11111 10.8889H3.77778C2.79591 10.8889 2 10.093 2 9.11111V3.77778C2 2.79591 2.79591 2 3.77778 2H9.11111C10.093 2 10.8889 2.79591 10.8889 3.77778V5.11111"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12.2222 5.11133H6.88886C5.90702 5.11133 5.11108 5.90727 5.11108 6.88911V12.2224C5.11108 13.2043 5.90702 14.0002 6.88886 14.0002H12.2222C13.2041 14.0002 14 13.2043 14 12.2224V6.88911C14 5.90727 13.2041 5.11133 12.2222 5.11133Z"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function RemoveFigmaIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" {...props}>
+      <path
+        d="M12.4446 3.55469L3.55566 12.4436"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.55566 3.55469L12.4446 12.4436"
+        stroke="currentColor"
+        strokeWidth="1.33333"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** The owner's drag handle (2026-10-31): six dots in a 12 px box, drawn at 16 px. */
+export function GripDotsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 12 12" fill="none" {...props}>
+      <circle cx="4" cy="2" r="1" fill="currentColor" />
+      <circle cx="4" cy="6" r="1" fill="currentColor" />
+      <circle cx="4" cy="10" r="1" fill="currentColor" />
+      <circle cx="8" cy="2" r="1" fill="currentColor" />
+      <circle cx="8" cy="6" r="1" fill="currentColor" />
+      <circle cx="8" cy="10" r="1" fill="currentColor" />
+    </svg>
+  );
+}

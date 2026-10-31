@@ -3,7 +3,10 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
 import { SkeletonStatus } from "@/components/app/skeletons";
-import { GeneralSettings } from "@/components/features/settings/general";
+import {
+  GeneralSettings,
+  GeneralSettingsSkeleton,
+} from "@/components/features/settings/general";
 import { Unreachable } from "@/components/features/settings/unreachable";
 import { SettingsIcon } from "@/components/ui/icons";
 import { getSessionContext } from "@/lib/auth/session";
@@ -17,7 +20,14 @@ export default function GeneralPage() {
   return (
     <>
       <PageHeader icon={SettingsIcon} title="Settings" />
-      <Suspense fallback={<SkeletonStatus label="Loading settings" />}>
+      <Suspense
+        fallback={
+          <>
+            <SkeletonStatus label="Loading settings" />
+            <GeneralSettingsSkeleton />
+          </>
+        }
+      >
         <General />
       </Suspense>
     </>

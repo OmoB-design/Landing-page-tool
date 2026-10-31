@@ -16,9 +16,9 @@ import {
 import { AlertIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Skeleton } from "@/components/ui/shimmer-loader";
 import { Textarea } from "@/components/ui/textarea";
 import type { BrandActionResult } from "@/lib/brands/actions";
+import { EMPTY_BRAND_FORM } from "@/lib/brands/form";
 import { EMPTY_SWATCH, deriveDark, deriveTint } from "@/lib/brands/palette";
 import { type BrandFormValues, brandFormSchema } from "@/lib/validators/brand";
 
@@ -35,12 +35,15 @@ export function BrandForm({
   onSubmit,
   submitLabel,
   aboveFields,
+  loading = false,
 }: {
   defaultValues: BrandFormValues;
   onSubmit: (values: BrandFormValues) => Promise<BrandActionResult>;
   submitLabel: string;
   /** Rendered above the fields, with access to the form (e.g. the colour recommendation). */
   aboveFields?: (form: UseFormReturn<BrandFormValues>) => React.ReactNode;
+  /** While the brand loads: the same form, empty and out of reach (the skeleton). */
+  loading?: boolean;
 }) {
   const form = useForm<BrandFormValues>({
     resolver: zodResolver(brandFormSchema),
@@ -71,6 +74,8 @@ export function BrandForm({
     <form
       onSubmit={submit}
       noValidate
+      inert={loading}
+      aria-busy={loading || undefined}
       className="@container flex max-w-2xl flex-col gap-6"
     >
       <div className="flex flex-col gap-10">
@@ -183,6 +188,15 @@ export function BrandForm({
             multiline
           />
         </Section>
+
+        <Section title="AI budget">
+          <TextField
+            form={form}
+            name="monthly_budget_usd"
+            label="Monthly AI budget (USD)"
+            description="Paid AI steps for this brand stop once this month’s spend reaches it, and start again on the 1st (UTC). Leave empty for no cap."
+          />
+        </Section>
       </div>
 
       {rootError ? (
@@ -212,22 +226,21 @@ export function BrandForm({
 }
 
 /**
- * Brand DNA while the brand loads: the section titles, each over one plain block (the fields
- * arrive with the form).
+ * Brand DNA while the brand loads: the form itself, empty and out of reach, so every label and
+ * field is already where it will be (measured against the loaded page, 2026-10-31); only the
+ * values arrive.
  */
 export function BrandFormSkeleton() {
   return (
-    <div className="flex max-w-2xl flex-col gap-10">
+    <>
       <SkeletonStatus label="Loading Brand DNA" />
-      <div aria-hidden className="flex flex-col gap-10">
-        <Section title="Identity">
-          <Skeleton height={200} radius="var(--radius-lg)" />
-        </Section>
-        <Section title="Voice">
-          <Skeleton height={200} radius="var(--radius-lg)" />
-        </Section>
-      </div>
-    </div>
+      <BrandForm
+        loading
+        defaultValues={EMPTY_BRAND_FORM}
+        submitLabel="Save changes"
+        onSubmit={async () => ({})}
+      />
+    </>
   );
 }
 

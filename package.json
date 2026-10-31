@@ -30,7 +30,8 @@
     "db:local:reset": "supabase db reset",
     "seed:library": "cd services/worker && uv run python -m app.cli.seed_library",
     "smoke:build": "cd services/worker && uv run python -m app.cli.smoke_build",
-    "gen:types": "mkdir -p apps/web/types && supabase gen types --lang typescript --linked --schema public > apps/web/types/database.ts"
+    "gen:types": "mkdir -p apps/web/types && supabase gen types --lang typescript --linked --schema public > apps/web/types/database.ts",
+    "e2e": "cd services/worker && uv run python ../../scripts/e2e.py"
   },
   "devDependencies": {
     "prettier": "^3.9.9",

@@ -84,6 +84,9 @@ describe("brandFormSchema", () => {
     [{ support_email: "nope" }, "support_email"],
     [{ language: "english!" }, "language"],
     [{ name: " " }, "name"],
+    [{ monthly_budget_usd: "-5" }, "monthly_budget_usd"],
+    [{ monthly_budget_usd: "12.345" }, "monthly_budget_usd"],
+    [{ monthly_budget_usd: "fifty" }, "monthly_budget_usd"],
   ])("rejects %o", (change, field) => {
     const result = brandFormSchema.safeParse({ ...valid, ...change });
     expect(result.success).toBe(false);
@@ -92,5 +95,17 @@ describe("brandFormSchema", () => {
 
   it("accepts a minimal brand", () => {
     expect(brandFormSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("takes a monthly AI budget in dollars, or none", () => {
+    for (const budget of ["", "50", "49.99", "0"])
+      expect(
+        brandFormSchema.safeParse({ ...valid, monthly_budget_usd: budget })
+          .success,
+      ).toBe(true);
+    expect(
+      formToRow({ ...valid, monthly_budget_usd: "49.99" }).monthly_budget_usd,
+    ).toBe(49.99);
+    expect(formToRow(valid).monthly_budget_usd).toBeNull();
   });
 });

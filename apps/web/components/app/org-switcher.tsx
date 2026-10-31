@@ -49,10 +49,13 @@ export function OrgSwitcher({
           className="flex min-w-0 items-center gap-1.5 rounded-sm px-1 py-0.5 outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring"
         >
           <WorkspaceMark name={currentOrg.name} />
-          <span className="truncate text-type-body-large font-medium text-heading-01">
-            {currentOrg.name}
+          {/* In the sidebar's rail only the mark stays (D97). */}
+          <span className="flex min-w-0 rail-label items-center gap-1.5">
+            <span className="truncate text-type-body-large font-medium text-heading-01">
+              {currentOrg.name}
+            </span>
+            <MenuChevronIcon className="size-3 shrink-0 text-icon-system" />
           </span>
-          <MenuChevronIcon className="size-3 shrink-0 text-icon-system" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

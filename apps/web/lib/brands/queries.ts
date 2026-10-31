@@ -38,21 +38,37 @@ export type BrandSummary = {
   primary: string | null;
   productCount: number;
   updatedAt: Date;
+  /** D54: the monthly AI budget (null: no cap) and this month's spend. */
+  budgetUsd: number | null;
+  spentUsd: number;
 };
 
-/** The Brands list: each brand with its product count. */
+/** This calendar month's AI spend (UTC) per brand of the org (D54), by brand id. */
+export async function getBrandMonthSpend(
+  orgId: string,
+): Promise<Map<string, number>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("brand_month_spend", {
+    p_org: orgId,
+  });
+  if (error) throw new Error(`Could not load spending: ${error.message}`);
+  return new Map(data.map((row) => [row.brand_id, Number(row.spend_usd)]));
+}
+
+/** The Brands list: each brand with its product count and this month's AI spend. */
 export async function getBrandList(orgId: string): Promise<BrandSummary[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("brands")
     .select(
-      "id, name, prefix, emoji, url, palette, updated_at, products(count)",
+      "id, name, prefix, emoji, url, palette, updated_at, monthly_budget_usd, products(count)",
     )
     .eq("org_id", orgId)
     .is("deleted_at", null)
     .is("products.deleted_at", null)
     .order("name");
   if (error) throw new Error(`Could not load brands: ${error.message}`);
+  const spend = await getBrandMonthSpend(orgId);
   return data.map((brand) => ({
     id: brand.id,
     name: brand.name,
@@ -62,6 +78,10 @@ export async function getBrandList(orgId: string): Promise<BrandSummary[]> {
     primary: primaryOf(brand.palette),
     productCount: brand.products[0]?.count ?? 0,
     updatedAt: new Date(brand.updated_at),
+    budgetUsd: brand.monthly_budget_usd
+      ? Number(brand.monthly_budget_usd)
+      : null,
+    spentUsd: spend.get(brand.id) ?? 0,
   }));
 }
 

@@ -96,6 +96,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 - Library archive, analytics roll-ups, notifications, soft delete/restore (7 days), empty states, error states, rate limits, e2e test.
 - Per-brand monthly AI budget (BUILD_SPEC §6.5, D54).
 - **Acceptance:** a new user can sign up, create a brand, build from a library template, edit, and publish to Vercel without help.
+  *Checked by `pnpm e2e` (B1.6c, D94) up to Publish asking for Vercel; a real deploy needs a Vercel token, so that last step is checked by hand.*
 
 ---
 

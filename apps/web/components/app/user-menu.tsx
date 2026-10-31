@@ -72,18 +72,26 @@ export function UserMenu({
         <button
           type="button"
           aria-label={`Account menu for ${name}`}
-          className="flex w-full items-center gap-2.5 rounded-lg bg-surface-primary p-1.5 text-left outline-none edge hover:edge-strong focus-visible:ring-2 focus-visible:ring-ring aria-expanded:edge-strong"
+          className="group relative flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left outline-none edge-clear focus-visible:ring-2 focus-visible:ring-ring rail:hover:bg-foreground-02"
         >
-          <PersonMark name={name} />
-          <span className="flex min-w-0 flex-1 flex-col font-medium">
-            <span className="truncate text-type-caption-1 text-heading-01">
-              {name}
+          {/* The card's fill and edge, behind its content, so the sidebar's rail can fade them:
+              there the card is its picture (D97). */}
+          <span
+            aria-hidden
+            className="rail-gone card-layer bg-surface-primary rail-fade edge group-hover:edge-strong group-aria-expanded:edge-strong"
+          />
+          <PersonMark name={name} className="relative rail-avatar" />
+          <span className="relative flex min-w-0 flex-1 rail-label items-center gap-2.5 overflow-hidden">
+            <span className="flex min-w-0 flex-1 flex-col font-medium">
+              <span className="truncate text-type-caption-1 text-heading-01">
+                {name}
+              </span>
+              <span className="truncate text-type-caption-3 text-heading-04">
+                {email}
+              </span>
             </span>
-            <span className="truncate text-type-caption-3 text-heading-04">
-              {email}
-            </span>
+            <ExpandIcon className="size-4 shrink-0 text-icon-system" />
           </span>
-          <ExpandIcon className="size-4 shrink-0 text-icon-system" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

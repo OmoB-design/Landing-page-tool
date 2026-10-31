@@ -8,7 +8,10 @@ import { BrandColumn, BrandFrame } from "@/components/app/brand-frame";
 import { SkeletonStatus, SkeletonText } from "@/components/app/skeletons";
 import { ProductActions } from "@/components/features/products/product-actions";
 import { ProductBriefing } from "@/components/features/products/product-briefing";
-import { ProductForm } from "@/components/features/products/product-form";
+import {
+  ProductForm,
+  ProductFormSkeleton,
+} from "@/components/features/products/product-form";
 import {
   ProductImages,
   ProductOptions,
@@ -168,18 +171,16 @@ async function Product({
 }
 
 /**
- * The product page while it loads: the back link, the name and price as lines, the action row as
- * one bar, then the Images and Details titles, each over one plain block.
+ * The product page while it loads, measured against the loaded page (2026-10-31): the back link;
+ * the name, price and store address as lines of their own type; the real action buttons (out of
+ * reach); a row of four image tiles; the details form itself, empty; and the options title.
  */
 function ProductSkeleton() {
   return (
     <BrandFrame
       header={
-        <div
-          aria-hidden
-          className="mx-auto flex w-full max-w-150 flex-col gap-5 pr-1 pb-2.5"
-        >
-          <div className="flex flex-col gap-3">
+        <div className="mx-auto flex w-full max-w-150 flex-col gap-5 pr-1 pb-2.5">
+          <div aria-hidden className="flex flex-col gap-3">
             <span className="flex w-fit items-center gap-1 text-type-body-small font-medium text-sub-text">
               <ChevronLeftFigmaIcon className="text-icon-system" />
               All products
@@ -190,20 +191,37 @@ function ProductSkeleton() {
                 width={280}
               />
               <SkeletonText className="text-type-body-small" width={236} />
+              <SkeletonText className="text-type-body-small" width={150} />
             </div>
           </div>
-          <Skeleton width={360} height={30} radius="var(--radius-md)" />
+          {/* A product read from a store has an address, so Pull again shows too. */}
+          <ProductActions
+            loading
+            brandId=""
+            productId=""
+            name=""
+            url="pending"
+          />
         </div>
       }
     >
       <SkeletonStatus label="Loading the product" />
-      <section aria-hidden className="px-6 pb-8 divider-b-thin">
+      <section className="px-6 pb-8 divider-b-thin">
         <div className="mx-auto flex w-full max-w-150 flex-col gap-6 py-1.5">
           <Section title="Images">
-            <Skeleton height={138} radius="var(--radius-md)" />
+            <ul aria-hidden className="grid grid-cols-3 gap-4 sm:grid-cols-4">
+              {[0, 1, 2, 3].map((tile) => (
+                <li key={tile} className="aspect-square">
+                  <Skeleton height="100%" radius="var(--radius-sm)" />
+                </li>
+              ))}
+            </ul>
           </Section>
           <Section title="Details">
-            <Skeleton height={260} radius="var(--radius-lg)" />
+            <ProductFormSkeleton />
+          </Section>
+          <Section title="Options and pricing" tight>
+            <SkeletonText className="text-type-body-small" width={180} />
           </Section>
         </div>
       </section>

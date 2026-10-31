@@ -3,7 +3,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { type ReactNode, useId } from "react";
 
+import { SkeletonText } from "@/components/app/skeletons";
 import { toast } from "@/components/app/toaster";
+import { Skeleton } from "@/components/ui/shimmer-loader";
 import { Switch } from "@/components/ui/switch";
 import { apiFetch } from "@/lib/api/client";
 import {
@@ -112,6 +114,40 @@ export function GeneralSettings({
             disabled={data.role !== "owner" || toggle.isPending}
             onCheckedChange={(checked) => toggle.mutate(checked)}
           />
+        </Row>
+      </section>
+    </SettingsPage>
+  );
+}
+
+/**
+ * General while it loads, measured against the loaded page (2026-10-31): the same title, sections
+ * and rows; the workspace name and the switch are the only things still to come.
+ */
+export function GeneralSettingsSkeleton() {
+  return (
+    <SettingsPage
+      title="General"
+      description="Your workspace, and settings for trying things out."
+    >
+      <section aria-hidden className="flex flex-col gap-4">
+        <h2 className="text-type-body-small font-medium text-heading-01">
+          Workspace
+        </h2>
+        <Row label="Name" hint="Shown in the sidebar and on invitations.">
+          <SkeletonText className="text-type-body-small" width={72} />
+        </Row>
+      </section>
+      <SettingsDivider />
+      <section aria-hidden className="flex flex-col gap-4">
+        <h2 className="text-type-body-small font-medium text-heading-01">
+          Testing
+        </h2>
+        <Row
+          label="Publish with placeholder images"
+          hint="Until real images arrive, pages have placeholders, which normally block publishing. Each such publish is recorded as published anyway."
+        >
+          <Skeleton width={34} height={19} radius="var(--radius-max)" />
         </Row>
       </section>
     </SettingsPage>

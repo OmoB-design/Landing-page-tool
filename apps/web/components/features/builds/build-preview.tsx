@@ -285,6 +285,40 @@ export function BuildPreview({
 }
 
 /**
+ * The preview column while the page loads (measured against the loaded page, 2026-10-31): the
+ * same toolbar (Desktop chosen, Open in new tab waiting), out of reach, over the empty well.
+ */
+export function BuildPreviewSkeleton() {
+  return (
+    <>
+      <div inert className="flex items-start justify-between gap-2.5">
+        <div className="flex segmented-frame p-0.5">
+          {VIEWPORTS.map(([id, label]) => (
+            <span
+              key={id}
+              className={cn(
+                "rounded-sm px-1.5 py-1 text-type-caption-1 font-medium text-heading-02",
+                id === "desktop" && "bg-foreground-02",
+              )}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span
+            className={cn(TOOL, "px-1.5 text-heading-06 dark:text-heading-06")}
+          >
+            <span className="py-1">Open in new tab</span>
+          </span>
+        </div>
+      </div>
+      <div className="flex min-h-0 flex-1 bg-foreground-02" />
+    </>
+  );
+}
+
+/**
  * Figma's 1 px dashed line (8 px dashes, 8 px gaps) inside 24 px corners: an SVG, since a CSS
  * dashed border can't set its dash length. Stroke-Input-Hover in light, Icon-Explainer in dark.
  */

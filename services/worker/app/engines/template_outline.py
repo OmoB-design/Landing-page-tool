@@ -4,9 +4,10 @@ fonts (the Look tab). Pure."""
 
 import math
 import re
+from typing import Any
 from urllib.parse import urlsplit
 
-from bs4 import Tag
+from bs4 import BeautifulSoup, Tag
 
 from app.engines.html import NON_TEXT, parse, style_text, text_nodes
 from app.engines.sections import top_level_sections
@@ -159,9 +160,13 @@ def checks(
     *,
     forbidden_terms: list[str] | None = None,
     asset_origins: tuple[str, ...] = (),
+    cloned: bool = False,
 ) -> list[TemplateIssue]:
     """Template checks for the Issues tab, most serious first. `keys` are the template's
-    section rows in order; `asset_origins` are where template images may load from."""
+    section rows in order; `asset_origins` are where template images may load from. A clone
+    (`cloned`, B2.2) has no `data-lp-*` slots: its blueprint names the logos and buy links, and
+    the clone-only build steps deal with its images, links and chrome, so those checks are
+    skipped and blocks outside sections are only noted."""
     soup = parse(html)
     issues: list[TemplateIssue] = []
     in_page = [str(s["data-lp-section"]) for s in top_level_sections(soup)]
@@ -186,11 +191,13 @@ def checks(
     for block in _untagged(body):
         issues.append(
             TemplateIssue(
-                severity="warning",
+                severity="info" if cloned else "warning",
                 message=f"A block outside every section ({_describe(block)}) can't be moved "
                 "or removed.",
             )
         )
+    if cloned:
+        return _with_text_checks(issues, soup, body, forbidden_terms)
     if not soup.select_one("[data-lp-product]"):
         issues.append(
             TemplateIssue(
@@ -256,6 +263,16 @@ def checks(
                 message="Links go to other sites: " + ", ".join(links) + ".",
             )
         )
+    return _with_text_checks(issues, soup, body, forbidden_terms)
+
+
+def _with_text_checks(
+    issues: list[TemplateIssue],
+    soup: BeautifulSoup,
+    body: Any,
+    forbidden_terms: list[str] | None,
+) -> list[TemplateIssue]:
+    """The scripts and forbidden-term notes every template gets, then most serious first."""
     scripts = [s for s in soup.select("script") if s.get("type") != "application/ld+json"]
     if scripts:
         count = len(scripts)

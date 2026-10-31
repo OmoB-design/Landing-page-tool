@@ -30,9 +30,12 @@ type FieldName = keyof ProductFormValues;
 export function ProductForm({
   productId,
   defaultValues,
+  loading = false,
 }: {
   productId: string;
   defaultValues: ProductFormValues;
+  /** While the product loads: the same form, empty and out of reach (the skeleton). */
+  loading?: boolean;
 }) {
   const router = useRouter();
   const form = useForm<ProductFormValues>({
@@ -66,7 +69,13 @@ export function ProductForm({
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-6">
+    <form
+      onSubmit={submit}
+      noValidate
+      inert={loading}
+      aria-busy={loading || undefined}
+      className="flex flex-col gap-6"
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField form={form} name="name" label="Product name" />
         <TextField form={form} name="url" label="Product page" type="url" />
@@ -199,4 +208,24 @@ function TextField({
       ) : null}
     </Field>
   );
+}
+
+const EMPTY_PRODUCT: ProductFormValues = {
+  name: "",
+  url: "",
+  currency: "",
+  price: "",
+  sale_price: "",
+  description: "",
+  usps: "",
+  specs: "",
+  selling_context: "",
+};
+
+/**
+ * The details while the product loads: the form itself, empty and out of reach, so every label
+ * and field is already where it will be (measured against the loaded page, 2026-10-31).
+ */
+export function ProductFormSkeleton() {
+  return <ProductForm loading productId="" defaultValues={EMPTY_PRODUCT} />;
 }

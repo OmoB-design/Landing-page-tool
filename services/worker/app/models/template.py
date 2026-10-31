@@ -148,6 +148,31 @@ LayoutAction = Annotated[
 ]
 
 
+class EditorSource(BaseModel):
+    """Where a clone came from (B2.1)."""
+
+    url: str | None
+    host: str
+    name: str | None
+    platform: str | None
+    verdict: str | None
+
+
+class EditorAnalysis(BaseModel):
+    """A clone's analysis (B2.2), and its review."""
+
+    ai: Literal["claude", "mock"]
+    model: str
+    analysed_at: datetime
+    palette: dict[str, str | None]
+    brand_tokens: list[str]
+    logo_srcs: list[str]
+    cta_hrefs: list[str]
+    notes: str
+    reviewed_at: datetime | None
+    reviewed_by: str | None
+
+
 class EditorTemplate(BaseModel):
     id: UUID
     name: str
@@ -156,6 +181,11 @@ class EditorTemplate(BaseModel):
     version: int
     parent_name: str | None
     updated_at: datetime
+    origin: Literal["owned", "cloned"] = "owned"
+    source: EditorSource | None = None
+    analysis: EditorAnalysis | None = None
+    # Pages can be built from it: owned, or a clone whose analysis was confirmed.
+    ready: bool = True
 
 
 class EditorSection(SectionOutline):
@@ -174,6 +204,7 @@ class EditorVersion(BaseModel):
 
 class TemplateEditorState(BaseModel):
     template: EditorTemplate
+    instructions: TemplateInstructions = Field(default_factory=TemplateInstructions)
     sections: list[EditorSection]
     versions: list[EditorVersion]  # newest first
     can_undo: bool

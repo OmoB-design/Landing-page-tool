@@ -12,6 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { PlusFigmaIcon } from "@/components/ui/lp-icons";
 import type { BrandSummary } from "@/lib/brands/queries";
+import { cn } from "@/lib/utils";
+
+import { money } from "./budget-meter";
 
 /**
  * The org's brands (Figma Brands Details: Brands/List): 44 px rows 2 px apart, each on a 0.7 px
@@ -61,6 +64,22 @@ function BrandRow({ brand }: { brand: BrandSummary }) {
             {brand.productCount}{" "}
             {brand.productCount === 1 ? "product" : "products"}
           </span>
+          {brand.budgetUsd !== null || brand.spentUsd > 0 ? (
+            <span
+              className={cn(
+                "tabular-nums",
+                brand.budgetUsd !== null &&
+                  brand.spentUsd >= brand.budgetUsd &&
+                  "text-text-danger",
+              )}
+              title="AI spend this month (D54)"
+            >
+              {brand.budgetUsd !== null
+                ? `${money(brand.spentUsd)} of ${money(brand.budgetUsd)}`
+                : money(brand.spentUsd)}{" "}
+              this month
+            </span>
+          ) : null}
           <RelativeTime date={brand.updatedAt} />
         </span>
       </Link>

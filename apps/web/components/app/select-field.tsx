@@ -30,6 +30,7 @@ export function SelectField({
   onValueChange,
   disabled = false,
   className,
+  labelClassName,
 }: {
   label: string;
   value: string | null;
@@ -38,6 +39,8 @@ export function SelectField({
   onValueChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  /** Matches the label to a form's other fields, e.g. FieldLabel's 14 px. */
+  labelClassName?: string;
 }) {
   const id = useId();
   const current = options.find((option) => option.value === value);
@@ -48,7 +51,10 @@ export function SelectField({
     <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
       <span
         id={`${id}-label`}
-        className="text-type-body-small font-medium text-heading-03"
+        className={cn(
+          "text-type-body-small font-medium text-heading-03",
+          labelClassName,
+        )}
       >
         {label}
       </span>

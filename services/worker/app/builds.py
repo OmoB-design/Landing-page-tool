@@ -20,6 +20,10 @@ class BuildInputsMissingError(Exception):
     """The template, brand or product isn't available to this org."""
 
 
+class TemplateNotReadyError(Exception):
+    """A cloned template is built from once its analysis is confirmed (B2.2, D96)."""
+
+
 class BuildNotFoundError(Exception):
     """No such build in this org."""
 
@@ -42,12 +46,18 @@ def create_build(
     with transaction() as conn:
         template = conn.execute(
             """
-            select id, name, origin, version from templates
+            select id, name, origin, version, blueprint, reviewed_at from templates
             where id = %(t)s and (org_id is null or org_id = %(o)s)
               and deleted_at is null and status = 'active'
             """,
             {"t": template_id, "o": org_id},
         ).fetchone()
+        if (
+            template is not None
+            and template["origin"] == "cloned"
+            and not (template["blueprint"] and template["reviewed_at"])
+        ):
+            raise TemplateNotReadyError
         product = conn.execute(
             """
             select p.id, p.name from products p join brands b on b.id = p.brand_id

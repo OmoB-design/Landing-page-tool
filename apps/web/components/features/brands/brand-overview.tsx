@@ -7,6 +7,8 @@ import { ExternalLinkSmallFigmaIcon } from "@/components/ui/lp-icons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
 import type { getBrand } from "@/lib/brands/queries";
 
+import { BudgetMeter, resetsOn } from "./budget-meter";
+
 type Brand = NonNullable<Awaited<ReturnType<typeof getBrand>>>;
 
 const SWATCHES = [
@@ -23,7 +25,14 @@ const SWATCHES = [
  * column 40 px apart: colours (a 65 x 36 swatch and its hex), fonts and voice, each under a
  * 14 px medium label.
  */
-export function BrandOverview({ brand }: { brand: Brand }) {
+export function BrandOverview({
+  brand,
+  spentUsd,
+}: {
+  brand: Brand;
+  /** This month's AI spend (D54). */
+  spentUsd: number;
+}) {
   const { row } = brand;
   const palette = (row.palette ?? {}) as Record<
     string,
@@ -45,6 +54,15 @@ export function BrandOverview({ brand }: { brand: Brand }) {
     <BrandFrame header={<OverviewHeader brand={brand} />}>
       <BrandColumn>
         <div className="flex flex-col gap-10">
+          <Detail title="AI budget">
+            <BudgetMeter
+              spentUsd={spentUsd}
+              budgetUsd={
+                row.monthly_budget_usd ? Number(row.monthly_budget_usd) : null
+              }
+              resets={resetsOn()}
+            />
+          </Detail>
           <Detail title="Colours">
             {swatches.length > 0 ? (
               <ul className="grid grid-cols-2 gap-4 sm:flex sm:justify-between sm:gap-2">
@@ -162,8 +180,11 @@ function OverviewHeader({ brand }: { brand: Brand }) {
 }
 
 /**
- * The Overview while the brand loads: the logo box, name and tagline as lines, then the section
- * titles, each over one plain block.
+ * The Overview while the brand loads, measured against a loaded brand that has its DNA (the usual
+ * case: brands are read from their store; 2026-10-31): the logo box and Edit Brand DNA, the name,
+ * tagline and website as lines of their own type; This month with its chip and note; the four
+ * colour labels over a 65 x 36 swatch and its hex chip; the two font labels over their chips; two
+ * lines of voice and two example chips. A brand with no DNA yet shows less.
  */
 export function BrandOverviewSkeleton() {
   return (
@@ -171,22 +192,85 @@ export function BrandOverviewSkeleton() {
       header={
         <div className="mx-auto flex w-full max-w-150 flex-col gap-1.5 pr-1 pb-2.5">
           <SkeletonStatus label="Loading the brand" />
-          <Skeleton width={112} height={46} radius="var(--radius-sm)" />
+          <div aria-hidden className="flex items-center justify-between gap-4">
+            <Skeleton width={112} height={46} radius="var(--radius-sm)" />
+            <span className="flex h-7.5 shrink-0 items-center rounded-md px-1.5 text-type-caption-1 font-medium text-heading-04 ring-thin ring-stroke ring-inset">
+              Edit Brand DNA
+            </span>
+          </div>
           <SkeletonText className="font-serif text-type-title" width={160} />
-          <SkeletonText className="text-type-body-small" width={200} />
+          <SkeletonText className="text-type-body-small" width={240} />
+          <SkeletonText className="text-type-body-small" width={140} />
         </div>
       }
     >
       <BrandColumn>
         <div aria-hidden className="flex flex-col gap-10">
+          <Detail title="AI budget">
+            <div className="flex flex-col gap-2">
+              <div className="flex h-7 items-center gap-1">
+                <span className="text-type-body-small font-medium text-heading-01">
+                  This month
+                </span>
+                <SkeletonText className="text-type-caption-2" width={64} />
+              </div>
+              <SkeletonText className="text-type-caption-2" width={240} />
+            </div>
+          </Detail>
           <Detail title="Colours">
-            <Skeleton height={60} radius="var(--radius-md)" />
+            <ul className="grid grid-cols-2 gap-4 sm:flex sm:justify-between sm:gap-2">
+              {SWATCHES.map((swatch) => (
+                <li key={swatch.name} className="flex flex-col gap-2">
+                  <Label>{swatch.label}</Label>
+                  <span className="flex items-center gap-2">
+                    <Skeleton
+                      width={65}
+                      height={36}
+                      radius="var(--radius-md)"
+                    />
+                    <span className="rounded-xsm bg-foreground-01 px-1 py-0.5">
+                      <SkeletonText
+                        className="text-type-body-small"
+                        width={58}
+                      />
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </Detail>
           <Detail title="Fonts">
-            <Skeleton height={60} radius="var(--radius-md)" />
+            <ul className="flex flex-wrap gap-4">
+              {["Headings", "Body"].map((label) => (
+                <li key={label} className="flex flex-col gap-2">
+                  <Label>{label}</Label>
+                  <span className="inline-flex rounded-md bg-foreground-01 p-2">
+                    <SkeletonText className="text-type-body-small" width={88} />
+                  </span>
+                </li>
+              ))}
+            </ul>
           </Detail>
           <Detail title="Voice">
-            <Skeleton height={96} radius="var(--radius-md)" />
+            <div className="flex flex-col gap-3">
+              <div>
+                <SkeletonText className="text-type-body-small" width="100%" />
+                <SkeletonText className="text-type-body-small" width="70%" />
+              </div>
+              <ul className="flex flex-wrap gap-2">
+                {[180, 140].map((width) => (
+                  <li
+                    key={width}
+                    className="inline-flex rounded-md bg-foreground-01 p-2"
+                  >
+                    <SkeletonText
+                      className="text-type-body-small"
+                      width={width}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
           </Detail>
         </div>
       </BrandColumn>

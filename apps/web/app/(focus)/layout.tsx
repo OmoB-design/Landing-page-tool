@@ -14,7 +14,9 @@ export default function FocusLayout({ children }: { children: ReactNode }) {
       <div className="flex h-dvh bg-dashboard p-1.5 text-body">
         <main
           id="main"
-          className="min-w-0 flex-1 scrollbar-stable overflow-y-auto rounded-panel bg-surface-primary edge"
+          // relative: absolutely placed text (screen-reader labels) stays inside the panel's
+          // scroll instead of stretching the page below it.
+          className="relative min-w-0 flex-1 scrollbar-stable overflow-y-auto rounded-panel bg-surface-primary edge"
         >
           {children}
         </main>

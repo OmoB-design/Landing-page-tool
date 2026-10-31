@@ -62,6 +62,16 @@ export const brandFormSchema = z.object({
     }),
   meta_title: text(120),
   meta_description: text(300),
+  // D54: paid AI steps for the brand stop when this month's spend reaches it; empty = no cap.
+  monthly_budget_usd: z
+    .string()
+    .trim()
+    .refine(
+      (value) =>
+        value === "" ||
+        (/^\d{1,7}(\.\d{1,2})?$/.test(value) && Number(value) >= 0),
+      { error: "Use an amount in dollars, like 50 or 49.99." },
+    ),
 });
 export type BrandFormValues = z.infer<typeof brandFormSchema>;
 

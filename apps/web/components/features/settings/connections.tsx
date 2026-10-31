@@ -612,3 +612,35 @@ export function VercelConnectDialog({
     </Dialog>
   );
 }
+
+/**
+ * Connections while they load (measured against the loaded page, 2026-10-31): the same title and
+ * the two service cards as a workspace with nothing connected sees them, out of reach.
+ */
+export function ConnectionsSkeleton() {
+  return (
+    <SettingsPage
+      title="Connections"
+      description="Connect the services your pages are published to. Each is connected once for the whole workspace."
+    >
+      <section inert className="flex flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ConnectionCard
+            logo={<VercelLogo className="w-6 text-heading-01" />}
+            name="Vercel"
+            description={VERCEL_DESCRIPTION}
+            state="connect"
+            action="Connect"
+          />
+          <ConnectionCard
+            logo={<ShopifyLogo className="h-6" />}
+            name="Shopify"
+            description={SHOPIFY_DESCRIPTION}
+            state="connect"
+            action="Connect"
+          />
+        </div>
+      </section>
+    </SettingsPage>
+  );
+}

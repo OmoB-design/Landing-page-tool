@@ -15,6 +15,64 @@ from app.config import get_settings
 from app.db import transaction
 from app.jobs.models import EventLevel, Job, JobEvent
 
+# Hourly caps per workspace on starting work (B1.6c, D94): each group's job kinds share a cap
+# (LP_LIMIT_<GROUP>_PER_HOUR). Retries of a job and a reused identical job don't count.
+LIMIT_GROUPS: dict[str, tuple[tuple[str, ...], str]] = {
+    "builds": (("build",), "builds"),
+    "redrafts": (("redraft",), "redrafts"),
+    "intake": (
+        ("brand_autofetch", "brand_assets", "product_pull", "product_briefing"),
+        "brand and product fetches",
+    ),
+    "publishes": (
+        ("publish_vercel", "publish_shopify_page", "unpublish_vercel", "unpublish_shopify_page"),
+        "publishes",
+    ),
+    "exports": (("export",), "exports"),
+    "clones": (("template_clone",), "page clones"),
+    "analyses": (("template_analyze",), "page analyses"),
+}
+
+
+class RateLimitedError(Exception):
+    """The workspace has started its hourly cap of this kind of work (the API answers 429)."""
+
+    def __init__(self, message: str, retry_after_seconds: int) -> None:
+        super().__init__(message)
+        self.message = message
+        self.retry_after_seconds = retry_after_seconds
+
+
+def check_limit(conn: Connection[DictRow], org_id: UUID, kind: str) -> None:
+    """Refuses a new job when the workspace started its cap of this group in the last hour; says
+    when the oldest of those leaves the hour."""
+    group = next(((name, spec) for name, spec in LIMIT_GROUPS.items() if kind in spec[0]), None)
+    if group is None:
+        return
+    name, (kinds, noun) = group
+    limit: int = getattr(get_settings(), f"lp_limit_{name}_per_hour")
+    if limit <= 0:
+        return
+    row = conn.execute(
+        """
+        select ceil(extract(epoch from created_at + interval '1 hour' - now()))::int as wait
+        from jobs
+        where org_id = %(o)s and kind = any(%(k)s) and created_at > now() - interval '1 hour'
+        order by created_at desc offset %(skip)s limit 1
+        """,
+        {"o": org_id, "k": list(kinds), "skip": limit - 1},
+    ).fetchone()
+    if row is None:
+        return
+    wait = max(int(row["wait"]), 1)
+    minutes = max(1, -(-wait // 60))
+    raise RateLimitedError(
+        f"This workspace has started {limit} {noun} in the last hour, its limit. Try again in "
+        f"{minutes} minute{'' if minutes == 1 else 's'}.",
+        wait,
+    )
+
+
 # Recorded on a job whose worker stopped heartbeating after its last allowed attempt.
 LOST_MESSAGE = "The worker stopped responding during this job. Try again."
 LOST_ERROR: dict[str, Any] = {"code": "worker_lost", "message": LOST_MESSAGE, "user_facing": True}
@@ -37,6 +95,7 @@ def enqueue(
     and its job are created together)."""
     job_queue = get_settings().lp_job_queue
     if conn is not None:
+        check_limit(conn, org_id, kind)
         row = conn.execute(
             """
             insert into jobs (org_id, kind, payload, dedupe_key, build_id, max_attempts, created_by,
@@ -54,6 +113,17 @@ def enqueue(
         assert row is not None
         return Job.model_validate(row), True
     with transaction() as conn:
+        reused = (
+            conn.execute(
+                "select 1 from jobs where org_id = %(o)s and dedupe_key = %(d)s "
+                "and status in ('queued', 'running')",
+                {"o": org_id, "d": dedupe_key},
+            ).fetchone()
+            if dedupe_key
+            else None
+        )
+        if reused is None:  # an identical job running already is returned, not counted
+            check_limit(conn, org_id, kind)
         row = conn.execute(
             """
             insert into jobs (org_id, kind, payload, dedupe_key, build_id, max_attempts, created_by,

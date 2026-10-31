@@ -6,6 +6,10 @@
 @custom-variant dark (&:is(.dark *));
 /* Collapsed sidebar: `data-sidebar="collapsed"` on <html> (cookie-backed, see components/app/sidebar). */
 @custom-variant sidebar-collapsed (&:is([data-sidebar="collapsed"] *));
+/* Inside the desktop sidebar column (`data-sidebar-desktop`), and inside it while it's the icon
+   rail (D97). The mobile sheet shows the same sidebar and is never a rail. */
+@custom-variant in-sidebar (&:is([data-sidebar-desktop] *));
+@custom-variant rail (&:is([data-sidebar="collapsed"] [data-sidebar-desktop] *));
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Design tokens — docs/DESIGN.md §4, DECISIONS.md D68. Names and structure follow the owner's
@@ -253,6 +257,7 @@
   --color-foreground-03: var(--grey-150);
   --color-dashboard: var(--grey-10);
   --color-surface-modal: var(--base-white);
+  --color-letter-paper: var(--base-white);
   --color-overlay: var(--base-black);
   --color-stroke: var(--grey-100);
   --color-stroke-strong: var(--grey-150);
@@ -409,13 +414,14 @@
      namespace, so they live here (w-sidebar, h-topbar, h-header, h-row, h-nav-item …). Spacing
      itself is Tailwind's 4px scale, which is Figma's Space scale (Space-16 = p-4). */
   --spacing-sidebar: 240px; /* Figma: Side Nav */
+  --spacing-rail: 44px; /* the collapsed sidebar (D97): a 28 px row 8 px from either side, icons centred */
   --spacing-topbar: 48px; /* the section editor's own top bar */
   --spacing-header: 49px; /* page header inside the panel (h-header), bottom border included; Figma Home: 50 with the panel's top stroke */
   --spacing-row: 40px;
   --spacing-nav-item: 32px;
   --spacing-panel: 320px; /* Figma Build: the build page's right panel at rest (w-panel); the Mover widens it */
   --spacing-preview-mobile: 390px; /* phone-width page preview (w-preview-mobile) */
-  --spacing-editor-panel: 440px; /* section editor's left panel (w-editor-panel) */
+  --spacing-editor-panel: 360px; /* section editor's left panel at its default (w-editor-panel; the loading state) */
   --spacing-wizard-dossier: 312px; /* create wizard's dossier panel (w-wizard-dossier) */
   --spacing-menu-workspace: 228px; /* Figma: Sidebar Account Option (w-menu-workspace); its ring-thin is outside */
   --spacing-menu-account: 270px; /* Figma: Sidebar Menu Option (w-menu-account) */
@@ -440,6 +446,12 @@
   ); /* enter/exit, presses, popovers */
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* things moving on screen */
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* sheets and drawers */
+  --ease-out-expo: cubic-bezier(
+    0.16,
+    1,
+    0.3,
+    1
+  ); /* the sidebar rail's labels fading in (D97) */
   --animate-spin: spin 0.7s linear infinite; /* a fast spinner reads as a fast app */
   --animate-spin-slow: spin 1.6s linear infinite; /* reduced motion: slower, not stopped */
   /* Figma Build, Stepper: the eight-dash loader turns smoothly (a transform at a constant speed,
@@ -478,6 +490,15 @@
     70%,
     100% {
       transform: scale(2.8);
+      opacity: 0;
+    }
+  }
+  /* A chart tooltip the first time it shows: a 2 px rise and a fade in 150 ms (Emil: tooltips
+     125–200 ms, ease-out); moving to the next column is instant. */
+  --animate-tooltip-in: tooltip-in 150ms var(--ease-out) both;
+  @keyframes tooltip-in {
+    from {
+      transform: translateY(2px);
       opacity: 0;
     }
   }
@@ -554,6 +575,7 @@
   --color-foreground-03: var(--grey-700);
   --color-dashboard: var(--base-black);
   --color-surface-modal: var(--grey-900);
+  --color-letter-paper: var(--base-black);
   --color-stroke: var(--grey-850);
   --color-stroke-strong: var(--grey-850);
   --color-stroke-input-hover: var(--grey-900);
@@ -912,6 +934,144 @@
   transition-timing-function: var(--ease-in-out);
 }
 
+/* The sidebar's icon rail (D97), timed from the owner's reference clip (2026-10-31). The column
+   eases between 240 px and the 44 px rail on the drawer curve and the page panel follows; icons
+   never move. Opening, the labels arrive top to bottom, 70 ms after the column starts and 18.5 ms
+   apart (`--i` is a label's place in that order), each fading in on an expo ease-out and sliding
+   4 px from the left on the drawer curve; the controls on the right fade as one group, later and
+   slower. Closing, everything goes in 70 ms, 5 ms apart, while the column takes 390 ms. Reduced
+   motion: the column snaps and the labels only fade. Variables, so /dev/sidebar can tune them. */
+:root {
+  --rail-open: 370ms;
+  --rail-close: 390ms;
+  --rail-delay: 70ms;
+  --rail-stagger: 18.5ms;
+  --rail-fade: 290ms;
+  --rail-slide: 370ms;
+  --rail-shift: -4px;
+  --rail-meta-delay: 120ms;
+  --rail-meta-fade: 400ms;
+  --rail-out: 70ms;
+  --rail-out-stagger: 5ms;
+  --rail-rule-delay: 120ms;
+  --rail-rule-fade: 200ms;
+  --rail-ease: var(--ease-drawer);
+  --rail-fade-ease: var(--ease-out-expo);
+  --rail-slide-ease: var(--ease-drawer);
+}
+/* The column itself. */
+@utility transition-rail {
+  transition-property: width;
+  transition-duration: var(--rail-open);
+  transition-timing-function: var(--rail-ease);
+  &:is([data-sidebar="collapsed"] *) {
+    transition-duration: var(--rail-close);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+/* A label: fades and slides, staggered. It keeps its place (and a link keeps its name) in the rail. */
+@utility rail-label {
+  transition-property: opacity, translate, visibility;
+  transition-duration: var(--rail-fade), var(--rail-slide), var(--rail-fade);
+  transition-timing-function:
+    var(--rail-fade-ease), var(--rail-slide-ease), linear;
+  transition-delay: calc(var(--rail-delay) + var(--i, 0) * var(--rail-stagger));
+  &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+    opacity: 0;
+    translate: var(--rail-shift) 0;
+    transition-duration: var(--rail-out);
+    transition-timing-function: var(--ease-out);
+    transition-delay: calc(var(--i, 0) * var(--rail-out-stagger));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+      translate: none;
+      transition-duration: 150ms;
+      transition-delay: 0s;
+    }
+  }
+}
+/* A surface that fades in the same order without sliding (the profile card's fill and edge). */
+@utility rail-fade {
+  transition-property: opacity, visibility;
+  transition-duration: var(--rail-fade);
+  transition-timing-function: var(--rail-fade-ease);
+  transition-delay: calc(var(--rail-delay) + var(--i, 0) * var(--rail-stagger));
+  &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+    opacity: 0;
+    transition-duration: var(--rail-out);
+    transition-timing-function: var(--ease-out);
+    transition-delay: calc(var(--i, 0) * var(--rail-out-stagger));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+      transition-duration: 150ms;
+      transition-delay: 0s;
+    }
+  }
+}
+/* Controls on the right (Search, Collapse, Soon): one group, no stagger. */
+@utility rail-meta {
+  transition-property: opacity, visibility;
+  transition-duration: var(--rail-meta-fade);
+  transition-timing-function: var(--rail-fade-ease);
+  transition-delay: var(--rail-meta-delay);
+  &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+    opacity: 0;
+    visibility: hidden;
+    transition-duration: var(--rail-out);
+    transition-timing-function: var(--ease-out);
+    transition-delay: 0s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+      transition-duration: 150ms;
+      transition-delay: 0s;
+    }
+  }
+}
+/* Gone from the rail once faded: not clickable, not focusable (headings, cards, rows with no icon). */
+@utility rail-gone {
+  &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+    visibility: hidden;
+  }
+}
+/* A rule between sections, only in the rail: it fades in once the headings have gone and the
+   column is mostly in, and leaves at once when the rail opens (shadcn's group separators). */
+@utility rail-rule {
+  opacity: 0;
+  transition: opacity var(--rail-out) var(--ease-out);
+  &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+    opacity: 1;
+    transition-duration: var(--rail-rule-fade);
+    transition-delay: var(--rail-rule-delay);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &,
+    &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+      transition-duration: 150ms;
+      transition-delay: 0s;
+    }
+  }
+}
+/* The profile picture: 30 px open, 20 px in the rail (centred on the icons), from its left edge. */
+@utility rail-avatar {
+  transform-origin: left center;
+  transition: scale var(--rail-open) var(--rail-ease);
+  &:is([data-sidebar="collapsed"] [data-sidebar-desktop] *) {
+    scale: calc(2 / 3);
+    transition-duration: var(--rail-close);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 /* Figma Notis: a 0.5 px stroke-coloured line inside the top edge (the popover footer). */
 @utility divider-t-half {
   --tw-inset-shadow: inset 0 0.5px 0 0 var(--color-stroke);
@@ -1071,6 +1231,15 @@
   }
 }
 
+/* A 0.4 px ring (Figma 739:16891: the editor's Desktop / Phone track) in the ring colour. */
+@utility ring-hair {
+  --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 0.4px
+    var(--tw-ring-color, currentcolor);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
 /* A 0.5 px ring (Figma's 0.5 px strokes on chips) in the ring colour; `ring-inset` draws it inside:
    `ring-half ring-inset ring-stroke`. */
 @utility ring-half {
@@ -1105,6 +1274,25 @@
 /* Figma Build: the right panel's 0.7 px Stroke-Strong line down its left edge. */
 @utility divider-l-panel {
   --tw-inset-shadow: inset 0.7px 0 0 0 var(--color-stroke-strong);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* Figma section editor (722:14843): the panel's 0.7 px Surface/Stroke line down its right edge. */
+@utility divider-r-thin {
+  --tw-inset-shadow: inset -0.7px 0 0 0 var(--color-stroke);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* Figma section editor (722:14843): Analyse again's quiet edge, a 0.6 px Surface/Stroke line
+   inside and a faint inner shade at the bottom. */
+@utility edge-quiet {
+  --tw-inset-shadow:
+    inset 0 0 0 0.6px var(--color-stroke),
+    inset 0 -0.5px 0 0.3px rgb(0 0 0 / 0.15);
   box-shadow:
     var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
     var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -1219,6 +1407,17 @@
 }
 @utility edge-strong {
   border-color: var(--color-edge-strong);
+}
+/* An edge's 0.5 px of room, clear: for a card whose fill and edge are a `card-layer` behind it. */
+@utility edge-clear {
+  border: 0.5px solid transparent;
+}
+/* A card's fill and edge as a layer under its content, over its clear edge (the profile card,
+   whose fill and edge fade away in the sidebar rail, D97); its content sits above it (relative). */
+@utility card-layer {
+  position: absolute;
+  inset: -0.5px;
+  border-radius: inherit;
 }
 
 /* The content panel keeps room for its scrollbar, so content doesn't shift sideways between short

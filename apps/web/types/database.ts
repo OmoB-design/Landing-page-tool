@@ -117,6 +117,7 @@ export type Database = {
           logo_asset_id: string | null
           meta_description: string | null
           meta_title: string | null
+          monthly_budget_usd: number | null
           name: string
           next_build_number: number
           org_id: string
@@ -150,6 +151,7 @@ export type Database = {
           logo_asset_id?: string | null
           meta_description?: string | null
           meta_title?: string | null
+          monthly_budget_usd?: number | null
           name: string
           next_build_number?: number
           org_id: string
@@ -183,6 +185,7 @@ export type Database = {
           logo_asset_id?: string | null
           meta_description?: string | null
           meta_title?: string | null
+          monthly_budget_usd?: number | null
           name?: string
           next_build_number?: number
           org_id?: string
@@ -216,6 +219,45 @@ export type Database = {
           },
           {
             foreignKeyName: "brands_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_notices: {
+        Row: {
+          brand_id: string
+          created_at: string
+          level: number
+          month: string
+          org_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          level: number
+          month: string
+          org_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          level?: number
+          month?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_notices_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_notices_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
@@ -613,6 +655,7 @@ export type Database = {
       }
       ledger_entries: {
         Row: {
+          brand_id: string | null
           build_id: string | null
           cost_usd: number | null
           created_at: string
@@ -628,6 +671,7 @@ export type Database = {
           units: number | null
         }
         Insert: {
+          brand_id?: string | null
           build_id?: string | null
           cost_usd?: number | null
           created_at?: string
@@ -643,6 +687,7 @@ export type Database = {
           units?: number | null
         }
         Update: {
+          brand_id?: string | null
           build_id?: string | null
           cost_usd?: number | null
           created_at?: string
@@ -658,6 +703,13 @@ export type Database = {
           units?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ledger_entries_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ledger_entries_build_id_fkey"
             columns: ["build_id"]
@@ -1296,6 +1348,8 @@ export type Database = {
           parent_template_id: string | null
           platform: string | null
           purged_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           slug: string
           source_host: string | null
           source_html_path: string | null
@@ -1326,6 +1380,8 @@ export type Database = {
           parent_template_id?: string | null
           platform?: string | null
           purged_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           slug: string
           source_host?: string | null
           source_html_path?: string | null
@@ -1356,6 +1412,8 @@ export type Database = {
           parent_template_id?: string | null
           platform?: string | null
           purged_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           slug?: string
           source_host?: string | null
           source_html_path?: string | null
@@ -1392,6 +1450,13 @@ export type Database = {
     }
     Functions: {
       allocate_build_key: { Args: { target_brand: string }; Returns: string }
+      brand_month_spend: {
+        Args: { p_org: string }
+        Returns: {
+          brand_id: string
+          spend_usd: number
+        }[]
+      }
       is_org_admin: { Args: { target_org: string }; Returns: boolean }
       is_org_member: { Args: { target_org: string }; Returns: boolean }
       is_org_member_path: { Args: { object_name: string }; Returns: boolean }

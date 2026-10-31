@@ -2,9 +2,13 @@
 
 import {
   WorkerError,
+  analyseTemplate,
+  confirmTemplateReview,
   copyLibraryTemplate,
   editTemplateLayout,
+  getTemplateEditor,
   restoreTemplateVersion,
+  saveTemplateInstructions,
   stepTemplate,
 } from "@/lib/api/worker";
 import { getSessionContext } from "@/lib/auth/session";
@@ -13,8 +17,10 @@ import {
   type LayoutAction,
   type TemplateDetails,
   type TemplateEditorState,
+  type TemplateInstructions,
   layoutActionSchema,
   templateDetailsSchema,
+  templateInstructionsSchema,
 } from "@/lib/validators/template";
 
 export type TemplateActionResult = { ok?: true; id?: string; error?: string };
@@ -152,4 +158,71 @@ export async function saveTemplateDetails(
   if (error) return { error: `Couldn't save: ${error.message}` };
   if (!data) return { error: "That template no longer exists." };
   return { ok: true };
+}
+
+// ── Clones: analysis and review (B2.2) ───────────────────────────────────────
+
+/** The editor's state again, after an analysis finished in the background. */
+export async function reloadTemplate(
+  templateId: string,
+): Promise<EditorActionResult> {
+  return editorCall((token, orgId) =>
+    getTemplateEditor(token, orgId, templateId),
+  );
+}
+
+/** Confirms a clone's analysis: pages can be built from it from now on. */
+export async function confirmAnalysis(
+  templateId: string,
+  baseVersion: number,
+): Promise<EditorActionResult> {
+  return editorCall((token, orgId) =>
+    confirmTemplateReview(token, templateId, {
+      org_id: orgId,
+      base_version: baseVersion,
+    }),
+  );
+}
+
+/** Saves the template's rules (forbidden terms, copy and image rules, kept images). */
+export async function saveRules(
+  templateId: string,
+  instructions: TemplateInstructions,
+): Promise<EditorActionResult> {
+  const parsed = templateInstructionsSchema.safeParse(instructions);
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Check the rules." };
+  return editorCall((token, orgId) =>
+    saveTemplateInstructions(token, templateId, {
+      org_id: orgId,
+      instructions: parsed.data,
+    }),
+  );
+}
+
+/** Analyse again: one Claude call (a few cents). Returns the job to follow. */
+export async function startAnalysis(
+  templateId: string,
+): Promise<{ jobId?: string; error?: string }> {
+  const { currentOrg } = await getSessionContext();
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return { error: "Your session has ended. Sign in again." };
+  try {
+    const { job } = await analyseTemplate(
+      session.access_token,
+      currentOrg.id,
+      templateId,
+    );
+    return { jobId: job.id };
+  } catch (cause) {
+    return {
+      error:
+        cause instanceof WorkerError
+          ? cause.message
+          : "Couldn't start the analysis.",
+    };
+  }
 }

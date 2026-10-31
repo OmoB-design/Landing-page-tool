@@ -18,6 +18,8 @@ from app.jobs.kinds import (
     publish_shopify,
     publish_vercel,
     redraft,
+    template_analyze,
+    template_clone,
 )
 
 Handler = Callable[[JobContext], dict[str, Any] | None]
@@ -126,6 +128,25 @@ KINDS: dict[str, JobKind] = {
             max_attempts=1,
         ),
         # Started by POST /builds/{id}/unpublish with destination shopify_page.
+        # Started by POST /templates/clone, which checks the clone terms and flag first. Free,
+        # but one attempt: the user can clone again from the screen.
+        JobKind(
+            name="template_clone",
+            title="Page clone",
+            handler=template_clone.run,
+            payload_model=template_clone.TemplateClonePayload,
+            max_attempts=1,
+        ),
+        # Queued by template_clone, and by POST /templates/{id}/analyse. One paid Claude call;
+        # one attempt, so a lost worker never pays twice.
+        JobKind(
+            name="template_analyze",
+            title="Page analysis",
+            handler=template_analyze.run,
+            payload_model=template_analyze.TemplateAnalyzePayload,
+            max_attempts=1,
+            dedupe=template_analyze.dedupe_key,
+        ),
         JobKind(
             name="unpublish_shopify_page",
             title="Remove the Shopify draft",

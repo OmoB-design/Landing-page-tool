@@ -14,7 +14,9 @@ from app.engines.sections import DUPLICATE_KEY, apply_layout, duplicate_section,
 from app.engines.template_outline import checks, look, outline, read_minutes
 from app.models.template import (
     DuplicateAction,
+    EditorAnalysis,
     EditorSection,
+    EditorSource,
     EditorTemplate,
     EditorVersion,
     LayoutAction,
@@ -22,6 +24,7 @@ from app.models.template import (
     RenameAction,
     ReorderAction,
     TemplateEditorState,
+    TemplateInstructions,
 )
 from app.providers import storage
 
@@ -42,7 +45,7 @@ class TemplateEditError(Exception):
     """An edit the template doesn't allow; the message is shown to the user."""
 
 
-def _free_slug(conn: Any, org_id: UUID, slug: str) -> str:
+def free_slug(conn: Any, org_id: UUID, slug: str) -> str:
     taken = {
         r["slug"]
         for r in conn.execute(
@@ -100,7 +103,7 @@ def use_library_template(org_id: UUID, template_id: UUID, user_id: UUID | None) 
             returning id, slug, name, type, version
             """,
             {
-                "id": new_id, "o": org_id, "slug": _free_slug(conn, org_id, library["slug"]),
+                "id": new_id, "o": org_id, "slug": free_slug(conn, org_id, library["slug"]),
                 "name": library["name"], "description": library["description"],
                 "type": library["type"], "parent": library["id"], "path": html_path,
                 "instructions": Jsonb(library["instructions"]),
@@ -136,8 +139,14 @@ def _load(conn: Any, org_id: UUID, template_id: UUID, *, lock: bool = False) -> 
     row = conn.execute(
         f"""
         select t.id, t.org_id, t.name, t.description, t.type, t.version, t.html_path,
-               t.instructions, t.updated_at, p.name as parent_name
-        from templates t left join templates p on p.id = t.parent_template_id
+               t.instructions, t.updated_at, p.name as parent_name, t.origin, t.source_url,
+               t.source_host, t.source_name, t.platform, t.verdict, t.blueprint, t.reviewed_at,
+               coalesce(nullif(pr.display_name, ''), u.raw_user_meta_data ->> 'full_name',
+                        u.email) as reviewed_by_name
+        from templates t
+        left join templates p on p.id = t.parent_template_id
+        left join profiles pr on pr.user_id = t.reviewed_by
+        left join auth.users u on u.id = t.reviewed_by
         where t.id = %(t)s and t.org_id = %(o)s and t.deleted_at is null
         {"for update of t" if lock else ""}
         """,
@@ -189,6 +198,8 @@ def _state(
     ]
     words = sum(s.words for s in sections)
     current = template["version"]
+    cloned = template["origin"] == "cloned"
+    blueprint = template["blueprint"] or None
     return TemplateEditorState(
         template=EditorTemplate(
             id=template["id"],
@@ -198,7 +209,33 @@ def _state(
             version=current,
             parent_name=template["parent_name"],
             updated_at=template["updated_at"],
+            origin=template["origin"],
+            source=EditorSource(
+                url=template["source_url"],
+                host=template["source_host"],
+                name=template["source_name"],
+                platform=template["platform"],
+                verdict=template["verdict"],
+            )
+            if cloned
+            else None,
+            analysis=EditorAnalysis(
+                ai=blueprint["ai"],
+                model=blueprint["model"],
+                analysed_at=blueprint["analysed_at"],
+                palette=blueprint["palette"],
+                brand_tokens=blueprint.get("brand_tokens", []),
+                logo_srcs=blueprint.get("logo_srcs", []),
+                cta_hrefs=blueprint.get("cta_hrefs", []),
+                notes=blueprint.get("notes", ""),
+                reviewed_at=template["reviewed_at"],
+                reviewed_by=template["reviewed_by_name"] if template["reviewed_at"] else None,
+            )
+            if cloned and blueprint
+            else None,
+            ready=not cloned or bool(blueprint and template["reviewed_at"]),
         ),
+        instructions=TemplateInstructions.model_validate(template["instructions"] or {}),
         sections=sections,
         versions=[
             EditorVersion(
@@ -216,6 +253,7 @@ def _state(
             [r["key"] for r in rows],
             forbidden_terms=list((template["instructions"] or {}).get("forbidden_terms", [])),
             asset_origins=(storage.public_url("library-assets", ""),),
+            cloned=cloned,
         ),
         look=look(html),
         words=words,
@@ -467,3 +505,74 @@ def restore(
     _remove_files(stale)
     html = storage.download("templates", template["html_path"]).decode("utf-8")
     return _state(template, rows, versions, html)
+
+
+# ── Clones: helpers for the analysis job, review and rules (B2.2) ─────────────
+
+
+def load_for_update(conn: Any, org_id: UUID, template_id: UUID) -> dict[str, Any]:
+    """The template row, locked for this transaction."""
+    return _load(conn, org_id, template_id, lock=True)
+
+
+def new_version(
+    conn: Any,
+    template: dict[str, Any],
+    rows: list[dict[str, Any]],
+    reason: str,
+    user_id: UUID | None,
+    *,
+    html: str | None = None,
+) -> list[str]:
+    return _new_version(conn, template, rows, reason, user_id, html=html)
+
+
+def remove_files(paths: list[str]) -> None:
+    _remove_files(paths)
+
+
+def confirm_review(
+    org_id: UUID, template_id: UUID, user_id: UUID, base_version: int
+) -> TemplateEditorState:
+    """Confirms a clone's analysis, so pages can be built from it. Confirming again keeps the
+    first confirmation."""
+    with transaction() as conn:
+        template = _load(conn, org_id, template_id, lock=True)
+        if template["version"] != base_version:
+            raise TemplateConflictError
+        if template["origin"] != "cloned" or not template["blueprint"]:
+            raise TemplateEditError("Only an analysed clone needs confirming.")
+        conn.execute(
+            """
+            update templates set reviewed_at = now(), reviewed_by = %(u)s
+            where id = %(t)s and org_id = %(o)s and reviewed_at is null
+            """,
+            {"t": template_id, "o": org_id, "u": user_id},
+        )
+    return editor_state(org_id, template_id)
+
+
+def set_instructions(
+    org_id: UUID, template_id: UUID, instructions: TemplateInstructions
+) -> TemplateEditorState:
+    """Saves a template's rules (the Rules tab). Lists are tidied: blanks and repeats go."""
+
+    def tidy(values: list[str]) -> list[str]:
+        return list(dict.fromkeys(" ".join(v.split()) for v in values if v.strip()))
+
+    cleaned = instructions.model_copy(
+        update={
+            "forbidden_terms": tidy(instructions.forbidden_terms),
+            "keep_images": tidy(instructions.keep_images),
+            "generic_images": tidy(instructions.generic_images),
+            "copy_rules": instructions.copy_rules.strip(),
+            "image_rules": instructions.image_rules.strip(),
+        }
+    )
+    with transaction() as conn:
+        _load(conn, org_id, template_id, lock=True)
+        conn.execute(
+            "update templates set instructions = %(i)s where id = %(t)s and org_id = %(o)s",
+            {"i": Jsonb(cleaned.model_dump(mode="json")), "t": template_id, "o": org_id},
+        )
+    return editor_state(org_id, template_id)

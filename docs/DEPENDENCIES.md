@@ -43,7 +43,7 @@
 | `@lucasmarkes/hairline` | isometric line figures that answer the pointer (MIT, no dependencies). D82 follow-up (owner, 2026-10-17): 0.5.1, its `Terminal` is the alternative figure in the build illustration's DialKit panel; the default figure, Assemble, is drawn with the skill and served from `apps/web/public/hairline/` with the skill's engine (`kernel.js`, unchanged). Skills `hairline-create` / `hairline-adopt` in `.claude/skills/` (`npx skills add lucasmarkes/hairline`) draw new figures on its engine |
 | AffectUI components (shadcn registry, MIT) | B0.4c: vendored into `components/ui/` with the shadcn CLI; no npm packages (D48, `THIRD_PARTY_NOTICES.md`) |
 | `cmdk` (via shadcn Command) | command palette |
-| `recharts` | analytics charts |
+| ~~`recharts`~~ | not installed: B1.6b drew Analytics in plain HTML with the dataviz method (D93); add it only if a chart needs it |
 | `@supabase/supabase-js`, `@supabase/ssr` | auth and data |
 | `nuqs` (optional) | URL state for the wizard; propose before adding |
 | Dev: `eslint`, `eslint-config-next`, `prettier`, `prettier-plugin-tailwindcss`, `vitest`, `@testing-library/react`, `@playwright/test` | quality and tests |
@@ -122,7 +122,7 @@ Never expose the secret (service-role) key to the web app.
 | `LP_FAL_EDIT_MODEL` | `fal-ai/nano-banana-pro/edit` | edits and compositing |
 | `LP_MOCK_IMAGES` | `1` | mock images (set `0` explicitly for real) |
 | `LP_MOCK_LLM` | `1` | fake LLM, ledger rows at $0 (D31); set `0` explicitly for real calls |
-| `LP_FETCH_PROXY` | empty | residential proxy URL (M2, flag-gated) |
+| `LP_FETCH_PROXY` | empty | residential proxy URL, `http://user:password@host:port` (M2; used only for orgs whose `proxy_fetch_enabled` is on, D4) |
 | `LP_RESIDUE_MIN_SCORE` | `85` | publish gate threshold |
 | `LP_WORKER_CONCURRENCY` | `3` | jobs per worker process |
 | `LP_ORG_CONCURRENCY` | `2` | concurrent jobs per org |

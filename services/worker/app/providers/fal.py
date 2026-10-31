@@ -90,6 +90,7 @@ def _run(
         )
         return ImageResult(data, "image/jpeg", width, height, f"mock/{model}", Decimal(0), True)
 
+    ledger.check_budget()  # the brand's monthly AI budget (D54): refused before any charge
     org_id = ledger.require_context().org_id
     locks.ensure_unlocked(org_id, PROVIDER, "Image generation")
     arguments = {

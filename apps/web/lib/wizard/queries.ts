@@ -112,7 +112,10 @@ export async function getWizardData(orgId: string) {
       }),
     templates: [
       ...library.map((t): WizardTemplate => ({ ...t, group: "Library" })),
-      ...own.map((t): WizardTemplate => ({ ...t, group: "Yours" })),
+      // A clone joins once it's analysed (B2.2); until then it can't be built from.
+      ...own
+        .filter((t) => t.ready)
+        .map((t): WizardTemplate => ({ ...t, group: "Yours" })),
     ].map(({ id, name, type, description, sections, group }) => ({
       id,
       name,

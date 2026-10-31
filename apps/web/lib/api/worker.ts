@@ -2,6 +2,11 @@ import { z } from "zod";
 
 import { type BuildCreated, buildCreatedSchema } from "@/lib/validators/build";
 import {
+  type Analytics,
+  type AnalyticsRange,
+  analyticsSchema,
+} from "@/lib/validators/analytics";
+import {
   type TrashKind,
   type TrashState,
   trashStateSchema,
@@ -22,12 +27,19 @@ import {
 import {
   type LayoutAction,
   type TemplateEditorState,
+  type TemplateInstructions,
   templateEditorSchema,
 } from "@/lib/validators/template";
 import {
   enqueueResponseSchema,
   type EnqueueResponse,
 } from "@/lib/validators/jobs";
+import {
+  type CloneRequest,
+  type CloneTermsState,
+  cloneStartedSchema,
+  cloneTermsStateSchema,
+} from "@/lib/validators/clone";
 
 // Server-side client for the worker's internal API (services/worker/app/main.py). Only Route
 // Handlers and server actions call it; the browser never talks to the worker directly.
@@ -67,6 +79,7 @@ async function callWorker<T>(
   body: unknown,
   schema: z.ZodType<T>,
   failure: string,
+  timeoutMs = 10_000,
 ): Promise<T> {
   let response: Response;
   try {
@@ -78,7 +91,7 @@ async function callWorker<T>(
       },
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     throw new WorkerError(
@@ -101,8 +114,17 @@ function postToWorker<T>(
   body: unknown,
   schema: z.ZodType<T>,
   failure: string,
+  timeoutMs?: number,
 ): Promise<T> {
-  return callWorker("POST", path, accessToken, body, schema, failure);
+  return callWorker(
+    "POST",
+    path,
+    accessToken,
+    body,
+    schema,
+    failure,
+    timeoutMs,
+  );
 }
 
 export function startWorkerJob(
@@ -529,5 +551,119 @@ export function deleteFromTrash(
     undefined,
     trashStateSchema,
     "Could not delete it for good.",
+  );
+}
+
+// ── Analytics (B1.6b) ────────────────────────────────────────────────────────
+
+/** The workspace's AI spend and pages over 30 days, 90 days or 12 months. */
+export function getAnalytics(
+  accessToken: string,
+  orgId: string,
+  range: AnalyticsRange,
+): Promise<Analytics> {
+  return callWorker(
+    "GET",
+    `/analytics?org_id=${encodeURIComponent(orgId)}&range=${range}`,
+    accessToken,
+    undefined,
+    analyticsSchema,
+    "Could not load analytics.",
+  );
+}
+
+/** The workspace's clone terms: accepted (when, by whom) and whether this user may accept. */
+export function getCloneTerms(
+  accessToken: string,
+  orgId: string,
+): Promise<CloneTermsState> {
+  return callWorker(
+    "GET",
+    `/clone-terms?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    cloneTermsStateSchema,
+    "Could not load the clone terms.",
+  );
+}
+
+export function acceptCloneTerms(
+  accessToken: string,
+  orgId: string,
+): Promise<CloneTermsState> {
+  return postToWorker(
+    "/clone-terms",
+    accessToken,
+    { org_id: orgId, accept: true },
+    cloneTermsStateSchema,
+    "Could not accept the clone terms.",
+  );
+}
+
+/** Starts a `template_clone` job. Pasted HTML is saved to storage first, so allow it a minute. */
+export function startClone(
+  accessToken: string,
+  orgId: string,
+  request: CloneRequest,
+) {
+  return postToWorker(
+    "/templates/clone",
+    accessToken,
+    {
+      org_id: orgId,
+      url: request.url || null,
+      html: request.html?.trim() ? request.html : null,
+      source_url: request.source_url || null,
+      name: request.name || null,
+      type: request.type,
+    },
+    cloneStartedSchema,
+    "Could not start the clone.",
+    60_000,
+  );
+}
+
+/** Analyse again (B2.2): queues `template_analyze` for a clone (one Claude call). */
+export function analyseTemplate(
+  accessToken: string,
+  orgId: string,
+  templateId: string,
+) {
+  return postToWorker(
+    `/templates/${encodeURIComponent(templateId)}/analyse`,
+    accessToken,
+    { org_id: orgId },
+    cloneStartedSchema,
+    "Could not start the analysis.",
+  );
+}
+
+/** Confirms a clone's analysis, so pages can be built from it. */
+export function confirmTemplateReview(
+  accessToken: string,
+  templateId: string,
+  body: { org_id: string; base_version: number },
+): Promise<TemplateEditorState> {
+  return postToWorker(
+    `/templates/${encodeURIComponent(templateId)}/review`,
+    accessToken,
+    body,
+    templateEditorSchema,
+    "Could not confirm the analysis.",
+  );
+}
+
+/** Saves a template's rules (the editor's Rules tab). */
+export function saveTemplateInstructions(
+  accessToken: string,
+  templateId: string,
+  body: { org_id: string; instructions: TemplateInstructions },
+): Promise<TemplateEditorState> {
+  return postToWorker(
+    `/templates/${encodeURIComponent(templateId)}/instructions`,
+    accessToken,
+    body,
+    templateEditorSchema,
+    "Could not save the rules.",
   );
 }

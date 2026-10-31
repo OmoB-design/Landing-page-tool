@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ComponentType, type SVGProps, useState } from "react";
 
 import {
   type DragHandleProps,
@@ -13,15 +13,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { ChevronUpIcon } from "@/components/ui/icons";
 import {
-  ChevronUpIcon,
-  CloseIcon,
-  DragIcon,
-  DuplicateIcon,
-  type Icon,
-  MoveDownIcon,
-  MoveUpIcon,
-} from "@/components/ui/icons";
+  DuplicateFigmaIcon,
+  GripDotsIcon,
+  MoveDownFigmaIcon,
+  MoveUpFigmaIcon,
+  RemoveFigmaIcon,
+} from "@/components/ui/lp-icons";
 import { Input } from "@/components/ui/input";
 import {
   Tooltip,
@@ -134,7 +133,7 @@ function Group({
           {title}
           <ChevronUpIcon
             aria-hidden
-            className="size-4 text-sub-text transition-transform duration-150 ease-out group-data-closed:rotate-180 motion-reduce:transition-none"
+            className="size-4 text-icon-system transition-transform duration-150 ease-out group-data-closed:rotate-180 motion-reduce:transition-none"
           />
         </CollapsibleTrigger>
       </h2>
@@ -159,36 +158,44 @@ function SectionRow({
   return (
     <div
       className={cn(
-        "group/row flex h-9 items-center rounded-md bg-foreground-01",
+        "group/row relative flex h-9 items-center rounded-md bg-foreground-01",
         selected ? "bg-foreground-03" : "hover:bg-foreground-02",
         dragging && "shadow-pop",
       )}
     >
+      {/* The grip sits inside the row, 6 px in, and shows on hover (owner, 2026-10-31); its
+          place is kept, so the text never moves. */}
       <span
         {...handle}
         aria-label={`Move ${section.label}`}
-        className="flex h-full w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-l-md text-caption-1 opacity-0 outline-none group-hover/row:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+        className="ml-1.5 flex h-full w-4 shrink-0 cursor-grab touch-none items-center justify-center rounded-xsm text-icon-system opacity-0 outline-none group-hover/row:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
       >
-        <DragIcon aria-hidden className="size-3.5" />
+        <GripDotsIcon aria-hidden className="size-4" />
       </span>
       <button
         type="button"
         aria-current={selected || undefined}
         onClick={onSelect}
-        className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-r-md pr-3 text-left text-type-caption-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-md pr-2.5 pl-1 text-left text-type-caption-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {section.number ? (
           <span className="w-24 shrink-0 font-medium text-highlight-yellow-500 tabular-nums">
             {itemNumber(section.number)}
           </span>
         ) : (
-          <span className="w-24 shrink-0 truncate text-sub-text">
+          <span
+            className={cn(
+              "w-24 shrink-0 truncate",
+              selected ? "text-heading-01" : "text-sub-text",
+            )}
+          >
             {roleLabel(section.role)}
           </span>
         )}
+        {/* Figma 739:16410: the name sits at the row's right end. */}
         <span
           className={cn(
-            "truncate",
+            "min-w-0 flex-1 truncate text-right",
             (selected || section.number) && "font-medium",
           )}
         >
@@ -242,7 +249,7 @@ function SelectedSection({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <IconAction
-            icon={MoveUpIcon}
+            icon={MoveUpFigmaIcon}
             label="Move up"
             unavailable={
               pending
@@ -256,7 +263,7 @@ function SelectedSection({
             onClick={() => onMove(-1)}
           />
           <IconAction
-            icon={MoveDownIcon}
+            icon={MoveDownFigmaIcon}
             label="Move down"
             unavailable={
               pending
@@ -270,7 +277,7 @@ function SelectedSection({
             onClick={() => onMove(1)}
           />
           <IconAction
-            icon={DuplicateIcon}
+            icon={DuplicateFigmaIcon}
             label="Duplicate"
             unavailable={
               pending
@@ -282,7 +289,7 @@ function SelectedSection({
             onClick={() => onEdit({ type: "duplicate", key: section.key })}
           />
           <IconAction
-            icon={CloseIcon}
+            icon={RemoveFigmaIcon}
             label="Remove"
             unavailable={
               pending
@@ -321,7 +328,7 @@ function SelectedSection({
           ))}
         </dl>
       ) : null}
-      <p className="text-type-caption-1 text-caption-1">
+      <p className="text-type-caption-1 text-caption-2">
         Words are rewritten for each build, so they’re read-only here.
       </p>
     </div>
@@ -393,7 +400,7 @@ function IconAction({
   unavailable,
   onClick,
 }: {
-  icon: Icon;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   label: string;
   unavailable: string | null;
   onClick: () => void;
@@ -407,7 +414,7 @@ function IconAction({
           aria-label={label}
           aria-disabled={unavailable ? true : undefined}
           onClick={unavailable ? undefined : onClick}
-          className="bg-foreground-01 text-sub-text hover:bg-foreground-02 hover:text-body aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
+          className="bg-foreground-01 text-icon-system hover:bg-foreground-02 hover:text-body aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
         >
           <ActionIcon aria-hidden />
         </Button>

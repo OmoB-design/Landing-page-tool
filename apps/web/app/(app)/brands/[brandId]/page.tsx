@@ -5,6 +5,9 @@ import {
   BrandOverviewSkeleton,
 } from "@/components/features/brands/brand-overview";
 
+import { getSessionContext } from "@/lib/auth/session";
+import { getBrandMonthSpend } from "@/lib/brands/queries";
+
 import { loadBrand } from "./brand";
 
 export default function BrandOverviewPage({
@@ -18,5 +21,12 @@ export default function BrandOverviewPage({
 }
 
 async function Overview({ params }: { params: Promise<{ brandId: string }> }) {
-  return <BrandOverview brand={await loadBrand(params)} />;
+  const { currentOrg } = await getSessionContext();
+  const [brand, spend] = await Promise.all([
+    loadBrand(params),
+    getBrandMonthSpend(currentOrg.id),
+  ]);
+  return (
+    <BrandOverview brand={brand} spentUsd={spend.get(brand.row.id) ?? 0} />
+  );
 }

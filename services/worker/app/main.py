@@ -4,17 +4,20 @@ Supabase access token; every request is authenticated and checked against org me
 from typing import Any
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app import builds, desk, publishing, templates, trash
+from app import analytics, builds, clones, desk, publishing, templates, trash
 from app.auth import CurrentUser, require_org_member
 from app.config import get_settings
 from app.jobs import queue
 from app.jobs.models import Job
 from app.jobs.registry import KINDS
 from app.log import configure_logging
+from app.models.analytics import AnalyticsRange, AnalyticsState
 from app.models.build import BuildRequest
+from app.models.clone import CloneRequest, CloneTermsRequest, CloneTermsState
 from app.models.desk import (
     CopyEditRequest,
     DeskChange,
@@ -35,13 +38,23 @@ from app.models.publishing import (
     UnpublishRequest,
     VercelConnectRequest,
 )
-from app.models.template import LayoutAction, TemplateEditorState
+from app.models.template import LayoutAction, TemplateEditorState, TemplateInstructions
 from app.models.trash import TrashKind, TrashRequest, TrashState
 from app.publish import shopify_page
 
 configure_logging(get_settings().log_level)
 
 app = FastAPI(title="LP Platform worker", version="0.1.0")
+
+
+@app.exception_handler(queue.RateLimitedError)
+def _rate_limited(_request: Request, exc: queue.RateLimitedError) -> JSONResponse:
+    """A workspace past its hourly cap on starting work (D94): 429 with when to try again."""
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": exc.message},
+        headers={"Retry-After": str(exc.retry_after_seconds)},
+    )
 
 
 @app.get("/health")
@@ -119,6 +132,11 @@ def create_build(body: BuildRequest, user: CurrentUser) -> BuildCreated:
     except builds.BuildInputsMissingError as exc:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, "That template, brand or product isn't available."
+        ) from exc
+    except builds.TemplateNotReadyError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Confirm this cloned page's analysis before building from it.",
         ) from exc
     return BuildCreated(build=BuildSummary.model_validate(build), job=job)
 
@@ -363,6 +381,16 @@ def unpublish_build(build_id: UUID, body: UnpublishRequest, user: CurrentUser) -
     return state
 
 
+# ── Analytics (B1.6b) ─────────────────────────────────────────────────────────
+
+
+@app.get("/analytics")
+def get_analytics(org_id: UUID, user: CurrentUser, range: AnalyticsRange = "30d") -> AnalyticsState:
+    """The workspace's AI spend and pages over 30 days, 90 days or 12 months."""
+    require_org_member(user, org_id)
+    return analytics.analytics(org_id, range)
+
+
 # ── Trash (B1.6a, D92) ────────────────────────────────────────────────────────
 
 
@@ -445,6 +473,50 @@ def use_template(body: UseTemplateRequest, user: CurrentUser) -> TemplateSummary
     return TemplateSummary.model_validate(row)
 
 
+# ── The clone path (BUILD_SPEC §8.4, B2.1; D4, D33) ───────────────────────────
+
+
+@app.get("/clone-terms")
+def get_clone_terms(org_id: UUID, user: CurrentUser) -> CloneTermsState:
+    require_org_member(user, org_id)
+    return clones.terms_state(org_id, user.id)
+
+
+@app.post("/clone-terms")
+def accept_clone_terms(body: CloneTermsRequest, user: CurrentUser) -> CloneTermsState:
+    """Accepts the clone terms for the workspace (owners and admins, once)."""
+    require_org_member(user, body.org_id)
+    try:
+        return clones.accept_terms(body.org_id, user.id)
+    except clones.CloneTermsRoleError as exc:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Only owners and admins can accept the clone terms."
+        ) from exc
+    except clones.CloneDisabledError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, CLONE_DISABLED) from exc
+
+
+CLONE_DISABLED = "Cloning is switched off for this workspace."
+
+
+class CloneStarted(BaseModel):
+    job: Job
+
+
+@app.post("/templates/clone", status_code=status.HTTP_201_CREATED)
+def clone_template(body: CloneRequest, user: CurrentUser) -> CloneStarted:
+    """Starts cloning a page by address or pasted HTML, once the terms are accepted."""
+    require_org_member(user, body.org_id)
+    try:
+        return CloneStarted(job=clones.start_clone(body.org_id, user.id, body))
+    except clones.CloneDisabledError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, CLONE_DISABLED) from exc
+    except clones.CloneTermsError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Accept the clone terms for this workspace first."
+        ) from exc
+
+
 # ── Section editor (BUILD_SPEC §8.3, B1.1b) ───────────────────────────────────
 
 CHANGED_ELSEWHERE = "This template changed in another tab or by someone else. Reload to see it."
@@ -507,6 +579,53 @@ def undo_template(template_id: UUID, body: TemplateEdit, user: CurrentUser) -> T
 def redo_template(template_id: UUID, body: TemplateEdit, user: CurrentUser) -> TemplateEditorState:
     require_org_member(user, body.org_id)
     return _editor_call(templates.step, body.org_id, template_id, body.base_version, "redo")
+
+
+class InstructionsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    instructions: TemplateInstructions
+
+
+class AnalyseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+
+
+@app.post("/templates/{template_id}/analyse", status_code=status.HTTP_201_CREATED)
+def analyse_template(template_id: UUID, body: AnalyseRequest, user: CurrentUser) -> CloneStarted:
+    """Analyse again (B2.2): one Claude call, a few cents."""
+    require_org_member(user, body.org_id)
+    try:
+        return CloneStarted(job=clones.start_analysis(body.org_id, user.id, template_id))
+    except clones.NotACloneError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "That cloned page isn't in your workspace."
+        ) from exc
+    except clones.CloneDisabledError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, CLONE_DISABLED) from exc
+
+
+@app.post("/templates/{template_id}/review")
+def confirm_template_review(
+    template_id: UUID, body: TemplateEdit, user: CurrentUser
+) -> TemplateEditorState:
+    """Confirms a clone's analysis, so pages can be built from it (B2.2, D96)."""
+    require_org_member(user, body.org_id)
+    return _editor_call(
+        templates.confirm_review, body.org_id, template_id, user.id, body.base_version
+    )
+
+
+@app.post("/templates/{template_id}/instructions")
+def save_template_instructions(
+    template_id: UUID, body: InstructionsRequest, user: CurrentUser
+) -> TemplateEditorState:
+    """Saves the template's rules (the editor's Rules tab)."""
+    require_org_member(user, body.org_id)
+    return _editor_call(templates.set_instructions, body.org_id, template_id, body.instructions)
 
 
 @app.post("/templates/{template_id}/restore")

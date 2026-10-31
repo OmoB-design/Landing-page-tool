@@ -47,9 +47,14 @@ async function Brands() {
 }
 
 function BrandsFallback() {
+  // New brand shows while the list loads, as it will once there are brands (the usual case).
   return (
     <>
-      <PageHeader icon={BrandsIcon} title="Brands" />
+      <PageHeader
+        icon={BrandsIcon}
+        title="Brands"
+        actions={<NewBrandButton />}
+      />
       <div className="mx-auto box-content flex w-full max-w-brands flex-col gap-2 px-6 py-12">
         <BrandsHeading />
         <SkeletonStatus label="Loading brands" />

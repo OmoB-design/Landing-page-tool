@@ -25,6 +25,35 @@ export const templateIssueSchema = z.object({
 });
 export type TemplateIssue = z.infer<typeof templateIssueSchema>;
 
+/** BUILD_SPEC §8.5: a template's rules for the copy and image passes. */
+export const templateInstructionsSchema = z.object({
+  copy_rules: z.string().max(4000).default(""),
+  length_caps: z
+    .array(z.object({ match: z.string(), max_chars: z.number() }))
+    .default([]),
+  image_rules: z.string().max(4000).default(""),
+  generic_images: z.array(z.string()).default([]),
+  keep_images: z.array(z.string()).default([]),
+  forbidden_terms: z.array(z.string().max(120)).max(100).default([]),
+  notes: z.string().default(""),
+});
+export type TemplateInstructions = z.infer<typeof templateInstructionsSchema>;
+
+/** A clone's analysis (B2.2) and its review. */
+export const templateAnalysisSchema = z.object({
+  ai: z.enum(["claude", "mock"]),
+  model: z.string(),
+  analysed_at: z.string(),
+  palette: z.record(z.string(), z.string().nullable()),
+  brand_tokens: z.array(z.string()),
+  logo_srcs: z.array(z.string()),
+  cta_hrefs: z.array(z.string()),
+  notes: z.string(),
+  reviewed_at: z.string().nullable(),
+  reviewed_by: z.string().nullable(),
+});
+export type TemplateAnalysis = z.infer<typeof templateAnalysisSchema>;
+
 export const templateEditorSchema = z.object({
   template: z.object({
     id: z.string(),
@@ -34,7 +63,24 @@ export const templateEditorSchema = z.object({
     version: z.number(),
     parent_name: z.string().nullable(),
     updated_at: z.string(),
+    origin: z.enum(["owned", "cloned"]).default("owned"),
+    source: z
+      .object({
+        url: z.string().nullable(),
+        host: z.string(),
+        name: z.string().nullable(),
+        platform: z.string().nullable(),
+        verdict: z.string().nullable(),
+      })
+      .nullable()
+      .default(null),
+    analysis: templateAnalysisSchema.nullable().default(null),
+    /** Pages can be built from it: owned, or a clone whose analysis was confirmed. */
+    ready: z.boolean().default(true),
   }),
+  instructions: templateInstructionsSchema.default(
+    templateInstructionsSchema.parse({}),
+  ),
   sections: z.array(editorSectionSchema),
   versions: z.array(
     z.object({

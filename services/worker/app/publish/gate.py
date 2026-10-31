@@ -45,7 +45,16 @@ def blockers(
         )
     if origin == "cloned":
         score = (report.get("residue") or {}).get("score")
-        if score is not None and float(score) < residue_min:
+        if score is None:
+            # D4, D96: a clone isn't published until its source leaks have been scored.
+            found.append(
+                Blocker(
+                    "residue_unscored",
+                    "The source brand hasn't been checked for on this page yet.",
+                    False,
+                )
+            )
+        elif float(score) < residue_min:
             found.append(
                 Blocker("residue", f"The source brand is still visible (score {score}).", True)
             )

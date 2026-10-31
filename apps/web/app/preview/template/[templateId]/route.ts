@@ -76,6 +76,14 @@ export async function GET(
   const editor = new URL(request.url).searchParams.get("editor") === "1";
   const nonce = editor ? crypto.randomUUID().replaceAll("-", "") : null;
   let html = await data.text();
+  if (files.baseUrl && /^https?:\/\//.test(files.baseUrl)) {
+    const base = `<base href="${files.baseUrl.replaceAll('"', "%22")}">`;
+    const head = html.search(/<head[^>]*>/i);
+    html =
+      head === -1
+        ? base + html
+        : html.replace(/<head[^>]*>/i, (tag) => tag + base);
+  }
   if (nonce) {
     const script = `<script nonce="${nonce}">${EDITOR_BRIDGE}</script>`;
     const end = html.lastIndexOf("</body>");
