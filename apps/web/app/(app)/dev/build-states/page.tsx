@@ -8,6 +8,7 @@ import { BuildPreview } from "@/components/features/builds/build-preview";
 import {
   CopyChanges,
   Reminders,
+  SourceLeaks,
 } from "@/components/features/builds/build-report";
 import {
   type BuildStep,
@@ -589,6 +590,71 @@ export default function BuildStatesPage() {
               <div className="w-xl">
                 <SampleConnections connected />
               </div>
+            </Labeled>
+          </div>
+        </State>
+
+        <State
+          number={20}
+          title="Source leaks (cloned pages)"
+          when="On a page built from a cloned competitor page (B2.3), the Overview shows what's left of the source after the clone steps. A leak score under 85, or any mention of the source's name, blocks publishing until overridden."
+          shows={[
+            "The leak score (100, less 7 for each thing found), in green when it passes and red when it blocks.",
+            "What was found by kind, then a card per finding: the words (a source name or an inherited claim) or the address (an image or link), with a button showing its section in the preview.",
+            "Pages built before the scan say they weren't checked.",
+          ]}
+          design={["The Source leaks card in its three states"]}
+        >
+          <div className="flex flex-wrap items-start gap-6">
+            <Labeled label="Clean">
+              <PanelFrame>
+                <SourceLeaks
+                  residue={{
+                    score: 100,
+                    clean: true,
+                    counts: { brand: 0, images: 0, links: 0, claims: 0 },
+                    findings: [],
+                  }}
+                />
+              </PanelFrame>
+            </Labeled>
+            <Labeled label="Leaks found (blocks)">
+              <PanelFrame>
+                <SourceLeaks
+                  residue={{
+                    score: 72,
+                    clean: false,
+                    counts: { brand: 2, images: 1, links: 0, claims: 1 },
+                    findings: [
+                      {
+                        kind: "brand",
+                        text: "…when I found Vitalis, I was sceptical…",
+                        where: "hero > p:nth-of-type(3)",
+                      },
+                      {
+                        kind: "brand",
+                        text: "Image text: Vitalis Heart Complex bottle",
+                        where: "offer > img",
+                      },
+                      {
+                        kind: "images",
+                        text: "https://cdn.vitalis.example/img/band.jpg",
+                        where: "benefits > div:nth-of-type(2)",
+                      },
+                      {
+                        kind: "claims",
+                        text: "Our formula is clinically proven and…",
+                        where: "benefits > p:nth-of-type(2)",
+                      },
+                    ],
+                  }}
+                />
+              </PanelFrame>
+            </Labeled>
+            <Labeled label="Built before the scan">
+              <PanelFrame>
+                <SourceLeaks residue={null} />
+              </PanelFrame>
             </Labeled>
           </div>
         </State>

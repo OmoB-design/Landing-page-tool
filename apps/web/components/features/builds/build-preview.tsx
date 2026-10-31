@@ -11,7 +11,7 @@ import {
   LOCATE_SECTION_EVENT,
   sectionAnchor,
 } from "@/lib/builds/preview-anchors";
-import { OWNED_BUILD_STEPS } from "@/lib/builds/steps";
+import { buildStepsFor } from "@/lib/builds/steps";
 import { jobStepStates } from "@/lib/jobs/steps";
 import { useJob } from "@/lib/queries/jobs";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,7 @@ export function BuildPreview({
   failedStep,
   progress: progressOverride,
   onRetry,
+  origin = "owned",
 }: {
   buildId: string;
   version: string;
@@ -64,6 +65,8 @@ export function BuildPreview({
   /** How far the build has got (0–1), for the illustration; otherwise read from the job. */
   progress?: number;
   onRetry?: () => void;
+  /** A cloned build counts the clone-only steps too (B2.3). */
+  origin?: string;
 }) {
   const router = useRouter();
   const [viewport, setViewport] = useState<Viewport>("desktop");
@@ -84,7 +87,7 @@ export function BuildPreview({
   const open = desk?.open;
   // The same query the steps poll (one request): the failed step's name, or the build's progress.
   const { data: job } = useJob(ready ? null : jobId);
-  const steps = job ? jobStepStates(OWNED_BUILD_STEPS, job) : null;
+  const steps = job ? jobStepStates(buildStepsFor(origin), job) : null;
   const stepName =
     failedStep ?? steps?.find((step) => step.status === "failed")?.label;
   const progress =

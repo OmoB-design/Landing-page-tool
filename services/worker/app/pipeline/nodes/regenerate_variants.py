@@ -25,6 +25,12 @@ def regenerate_variants(state: BuildState, ctx: PipelineContext) -> dict[str, An
     warnings = (
         [f"The picker shows the first 8 of {len(units)} options."] if stats["truncated"] else []
     )
+    # D100: a clone's option picker isn't rebuilt yet; it keeps the source's layout, reworded.
+    if state["origin"] == "cloned" and state["template"]["blueprint"].get("variant_sections"):
+        warnings.append(
+            "The source's product options keep their layout with new words; check their names "
+            "and prices on the page."
+        )
     return {
         **write_page(state, "regenerate_variants", html),
         "brand_stats": {**state.get("brand_stats", {}), "variants": stats},

@@ -76,6 +76,9 @@ def read_inputs(org: UUID, build_id: UUID) -> tuple[dict[str, Any], str]:
         for i in product["images"]
         if i.get("asset_id") or i.get("source_url")
     ]
+    # A clone (B2.3): its analysis tells the build what to rebrand, and its source what to remove.
+    blueprint = template["blueprint"] or {}
+    cloned = template["origin"] == "cloned"
     inputs: dict[str, Any] = {
         "template": {
             "id": str(template["id"]),
@@ -83,9 +86,19 @@ def read_inputs(org: UUID, build_id: UUID) -> tuple[dict[str, Any], str]:
             "name": template["name"],
             "type": template["type"],
             "version": template["version"],
-            "source_palette": template["source_palette"],
+            "source_palette": blueprint.get("palette") if cloned else template["source_palette"],
             "sections": [dict(s) for s in sections],
             "instructions": instructions.model_dump(),
+            "blueprint": blueprint if cloned else {},
+            "source": {
+                "url": template["source_url"],
+                "host": template["source_host"],
+                "name": template["source_name"],
+                "platform": template["platform"],
+                "verdict": template["verdict"],
+            }
+            if cloned
+            else {},
         },
         "brand": {
             "id": str(brand["id"]),

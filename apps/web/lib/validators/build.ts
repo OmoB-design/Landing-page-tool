@@ -31,6 +31,23 @@ export const complianceFindingSchema = z.object({
 });
 export type ComplianceFinding = z.infer<typeof complianceFindingSchema>;
 
+export const residueFindingSchema = z.object({
+  kind: z.enum(["brand", "images", "links", "claims"]),
+  text: z.string(),
+  where: z.string(),
+});
+export type ResidueFinding = z.infer<typeof residueFindingSchema>;
+
+/** A clone build's residue scan (worker app/engines/residue.py); `score` is null when the build
+ * ran before the scan existed. */
+export const residueSchema = z.object({
+  score: z.number().nullable().catch(null),
+  clean: z.boolean().nullable().catch(null),
+  counts: counts,
+  findings: z.array(residueFindingSchema).catch([]),
+});
+export type Residue = z.infer<typeof residueSchema>;
+
 export const buildReportSchema = z.object({
   mode: z.enum(["owned", "cloned"]),
   template: z.object({ name: z.string(), slug: z.string() }).loose(),
@@ -115,6 +132,13 @@ export const buildReportSchema = z.object({
     .catch({ total_usd: 0 }),
   mock_images: z.boolean().catch(false),
   warnings: z.array(z.string()).catch([]),
+  /** Clones only (B2.3): what's left of the source page, scored (BUILD_SPEC §13.2). */
+  residue: residueSchema.nullish().catch(null),
+  source: z
+    .object({ host: z.string().nullish(), name: z.string().nullish() })
+    .loose()
+    .nullish()
+    .catch(null),
 });
 export type BuildReport = z.infer<typeof buildReportSchema>;
 

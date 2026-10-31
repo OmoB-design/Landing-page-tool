@@ -42,7 +42,7 @@ def write_report(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
         "mode": state["origin"],
         "template": {k: state["template"][k] for k in ("id", "slug", "name", "type", "version")},
         "status": "needs_review",
-        "verdict": None,
+        "verdict": (state["template"].get("source") or {}).get("verdict"),
         "targeting": state.get("targeting", {}),
         "layout": state.get("layout", {}),
         "brand": state.get("brand_stats", {}),
@@ -50,6 +50,16 @@ def write_report(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
         "images": images,
         "finalize": state.get("finalize", {}),
         "compliance": state.get("compliance", {}),
+        # Clones only (B2.3): what the clone steps removed, and the source leaks left.
+        **(
+            {
+                "blueprint": state.get("blueprint_stats", {}),
+                "residue": state.get("residue", {}),
+                "source": state["template"].get("source", {}),
+            }
+            if state["origin"] == "cloned"
+            else {}
+        ),
         "cost": {
             "total_usd": round(sum(by_kind.values()), 6),
             "breakdown_by_kind": by_kind,

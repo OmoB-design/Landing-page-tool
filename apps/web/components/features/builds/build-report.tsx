@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import type {
   BuildReport as Report,
   ComplianceFinding,
+  Residue,
+  ResidueFinding,
 } from "@/lib/validators/build";
 
 import { useDeskOptional } from "./desk-context";
@@ -33,9 +35,148 @@ export function BuildReport({ report }: { report: Report }) {
     <>
       <Facts rows={reportFacts(report)} />
       <CopyChanges changes={report.copy.review} />
+      {report.mode === "cloned" ? (
+        <SourceLeaks residue={report.residue ?? null} />
+      ) : null}
       <ClaimCheck claims={reportClaims(report)} />
       <Reminders reminders={reportReminders(report)} />
     </>
+  );
+}
+
+const LEAK_KIND = {
+  brand: "Source name",
+  images: "Image",
+  links: "Link",
+  claims: "Claim",
+} as const;
+const LEAK_COUNT = {
+  brand: ["source name", "source names"],
+  images: ["image", "images"],
+  links: ["link", "links"],
+  claims: ["inherited claim", "inherited claims"],
+} as const;
+
+// The residue scan marks a source name found in an image's alt text with this prefix.
+const IMAGE_TEXT = "Image text: ";
+
+/** The minimum leak score to publish without overriding (BUILD_SPEC §12.1, LP_RESIDUE_MIN_SCORE). */
+export const LEAK_MIN = 85;
+
+/**
+ * Source leaks (B2.3; no Figma frame yet, drawn like Claim check): what's left of the cloned
+ * page's source after the clone steps. The leak score in a chip (Tint-Green as Connected when it
+ * passes; the Fix chip when it's under 85 or a source name is left, which blocks publishing until
+ * overridden), what was found by kind, then a card per finding with the words or address and a
+ * button to show its section in the preview.
+ */
+export function SourceLeaks({ residue }: { residue: Residue | null }) {
+  if (!residue || residue.score === null) {
+    return (
+      <PanelSection title="Source leaks" divided>
+        <p className="rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium text-heading-02">
+          Not checked: this page was built before source leaks were scored.
+          Rebuild it to check.
+        </p>
+      </PanelSection>
+    );
+  }
+  const kinds = (Object.keys(LEAK_KIND) as (keyof typeof LEAK_KIND)[]).filter(
+    (kind) => (residue.counts[kind] ?? 0) > 0,
+  );
+  const total = kinds.reduce(
+    (sum, kind) => sum + (residue.counts[kind] ?? 0),
+    0,
+  );
+  const passing = residue.score >= LEAK_MIN && !(residue.counts.brand ?? 0);
+  return (
+    <PanelSection
+      title="Source leaks"
+      count={total > 0 ? total : undefined}
+      divided
+    >
+      <div className="flex items-center justify-between gap-2 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium">
+        <span className="text-heading-02">Leak score</span>
+        <span
+          className={cn(
+            "rounded-lg px-1.5 text-type-caption-2 font-medium tabular-nums",
+            passing ? "bg-tint-green text-text-success" : ACTION_CLASS.Fix,
+          )}
+        >
+          {residue.score} / 100
+        </span>
+      </div>
+      {total === 0 ? (
+        <p className="rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium text-heading-02">
+          Nothing of the source page is left
+        </p>
+      ) : (
+        <>
+          <p className="text-type-caption-1 font-medium text-heading-05">
+            {kinds
+              .map((kind) => {
+                const count = residue.counts[kind] ?? 0;
+                return `${count} ${LEAK_COUNT[kind][count === 1 ? 0 : 1]}`;
+              })
+              .join(", ")}
+            {passing ? "" : ". Publishing asks you to confirm."}
+          </p>
+          <ul className="flex flex-col gap-2.5">
+            {residue.findings.map((finding, index) => (
+              <Leak key={`${finding.kind}-${index}`} finding={finding} />
+            ))}
+          </ul>
+        </>
+      )}
+    </PanelSection>
+  );
+}
+
+function Leak({ finding }: { finding: ResidueFinding }) {
+  const section = findingSection(finding.where);
+  const address = finding.kind === "images" || finding.kind === "links";
+  return (
+    <li className="flex gap-1.5 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium">
+      <span
+        className={cn(
+          "shrink-0 self-start rounded-lg px-1.5 text-type-caption-2 font-medium",
+          finding.kind === "claims" ? ACTION_CLASS.Check : ACTION_CLASS.Fix,
+        )}
+      >
+        {LEAK_KIND[finding.kind]}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <p
+          className={cn(
+            "text-heading-05",
+            address && "font-mono text-type-caption-2 break-all",
+          )}
+        >
+          {address
+            ? finding.text
+            : finding.text.startsWith(IMAGE_TEXT)
+              ? `In an image’s text: “${finding.text.slice(IMAGE_TEXT.length)}”`
+              : `“${finding.text}”`}
+        </p>
+        {section ? (
+          <div className="flex justify-end pt-1 divider-t-half">
+            <button
+              type="button"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent(LOCATE_SECTION_EVENT, { detail: section }),
+                )
+              }
+              aria-label={`Show in the preview: ${sectionLabel(section)}`}
+              className={CLAIM_BUTTON}
+            >
+              <LocateFigmaIcon className="shrink-0 text-icon-system" />
+              {sectionLabel(section)}
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </li>
   );
 }
 

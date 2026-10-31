@@ -124,7 +124,11 @@ async function Build({
 
   const overview = (
     <>
-      <BuildSteps jobId={build.jobId} finished={Boolean(build.report)} />
+      <BuildSteps
+        jobId={build.jobId}
+        finished={Boolean(build.report)}
+        origin={build.origin}
+      />
       {build.report ? <BuildReport report={build.report} /> : null}
     </>
   );
@@ -175,6 +179,7 @@ async function Build({
             ready={ready}
             failed={failed}
             jobId={build.jobId}
+            origin={build.origin}
           />
         }
         panel={

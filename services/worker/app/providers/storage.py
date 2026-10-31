@@ -22,6 +22,7 @@ EXTENSIONS = {
     "image/svg+xml": "svg",
     "image/x-icon": "ico",
     "font/woff2": "woff2",
+    "text/javascript": "js",
 }
 
 

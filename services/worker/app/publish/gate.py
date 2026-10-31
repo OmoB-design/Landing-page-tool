@@ -1,7 +1,8 @@
 """The publish gate (BUILD_SPEC §12.1, D4, D87). Pure.
 
 Before every publish: copy the build couldn't write, high-risk claims, placeholder images and, for
-clones, a residue score under the threshold block it. The user may publish anyway after confirming
+clones, a residue score under the threshold or any mention of the source brand (B2.3) block it.
+The user may publish anyway after confirming
 the reasons (recorded on the publication), except placeholder images, which can be published only
 while the org's testing switch is on.
 """
@@ -54,10 +55,28 @@ def blockers(
                     False,
                 )
             )
-        elif float(score) < residue_min:
-            found.append(
-                Blocker("residue", f"The source brand is still visible (score {score}).", True)
-            )
+        else:
+            counts = (report.get("residue") or {}).get("counts") or {}
+            mentions = int(counts.get("brand") or 0)
+            if mentions:
+                # §12.1: any mention of the source brand on the page blocks, whatever the score.
+                said = "once" if mentions == 1 else f"{mentions} times"
+                found.append(
+                    Blocker(
+                        "source_brand",
+                        f"The source brand's name is still on the page ({said}).",
+                        True,
+                    )
+                )
+            if float(score) < residue_min:
+                found.append(
+                    Blocker(
+                        "residue",
+                        f"Too much of the source page is left (leak score {score}, "
+                        f"{residue_min} needed).",
+                        True,
+                    )
+                )
     return found
 
 

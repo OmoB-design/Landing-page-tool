@@ -2,7 +2,8 @@
 
 import { SkeletonText } from "@/components/app/skeletons";
 import { BuildSpinnerIcon, BuildStepIcon } from "@/components/ui/lp-icons";
-import { OWNED_BUILD_STEPS } from "@/lib/builds/steps";
+import { buildStepsFor } from "@/lib/builds/steps";
+import type { StepDefinition } from "@/lib/jobs/steps";
 import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
 import { jobStepStates } from "@/lib/jobs/steps";
 import { useJob } from "@/lib/queries/jobs";
@@ -23,14 +24,18 @@ export type BuildStep = {
  * every step at rest; a running one spins the step it's on; finished steps turn blue. Before the
  * job loads, a finished build shows its steps finished rather than flashing them at rest.
  */
-function buildSteps(job: JobDetail | null, finished: boolean): BuildStep[] {
+function buildSteps(
+  job: JobDetail | null,
+  finished: boolean,
+  definitions: StepDefinition[],
+): BuildStep[] {
   if (!job) {
-    return OWNED_BUILD_STEPS.map((step) => ({
+    return definitions.map((step) => ({
       ...step,
       state: finished ? "done" : "idle",
     }));
   }
-  return jobStepStates(OWNED_BUILD_STEPS, job).map((step) => ({
+  return jobStepStates(definitions, job).map((step) => ({
     id: step.id,
     label: step.label,
     state: step.done
@@ -52,10 +57,13 @@ function buildSteps(job: JobDetail | null, finished: boolean): BuildStep[] {
 export function BuildSteps({
   jobId,
   finished,
+  origin = "owned",
 }: {
   jobId: string | null;
   /** The build has a report, so its steps are done even before the job loads. */
   finished: boolean;
+  /** A cloned build has the clone-only steps too (B2.3). */
+  origin?: string;
 }) {
   const { data: job } = useJob(jobId);
   usePageRefresh(
@@ -63,7 +71,7 @@ export function BuildSteps({
       ? job.id
       : null,
   );
-  const steps = buildSteps(job ?? null, finished);
+  const steps = buildSteps(job ?? null, finished, buildStepsFor(origin));
   const events =
     job?.events.filter(
       (event) =>
