@@ -1,0 +1,74 @@
+/*
+ * LP's look for Stageshow illustrations (D101): the kit's tokens set from LP's design tokens, so
+ * a scene reads as LP (Inter, the blue primary, Quality's neutral greys, the 0.5 px edges, LP's
+ * radii and the Home drawings' shadows). Put the class on a Stage (`className`); the kit draws
+ * the stage inside it.
+ *
+ * `lp-look-light` is LP's light theme whatever the app's theme is: the Home card drawings stay
+ * light in dark mode, as drawn (Home canvas, 2026-10-11). It reads LP's primitives, which don't
+ * change with the theme. A look that follows the app's theme comes with the first illustration
+ * that needs one (the empty states).
+ */
+.lp-look-light .ss-stage {
+  --ss-font: var(--font-sans);
+  --ss-mono: var(--font-mono);
+
+  /* Surfaces: white panels on the dashboard grey (Surface-Primary, Dashboard, Foreground-01). */
+  --ss-surface: var(--base-white);
+  --ss-raised: var(--base-white);
+  --ss-chrome: var(--base-white);
+  --ss-canvas: var(--grey-10);
+  --ss-well: var(--grey-50);
+  --ss-fill: var(--grey-100);
+
+  /* Placeholder bars in LP's neutral greys, lightest to darkest (tone 1 to 5). */
+  --ss-ink-1: var(--grey-50);
+  --ss-ink-2: var(--grey-100);
+  --ss-ink-3: var(--grey-150);
+  --ss-ink-4: var(--grey-200);
+  --ss-ink-5: var(--grey-300);
+
+  /* Lines: Stroke-Strong for edges (the 0.5 px frame edge), Stroke for dividers. */
+  --ss-line: var(--grey-150);
+  --ss-line-faint: var(--grey-100);
+
+  /* Text: Heading-01, Heading-04, Sub-text; icons in Icon-System. */
+  --ss-text-strong: var(--grey-900);
+  --ss-text: var(--grey-700);
+  --ss-text-faint: var(--grey-500);
+  --ss-icon: var(--grey-500);
+  --ss-icon-faint: var(--grey-300);
+
+  /* The blue primary button and its soft fill; the status spots. */
+  --ss-accent: var(--button-blue-fill);
+  --ss-accent-soft: var(--blue-50);
+  --ss-accent-text: var(--blue-600);
+  --ss-accent-2: var(--indigo-500);
+  --ss-success: var(--green-600);
+  --ss-success-soft: var(--green-50);
+  --ss-success-text: var(--green-700);
+  --ss-danger: var(--red-600);
+  --ss-danger-soft: var(--red-50);
+  --ss-danger-text: var(--red-700);
+  --ss-warning: var(--yellow-500);
+
+  /* LP's radii (Radius-S, M, L) and the drawings' panel corner. */
+  --ss-radius-sm: var(--radius-sm);
+  --ss-radius-md: var(--radius-md);
+  --ss-radius-lg: var(--radius-lg);
+  --ss-radius-window: var(--radius-lg);
+
+  /* Control heights: the compact button and field (30 px), a menu row (28 px). */
+  --ss-control: 30px;
+  --ss-row: 28px;
+
+  /* Shadows: the Home drawings' own (Figma: the window peeking in, the framed window), Pop for
+     things raised over them, Float for something carried. */
+  --ss-shadow-hero: var(--shadow-illustration-float);
+  --ss-shadow-window: var(--shadow-illustration-window);
+  --ss-shadow-satellite: var(--shadow-pop);
+  --ss-shadow-card: var(--shadow-panel);
+  --ss-shadow-float: var(--shadow-float);
+  --ss-shadow-lift: var(--shadow-float);
+  --ss-shadow-ground: var(--shadow-illustration-window);
+}

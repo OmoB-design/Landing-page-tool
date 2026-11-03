@@ -221,6 +221,13 @@ uv run python -m app.cli.smoke_build --email <you> --brand <name> [--product <na
 # `builds` bucket and only working.html is kept once a build finishes.
 # Worker tests use the database in DATABASE_URL (the cloud dev project; skipped when unreachable).
 
+# illustrations (D101): the Stageshow kit is vendored in apps/web/components/ui/stageshow; scenes live in
+# apps/web/components/app/illustrations. Review them at http://localhost:3000/dev/illustrations (development
+# only, open without signing in). Film a scene with the skill's own tool, which
+# needs its packages once (cd ~/.claude/skills/stageshow && npm install, about 110 MB) and Google Chrome:
+node ~/.claude/skills/stageshow/scripts/film.mjs "http://localhost:3000/dev/illustrations" \
+  --select '[data-illustration="add-brand"]' --every 350 --count 28 --gate --out shots/add-brand.png
+
 # database: the Supabase Cloud dev project `lp-platform-dev` (D73). No Docker. The repo is linked
 # (`supabase link --project-ref vfwzbivlkwkcbdjoqezg`; needs `supabase login` once per machine).
 supabase migration new <name> < /dev/null   # create an empty migration (without < /dev/null it waits for SQL on stdin)

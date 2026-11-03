@@ -2,6 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import {
+  AddBrandScene,
+  CreatePageScene,
+  PickTemplateScene,
+} from "@/components/app/illustrations/home";
 import { PersonMark } from "@/components/app/mark";
 import {
   SkeletonMark,
@@ -12,7 +17,7 @@ import {
 /**
  * Home's greeting (Figma: Home 17:978 and Home Dark 38:2392): a 40 px mark and a 30 px serif
  * "Welcome, <first name>", 8 px in from the cards; 64 px below, three 285 px getting-started
- * cards, 16 px apart. Each card has a 207 px textured painting with a drawing of a page and the
+ * cards, 16 px apart. Each card has a 207 px textured painting with its step drawn in LP's own UI (I1) and the
  * step in 13 px below. (A done state is to come from the owner's design.) With no name yet (the
  * session is loading) the mark and the name shimmer in place; the cards are already there.
  */
@@ -58,7 +63,8 @@ export function Welcome({ name }: { name: string | null }) {
           lead="Add a brand."
           rest="Paste your store’s address and we read its colours, fonts, voice and products."
           texture={{ id: "home-texture-brand", radius: 14 }}
-          drawing={<FloatingWindow />}
+          illustration="add-brand"
+          scene={<AddBrandScene />}
         />
         <WelcomeCard
           href="/templates"
@@ -66,7 +72,8 @@ export function Welcome({ name }: { name: string | null }) {
           lead="Pick a template."
           rest="Start from a proven page in the library, then rearrange its sections."
           texture={{ id: "home-texture-template", radius: 15 }}
-          drawing={<FramedWindow />}
+          illustration="pick-template"
+          scene={<PickTemplateScene />}
         />
         <WelcomeCard
           href="/pages/new"
@@ -74,7 +81,8 @@ export function Welcome({ name }: { name: string | null }) {
           lead="Create a page."
           rest="Choose a product and who it’s for. It builds in the background, ready to review."
           texture={{ id: "home-texture-page", radius: 14 }}
-          drawing={<FramedWindow />}
+          illustration="create-page"
+          scene={<CreatePageScene />}
         />
       </ul>
     </section>
@@ -83,8 +91,8 @@ export function Welcome({ name }: { name: string | null }) {
 
 /**
  * A getting-started card (Figma: Follow Button Container): 18 px corners, the frame edge, the
- * painting with its page drawing, and the step 10 px in with 32 px below. On hover the border
- * deepens, as on Quality's Home cards (Border-divider → Border-input-hover); nothing moves.
+ * painting with its scene, and the step 10 px in with 32 px below. On hover the border deepens,
+ * as on Quality's Home cards (Border-divider → Border-input-hover).
  */
 function WelcomeCard({
   href,
@@ -92,14 +100,17 @@ function WelcomeCard({
   lead,
   rest,
   texture,
-  drawing,
+  illustration,
+  scene,
 }: {
   href: string;
   image: string;
   lead: string;
   rest: string;
   texture: { id: string; radius: number };
-  drawing: ReactNode;
+  /** Names the scene for the review page and the filming checks. */
+  illustration: string;
+  scene: ReactNode;
 }) {
   return (
     <li>
@@ -128,7 +139,11 @@ function WelcomeCard({
             // An SVG filter reference (Figma's Texture effect), not a style value.
             style={{ filter: `url(#${texture.id})` }}
           />
-          {drawing}
+          {/* The step drawn in LP's own UI over the painting (I1, D101): looping as Quality's
+              Home cards do. */}
+          <div className="absolute inset-0" data-illustration={illustration}>
+            {scene}
+          </div>
         </div>
         {/* Figma's first line sits 3 px lower than its 10 px padding (a taller line box). */}
         <p className="px-2.5 pt-3.25 pb-8 text-type-body-small text-sub-text">
@@ -171,43 +186,5 @@ function TextureFilter({ id, radius }: { id: string; radius: number }) {
         />
       </filter>
     </svg>
-  );
-}
-
-// ── Page drawings (Figma: the windows over each painting; light in both themes) ──────────
-
-/** A two-line placeholder: a short darker line 12 px above a longer light one. */
-function Lines() {
-  return (
-    <>
-      <span className="absolute top-0 left-0 h-1.5 w-15.5 rounded-full bg-illustration-line-strong" />
-      <span className="absolute top-3 left-0 h-1.5 w-33 rounded-full bg-illustration-line" />
-    </>
-  );
-}
-
-/** Add a brand: a large window coming in from the right, cut off by the card. */
-function FloatingWindow() {
-  return (
-    <div
-      className={`absolute top-6.75 left-6 h-49.5 w-74.75 rounded-sm rounded-tl-lg bg-illustration-surface shadow-illustration-float`}
-    >
-      <div className="absolute top-28 left-21">
-        <Lines />
-      </div>
-    </div>
-  );
-}
-
-/** Pick a template and Create a page: a framed window inside the painting. */
-function FramedWindow() {
-  return (
-    <div
-      className={`absolute top-7 left-6 h-38.25 w-59.25 rounded-sm bg-illustration-surface shadow-illustration-window`}
-    >
-      <div className="absolute top-22.5 left-13.25">
-        <Lines />
-      </div>
-    </div>
   );
 }

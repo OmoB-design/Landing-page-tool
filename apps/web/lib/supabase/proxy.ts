@@ -5,6 +5,10 @@ import { publicEnv } from "@/lib/env";
 import type { Database } from "@/types/database";
 
 const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth"];
+// Review pages that hold no data and render no account (D101): open in development only, so the
+// Stageshow filming tool, which can't sign in, can reach them. They don't exist in production.
+const DEV_PUBLIC_PATHS =
+  process.env.NODE_ENV === "development" ? ["/dev/illustrations"] : [];
 const AUTH_PAGES = ["/sign-in", "/sign-up"];
 
 function matches(path: string, prefixes: string[]) {
@@ -51,7 +55,7 @@ export async function updateSession(request: NextRequest) {
   // API routes answer JSON, so a signed-out call gets a 401 rather than the sign-in page.
   if (!signedIn && path.startsWith("/api/"))
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-  if (!signedIn && !matches(path, PUBLIC_PATHS))
+  if (!signedIn && !matches(path, [...PUBLIC_PATHS, ...DEV_PUBLIC_PATHS]))
     return redirectTo(request, response, "/sign-in");
   if (signedIn && matches(path, AUTH_PAGES))
     return redirectTo(request, response, "/home");

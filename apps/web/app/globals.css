@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Stageshow's styles (components/ui/stageshow, D101) sit in their own layer after Tailwind's, so
+   its parts keep their shape over the preflight reset whichever stylesheet loads first. A
+   scene's own CSS is unlayered and restyles a part over it. */
+@layer stageshow;
+
 /* Dark mode: a `dark` class on <html> (set before paint by the theme script in app/layout.tsx). */
 @custom-variant dark (&:is(.dark *));
 /* Collapsed sidebar: `data-sidebar="collapsed"` on <html> (cookie-backed, see components/app/sidebar). */

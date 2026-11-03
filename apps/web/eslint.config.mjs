@@ -58,6 +58,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Hairline's engine, copied unchanged from its skill, and figures drawn on it (D82).
     "public/hairline/**",
+    // Stageshow's kit, copied from its skill with only the changes in its LP-CHANGES.md (D101).
+    "components/ui/stageshow/**",
   ]),
 ]);
 

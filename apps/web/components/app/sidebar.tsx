@@ -114,10 +114,12 @@ function SidebarFrame({
     <div className="flex h-full w-full flex-col justify-between bg-dashboard">
       <div className="flex min-h-0 flex-col">
         {/* Search and Collapse ride the right edge and fade as a group; in the rail only the
-            workspace mark stays (the page header's button opens the sidebar again). */}
-        <div className="relative flex items-center px-2 py-3">
+            workspace mark stays (the page header's button opens the sidebar again). The row
+            sits 19 px down (5 px under it), so its centre meets the page header's title across
+            the gap (owner, 2026-11-03); the nav below keeps its place. */}
+        <div className="relative flex items-center px-2 pt-4.75 pb-1.25">
           <div className="flex min-w-0 flex-1 pr-14 rail:pr-0">{workspace}</div>
-          <div className="rail-meta absolute inset-y-0 right-2 flex items-center gap-0.75">
+          <div className="rail-meta absolute top-4.75 right-2 bottom-1.25 flex items-center gap-0.75">
             <SearchButton />
             <SidebarToggleButton action="close" />
           </div>
