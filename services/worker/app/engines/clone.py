@@ -12,6 +12,7 @@ The source brand is not removed here: that runs on every build, for the brand be
 The preview adds a `<base href>` (the stored page has none; its URLs are already absolute).
 """
 
+import html as htmllib
 import re
 from dataclasses import dataclass, field
 from typing import Literal
@@ -44,6 +45,11 @@ FINGERPRINTS: list[tuple[Platform, re.Pattern[str]]] = [
     ("wordpress", re.compile(r"/wp-content/|/wp-includes/|content=\"WordPress", re.I)),
     ("shopify", re.compile(r"cdn\.shopify\.com|/cdn/shop/|Shopify\.shop|shopify-section", re.I)),
 ]
+PLATFORM_NAMES: dict[Platform, str] = {
+    "shopify": "Shopify", "replo": "Replo", "webflow": "Webflow", "clickfunnels": "ClickFunnels",
+    "funnelish": "Funnelish", "wordpress": "WordPress", "framer": "Framer",
+}  # fmt: skip
+TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
 ADD_TO_CART = re.compile(r"\badd\s+to\s+(cart|bag|basket)\b", re.I)
 PRODUCT_PATH = re.compile(r"/products?/[^/]+", re.I)
 
@@ -162,8 +168,23 @@ def page_address(html: str) -> str | None:
 # ── fingerprint ───────────────────────────────────────────────────────────────
 
 
+def platform_of(html: str) -> Platform:
+    """The page builder or shop platform the page was made with, from its markup."""
+    return next((name for name, rule in FINGERPRINTS if rule.search(html)), "unknown")
+
+
+def glance(html: str) -> str | None:
+    """A first look at a fetched page before it is parsed, for the clone's checklist (I3): the
+    builder it was made with, then its title ("Shopify · Sleep better tonight"), the builder first
+    so a long title can't push it out of sight; None if neither."""
+    match = TITLE.search(html)
+    title = " ".join(htmllib.unescape(match.group(1)).split()) if match else ""
+    parts = [part for part in (PLATFORM_NAMES.get(platform_of(html)), title) if part]
+    return " · ".join(parts) or None
+
+
 def fingerprint(soup: BeautifulSoup, html: str, url: str) -> tuple[Platform, str | None]:
-    platform: Platform = next((name for name, rule in FINGERPRINTS if rule.search(html)), "unknown")
+    platform = platform_of(html)
     buttons = soup.find_all(["button", "a", "input"])
     sells = any(
         ADD_TO_CART.search(b.get_text(" ") if b.name != "input" else str(b.get("value") or ""))

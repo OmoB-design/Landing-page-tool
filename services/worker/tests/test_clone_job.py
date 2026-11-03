@@ -22,7 +22,7 @@ from app.jobs.runner import Runner
 from app.models.build import BuildWizard
 from app.models.clone import CloneRequest
 from app.providers import storage
-from tests.conftest import DbUser, job_row, needs_db
+from tests.conftest import DbUser, found_by_step, job_row, needs_db
 
 pytestmark = needs_db
 FIXTURES = Path(__file__).parent / "fixtures" / "clone"
@@ -201,6 +201,9 @@ def test_a_clone_by_address_becomes_a_cloned_template(
         assert row["status"] == "succeeded", row["error"]
         result = row["result"]
         assert result["platform"] == "shopify" and result["verdict"] == "rebuild_native"
+        assert found_by_step(row["id"]) == {
+            1: {"text": "Shopify · Glow Serum \u2013 Lumora", "colors": []}
+        }
         assert any("product page" in w for w in result["warnings"])
         assert any("1 of the page's stylesheets" in w for w in result["warnings"])
 

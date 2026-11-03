@@ -14,7 +14,8 @@ import { ShimmerText } from "./shimmer-loader";
  * LP changes: `readOnly` mode where steps reflect real state and link to where they are done
  * (`href`); read-only steps can also be "running" (spinner, shimmering label) or "failed" (cross
  * and a note); the title is an h2; every timing is 300 ms or less and rows stagger 50 ms
- * apart (D51).
+ * apart (D51); a step can show what it `found` (I3): a short line and a few colour swatches
+ * under its label, opening in place as it arrives, the swatches one after another.
  */
 
 export type ProgressStep = {
@@ -29,6 +30,8 @@ export type ProgressStep = {
   status?: "running" | "failed";
   /** LP: a line under the label, e.g. why the step failed */
   note?: string;
+  /** LP: what the step found, under its label: a short line and up to four colours */
+  found?: { text?: string | null; colors?: string[] };
 };
 
 export type ProgressTrackerProps = {
@@ -140,6 +143,7 @@ export function ProgressTracker({
               : status === "failed"
                 ? "Failed"
                 : "To do";
+          const found = foundOf(step);
           const content = (
             <>
               <span className="ui-progress__check" aria-hidden="true">
@@ -156,7 +160,7 @@ export function ProgressTracker({
                 {readOnly ? (
                   <span className="sr-only">{`${stateWord}: `}</span>
                 ) : null}
-                <span>
+                <span className="ui-progress__text">
                   {status === "running" ? (
                     <ShimmerText>{step.label}</ShimmerText>
                   ) : (
@@ -165,6 +169,29 @@ export function ProgressTracker({
                 </span>
                 {step.note ? (
                   <span className="ui-progress__note">{step.note}</span>
+                ) : null}
+                {found ? (
+                  <span className="ui-progress__found">
+                    <span className="ui-progress__found-row">
+                      {found.colors.map((color, i) => (
+                        <span
+                          key={color}
+                          className="ui-progress__swatch"
+                          title={color}
+                          aria-hidden="true"
+                          style={{
+                            backgroundColor: color,
+                            animationDelay: `${80 + i * 40}ms`,
+                          }}
+                        />
+                      ))}
+                      {found.text ? (
+                        <span className="ui-progress__found-text">
+                          {found.text}
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
                 ) : null}
               </span>
               {step.icon && (
@@ -187,6 +214,7 @@ export function ProgressTracker({
                     className="ui-progress__step"
                     data-checked={checked || undefined}
                     data-status={status}
+                    data-found={found ? "" : undefined}
                   >
                     {content}
                   </Link>
@@ -195,6 +223,7 @@ export function ProgressTracker({
                     className="ui-progress__step"
                     data-checked={checked || undefined}
                     data-status={status}
+                    data-found={found ? "" : undefined}
                   >
                     {content}
                   </div>
@@ -205,6 +234,7 @@ export function ProgressTracker({
                   role="checkbox"
                   aria-checked={checked}
                   className="ui-progress__step"
+                  data-found={found ? "" : undefined}
                   onClick={() => toggle(step.id)}
                 >
                   {content}
@@ -216,6 +246,15 @@ export function ProgressTracker({
       </ul>
     </div>
   );
+}
+
+/** LP: the step's `found`, if it has anything to show (colours must be hex, from our worker). */
+function foundOf(step: ProgressStep) {
+  const colors = (step.found?.colors ?? []).filter((color) =>
+    /^#[0-9a-f]{6}$/i.test(color),
+  );
+  const text = step.found?.text?.trim() || null;
+  return colors.length > 0 || text ? { colors, text } : null;
 }
 
 /* ---------- Styles ---------- */
@@ -396,7 +435,7 @@ div.ui-progress__step { cursor: default; }
   text-overflow: ellipsis;
   transition: color 200ms ease;
 }
-.ui-progress__label > span:last-child {
+.ui-progress__text {
   background: linear-gradient(currentColor, currentColor) 0 58% / 0% 1.5px no-repeat;
   transition: background-size 200ms var(--ui-pg-ease);
 }
@@ -404,8 +443,8 @@ div.ui-progress__step { cursor: default; }
 .ui-progress__step[data-checked] .ui-progress__label {
   color: var(--ui-pg-muted);
 }
-.ui-progress__step[aria-checked="true"] .ui-progress__label > span:last-child,
-.ui-progress__step[data-checked] .ui-progress__label > span:last-child {
+.ui-progress__step[aria-checked="true"] .ui-progress__text,
+.ui-progress__step[data-checked] .ui-progress__text {
   background-size: 100% 1.5px;
   transition: background-size 240ms var(--ui-pg-ease) 100ms;
 }
@@ -449,6 +488,48 @@ div.ui-progress__step { cursor: default; }
   color: var(--ui-pg-muted);
 }
 .ui-progress__step[data-status="failed"] .ui-progress__note { color: var(--ui-pg-danger); }
+
+/* LP: what a step found (I3). The ring stays beside the label's line; the line opens in place
+   (its row grows from nothing), then the swatches arrive one after another. */
+.ui-progress__step[data-found] { align-items: flex-start; }
+.ui-progress__found {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: ui-progress-found 240ms var(--ui-pg-ease) both;
+}
+.ui-progress__found-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ui-pg-ink);
+}
+.ui-progress__swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 0.5px var(--ui-pg-line);
+  animation: ui-progress-swatch 200ms var(--ui-pg-ease) both;
+}
+.ui-progress__swatch + .ui-progress__found-text { margin-left: 2px; }
+.ui-progress__found-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@keyframes ui-progress-found {
+  from { grid-template-rows: 0fr; opacity: 0; }
+}
+@keyframes ui-progress-swatch {
+  from { opacity: 0; transform: scale(0.6); }
+}
 @keyframes ui-progress-spin { to { transform: rotate(360deg); } }
 
 @keyframes ui-progress-pop {
@@ -483,7 +564,9 @@ div.ui-progress__step { cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   .ui-progress,
   .ui-progress__list > li,
-  .ui-progress__digit {
+  .ui-progress__digit,
+  .ui-progress__found,
+  .ui-progress__swatch {
     animation-name: ui-progress-fade !important;
   }
   .ui-progress__shine,
@@ -491,7 +574,7 @@ div.ui-progress__step { cursor: default; }
     animation: none !important;
   }
   .ui-progress__fill,
-  .ui-progress__label > span:last-child,
+  .ui-progress__text,
   .ui-progress__check svg {
     transition-duration: 1ms !important;
     transition-delay: 0ms !important;

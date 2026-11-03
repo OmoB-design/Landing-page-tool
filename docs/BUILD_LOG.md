@@ -863,3 +863,22 @@ as new entries.
 - **Owner actions requested:** review at `/dev/illustrations` and on Home.
 - **Owner confirmed:** no
 - **Next:** I1b — the cards in the workspace's own brand and name (its logo, colours, product photo), then the first-run empty states.
+
+### I2 — First-run empty state illustrations (withdrawn)
+- **Status:** withdrawn (owner, 2026-11-03, after reviewing it: "let's take the illustrations away and revert back to what we had before"). Never committed; the code was discarded and the empty states keep their icons.
+- **What was tried:** Stageshow scenes on a painted tile in the first-run empty states (Pages, a brand's Pages, Templates → Yours, Brands).
+- **Next:** the next Stageshow step (the real-data waits).
+
+### I3 — Live results in the brand fetch and clone checklists
+- **Status:** complete (owner: "go ahead"; committed and pushed on the owner's go)
+- **Date:** 2026-11-03
+- **Summary:** while a brand is fetched or a page is cloned and analysed, each finished step in the checklist shows what it actually found, under its label: the brand's name, then its colours and fonts; the clone's builder and page title, then the analysis's block and image counts, the colours and brand words, and the number of sections. The worker adds `data.found` (a short line and up to four colours, normalised and capped in `app/jobs/found.py`) to the progress events those steps already sent; there are no new AI calls. `jobStepStates` validates it and hands it to the tracker, which draws it for any job that reports it. The idea is Stageshow's "results arrive" pattern; the kit itself stays out of real UI (D101), and the motion is CSS in the tracker at Emil timings (240 ms, 40 ms apart).
+- **Key files:** `services/worker/app/jobs/found.py`, `app/jobs/kinds/{brand_autofetch,template_clone,template_analyze}.py`, `app/engines/clone.py` (`platform_of`, `glance`), `tests/{test_found,test_clone,test_brand_jobs,test_clone_job,test_analysis_job}.py`, `tests/conftest.py` (`found_by_step`); `apps/web/components/ui/progress-tracker.tsx` (`found`), `app/globals.css`, `lib/jobs/steps.ts`, `lib/validators/jobs.ts` (`jobFoundSchema`), `components/features/dev/found-steps-preview.tsx` and `app/(app)/dev/loaders/page.tsx` (the review), `lib/illustrations/sample-brand.ts` (`SAMPLE_CLONE_SOURCE`), `docs/DESIGN.md`.
+- **Schema changes:** none. **New dependencies:** none.
+- **Decisions:** none new (D101 applies: no kit parts in real UI).
+- **Deviations from the plan:** Publish → Live was dropped before the build (it already exists from the owner's Figma). The clone's first line puts the builder before the title ("Replo · Why 40,000 women switched…"), so a long title can't hide it. The tracker's strike-through now targets the label's own text (`.ui-progress__text`), not the label's last child, so a found line is never struck.
+- **Verification:** worker ruff, ruff format, mypy (154 files) and the full pytest suite on the cloud dev database, 338 passed (the job tests assert each step's `found`); web typecheck, eslint, token check, Prettier, vitest 197/197. The preview on `/dev/loaders` filmed in light and dark with a throwaway account (deleted afterwards). Not checked: a real fetch or clone end to end in the browser, since the live Railway job loop shares the database and runs the old code until this is deployed; the worker tests run these jobs end to end on their own queue instead.
+- **Owner actions requested:** review at `/dev/loaders` (Job steps with what they found, Replay); after deploy, add a brand and clone a page.
+- **Owner confirmed:** no
+- **Next:** the connect explainers (Vercel and Shopify connect steps), and the clone explainer once the owner signs off on the terms wording.
+

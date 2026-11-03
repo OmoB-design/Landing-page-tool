@@ -757,6 +757,18 @@
 :root .ui-progress__check {
   border-width: 1.92px;
 }
+/* What a step found (I3; no Figma frame): 12 px Body under the label, its swatches with
+   Radius-XSM corners and a 0.5 px Stroke-Strong edge (so a dark colour still shows on the dark
+   card). */
+:root .ui-progress__found-row {
+  font-size: var(--text-type-caption-1);
+  line-height: 18px;
+  color: var(--color-body);
+}
+:root .ui-progress__swatch {
+  border-radius: var(--radius-xsm);
+  box-shadow: inset 0 0 0 0.5px var(--color-stroke-strong);
+}
 /* Job steps are read-only rows without padding: no hover fill. */
 :root div.ui-progress__step:hover {
   background: transparent;

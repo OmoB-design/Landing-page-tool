@@ -19,7 +19,7 @@ from app.jobs.kinds import brand_assets, brand_autofetch
 from app.jobs.registry import JobKind
 from app.jobs.runner import Runner
 from app.providers import storage
-from tests.conftest import DbUser, job_row, needs_db
+from tests.conftest import DbUser, found_by_step, job_row, needs_db
 
 pytestmark = needs_db
 FIXTURE = (Path(__file__).parent / "fixtures" / "brand_page.html").read_text()
@@ -72,6 +72,11 @@ def test_autofetch_builds_a_draft(
     assert draft["logo_url"] == "https://www.lumeskin.test/images/lume-logo.png"
     assert draft["support_email"] == "hello@lumeskin.test"
     assert draft["ai"] == "mock" and draft["voice"].startswith("(mock)")
+    # What each step found, shown under it while the fetch runs (I3).
+    found = found_by_step(row["id"])
+    assert found[2] == {"text": "Lumé Skin", "colors": []}
+    assert found[4]["text"] == "Lume Display · Lume Sans"
+    assert found[4]["colors"][0] == "#e4572e"
     with transaction() as conn:
         ledger = conn.execute(
             "select model, cost_usd, node from ledger_entries where job_id = %(j)s",

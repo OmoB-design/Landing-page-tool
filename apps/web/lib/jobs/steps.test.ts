@@ -66,4 +66,22 @@ describe("jobStepStates", () => {
       }).every((s) => s.done),
     ).toBe(true);
   });
+
+  it("carries what each finished step found, and drops malformed reports", () => {
+    const states = jobStepStates(steps, {
+      status: "running",
+      events: [
+        { ...event(1), data: { step: 1, found: { text: "Lume", colors: [] } } },
+        {
+          ...event(2),
+          data: { step: 2, found: { text: "x", colors: ["not a colour"] } },
+        },
+      ],
+      error: null,
+    });
+    expect(states[0]?.found).toEqual({ text: "Lume", colors: [] });
+    expect(states[1]?.done).toBe(true);
+    expect(states[1]?.found).toBeUndefined();
+    expect(states[2]?.found).toBeUndefined();
+  });
 });

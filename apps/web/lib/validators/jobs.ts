@@ -20,6 +20,16 @@ export const jobEventSchema = z.object({
 });
 export type JobEvent = z.infer<typeof jobEventSchema>;
 
+/** What a finished step found (I3), on its progress event as `data.found`. */
+export const jobFoundSchema = z.object({
+  text: z.string().max(200).nullable().optional(),
+  colors: z
+    .array(z.string().regex(/^#[0-9a-f]{6}$/i))
+    .max(4)
+    .optional(),
+});
+export type JobFound = z.infer<typeof jobFoundSchema>;
+
 export const jobErrorSchema = z.object({
   code: z.string(),
   message: z.string(),

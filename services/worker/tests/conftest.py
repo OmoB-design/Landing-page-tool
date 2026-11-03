@@ -101,6 +101,16 @@ def job_row(job_id: uuid.UUID) -> dict[str, Any]:
     return dict(row)
 
 
+def found_by_step(job_id: uuid.UUID) -> dict[int, Any]:
+    """Each step's `data.found` (I3), by step number, for steps that report one."""
+    with transaction() as conn:
+        rows = conn.execute(
+            "select data from job_events where job_id = %(id)s and data ? 'found' order by id",
+            {"id": job_id},
+        ).fetchall()
+    return {row["data"]["step"]: row["data"]["found"] for row in rows}
+
+
 def event_messages(job_id: uuid.UUID) -> list[str]:
     with transaction() as conn:
         rows = conn.execute(

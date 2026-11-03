@@ -17,6 +17,7 @@ from app.engines.colors import choose_palette, parse_color, to_hex
 from app.fetch import browser, ladder
 from app.fetch.browser import RenderedSignals
 from app.jobs.context import JobContext
+from app.jobs.found import found
 from app.models.brand import BrandDraft, BrandProfile, Fonts, Palette, PaletteCandidate
 from app.providers import anthropic
 from app.providers.ledger import node_context
@@ -57,13 +58,15 @@ def run(ctx: JobContext) -> dict[str, Any]:
     )
 
     signals = brand_extract.extract_static(page.html, page.url)
-    # The logo goes out with this step so the new-brand screen can show it while the rest runs.
+    # The logo and the name go out with this step so the new-brand screen can show them while
+    # the rest runs.
     ctx.progress(
         f"Read the page: {signals.name}",
         data={
             "step": 2,
             "total": TOTAL,
             "logo_url": signals.logo_urls[0] if signals.logo_urls else None,
+            "found": found(signals.name),
         },
     )
 
@@ -91,7 +94,14 @@ def run(ctx: JobContext) -> dict[str, Any]:
     warnings.extend(palette.notes)
     ctx.progress(
         f"Picked colours ({palette.primary or 'none found'}) and fonts",
-        data={"step": 4, "total": TOTAL},
+        data={
+            "step": 4,
+            "total": TOTAL,
+            "found": found(
+                " · ".join(dict.fromkeys(f for f in (fonts.heading, fonts.body) if f)),
+                [palette.primary, palette.accent, *(c.hex for c in palette.candidates)],
+            ),
+        },
     )
 
     profile = _ai_profile(signals, palette.primary, fonts)

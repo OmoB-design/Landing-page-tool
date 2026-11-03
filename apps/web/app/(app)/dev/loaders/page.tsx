@@ -12,6 +12,7 @@ import {
 import { BrandFormSkeleton } from "@/components/features/brands/brand-form";
 import { BrandOverviewSkeleton } from "@/components/features/brands/brand-overview";
 import { BrandsListSkeleton } from "@/components/features/brands/brands-list";
+import { FoundStepsPreview } from "@/components/features/dev/found-steps-preview";
 import { LoaderTweaks } from "@/components/features/dev/loader-tweaks";
 import { ProductsListSkeleton } from "@/components/features/products/products-list";
 import { TemplateCardSkeleton } from "@/components/features/templates/template-card";
@@ -99,6 +100,10 @@ export default function LoadersPage() {
 
         <Specimen title="Steps card">
           <SkeletonJobSteps title="Build steps" steps={6} />
+        </Specimen>
+
+        <Specimen title="Job steps with what they found (brand fetch, clone)">
+          <FoundStepsPreview />
         </Specimen>
 
         <Specimen title="Create wizard">

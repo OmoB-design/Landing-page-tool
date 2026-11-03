@@ -26,3 +26,14 @@ export const SAMPLE_BRAND = {
 } as const;
 
 export type SampleBrand = typeof SAMPLE_BRAND;
+
+/**
+ * A made-up competitor page for the clone checklist's review on /dev/loaders (I3): the Replo
+ * advertorial the worker's clone tests use. Its colours are the page's content, as above.
+ */
+export const SAMPLE_CLONE_SOURCE = {
+  platform: "Replo",
+  title: "Why 40,000 women switched | Vitalis",
+  brandWords: ["Vitalis", "Vitalis Cardio"],
+  palette: ["#a82420", "#f4b860", "#1b1b1b"],
+} as const;

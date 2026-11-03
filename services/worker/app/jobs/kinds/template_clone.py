@@ -27,6 +27,7 @@ from app.fetch.safety import check_public_url
 from app.jobs import queue
 from app.jobs.context import JobContext
 from app.jobs.errors import JobInterrupted, UserFacingError
+from app.jobs.found import found
 from app.models.template import TemplateType
 from app.providers import storage
 from app.templates import free_slug
@@ -139,20 +140,21 @@ def _clone(
         ctx.progress(
             f"Loaded {clone.source_host(page_url)}"
             + (" with a browser" if page.via == "browser" else ""),
-            data={"step": 1, "total": TOTAL},
+            data={"step": 1, "total": TOTAL, "found": found(clone.glance(html))},
         )
     else:
         html = storage.download("templates", f"{base}/source.html").decode("utf-8", "replace")
-        found = payload.source_url or clone.page_address(html)
-        if not found or not found.lower().startswith(("http://", "https://")):
+        address = payload.source_url or clone.page_address(html)
+        if not address or not address.lower().startswith(("http://", "https://")):
             raise UserFacingError(
                 "We couldn't tell where this page came from. Add its address so its images and "
                 "styles load.",
                 code="no_address",
             )
-        page_url = found
+        page_url = address
         ctx.progress(
-            f"Read the pasted page ({len(html) // 1024} KB)", data={"step": 1, "total": TOTAL}
+            f"Read the pasted page ({len(html) // 1024} KB)",
+            data={"step": 1, "total": TOTAL, "found": found(clone.glance(html))},
         )
 
     # 2. Is it a page?

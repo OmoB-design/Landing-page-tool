@@ -25,7 +25,7 @@ from app.models.build import BuildWizard
 from app.models.template import TemplateInstructions
 from app.providers import anthropic, storage
 from app.publish import gate
-from tests.conftest import DbUser, job_row, needs_db
+from tests.conftest import DbUser, found_by_step, job_row, needs_db
 
 FIXTURES = Path(__file__).parent / "fixtures" / "clone"
 FLAT = (FIXTURES / "funnelish_flat.html").read_text()
@@ -123,6 +123,10 @@ def test_analysis_marks_sections_and_building_waits_for_the_review(
     assert "Vitalis" in rules.forbidden_terms
     assert {c.match for c in rules.length_caps} >= {"h1@", "h2@"}
     assert len(saved["editor_map"]["sections"]) == job["result"]["sections"]
+    found = found_by_step(job["id"])
+    assert found[1]["text"].endswith(" images") and " blocks · " in found[1]["text"]
+    assert found[2]["colors"][0] == "#a82420" and "Vitalis" in found[2]["text"]
+    assert found[3] == {"text": f"{job['result']['sections']} sections", "colors": []}
 
     state = templates.editor_state(user.org_id, cloned)
     labels = [s.label for s in state.sections]

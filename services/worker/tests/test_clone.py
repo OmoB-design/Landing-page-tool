@@ -177,3 +177,10 @@ def test_the_preview_gets_a_base_href() -> None:
     html = clone.with_base("<html><head><title>x</title></head><body></body></html>", REPLO_URL)
     base = parse(html).find("base")
     assert base is not None and base["href"] == REPLO_URL
+
+
+def test_glance_gives_the_builder_and_title_before_parsing() -> None:
+    assert clone.glance(REPLO) == "Replo · Why 40,000 women switched | Vitalis"
+    assert clone.glance(WEBFLOW) == "Webflow · 7 reasons dogs love Pawsome"
+    assert clone.glance("<html><title> Tom &amp;\n Jo </title></html>") == "Tom & Jo"
+    assert clone.glance("<html><body>no title</body></html>") is None

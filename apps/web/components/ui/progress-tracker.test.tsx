@@ -65,4 +65,46 @@ describe("ProgressTracker (read-only)", () => {
     expect(failed?.getAttribute("data-status")).toBe("failed");
     expect(screen.getByText("Site blocked us.")).toBeTruthy();
   });
+
+  it("shows what a finished step found under its label, and ignores bad colours", () => {
+    const { container } = render(
+      <ProgressTracker
+        title="Fetching brand details"
+        readOnly
+        steps={[
+          {
+            id: "read",
+            label: "Read the page",
+            done: true,
+            found: { text: "Lumé Skin" },
+          },
+          {
+            id: "colours",
+            label: "Pick colours and fonts",
+            done: true,
+            found: {
+              text: "Lume Display · Lume Sans",
+              colors: ["#e4572e", "#1a1a1a", "red"],
+            },
+          },
+          { id: "profile", label: "Write the profile", status: "running" },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Lumé Skin")).toBeTruthy();
+    const colours = screen
+      .getByText("Pick colours and fonts")
+      .closest("[data-found]");
+    expect(colours).toBeTruthy();
+    const swatches = colours!.querySelectorAll(".ui-progress__swatch");
+    expect([...swatches].map((s) => s.getAttribute("title"))).toEqual([
+      "#e4572e",
+      "#1a1a1a",
+    ]);
+    // The label is struck through, not what was found.
+    expect(
+      screen.getByText("Lume Display · Lume Sans").className,
+    ).not.toContain("ui-progress__text");
+    expect(container.querySelectorAll("[data-found]")).toHaveLength(2);
+  });
 });

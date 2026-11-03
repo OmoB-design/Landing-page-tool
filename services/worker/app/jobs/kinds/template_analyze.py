@@ -22,6 +22,7 @@ from app.engines import analysis
 from app.engines.colors import parse_color, to_hex
 from app.jobs.context import JobContext
 from app.jobs.errors import UserFacingError
+from app.jobs.found import found
 from app.models.blueprint import AnalysisReply, Blueprint, BlueprintPalette
 from app.models.template import TemplateInstructions
 from app.providers import anthropic, storage
@@ -97,6 +98,10 @@ def _hex(value: str, fallback: str | None) -> str | None:
     return to_hex(rgb) if rgb is not None else fallback
 
 
+def _count(n: int, noun: str) -> str:
+    return f"{n} {noun}{'' if n == 1 else 's'}"
+
+
 def _short(values: list[str], *, limit: int, words: int, chars: int) -> list[str]:
     out: dict[str, str] = {}
     for value in values:
@@ -123,7 +128,11 @@ def run(ctx: JobContext) -> dict[str, Any]:
         raise UserFacingError("This page has no content to analyse.", code="analysis_empty")
     ctx.progress(
         f"Read the page: {len(blocks)} blocks, {len(page.images)} images",
-        data={"step": 1, "total": TOTAL},
+        data={
+            "step": 1,
+            "total": TOTAL,
+            "found": found(f"{_count(len(blocks), 'block')} · {_count(len(page.images), 'image')}"),
+        },
     )
 
     # 2. The model's reading of it.
@@ -153,7 +162,14 @@ def run(ctx: JobContext) -> dict[str, Any]:
     ctx.progress(
         "Claude found the colours, brand words and sections"
         + (" (mock mode)" if result.mock else ""),
-        data={"step": 2, "total": TOTAL},
+        data={
+            "step": 2,
+            "total": TOTAL,
+            "found": found(
+                " · ".join(_short(reply.brand_tokens, limit=3, words=4, chars=40)),
+                [reply.palette.primary, reply.palette.accent, reply.palette.dark],
+            ),
+        },
     )
 
     # 3. Applied to the page.
@@ -230,7 +246,7 @@ def run(ctx: JobContext) -> dict[str, Any]:
     ctx.progress(
         f"Marked {len(rows)} sections"
         + (f" ({stats['wrapped']} grouped)" if stats["wrapped"] else ""),
-        data={"step": 3, "total": TOTAL},
+        data={"step": 3, "total": TOTAL, "found": found(_count(len(rows), "section"))},
     )
 
     # 4. Saved as the next version; it needs a review before pages are built from it.
