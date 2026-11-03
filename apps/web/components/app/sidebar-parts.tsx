@@ -143,8 +143,16 @@ export function RailTooltip({
 }) {
   const rail = useRail();
   const [open, setOpen] = useState(false);
+  // Radix reports no close while `open` is held false, so an open asked for while the sidebar
+  // was wide used to stay set, and collapsing showed every row hovered since: take opens only in
+  // the rail, and start closed whenever the rail opens or closes.
+  const [inRail, setInRail] = useState(rail);
+  if (inRail !== rail) {
+    setInRail(rail);
+    setOpen(false);
+  }
   return (
-    <Tooltip open={rail && open} onOpenChange={setOpen}>
+    <Tooltip open={rail && open} onOpenChange={(next) => setOpen(rail && next)}>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
       <TooltipContent side="right" sideOffset={12}>
         {label}

@@ -11,6 +11,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 from app.config import get_settings
+from app.db import POOL_MAX_IDLE_SECONDS
 
 
 @lru_cache
@@ -18,8 +19,10 @@ def get_checkpointer() -> PostgresSaver:
     settings = get_settings()
     pool: ConnectionPool[Connection[Any]] = ConnectionPool(
         settings.database_url,
-        min_size=1,
+        # Only builds use it: none kept open between them (the pooler's limit, app/db.py).
+        min_size=0,
         max_size=settings.lp_worker_concurrency + 1,
+        max_idle=POOL_MAX_IDLE_SECONDS,
         kwargs={
             "autocommit": True,
             "prepare_threshold": 0,

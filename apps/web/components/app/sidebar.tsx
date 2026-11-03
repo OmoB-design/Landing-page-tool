@@ -124,7 +124,10 @@ function SidebarFrame({
         </div>
         <nav
           aria-label="Workspace"
-          className="flex min-h-0 flex-col gap-0.5 overflow-y-auto p-2"
+          // Only up and down: the headings keep their width in the rail (D97), and an
+          // overflow-y scroller scrolls sideways too, which showed a bar where scroll bars
+          // always show (macOS with a mouse, or "Show scroll bars: Always").
+          className="flex min-h-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto p-2"
         >
           <NavItem href="/home" icon="home" label="Home" index={1} />
           <NavItem

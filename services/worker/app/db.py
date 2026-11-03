@@ -18,6 +18,7 @@ from app.config import get_settings
 # only after minutes, and the test is a round trip to the database on every use (about 20 ms from
 # Railway's Amsterdam to Supabase's Ireland, D91).
 RECHECK_AFTER_SECONDS = 30.0
+POOL_MAX_IDLE_SECONDS = 60.0
 _returned_at: WeakKeyDictionary[Connection[DictRow], float] = WeakKeyDictionary()
 
 
@@ -41,10 +42,13 @@ def get_pool() -> ConnectionPool[Connection[DictRow]]:
     settings = get_settings()
     return ConnectionPool(
         settings.database_url,
-        # Two kept open, so the web app's calls made together (the build page's desk and
-        # publishing) don't wait for a new connection.
-        min_size=2,
+        # The Supabase session pooler takes 15 clients in all, shared by every worker process
+        # (local and Railway, API and job loop, and the old containers during a deploy). So keep
+        # one open, and close spare ones once they've been unused for POOL_MAX_IDLE_SECONDS
+        # (psycopg closes one per period; the default was ten minutes).
+        min_size=1,
         max_size=settings.lp_worker_concurrency + 4,
+        max_idle=POOL_MAX_IDLE_SECONDS,
         kwargs={"row_factory": dict_row},
         connection_class=Connection[DictRow],
         # A connection the server closed while it sat in the pool is replaced before use.
