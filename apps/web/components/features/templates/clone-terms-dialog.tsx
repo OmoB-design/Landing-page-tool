@@ -10,7 +10,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AlertIcon } from "@/components/ui/icons";
-import { ModalCard, ModalFrame } from "@/components/ui/modal-stack";
+import {
+  FRAME_CLOSE,
+  ModalCard,
+  ModalFrame,
+} from "@/components/ui/modal-stack";
 import { Spinner } from "@/components/ui/spinner";
 import type { CloneTermsState } from "@/lib/validators/clone";
 
@@ -59,7 +63,10 @@ export function CloneTermsDialog({
         if (!accepting) onOpenChange(next);
       }}
     >
-      <DialogContent className="block bg-transparent p-0 ring-0 sm:max-w-md">
+      <DialogContent
+        className="block bg-transparent p-0 ring-0 sm:max-w-md"
+        closeClassName={FRAME_CLOSE}
+      >
         <ModalFrame>
           <ModalCard className="rounded-lg">
             <div className="flex flex-col gap-1 px-6 pt-6 pb-4 text-center">

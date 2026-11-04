@@ -895,3 +895,5 @@ as new entries.
 - **Owner confirmed:** no
 - **Next:** the clone terms explainer, once the owner signs off on the terms wording; otherwise the Stageshow list is done (I1 Home cards, I3 live results, I4 connect pictures).
 - **Follow-up (owner, same day):** the plain-text Cancel and Done on the grey modal frames (Connect a Shopify store, the clone terms, the published modal) hover with Foreground-03, so the hover shows on the frame. Cancel stays beside the primary button, as the published modal's Done does (moving it to the far left was tried and undone at the owner's word).
+- **Follow-up 2 (owner, same day): the close button on framed modals.** On the dialogs whose content is a white card on the grey frame (Connect a Shopify store, the clone terms, Show pages full width), the X sat about 9 px from the card's corner, since it was placed from the frame's edge. It now comes 16 px in (`FRAME_CLOSE` in `components/ui/modal-stack.tsx`, passed as `DialogContent`'s new `closeClassName`). Verification: web typecheck, eslint, token check, vitest 199/199; no fresh screenshot (this machine's dev server timed out signing in).
+

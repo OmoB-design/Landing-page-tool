@@ -12,6 +12,7 @@ import { BackIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { ShopifyLogo } from "@/components/ui/lp-icons";
 import {
+  FRAME_CLOSE,
   ModalCard,
   ModalFrame,
   ModalStackDescription,
@@ -297,7 +298,10 @@ export function ShopifyConnectDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="block bg-transparent p-0 ring-0 sm:max-w-md">
+      <DialogContent
+        className="block bg-transparent p-0 ring-0 sm:max-w-md"
+        closeClassName={FRAME_CLOSE}
+      >
         <ModalFrame>
           <ShopifyConnectForm
             brands={brands}
@@ -590,7 +594,10 @@ export function ShopifyFullWidthDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-11/12 flex-col gap-0 bg-transparent p-0 ring-0 sm:max-w-lg">
+      <DialogContent
+        className="flex max-h-11/12 flex-col gap-0 bg-transparent p-0 ring-0 sm:max-w-lg"
+        closeClassName={FRAME_CLOSE}
+      >
         <ModalFrame>
           <ShopifyFullWidthSteps
             shop={shop}

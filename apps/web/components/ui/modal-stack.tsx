@@ -64,6 +64,13 @@ export function ModalStackDescription(props: ComponentProps<"p">) {
 }
 
 /**
+ * Where a dialog's close button goes when its content is a card on a `ModalFrame`: the card sits
+ * 4 px inside the frame, so the button comes 16 px in, clear of the card's corner (owner,
+ * 2026-11-04). Pass it as `DialogContent`'s `closeClassName`.
+ */
+export const FRAME_CLOSE = "top-4 right-4";
+
+/**
  * A modal's card (the owner's frame 686:15456): a white rim, then a grey frame (Dashboard in dark)
  * that the header and footer sit on, around the content in a ModalCard. Every card of a stack has
  * one; a plain dialog can wear it too.
