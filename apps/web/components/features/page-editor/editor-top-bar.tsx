@@ -69,9 +69,19 @@ export function EditorTopBar({
           <BackArrowFigmaIcon aria-hidden className="text-icon-nav-active" />
         </Link>
       </Button>
-      <h1 className="min-w-0 truncate text-type-body-small font-medium">
-        {build.key} · {build.title}
-      </h1>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <h1
+            tabIndex={0}
+            className="max-w-48 min-w-0 truncate rounded-xsm text-type-body-small font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring xl:max-w-64"
+          >
+            {build.key} · {build.title}
+          </h1>
+        </TooltipTrigger>
+        <TooltipContent>
+          {build.key} · {build.title}
+        </TooltipContent>
+      </Tooltip>
       <p
         role="status"
         className="hidden shrink-0 items-center gap-1.5 text-type-caption-1 text-highlight-yellow-500 sm:flex"

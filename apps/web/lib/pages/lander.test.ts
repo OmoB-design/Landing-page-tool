@@ -2,94 +2,121 @@ import { describe, expect, it } from "vitest";
 
 import type { DeskParagraph, DeskSection } from "@/lib/validators/desk";
 
+import type { AgentMessage } from "@/lib/validators/agent";
+
 import {
-  changedLines,
-  closingSentence,
+  changedLineNumbers,
   editableLines,
-  planSentence,
+  replyFromEvents,
   statusLabel,
-  stepsFrom,
   suggestions,
+  turnsFromThread,
 } from "./lander";
 
 const HERO = { key: "hero", label: "Hero" };
-const msg = (...messages: string[]) => messages.map((message) => ({ message }));
+const agent = (data: Record<string, unknown>) => ({ data: { agent: data } });
 
-describe("Lander's thread (B3.1b)", () => {
-  it("says what it will do before it starts", () => {
-    expect(planSentence(HERO, "shorter and warmer")).toBe(
-      "I'll rewrite Hero with that in mind.",
-    );
-    expect(planSentence(null, "")).toBe("I'll give the page fresh words.");
+describe("Lander's thread (B3.1b, B3.1c)", () => {
+  it("reads a running request's plan, steps and changes from its job's events", () => {
+    const lines = {
+      kind: "lines",
+      label: "Rewrote 2 lines in Hero",
+      section: "hero",
+      section_label: "Hero",
+      lines: [
+        { number: 1, before: "A", after: "B" },
+        { number: 4, before: "C", after: "D" },
+      ],
+    };
+    const reply = replyFromEvents([
+      { data: null },
+      agent({
+        type: "step",
+        label: "Read 6 lines in Hero",
+        ok: true,
+        change: null,
+      }),
+      agent({ type: "plan", text: "I'll tighten the hero." }),
+      agent({ type: "step", label: lines.label, ok: true, change: lines }),
+      agent({
+        type: "step",
+        label: "Couldn't move hero",
+        ok: false,
+        change: null,
+      }),
+      agent({ type: "nonsense" }),
+      agent({ type: "closing", text: "Done." }),
+    ]);
+    expect(reply.plan).toBe("I'll tighten the hero.");
+    expect(reply.steps.map((s) => [s.label, s.ok])).toEqual([
+      ["Read 6 lines in Hero", true],
+      ["Rewrote 2 lines in Hero", true],
+      ["Couldn't move hero", false],
+    ]);
+    expect(reply.changes).toHaveLength(1);
+    expect(reply.closing).toBe("Done.");
+    expect(changedLineNumbers(reply.changes)).toEqual([1, 4]);
   });
 
-  it("tells the redraft's progress as steps that run, then tick", () => {
-    const start = stepsFrom([], HERO, 6, false);
-    expect(start).toEqual([
-      { id: "read", label: "Read 6 lines in Hero", done: true },
-    ]);
-    expect(statusLabel(start, "starting", 2)).toBe("Thinking… 2s");
-    expect(statusLabel(start, "working", 4, true)).toBe(
+  it("says where a request is in its status line", () => {
+    const steps = [
+      { label: "a", ok: true },
+      { label: "b", ok: true },
+    ];
+    expect(statusLabel("starting", [], 2)).toBe("Working on it… 2s");
+    expect(statusLabel("working", steps, 4, true)).toBe(
       "Waiting for a worker… 4s",
     );
-
-    const writing = stepsFrom(msg("Writing 6 lines"), HERO, 6, false);
-    expect(writing.at(-1)).toEqual({
-      id: "write",
-      label: "Rewriting 6 lines…",
-      done: false,
-    });
-    expect(statusLabel(writing, "working", 3)).toBe("Rewriting 6 lines…");
-
-    const wrote = stepsFrom(
-      msg("Writing 6 lines", "Wrote 5 of 6 lines"),
-      HERO,
-      6,
-      false,
+    expect(statusLabel("done", steps, 9, false, 7)).toBe(
+      "Completed 2 steps · 7s",
     );
-    expect(wrote.map((s) => [s.label, s.done])).toEqual([
-      ["Read 6 lines in Hero", true],
-      ["Rewrote 5 of 6 lines", true],
-      ["Saving and checking the claims…", false],
-    ]);
-
-    const saved = stepsFrom(
-      msg("Writing 1 line", "Wrote 1 of 1 line", "Saved the page"),
-      null,
-      1,
-      true,
+    expect(statusLabel("stopped", steps.slice(0, 1), 9)).toBe(
+      "Stopped after 1 step",
     );
-    expect(saved.map((s) => s.label)).toEqual([
-      "Read 1 line in the page",
-      "Rewrote 1 line",
-      "Saved and checked the claims",
-    ]);
-    expect(statusLabel(saved, "done", 9)).toBe("Completed 3 steps");
-    expect(statusLabel(saved, "failed", 9)).toBe("Stopped");
+    expect(statusLabel("failed", [], 9)).toBe("Couldn’t finish");
   });
 
-  it("compares the target's lines before and after", () => {
-    const before = [
-      { number: 1, text: "Glow in 7 days", section: "hero" },
-      { number: 2, text: "Is it gentle?", section: "faq" },
+  it("turns a saved conversation back into requests and replies", () => {
+    const messages: AgentMessage[] = [
+      {
+        id: "m1",
+        role: "user",
+        job_id: "j1",
+        created_at: "2026-11-04T10:00:00Z",
+        content: { text: "Warmer", target: HERO },
+      },
+      {
+        id: "m2",
+        role: "assistant",
+        job_id: "j1",
+        created_at: "2026-11-04T10:00:20Z",
+        content: { state: "done", steps: [], changes: [], closing: "Done." },
+      },
+      {
+        id: "m3",
+        role: "user",
+        job_id: "j2",
+        created_at: "2026-11-04T10:01:00Z",
+        content: { text: "Shorter", target: null },
+      },
+      {
+        id: "m4",
+        role: "user",
+        job_id: "j3",
+        created_at: "2026-11-04T10:02:00Z",
+        content: { text: "And the FAQ", target: null },
+      },
     ];
-    const after = [
-      { number: 1, text: "Glow in a week", section: "hero" },
-      { number: 2, text: "Is it kind?", section: "faq" },
-    ];
-    expect(changedLines(before, after, "hero")).toEqual([
-      { number: 1, before: "Glow in 7 days", after: "Glow in a week" },
+    const turns = turnsFromThread(messages, "j3");
+    expect(turns.map((t) => [t.request, t.jobId])).toEqual([
+      ["Warmer", "j1"],
+      ["Shorter", "j2"],
+      ["And the FAQ", "j3"],
     ]);
-    expect(changedLines(before, after, null)).toHaveLength(2);
-  });
-
-  it("closes with what it did, the lines it left and any that kept their words", () => {
-    expect(closingSentence(HERO, 6, 0, 0)).toBe(
-      "Done. I rewrote 6 lines in Hero.",
-    );
-    expect(closingSentence(null, 9, 2, 1)).toBe(
-      "Done. I rewrote 9 lines in the page. I left the 2 lines you'd edited by hand. A few lines kept their words.",
-    );
+    expect(turns[0]?.saved?.closing).toBe("Done.");
+    // A request with no reply: the running one waits for its job; another never finished.
+    expect(turns[1]?.saved?.state).toBe("failed");
+    expect(turns[2]?.saved).toBeNull();
   });
 
   it("shimmers only the lines it can change", () => {

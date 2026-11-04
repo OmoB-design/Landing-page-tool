@@ -87,6 +87,10 @@ export function redraftLabel(
       return "a line";
     case "unwritten":
       return "the unwritten lines";
+    case "agent":
+      return redraft.section
+        ? (labels[redraft.section] ?? sectionLabel(redraft.section))
+        : "the page";
   }
 }
 
@@ -97,6 +101,9 @@ export function inRedraft(
 ): boolean {
   if (paragraph.locked) return false;
   if (redraft.scope === "paragraph") return paragraph.number === redraft.block;
+  // Lander (B3.1c) may change any line of what it was asked about, edited by hand or not.
+  if (redraft.scope === "agent")
+    return redraft.section === null || paragraph.section === redraft.section;
   if (paragraph.edited) return false;
   if (redraft.scope === "section") return paragraph.section === redraft.section;
   return redraft.scope === "page";

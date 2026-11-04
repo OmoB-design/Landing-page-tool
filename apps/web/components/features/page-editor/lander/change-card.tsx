@@ -11,7 +11,6 @@ import {
   SendIcon,
 } from "@/components/ui/icons";
 import { LocateFigmaIcon } from "@/components/ui/lp-icons";
-import { Skeleton } from "@/components/ui/shimmer-loader";
 import {
   Tooltip,
   TooltipContent,
@@ -27,32 +26,20 @@ const SHOWN = 4;
 export type UndoState = "can-undo" | "undone" | "later" | "none";
 
 /**
- * A change Lander made, as a card in the thread (the reference video's invoice card): the target
- * and how many lines, Show on page and fold in the header; while it works, skeleton rows where the
- * lines will land; then each line, the old words struck through above the new ones, arriving one
- * after another. The foot has **Ask Lander to edit** (a small field for this card: a follow-up on
- * the same section) and Undo, or Redo once undone; a change with later changes after it says to use
- * the top bar's Undo.
+ * Lines Lander rewrote, as a card in the thread (the reference video's invoice card): the section
+ * and how many lines, Show on page and fold in the header; then each line, the old words struck
+ * through above the new ones, arriving one after another. The foot has **Ask Lander to edit** (a
+ * small field for this card: a follow-up on the same section). Undo is the request's, under its
+ * changes (B3.1c: one request, one undo step).
  */
 export function ChangeCard({
   title,
   lines,
-  pending,
-  skeletonRows,
-  undo,
-  onUndo,
-  onRedo,
   onShow,
   onRefine,
 }: {
   title: string;
   lines: { number: number; before: string; after: string }[];
-  /** The lines are still being written: skeleton rows stand in for them. */
-  pending: boolean;
-  skeletonRows: number;
-  undo: UndoState;
-  onUndo: () => void;
-  onRedo: () => void;
   onShow: () => void;
   onRefine: (request: string) => void;
 }) {
@@ -62,7 +49,7 @@ export function ChangeCard({
   const [refining, setRefining] = useState(false);
   const [note, setNote] = useState("");
   const shown = all ? lines : lines.slice(0, SHOWN);
-  const count = pending ? null : lines.length;
+  const count = lines.length;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -82,10 +69,7 @@ export function ChangeCard({
       }}
       animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       transition={arrive}
-      className={cn(
-        "overflow-hidden rounded-item bg-surface-primary shadow-light ring-thin ring-stroke",
-        undo === "undone" && "opacity-70",
-      )}
+      className="overflow-hidden rounded-item bg-surface-primary shadow-light ring-thin ring-stroke"
     >
       <header className="flex h-9 items-center gap-2 bg-foreground-01 pr-1 pl-3">
         <PagesIcon aria-hidden className="size-3.5 shrink-0 text-icon-system" />
@@ -96,7 +80,6 @@ export function ChangeCard({
           {count !== null ? (
             <span className="shrink-0 text-sub-text">
               · {count} {count === 1 ? "line" : "lines"}
-              {undo === "undone" ? " · undone" : ""}
             </span>
           ) : null}
         </p>
@@ -130,45 +113,27 @@ export function ChangeCard({
             className="overflow-hidden"
           >
             <ol className="flex flex-col px-3">
-              {pending
-                ? Array.from({ length: skeletonRows }, (_, i) => (
-                    <li
-                      key={`s${i}`}
-                      className="flex flex-col gap-1.5 py-2.5 divider-b-half last:shadow-none"
-                    >
-                      <Skeleton
-                        width="55%"
-                        height={8}
-                        radius="var(--radius-xxs)"
-                      />
-                      <Skeleton
-                        width={i % 2 ? "70%" : "88%"}
-                        height={10}
-                        radius="var(--radius-xxs)"
-                      />
-                    </li>
-                  ))
-                : shown.map((line, i) => (
-                    <motion.li
-                      key={line.number}
-                      initial={{
-                        opacity: 0,
-                        filter: reduced ? "none" : "blur(4px)",
-                      }}
-                      animate={{ opacity: 1, filter: "blur(0px)" }}
-                      transition={{ ...arrive, delay: reduced ? 0 : 0.06 * i }}
-                      className="flex flex-col gap-0.5 py-2.5 divider-b-half last:shadow-none"
-                    >
-                      <span className="text-type-caption-1 text-heading-06 line-through decoration-caption-1">
-                        {line.before}
-                      </span>
-                      <span className="text-type-body-small text-heading-01">
-                        {line.after}
-                      </span>
-                    </motion.li>
-                  ))}
+              {shown.map((line, i) => (
+                <motion.li
+                  key={line.number}
+                  initial={{
+                    opacity: 0,
+                    filter: reduced ? "none" : "blur(4px)",
+                  }}
+                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                  transition={{ ...arrive, delay: reduced ? 0 : 0.06 * i }}
+                  className="flex flex-col gap-0.5 py-2.5 divider-b-half last:shadow-none"
+                >
+                  <span className="text-type-caption-1 text-heading-06 line-through decoration-caption-1">
+                    {line.before}
+                  </span>
+                  <span className="text-type-body-small text-heading-01">
+                    {line.after}
+                  </span>
+                </motion.li>
+              ))}
             </ol>
-            {!pending && lines.length > SHOWN ? (
+            {lines.length > SHOWN ? (
               <button
                 type="button"
                 onClick={() => setAll((a) => !a)}
@@ -180,7 +145,7 @@ export function ChangeCard({
           </motion.div>
         ) : null}
       </AnimatePresence>
-      {!pending ? (
+      {
         <footer className="flex h-10 items-center gap-1 bg-foreground-01 px-1.5 divider-t-half">
           <AnimatePresence initial={false} mode="popLayout">
             {refining ? (
@@ -238,7 +203,6 @@ export function ChangeCard({
                   variant="ghost"
                   size="sm"
                   onClick={() => setRefining(true)}
-                  disabled={undo === "undone"}
                   className="h-7 gap-1.5 px-1.5 text-type-caption-1 text-heading-02 hover:bg-foreground-03"
                 >
                   <RenameIcon
@@ -247,17 +211,18 @@ export function ChangeCard({
                   />
                   Ask Lander to edit
                 </Button>
-                <UndoControl undo={undo} onUndo={onUndo} onRedo={onRedo} />
               </motion.div>
             )}
           </AnimatePresence>
         </footer>
-      ) : null}
+      }
     </motion.section>
   );
 }
 
-function UndoControl({
+/** Undo for a request's changes, or Redo once undone; with later changes after it, a disabled
+ * Undo that points to the top bar's. */
+export function UndoControl({
   undo,
   onUndo,
   onRedo,

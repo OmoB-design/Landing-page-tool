@@ -1,143 +1,166 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { toast } from "@/components/app/toaster";
+import { apiFetch } from "@/lib/api/client";
 import {
-  type LanderLine,
-  type LanderStep,
   type LanderTarget,
   type LanderTurn,
-  changedLines,
-  closingSentence,
+  type TurnState,
   editableLines,
-  stepsFrom,
-  targetName,
+  replyFromEvents,
+  turnsFromThread,
 } from "@/lib/pages/lander";
+import {
+  type AgentChange,
+  type AgentStep,
+  agentReplySchema,
+  agentThreadSchema,
+} from "@/lib/validators/agent";
+import type { JobDetail } from "@/lib/validators/jobs";
 
 import { type SettledRedraft, useDesk } from "../../builds/desk-context";
 
-export type TurnState = "starting" | "working" | "done" | "failed";
-
-/** What the thread shows for a turn, worked out from the desk on every render. */
+/** What the thread shows for a turn, worked out from the desk and its job on every render. */
 export type TurnView = {
   turn: LanderTurn;
   state: TurnState;
-  steps: LanderStep[];
-  lines: { number: number; before: string; after: string }[];
+  /** Its job is still waiting for a worker to claim it. */
+  queued: boolean;
+  plan: string | null;
+  steps: AgentStep[];
+  changes: AgentChange[];
   closing: string | null;
   error: string | null;
-  /** The desk change it saved ("Redrafted Hero") and the page version after it. */
+  /** The desk change it saved ("Lander: rewrote 3 lines in Hero") and the page version after. */
   reason: string | null;
   versionAfter: number | null;
   /** Seconds it took, once it finished. */
   took: number | null;
-  /** Its job is still waiting for a worker to claim it. */
-  queued: boolean;
 };
 
-function number(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+function tookOf(job: JobDetail): number | null {
+  if (!job.started_at || !job.finished_at) return null;
+  const ms = Date.parse(job.finished_at) - Date.parse(job.started_at);
+  return Math.max(1, Math.round(ms / 1000));
 }
 
 function viewOf(
   turn: LanderTurn,
   settled: SettledRedraft | undefined,
-  live: { status: string; events: { message: string }[] } | null,
+  live: JobDetail | null,
 ): TurnView {
-  const base = {
+  const base: TurnView = {
     turn,
-    lines: [],
+    state: "working",
+    queued: false,
+    plan: null,
+    steps: [],
+    changes: [],
     closing: null,
     error: null,
     reason: null,
     versionAfter: null,
     took: null,
-    queued: false,
   };
-  if (turn.refused) {
-    return { ...base, state: "failed", steps: [], error: turn.refused };
-  }
+  if (turn.refused) return { ...base, state: "failed", error: turn.refused };
   if (settled) {
     const job = settled.job;
-    const steps = stepsFrom(job.events, turn.target, turn.editable, true);
-    const took =
-      job.started_at && job.finished_at
-        ? Math.max(
-            1,
-            Math.round(
-              (Date.parse(job.finished_at) - Date.parse(job.started_at)) / 1000,
-            ),
-          )
-        : null;
-    if (job.status !== "succeeded") {
+    const result = agentReplySchema.safeParse(job.result);
+    if (job.status === "succeeded" && result.success) {
+      const reply = result.data;
       return {
         ...base,
-        state: "failed",
-        steps,
-        took,
-        error: job.error?.message ?? "Lander couldn't finish that.",
+        state: reply.state === "stopped" ? "stopped" : "done",
+        plan: reply.plan ?? null,
+        steps: reply.steps,
+        changes: reply.changes,
+        closing: reply.closing ?? null,
+        reason: reply.reason ?? null,
+        versionAfter: reply.page_version ?? settled.pageVersion,
+        took: tookOf(job),
       };
     }
-    const result = job.result ?? {};
-    const after: LanderLine[] = settled.paragraphs ?? [];
+    const sofar = replyFromEvents(job.events);
     return {
       ...base,
-      state: "done",
-      steps,
-      took,
-      lines: changedLines(turn.before, after, turn.target?.key ?? null),
-      closing: closingSentence(
-        turn.target,
-        number(result.rewritten),
-        number(result.kept_edited),
-        number(result.failed_chunks),
-      ),
-      reason: typeof result.reason === "string" ? result.reason : null,
-      versionAfter:
-        typeof result.page_version === "number"
-          ? result.page_version
-          : settled.pageVersion,
+      state: "failed",
+      plan: sofar.plan ?? null,
+      steps: sofar.steps,
+      error: job.error?.message ?? "Lander couldn’t finish that.",
+      took: tookOf(job),
     };
   }
-  if (!turn.jobId)
+  if (turn.saved) {
+    const reply = turn.saved;
     return {
       ...base,
-      state: "starting",
-      steps: stepsFrom([], turn.target, turn.editable, false),
+      state: reply.state === "working" ? "failed" : reply.state,
+      plan: reply.plan ?? null,
+      steps: reply.steps,
+      changes: reply.changes,
+      closing: reply.closing ?? null,
+      error: reply.error ?? null,
+      reason: reply.reason ?? null,
+      versionAfter: reply.page_version ?? null,
+      took: reply.took ?? null,
     };
+  }
+  if (!turn.jobId) return { ...base, state: "starting" };
+  if (!live) return base;
+  const sofar = replyFromEvents(live.events);
   return {
     ...base,
-    state: "working",
-    queued: live?.status === "queued",
-    steps: stepsFrom(live?.events ?? [], turn.target, turn.editable, false),
+    queued: live.status === "queued",
+    plan: sofar.plan ?? null,
+    steps: sofar.steps,
+    changes: sofar.changes,
+    closing: sofar.closing ?? null,
   };
 }
 
 /**
- * Lander's conversation for this page (B3.1b, D105), kept for the visit (B3.1c saves it). A request
- * becomes a redraft of its target (a section, or the page) with the request as the note; its job's
- * progress becomes the steps, and when it ends the change and the closing line follow. One request
- * at a time: the desk runs one redraft per page.
+ * Lander's conversation for this page (B3.1c, D106): the newest conversation loads when the editor
+ * opens; a request goes to the agent (the page's job, one at a time), its job's events become the
+ * plan, steps and change cards as they happen, and its result the reply. New chat starts a new
+ * conversation; Stop asks the running request to stop.
  */
-export function useLander(settle: () => Promise<void>) {
-  const { desk, startRedraft, settledRedrafts, redrafting } = useDesk();
+export function useLander(buildId: string, settle: () => Promise<void>) {
+  const { desk, startAgent, stopAgent, settledRedrafts, redrafting } =
+    useDesk();
   const [turns, setTurns] = useState<LanderTurn[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [stopping, setStopping] = useState<string | null>(null);
 
-  const liveJob = redrafting?.job;
-  const live =
-    redrafting && redrafting.redraft.job_id
-      ? {
-          id: redrafting.redraft.job_id,
-          status: liveJob?.status ?? redrafting.redraft.status,
-          events: liveJob?.events ?? [],
-        }
-      : null;
+  // The newest conversation, once, when the editor opens.
+  const runningJob =
+    desk.redraft?.scope === "agent" ? desk.redraft.job_id : null;
+  const [firstRunning] = useState(runningJob);
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch(`/api/builds/${buildId}/agent`, agentThreadSchema)
+      .then((thread) => {
+        if (cancelled) return;
+        setThreadId(thread.thread_id);
+        setTurns((now) =>
+          now.length ? now : turnsFromThread(thread.messages, firstRunning),
+        );
+      })
+      .catch(() => {})
+      .finally(() => !cancelled && setLoaded(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [buildId, firstRunning]);
+
+  const liveJob = redrafting?.job ?? null;
   const views = turns.map((turn) =>
     viewOf(
       turn,
       turn.jobId ? settledRedrafts[turn.jobId] : undefined,
-      live && live.id === turn.jobId ? live : null,
+      liveJob && liveJob.id === turn.jobId ? liveJob : null,
     ),
   );
   const active = views.find(
@@ -153,56 +176,57 @@ export function useLander(settle: () => Promise<void>) {
       }
       await settle();
       const id = crypto.randomUUID();
-      const editable = editableLines(desk.paragraphs, target).length;
       const turn: LanderTurn = {
         id,
         request: request.trim(),
         target,
         startedAt: Date.now(),
         jobId: null,
-        refused:
-          editable === 0
-            ? `There's nothing to rewrite in ${targetName(target)}: its lines come from your brand or product.`
-            : null,
-        before: desk.paragraphs.map(({ number, text, section }) => ({
-          number,
-          text,
-          section,
-        })),
-        editable,
+        refused: null,
+        saved: null,
       };
       setTurns((all) => [...all, turn]);
-      if (turn.refused) return;
-      const jobId = await startRedraft({
-        scope: target ? "section" : "page",
-        section: target?.key,
-        note: turn.request || undefined,
+      const started = await startAgent({
+        text: turn.request,
+        target_key: target?.key ?? null,
+        thread_id: threadId,
       });
+      if (started) setThreadId(started.thread_id);
       setTurns((all) =>
         all.map((t) =>
           t.id === id
-            ? {
-                ...t,
-                jobId,
-                refused: jobId
-                  ? null
-                  : "Lander couldn't start that. Try again in a moment.",
-              }
+            ? started
+              ? { ...t, jobId: started.job_id }
+              : { ...t, refused: "Lander couldn’t start that." }
             : t,
         ),
       );
     },
-    [desk.paragraphs, settle, startRedraft, working],
+    [settle, startAgent, threadId, working],
   );
 
-  const reset = useCallback(() => setTurns([]), []);
+  const stop = useCallback(async () => {
+    const job = desk.redraft?.scope === "agent" ? desk.redraft.job_id : null;
+    if (!job) return;
+    setStopping(job);
+    await stopAgent();
+  }, [desk.redraft, stopAgent]);
+
+  const reset = useCallback(() => {
+    setTurns([]);
+    setThreadId(null);
+  }, []);
 
   return {
     views,
     working,
-    /** The lines of the request being worked on: they shimmer on the page. */
+    loaded,
+    /** Stop was pressed on the request running now. */
+    stopping: stopping !== null && stopping === desk.redraft?.job_id,
+    /** The lines of the request being worked on: they breathe on the page. */
     busyLines: active ? editableLines(desk.paragraphs, active.turn.target) : [],
     send,
+    stop,
     reset,
   };
 }

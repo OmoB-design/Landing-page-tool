@@ -17,6 +17,13 @@ import {
   deskStateSchema,
 } from "@/lib/validators/desk";
 import {
+  type AgentRequestInput,
+  type AgentStart,
+  type AgentThread,
+  agentStartSchema,
+  agentThreadSchema,
+} from "@/lib/validators/agent";
+import {
   type IntegrationsState,
   type PublishingState,
   type ShopifyTemplate,
@@ -236,6 +243,57 @@ export function changeBuildDesk(
     body,
     deskStateSchema,
     "Could not save the change.",
+  );
+}
+
+// ── Lander, the page editor's agent (worker /builds/{id}/agent, B3.1c, D106) ──
+
+/** A request to Lander: saved in its conversation and queued; returns the desk and the job. */
+export function startAgent(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+  body: AgentRequestInput,
+): Promise<AgentStart> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/agent`,
+    accessToken,
+    { ...body, org_id: orgId },
+    agentStartSchema,
+    "Lander couldn't start that.",
+  );
+}
+
+/** The conversation with Lander about a page: the one named, or the newest. */
+export function getAgentThread(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+  threadId?: string | null,
+): Promise<AgentThread> {
+  const thread = threadId ? `&thread_id=${encodeURIComponent(threadId)}` : "";
+  return callWorker(
+    "GET",
+    `/builds/${encodeURIComponent(buildId)}/agent?org_id=${encodeURIComponent(orgId)}${thread}`,
+    accessToken,
+    undefined,
+    agentThreadSchema,
+    "Couldn't load the conversation with Lander.",
+  );
+}
+
+/** Asks Lander's running request on a page to stop (it keeps what it did). */
+export function stopAgent(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<{ stopping: boolean }> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/agent/stop`,
+    accessToken,
+    { org_id: orgId },
+    z.object({ stopping: z.boolean() }),
+    "Couldn't stop Lander.",
   );
 }
 

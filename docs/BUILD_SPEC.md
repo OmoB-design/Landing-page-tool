@@ -581,6 +581,8 @@ Layout: preview iframe (desktop/mobile toggle) on the left, a right panel with t
 
 Claude (`LP_MODEL_AGENT`) in a tool-use loop of up to 8 turns *(ref)*, each turn a job (`agent_turn`), with tools: `edit_text(fragment_id, text)`, `replace_image(slot, prompt|asset)`, `check_policy(text)`, `recolor_page(palette)`, `remove_element(selector)`, `set_variants(...)`, `move_section(key, position)`. Conversation saved in `agent_messages`. Every mutating tool call snapshots first.
 
+*Built as B3.1c (D106):* one `agent_turn` job per request runs the whole loop (up to 8 rounds) on a copy of the page and saves it as one desk change (one undo step); tools `read_page`, `edit_lines`, `move_section`, `duplicate_section`, `remove_section`, `recolor_page`, `check_claims`; images wait for the image studio (B3.2). Stop is checked between steps. The conversation is kept in `agent_messages` by thread.
+
 ### 11.4 Client review link (M3, D55) *(ref)*
 
 - **Approve** stamps the current version (a snapshot) and unlocks **Copy client link**.

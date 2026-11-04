@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
 import { useRouter } from "next/navigation";
 import {
   createContext,
@@ -19,6 +20,7 @@ import { pickDesk } from "@/lib/builds/desk";
 import { isActive } from "@/lib/jobs/progress";
 import { useJob } from "@/lib/queries/jobs";
 import type { JobDetail } from "@/lib/validators/jobs";
+import { type AgentStart, agentStartSchema } from "@/lib/validators/agent";
 import {
   type DeskAction,
   type DeskPalette,
@@ -97,6 +99,15 @@ type DeskContextValue = {
   startRedraft: (input: RedraftInput) => Promise<string | null>;
   /** Redrafts that finished while this desk was open, by job id (B3.1b). */
   settledRedrafts: Record<string, SettledRedraft>;
+  /** Sends a request to Lander (B3.1c): it runs as the page's job, so the desk follows it like a
+   * redraft. Resolves to the conversation and the job (null when refused, with a toast). */
+  startAgent: (request: {
+    text: string;
+    target_key: string | null;
+    thread_id: string | null;
+  }) => Promise<AgentStart | null>;
+  /** Stop on Lander's running request: it keeps what it did by its next step. */
+  stopAgent: () => Promise<void>;
   /** Recolours the page to these colours (undoable). */
   recolor: (colors: DeskPalette) => Promise<boolean>;
   /** Fetches the desk again (publishing changes the status without a new page version). */
@@ -370,6 +381,66 @@ export function DeskProvider({
     [desk.build.page_version, mutation, onChange],
   );
 
+  const startAgent = useCallback(
+    async (request: {
+      text: string;
+      target_key: string | null;
+      thread_id: string | null;
+    }) => {
+      try {
+        const started = await apiFetch(
+          `/api/builds/${buildId}/agent`,
+          agentStartSchema,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              base_version: Math.max(
+                typedVersion.current,
+                desk.build.page_version,
+              ),
+              ...request,
+            }),
+          },
+        );
+        showDesk(started.desk);
+        return started;
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Lander couldn’t start that.";
+        if (error instanceof ApiError && error.status === 409) {
+          toast.error(message, {
+            action: {
+              label: "Reload",
+              onClick: () => {
+                setLocal(null);
+                router.refresh();
+              },
+            },
+          });
+        } else {
+          toast.error(message);
+        }
+        return null;
+      }
+    },
+    [buildId, desk.build.page_version, router, showDesk],
+  );
+  const stopAgent = useCallback(async () => {
+    try {
+      await apiFetch(
+        `/api/builds/${buildId}/agent/stop`,
+        z.object({ stopping: z.boolean() }),
+        { method: "POST" },
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Couldn’t stop Lander.",
+      );
+    }
+  }, [buildId]);
+
   const blockOf = useCallback(
     (target: DeskTarget) => {
       if ("block" in target)
@@ -437,6 +508,8 @@ export function DeskProvider({
       redraft,
       startRedraft,
       settledRedrafts,
+      startAgent,
+      stopAgent,
       reload: async () => {
         if (onChange) return;
         const next = await apiFetch(
@@ -479,6 +552,8 @@ export function DeskProvider({
       redraft,
       startRedraft,
       settledRedrafts,
+      startAgent,
+      stopAgent,
       saveTyping,
       frameVersion,
       showDesk,

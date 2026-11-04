@@ -14,22 +14,29 @@ import {
   AlertIcon,
   CheckIcon,
   ChevronRightIcon,
+  DuplicateIcon,
+  MoveSectionIcon,
+  RecolorIcon,
+  RemoveIcon,
   RewriteIcon,
   SharpenIcon,
   ShortenIcon,
+  StepFailedIcon,
+  StopIcon,
   WarmIcon,
 } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/spinner";
 import {
   type LanderSuggestion,
   type LanderTarget,
-  planSentence,
+  plural,
   statusLabel,
 } from "@/lib/pages/lander";
+import type { AgentChange } from "@/lib/validators/agent";
 import { cn } from "@/lib/utils";
 
 import { useLanderMotion } from "../lander-motion";
-import { ChangeCard, type UndoState } from "./change-card";
+import { ChangeCard, UndoControl, type UndoState } from "./change-card";
 import { LanderMark } from "./lander-mark";
 import { RollingLabel } from "./rolling-label";
 import { StreamText } from "./stream-text";
@@ -42,6 +49,8 @@ const SUGGESTION_ICONS = {
   page: RewriteIcon,
 } as const;
 
+/** How near the bottom (px) still counts as following the conversation. */
+const FOLLOW_SLACK = 64;
 /** The fade above the composer, in px (matches `--lander-fade` in globals.css). */
 const FADE = 24;
 
@@ -51,7 +60,8 @@ const FADE = 24;
  * the panel: a status line (thinking with seconds, then what it's doing, rolling, then "Completed 3
  * steps", which unfolds them), the plan sentence arriving word by word, the steps as a thin
  * timeline that tick as they finish and fold away once done, the change card, and the closing line.
- * It keeps to the bottom as things arrive, unless you've scrolled up to read. The composer floats
+ * It keeps to the bottom as things arrive unless you've scrolled up to read, and a new request
+ * always brings you down to it. The composer floats
  * over its foot, and the messages fade out over a short stretch just above it, so they read as
  * sliding in behind it (Stageshow's edge fade; owner, 2026-11-04).
  */
@@ -73,7 +83,8 @@ export function LanderThread({
   onSuggestion: (suggestion: LanderSuggestion) => void;
   onUndo: () => void;
   onRedo: () => void;
-  onShow: (view: TurnView) => void;
+  /** Show on page: flashes these lines (a change card's) and selects their section. */
+  onShow: (lines: number[], section: string | null) => void;
   onRefine: (target: LanderTarget, request: string) => void;
   onRetry: (view: TurnView) => void;
   /** The composer, floating over the thread's foot. */
@@ -96,24 +107,61 @@ export function LanderThread({
   const content = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
 
-  // Keep to the bottom while things arrive, unless the reader has scrolled up.
+  // Keep to the bottom while things arrive. Only the reader scrolling up (wheel, touch, keys) stops
+  // it, and coming back near the bottom starts it again: the thread's own scrolling never does.
   useEffect(() => {
     const box = scroller.current;
     const inner = content.current;
     if (!box || !inner) return;
+    const near = () =>
+      box.scrollHeight - box.scrollTop - box.clientHeight < FOLLOW_SLACK;
     const onScroll = () => {
-      pinned.current = box.scrollHeight - box.scrollTop - box.clientHeight < 48;
+      if (near()) pinned.current = true;
+    };
+    const onWheel = (event: WheelEvent) => {
+      if (event.deltaY < 0) pinned.current = false;
+    };
+    const onTouch = () =>
+      window.requestAnimationFrame(() => {
+        if (!near()) pinned.current = false;
+      });
+    const onKey = (event: KeyboardEvent) => {
+      if (["ArrowUp", "PageUp", "Home"].includes(event.key))
+        pinned.current = false;
     };
     const observer = new ResizeObserver(() => {
       if (pinned.current) box.scrollTop = box.scrollHeight;
     });
     box.addEventListener("scroll", onScroll, { passive: true });
+    box.addEventListener("wheel", onWheel, { passive: true });
+    box.addEventListener("touchmove", onTouch, { passive: true });
+    box.addEventListener("keydown", onKey);
     observer.observe(inner);
     return () => {
       box.removeEventListener("scroll", onScroll);
+      box.removeEventListener("wheel", onWheel);
+      box.removeEventListener("touchmove", onTouch);
+      box.removeEventListener("keydown", onKey);
       observer.disconnect();
     };
   }, []);
+
+  // A new request follows to the bottom wherever the reader was: smoothly as you send, at once
+  // when the conversation loads.
+  const { reduced } = useLanderMotion();
+  const count = views.length;
+  const shownCount = useRef(0);
+  useEffect(() => {
+    const box = scroller.current;
+    const before = shownCount.current;
+    shownCount.current = count;
+    if (!box || count === 0 || count <= before) return;
+    pinned.current = true;
+    const smooth = before > 0 && !reduced;
+    if (smooth && typeof box.scrollTo === "function")
+      box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
+    else box.scrollTop = box.scrollHeight;
+  }, [count, reduced]);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -143,8 +191,8 @@ export function LanderThread({
                     undo={undoFor(view)}
                     onUndo={onUndo}
                     onRedo={onRedo}
-                    onShow={() => onShow(view)}
-                    onRefine={(request) => onRefine(view.turn.target, request)}
+                    onShow={onShow}
+                    onRefine={onRefine}
                     onRetry={() => onRetry(view)}
                   />
                 </li>
@@ -181,8 +229,8 @@ function Empty({
           What should we change?
         </h2>
         <p className="max-w-64 text-type-caption-1 text-sub-text">
-          Ask Lander to rewrite a section or the whole page. Every change can be
-          undone.
+          Ask Lander to rewrite lines, move or copy sections, or recolour the
+          page. Every request can be undone.
         </p>
       </motion.div>
       <div className="flex w-full flex-col gap-1">
@@ -257,23 +305,19 @@ function Reply({
   undo: UndoState;
   onUndo: () => void;
   onRedo: () => void;
-  onShow: () => void;
-  onRefine: (request: string) => void;
+  onShow: (lines: number[], section: string | null) => void;
+  onRefine: (target: LanderTarget, request: string) => void;
   onRetry: () => void;
 }) {
   const { arrive, reduced } = useLanderMotion();
-  const { state, steps, turn } = view;
+  const { state, steps, turn, changes } = view;
   const live = state === "starting" || state === "working";
   const seconds = useSeconds(turn.startedAt, live);
   const [unfolded, setUnfolded] = useState<boolean | null>(null);
-  // The steps show while it works and fold away once it's done (the header unfolds them).
+  // The steps show while it works and fold away once it's done (the status line unfolds them).
   const showSteps = unfolded ?? live;
-  const writing = steps.some((s) => s.id === "write");
-  const label =
-    state === "done" && view.took !== null
-      ? `${statusLabel(steps, state, seconds)} · ${view.took}s`
-      : statusLabel(steps, state, seconds, view.queued);
-  const title = turn.target ? turn.target.label : "Whole page";
+  const label = statusLabel(state, steps, seconds, view.queued, view.took);
+  const finished = state === "done" || state === "stopped";
 
   return (
     <div className="flex flex-col gap-2">
@@ -287,7 +331,12 @@ function Reply({
         <span className="flex size-3.5 items-center justify-center">
           {live ? (
             <Spinner className="size-3" label="Working" />
-          ) : state === "done" ? (
+          ) : state === "stopped" ? (
+            <StopIcon
+              aria-hidden
+              className="size-2.5 fill-current text-heading-06"
+            />
+          ) : finished ? (
             <CheckIcon aria-hidden className="size-3.5 text-heading-06" />
           ) : (
             <AlertIcon aria-hidden className="size-3.5 text-text-danger" />
@@ -305,15 +354,15 @@ function Reply({
         ) : null}
       </button>
 
-      {state !== "failed" || steps.length > 0 ? (
+      {view.plan ? (
         <StreamText
-          text={planSentence(turn.target, turn.request)}
+          text={view.plan}
           className="text-type-body-small text-heading-01"
         />
       ) : null}
 
       <AnimatePresence initial={false}>
-        {showSteps && steps.length > 0 ? (
+        {showSteps && (steps.length > 0 || live) ? (
           <motion.ol
             key="steps"
             initial={{ height: 0, opacity: 0 }}
@@ -327,7 +376,7 @@ function Reply({
           >
             {steps.map((step, i) => (
               <motion.li
-                key={step.id}
+                key={`${i}-${step.label}`}
                 initial={{
                   opacity: 0,
                   y: reduced ? 0 : 4,
@@ -337,52 +386,81 @@ function Reply({
                 transition={arrive}
                 className="relative flex items-start gap-2 py-1 pl-0.5"
               >
-                {i < steps.length - 1 ? (
+                {i < steps.length - 1 || live ? (
                   <span
                     aria-hidden
                     className="absolute top-6 bottom-0 left-2 w-px bg-stroke"
                   />
                 ) : null}
                 <span className="flex size-4 shrink-0 items-center justify-center pt-0.5">
-                  {step.done ? (
+                  {step.ok ? (
                     <CheckIcon
                       aria-hidden
                       className="size-3.5 text-heading-06"
                     />
                   ) : (
-                    <Spinner className="size-3" label="Working" />
+                    <StepFailedIcon
+                      aria-hidden
+                      className="size-3.5 text-text-danger"
+                    />
                   )}
                 </span>
                 <span
                   className={cn(
                     "text-type-caption-1 leading-5",
-                    step.done ? "text-heading-05" : "text-sub-text",
+                    step.ok ? "text-heading-05" : "text-sub-text",
                   )}
                 >
                   {step.label}
                 </span>
               </motion.li>
             ))}
+            {live ? (
+              <motion.li
+                key="thinking"
+                layout="position"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-start gap-2 py-1 pl-0.5"
+              >
+                <span className="flex size-4 shrink-0 items-center justify-center pt-0.5">
+                  <Spinner className="size-3" label="Working" />
+                </span>
+                <span className="text-type-caption-1 leading-5 text-sub-text">
+                  {view.queued
+                    ? "Waiting for a worker…"
+                    : steps.length > 1
+                      ? "Working on the next step…"
+                      : "Thinking…"}
+                </span>
+              </motion.li>
+            ) : null}
           </motion.ol>
         ) : null}
       </AnimatePresence>
 
-      {(state === "working" && writing) ||
-      (state === "done" && view.lines.length > 0) ? (
-        <ChangeCard
-          title={title}
-          lines={view.lines}
-          pending={state === "working"}
-          skeletonRows={Math.min(Math.max(turn.editable, 2), 4)}
-          undo={undo}
-          onUndo={onUndo}
-          onRedo={onRedo}
+      {changes.map((change, i) => (
+        <Change
+          key={`${i}-${change.label}`}
+          change={change}
           onShow={onShow}
           onRefine={onRefine}
         />
+      ))}
+
+      {finished && changes.length > 0 ? (
+        <div className="flex items-center justify-between gap-2 pl-0.5">
+          <span className="text-type-caption-1 text-heading-06">
+            {changes.length === 1
+              ? "One change, one undo step"
+              : `${plural(changes.length, "change")}, one undo step`}
+            {undo === "undone" ? " · undone" : ""}
+          </span>
+          <UndoControl undo={undo} onUndo={onUndo} onRedo={onRedo} />
+        </div>
       ) : null}
 
-      {state === "done" && view.closing ? (
+      {finished && view.closing ? (
         <StreamText
           text={view.closing}
           delay={0.25}
@@ -393,19 +471,91 @@ function Reply({
       {state === "failed" ? (
         <div className="flex items-center gap-2">
           <p className="text-type-caption-1 text-text-danger">{view.error}</p>
-          {turn.editable > 0 ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onRetry}
-              className="h-6 px-1.5 text-type-caption-1 text-heading-02 hover:bg-foreground-02"
-            >
-              Try again
-            </Button>
-          ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRetry}
+            className="h-6 px-1.5 text-type-caption-1 text-heading-02 hover:bg-foreground-02"
+          >
+            Try again
+          </Button>
         </div>
       ) : null}
     </div>
+  );
+}
+
+const SECTION_ICONS = {
+  move: MoveSectionIcon,
+  duplicate: DuplicateIcon,
+  remove: RemoveIcon,
+} as const;
+
+/** One change in the thread: a card of lines before and after, or a one-line section or colour
+ * change. */
+function Change({
+  change,
+  onShow,
+  onRefine,
+}: {
+  change: AgentChange;
+  onShow: (lines: number[], section: string | null) => void;
+  onRefine: (target: LanderTarget, request: string) => void;
+}) {
+  const { arrive, reduced } = useLanderMotion();
+  if (change.kind === "lines") {
+    const target =
+      change.section && change.section_label
+        ? { key: change.section, label: change.section_label }
+        : null;
+    return (
+      <ChangeCard
+        title={change.section_label ?? "The page"}
+        lines={change.lines}
+        onShow={() =>
+          onShow(
+            change.lines.map((l) => l.number),
+            change.section,
+          )
+        }
+        onRefine={(request) => onRefine(target, request)}
+      />
+    );
+  }
+  const Icon =
+    change.kind === "colors" ? RecolorIcon : SECTION_ICONS[change.action];
+  return (
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: reduced ? 0 : 6,
+        filter: reduced ? "none" : "blur(4px)",
+      }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={arrive}
+      className="flex min-h-9 items-center gap-2 rounded-item bg-surface-primary px-3 py-2 shadow-light ring-thin ring-stroke"
+    >
+      <Icon aria-hidden className="size-3.5 shrink-0 text-icon-system" />
+      <span className="min-w-0 flex-1 truncate text-type-caption-1 font-medium text-heading-02">
+        {change.label}
+      </span>
+      {change.kind === "colors" ? (
+        <span
+          className="flex shrink-0 items-center gap-1.5"
+          aria-label="New colours"
+        >
+          {Object.values(change.after).map((colour) => (
+            <span
+              key={colour}
+              aria-hidden
+              className="size-3.5 rounded-full ring-thin ring-stroke"
+              // A colour of the page's (data, not styling).
+              style={{ backgroundColor: colour }}
+            />
+          ))}
+        </span>
+      ) : null}
+    </motion.div>
   );
 }
 

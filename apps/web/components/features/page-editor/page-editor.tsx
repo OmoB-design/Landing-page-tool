@@ -13,7 +13,7 @@ import { Mover } from "@/components/app/mover";
 import {
   type LanderSuggestion,
   type LanderTarget,
-  editableLines,
+  changedLineNumbers,
   suggestions as suggestionsFor,
 } from "@/lib/pages/lander";
 import { addedKey, selectionAfterRemove } from "@/lib/templates/editor";
@@ -139,7 +139,8 @@ function Editor({
   }
   const selected = chosen && keys.includes(chosen) ? chosen : (keys[0] ?? null);
   const section = layout.find((s) => s.key === selected) ?? null;
-  const [wholePage, setWholePage] = useState(false);
+  // Lander's requests are about the whole page until you pick a section (on the page or the list).
+  const [wholePage, setWholePage] = useState(true);
   const target: LanderTarget =
     section && !wholePage ? { key: section.key, label: section.label } : null;
 
@@ -152,7 +153,7 @@ function Editor({
   const settle = useCallback(async () => {
     await settleRef.current?.();
   }, []);
-  const lander = useLander(settle);
+  const lander = useLander(build.id, settle);
 
   // The section list: closed by default, its state and width remembered per browser.
   const savedOpen = useStored(STORE.sections, (raw) =>
@@ -227,34 +228,45 @@ function Editor({
     openLander();
   };
 
-  // Show on page: the change's lines flash on the page as it is; a finished change's flash waits
-  // for the page it made.
+  // Show on page: a card's lines flash on the page as it is; a request that finished in this visit
+  // flashes everything it rewrote, on the page it made.
   const [flash, setFlash] = useState<FlashRequest | null>(null);
-  const showOnPage = (view: TurnView) => {
-    if (view.turn.target) select(view.turn.target.key);
-    const blocks = view.lines.length
-      ? view.lines.map((l) => l.number)
-      : editableLines(desk.paragraphs, view.turn.target);
-    setFlash((f) => ({ nonce: (f?.nonce ?? 0) + 1, blocks, version: 0 }));
+  const showOnPage = (lines: number[], section: string | null) => {
+    if (section) select(section);
+    setFlash((f) => ({
+      nonce: (f?.nonce ?? 0) + 1,
+      blocks: lines,
+      version: 0,
+    }));
   };
-  const lastDone = [...lander.views].reverse().find((v) => v.state === "done");
+  const lastDone = [...lander.views]
+    .reverse()
+    .find(
+      (v) =>
+        (v.state === "done" || v.state === "stopped") && v.turn.saved === null,
+    );
   const [flashedFor, setFlashedFor] = useState<string | null>(null);
   if (lastDone && lastDone.turn.id !== flashedFor) {
     setFlashedFor(lastDone.turn.id);
     setFlash((f) => ({
       nonce: (f?.nonce ?? 0) + 1000,
-      blocks: lastDone.lines.map((l) => l.number),
+      blocks: changedLineNumbers(lastDone.changes),
       version: lastDone.versionAfter ?? 0,
     }));
   }
 
-  // Undo on a change card: only the newest change of its kind, and only while nothing came after.
+  // Undo under a request's changes: only the newest request of its kind, and only while nothing
+  // came after it.
   const undoFor = (view: TurnView): UndoState => {
-    if (view.state !== "done" || view.versionAfter === null || !view.reason)
-      return "none";
+    const finished = view.state === "done" || view.state === "stopped";
+    if (!finished || view.versionAfter === null || !view.reason) return "none";
     const newest = [...lander.views]
       .reverse()
-      .find((v) => v.state === "done" && v.reason === view.reason);
+      .find(
+        (v) =>
+          (v.state === "done" || v.state === "stopped") &&
+          v.reason === view.reason,
+      );
     if (newest?.turn.id !== view.turn.id) return "later";
     if (desk.redraft) return "later";
     if (
@@ -487,6 +499,8 @@ function Editor({
                       target={target}
                       working={lander.working}
                       hasThread={lander.views.length > 0}
+                      stopping={lander.stopping}
+                      onStop={() => void lander.stop()}
                       focusSignal={focusSignal}
                       onClearTarget={() => setWholePage(true)}
                       onSend={(text) => send(text)}

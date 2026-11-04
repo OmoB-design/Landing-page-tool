@@ -189,10 +189,20 @@ def targeting_block(wizard: dict[str, Any]) -> str | None:
 def system_prompt(brief: CopyBrief) -> str:
     """BUILD_SPEC §10.3 order: brand and product, voice, targeting, fixed rules, template type
     rules, template copy rules, language."""
-    facts = {k: v for k, v in brief.product_facts.items() if v}
     parts = [
         "You rewrite the text of a landing-page template for a brand's product, fragment by "
         "fragment.",
+        *brief_parts(brief),
+        f"Write every replacement in this language: {brief.language}.",
+    ]
+    return "\n\n".join(parts)
+
+
+def brief_parts(brief: CopyBrief) -> list[str]:
+    """The brief's blocks in BUILD_SPEC §10.3 order (brand and product, voice, targeting, fixed
+    rules, template type rules, template copy rules), shared by the copy pass and Lander."""
+    facts = {k: v for k, v in brief.product_facts.items() if v}
+    parts = [
         f"Brand: {brief.brand_name}. Product: {brief.product_name}.",
         "Product facts (JSON): " + json.dumps(facts, ensure_ascii=False),
     ]
@@ -212,8 +222,7 @@ def system_prompt(brief: CopyBrief) -> str:
         parts.append(TYPE_RULES[brief.template_type])
     if brief.template_rules.strip():
         parts.append(f"TEMPLATE-SPECIFIC RULES: {brief.template_rules.strip()}")
-    parts.append(f"Write every replacement in this language: {brief.language}.")
-    return "\n\n".join(parts)
+    return parts
 
 
 def chunk_prompt(chunk: list[Fragment], everything: list[Fragment], budgets: dict[str, int]) -> str:

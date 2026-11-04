@@ -16,6 +16,8 @@ export const REDRAFT_SCOPES = [
   "paragraph",
   "unwritten",
 ] as const;
+/** What the page's running job rewrites: a redraft's scope, or "agent" for Lander (B3.1c). */
+export const PAGE_JOB_SCOPES = [...REDRAFT_SCOPES, "agent"] as const;
 
 /** The review desk's view of a finished build (worker GET /builds/{id}/desk, D84). */
 export const deskStateSchema = z.object({
@@ -73,7 +75,7 @@ export const deskStateSchema = z.object({
     .object({
       job_id: z.string(),
       status: z.string(),
-      scope: z.enum(REDRAFT_SCOPES),
+      scope: z.enum(PAGE_JOB_SCOPES),
       section: z.string().nullable(),
       block: z.number().int().nullable(),
     })

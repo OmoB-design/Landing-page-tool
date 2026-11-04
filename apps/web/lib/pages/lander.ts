@@ -1,29 +1,22 @@
 /**
- * Lander, the page editor's AI (B3.1b, D105): its conversation, kept apart from the components so
- * the rules can be tested. In B3.1b a request runs the section (or page) redraft with the request as
- * its note; the thread tells it as Sidekick's and the reference video's do: a plan sentence, steps
- * that run then tick (from the redraft job's progress), a change card with the lines before and
- * after, and a closing line. The agent that plans its own steps comes in B3.1c.
+ * Lander, the page editor's agent (B3.1b, D105; an agent from B3.1c, D106): its conversation,
+ * kept apart from the components so the rules can be tested. A request is a job in which Claude
+ * changes the page with tools; the thread tells it as Sidekick's and the reference video's do: a
+ * plan sentence, the steps as they happen (from the job's events), a card per change, a closing
+ * line, and one Undo for the whole request.
  */
-import type { JobEvent } from "@/lib/validators/jobs";
+import {
+  AGENT_REQUEST_MAX,
+  type AgentChange,
+  type AgentMessage,
+  type AgentReply,
+  type AgentStep,
+  agentEventSchema,
+} from "@/lib/validators/agent";
 import type { DeskParagraph, DeskSection } from "@/lib/validators/desk";
 
 /** What a request is about: a section of the page, or the whole page (null). */
 export type LanderTarget = { key: string; label: string } | null;
-
-/** A line of the page, as Lander keeps it to show what changed. */
-export type LanderLine = {
-  number: number;
-  text: string;
-  section: string | null;
-};
-
-export type LanderStep = {
-  id: "read" | "write" | "save";
-  /** "Rewriting 6 lines…" while it runs, "Rewrote 6 lines" once done. */
-  label: string;
-  done: boolean;
-};
 
 /** A request and what Lander did with it. */
 export type LanderTurn = {
@@ -31,141 +24,112 @@ export type LanderTurn = {
   request: string;
   target: LanderTarget;
   startedAt: number;
-  /** The redraft's job, once started; null while starting or when it was refused. */
+  /** The request's job, once started; null while starting or when it was refused. */
   jobId: string | null;
   /** Refused before it started (the message says why). */
   refused: string | null;
-  /** The page's lines when the request was sent: what the change card compares against. */
-  before: LanderLine[];
-  /** How many lines in the target could change (not filled from data). */
-  editable: number;
+  /** The saved reply, for a request loaded from the conversation. */
+  saved: AgentReply | null;
 };
 
-/** The longest request the redraft takes as its note (worker RedraftRequest.note). */
-export const REQUEST_MAX = 200;
+export type TurnState = "starting" | "working" | "done" | "stopped" | "failed";
 
-/** Words a line needs (any script) or a price, as the worker checks (paragraphs.rewrite). */
-const WORDS = /\p{L}/u;
+/** The longest request Lander takes (worker AgentRequest.text). */
+export const REQUEST_MAX = AGENT_REQUEST_MAX;
 
 export function targetName(target: LanderTarget): string {
   return target ? target.label : "the page";
 }
 
-/** The sentence Lander opens with: what it's going to do. */
-export function planSentence(target: LanderTarget, request: string): string {
-  const name = targetName(target);
-  return WORDS.test(request)
-    ? `I'll rewrite ${name} with that in mind.`
-    : `I'll give ${name} fresh words.`;
-}
-
-function plural(count: number, word: string): string {
+export function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
-/**
- * The steps so far, from the redraft job's progress ("Writing 6 lines", "Wrote 6 of 6 lines",
- * "Saved the page"): reading the target (done at once), rewriting its lines, then saving and
- * checking the claims. A step runs until the next event says it's done.
- */
-export function stepsFrom(
-  events: Pick<JobEvent, "message">[],
-  target: LanderTarget,
-  editable: number,
-  finished: boolean,
-): LanderStep[] {
-  const name = targetName(target);
-  const steps: LanderStep[] = [
-    {
-      id: "read",
-      label: `Read ${plural(editable, "line")} in ${name}`,
-      done: true,
-    },
-  ];
-  const messages = events.map((e) => e.message);
-  const writing = messages.find((m) => /^Writing \d+ lines?$/.test(m));
-  const wrote = messages.find((m) => /^Wrote \d+ of \d+ lines?$/.test(m));
-  const saved = messages.includes("Saved the page");
-  if (!writing && !wrote) return steps;
-  const total = Number((writing ?? wrote ?? "").match(/\d+/g)?.at(-1) ?? 0);
-  if (wrote) {
-    const [done = 0, of = total] = (wrote.match(/\d+/g) ?? []).map(Number);
-    steps.push({
-      id: "write",
-      label:
-        done === of
-          ? `Rewrote ${plural(done, "line")}`
-          : `Rewrote ${done} of ${plural(of, "line")}`,
-      done: true,
-    });
-    steps.push({
-      id: "save",
-      label:
-        saved || finished
-          ? "Saved and checked the claims"
-          : "Saving and checking the claims…",
-      done: saved || finished,
-    });
-  } else {
-    steps.push({
-      id: "write",
-      label: `Rewriting ${plural(total, "line")}…`,
-      done: false,
-    });
+/** What a running request's job has said so far: its plan, the steps, the changes, the close. */
+export function replyFromEvents(
+  events: { data?: Record<string, unknown> | null }[],
+): Pick<AgentReply, "plan" | "steps" | "changes" | "closing"> {
+  const steps: AgentStep[] = [];
+  let plan: string | null = null;
+  let closing: string | null = null;
+  for (const event of events) {
+    const parsed = agentEventSchema.safeParse(event.data?.agent);
+    if (!parsed.success) continue;
+    const e = parsed.data;
+    if (e.type === "plan") plan = e.text;
+    else if (e.type === "closing") closing = e.text;
+    else steps.push({ label: e.label, ok: e.ok, change: e.change ?? null });
   }
-  return steps;
+  const changes = steps.flatMap((s) => (s.change ? [s.change] : []));
+  return { plan, steps, changes, closing };
 }
 
-/**
- * The status line over the reply: waiting for a worker or thinking (with seconds), what it's doing,
- * or how it ended. "Waiting for a worker" is the job still queued (as the review desk says it).
- */
+/** The status line over a reply. */
 export function statusLabel(
-  steps: LanderStep[],
-  state: "starting" | "working" | "done" | "failed",
+  state: TurnState,
+  steps: AgentStep[],
   seconds: number,
   queued = false,
+  took: number | null = null,
 ): string {
-  if (state === "failed") return "Stopped";
-  if (state === "done") return `Completed ${plural(steps.length, "step")}`;
-  const running = steps.find((s) => !s.done);
-  if (running) return running.label;
-  return queued ? `Waiting for a worker… ${seconds}s` : `Thinking… ${seconds}s`;
+  const time = took ? ` · ${took}s` : "";
+  if (state === "failed") return `Couldn’t finish${time}`;
+  if (state === "stopped")
+    return `Stopped after ${plural(steps.length, "step")}${time}`;
+  if (state === "done")
+    return `Completed ${plural(steps.length, "step")}${time}`;
+  return queued
+    ? `Waiting for a worker… ${seconds}s`
+    : `Working on it… ${seconds}s`;
 }
 
-/** The lines the change rewrote: before and after, in page order. */
-export function changedLines(
-  before: LanderLine[],
-  after: LanderLine[],
-  section: string | null,
-): { number: number; before: string; after: string }[] {
-  const old = new Map(before.map((l) => [l.number, l]));
-  return after
-    .filter((l) => section === null || l.section === section)
-    .flatMap((l) => {
-      const was = old.get(l.number);
-      return was && was.text !== l.text
-        ? [{ number: l.number, before: was.text, after: l.text }]
-        : [];
-    });
-}
-
-/** The closing line once the change is saved. */
-export function closingSentence(
-  target: LanderTarget,
-  rewritten: number,
-  kept: number,
-  failedChunks: number,
-): string {
-  const parts = [
-    `Done. I rewrote ${plural(rewritten, "line")} in ${targetName(target)}.`,
+/** Every line a request's changes rewrote, by number on the page it saved. */
+export function changedLineNumbers(changes: AgentChange[]): number[] {
+  return [
+    ...new Set(
+      changes.flatMap((c) =>
+        c.kind === "lines" ? c.lines.map((l) => l.number) : [],
+      ),
+    ),
   ];
-  if (kept > 0)
-    parts.push(
-      `I left the ${kept === 1 ? "line" : `${kept} lines`} you'd edited by hand.`,
-    );
-  if (failedChunks > 0) parts.push("A few lines kept their words.");
-  return parts.join(" ");
+}
+
+/**
+ * A saved conversation as turns: each request with its reply (by job). A request with no reply
+ * is the running one when its job is the page's job now, otherwise one that never finished.
+ */
+export function turnsFromThread(
+  messages: AgentMessage[],
+  runningJobId: string | null,
+): LanderTurn[] {
+  const replies = new Map<string, AgentReply>();
+  for (const m of messages)
+    if (m.role === "assistant" && m.job_id) replies.set(m.job_id, m.content);
+  return messages.flatMap((m): LanderTurn[] => {
+    if (m.role !== "user") return [];
+    const reply = m.job_id ? replies.get(m.job_id) : undefined;
+    const running = m.job_id !== null && m.job_id === runningJobId;
+    return [
+      {
+        id: m.id,
+        request: m.content.text,
+        target: m.content.target,
+        startedAt: Date.parse(m.created_at),
+        jobId: m.job_id,
+        refused: null,
+        saved:
+          reply ??
+          (running
+            ? null
+            : {
+                state: "failed",
+                steps: [],
+                changes: [],
+                error: "This request didn’t finish.",
+              }),
+      },
+    ];
+  });
 }
 
 /** Lines in the target that can change: the ones that shimmer on the page while Lander works. */

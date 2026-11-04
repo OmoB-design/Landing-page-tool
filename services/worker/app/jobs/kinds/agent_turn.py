@@ -1,0 +1,257 @@
+"""`agent_turn` (BUILD_SPEC §11.3, B3.1c, D106): one request to Lander, the page editor's agent.
+
+Claude (LP_MODEL_AGENT) works on a copy of the page in a tool-use loop of up to 8 rounds
+(app/agent.py has the tools and the prompt). Each thing it does is a progress event the thread
+shows live: its plan, then a step per tool call (with the lines before and after, so the change
+cards fill in as it goes), then its closing line. The result is saved as one desk change, one
+undo step, and only if the page hasn't changed since the request; nothing is saved if the request
+fails part-way. Stop (the user's) is checked between steps: what Lander did by then is saved.
+The reply is kept in the conversation either way.
+"""
+
+import time
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app import agent, desk
+from app.db import transaction
+from app.engines import comparison, paragraphs
+from app.jobs.context import JobContext
+from app.jobs.errors import JobInterrupted, UserFacingError
+from app.models.agent import REQUEST_MAX, AgentTarget
+from app.pipeline import copy_pass
+from app.pipeline.nodes.load_inputs import read_inputs
+from app.providers import anthropic
+from app.providers.ledger import node_context
+
+MAX_OUTPUT_TOKENS = 4096
+
+
+class AgentPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    build_id: UUID
+    base_version: int = Field(ge=1)
+    thread_id: UUID
+    message_id: UUID
+    text: str = Field(min_length=1, max_length=REQUEST_MAX)
+    target: AgentTarget | None = None
+
+
+def dedupe_key(payload: AgentPayload) -> str:
+    return f"redraft:{payload.build_id}"
+
+
+def _event(ctx: JobContext, message: str, kind: str, **data: Any) -> None:
+    ctx.progress(message, data={"agent": {"type": kind, **data}})
+
+
+def _mock_blocks(
+    round_index: int, work: agent.Work, target: AgentTarget | None
+) -> list[dict[str, Any]]:
+    """Mock mode (LP_MOCK_LLM=1): a scripted plan, one line marked as rewritten, a closing line;
+    enough to see the thread work without paying for Claude."""
+    if round_index > 0:
+        return [{"type": "text", "text": "Done. In mock mode I marked one line as rewritten."}]
+    line = next(
+        (
+            p
+            for p in paragraphs.paragraphs(work.html)
+            if not p.locked and (target is None or p.section == target.key)
+        ),
+        None,
+    )
+    plan = {"type": "text", "text": "I'll rewrite one line (mock mode)."}
+    if line is None:
+        return [plan]
+    return [
+        plan,
+        {
+            "type": "tool_use",
+            "id": "mock_1",
+            "name": "edit_lines",
+            "input": {"edits": [{"number": line.number, "text": f"{line.text} (mock)"}]},
+        },
+    ]
+
+
+def run(ctx: JobContext) -> dict[str, Any]:
+    payload = AgentPayload.model_validate(ctx.job.payload)
+    job_id, user_id = ctx.job.id, ctx.job.created_by
+    started = time.monotonic()
+    reply: dict[str, Any] = {"state": "working", "plan": None, "steps": [], "changes": []}
+    try:
+        result = _run(ctx, payload, reply)
+    except JobInterrupted:
+        raise  # the worker is stopping: the job runs again elsewhere (nothing was saved)
+    except Exception as exc:
+        message = str(exc) if isinstance(exc, UserFacingError) else "Lander couldn't finish that."
+        agent.save_reply(
+            payload.build_id,
+            payload.thread_id,
+            job_id,
+            user_id,
+            {**reply, "state": "failed", "error": message, "changes": [], "took": _took(started)},
+        )
+        raise
+    agent.save_reply(
+        payload.build_id, payload.thread_id, job_id, user_id, {**result, "took": _took(started)}
+    )
+    return result
+
+
+def _took(started: float) -> int:
+    return max(1, round(time.monotonic() - started))
+
+
+def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[str, Any]:
+    org_id, job_id = ctx.job.org_id, ctx.job.id
+    changed_elsewhere = UserFacingError(
+        "The page changed before Lander finished, so nothing was saved. Ask again.",
+        code="page_changed",
+    )
+    try:
+        with transaction() as conn:
+            build = desk._load(conn, org_id, payload.build_id)
+            rules_by_key = desk._rules(conn, build["template_id"])
+            html = desk._page(build)
+            colors = desk._colors(conn, build, html).page
+    except desk.DeskNotFoundError as exc:
+        raise UserFacingError("That page isn't there any more.", code="build_missing") from exc
+    if build["status"] not in desk.EDITABLE or build["page_version"] != payload.base_version:
+        raise changed_elsewhere
+
+    inputs, _ = read_inputs(org_id, payload.build_id, template_html=False)
+    brief = copy_pass.brief(
+        inputs["template"], inputs["brand"], inputs["product"], inputs.get("wizard", {})
+    )
+    report = build["report"] or {}
+    work = agent.Work(
+        html=html,
+        rules=rules_by_key,
+        colors=colors,
+        author_type=(build["wizard"] or {}).get("author_type"),
+        facts=comparison.facts_from_report(report),
+    )
+    target = payload.target
+    lines = len(paragraphs.paragraphs(html))
+    sections = len(work.layout())
+    first = agent.Step(
+        f"Read the page: {agent.plural(lines, 'line')} in {agent.plural(sections, 'section')}",
+        True,
+    )
+    reply["steps"].append(first.as_dict())
+    _event(ctx, first.label, "step", **first.as_dict())
+
+    request = payload.text + (
+        f"\n\n(The user has {target.label} selected: section key {target.key}. The request is "
+        "about it unless it says otherwise.)"
+        if target
+        else "\n\n(The request is about the whole page.)"
+    )
+    messages: list[dict[str, Any]] = [
+        *agent.history(payload.build_id, payload.thread_id, payload.message_id),
+        {"role": "user", "content": f"The page now:\n\n{work.outline()}\n\nRequest: {request}"},
+    ]
+    system = agent.system_prompt(brief)
+    closing: str | None = None
+    stopped = False
+    for round_index in range(agent.MAX_ROUNDS):
+        if agent.stop_requested(org_id, job_id):
+            stopped = True
+            break
+        ctx.check_stopping()
+        try:
+            with node_context("agent"):
+                result = anthropic.generate(
+                    role="agent",
+                    ledger_kind="agent",
+                    system=system,
+                    messages=messages,
+                    tools=agent.TOOLS,
+                    cache=True,
+                    max_tokens=MAX_OUTPUT_TOKENS,
+                    mock_blocks=_mock_blocks(round_index, work, target),
+                )
+        except anthropic.LLMRefusalError as exc:
+            raise UserFacingError(
+                "Claude declined that request, so nothing changed.", code="refused"
+            ) from exc
+        calls = result.tool_calls()
+        text = result.text.strip()
+        if calls and text and reply["plan"] is None:
+            reply["plan"] = text
+            _event(ctx, text, "plan", text=text)
+        if not calls:
+            closing = text or None
+            break
+        messages.append({"role": "assistant", "content": list(result.blocks)})
+        outputs: list[dict[str, Any]] = []
+        for call in calls:
+            if agent.stop_requested(org_id, job_id):
+                stopped = True
+                break
+            out, failed, step = work.run(str(call["name"]), dict(call.get("input") or {}))
+            outputs.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": call["id"],
+                    "content": out,
+                    "is_error": failed,
+                }
+            )
+            if call["name"] != "read_page" or failed:
+                reply["steps"].append(step.as_dict())
+                _event(ctx, step.label, "step", **step.as_dict())
+        if stopped:
+            break
+        messages.append({"role": "user", "content": outputs})
+    else:
+        closing = (
+            "I stopped after eight rounds of changes. "
+            + ("What I did is saved, and you can undo it." if work.changes else "")
+        ).strip()
+
+    if stopped:
+        closing = "Stopped. " + (
+            f"I'd made {agent.plural(len(work.changes), 'change')} by then; "
+            "they're saved, and Undo takes them back."
+            if work.changes
+            else "Nothing changed."
+        )
+
+    version: int | None = None
+    reason: str | None = None
+    if work.changes:
+        work.settle_numbers()
+        reason = work.reason()
+        try:
+            version = desk.save_redraft(
+                org_id,
+                payload.build_id,
+                ctx.job.created_by,
+                payload.base_version,
+                work.html,
+                reason,
+                clear_copy_error=False,
+            )
+        except desk.DeskConflictError as exc:
+            raise changed_elsewhere from exc
+        saved = agent.Step("Saved the page and checked the claims", True)
+        reply["steps"].append(saved.as_dict())
+        _event(ctx, saved.label, "step", **saved.as_dict())
+    if closing:
+        _event(ctx, closing, "closing", text=closing)
+    return {
+        "build_id": str(payload.build_id),
+        "thread_id": str(payload.thread_id),
+        "state": "stopped" if stopped else "done",
+        "plan": reply["plan"],
+        "steps": reply["steps"],
+        "changes": work.changes,
+        "closing": closing,
+        "reason": reason,
+        "page_version": version,
+    }

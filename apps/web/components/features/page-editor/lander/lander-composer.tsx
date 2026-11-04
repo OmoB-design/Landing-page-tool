@@ -1,12 +1,19 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { type FormEvent, useEffect, useRef } from "react";
 
 import { CloseIcon } from "@/components/ui/icons";
 import { type LanderTarget, REQUEST_MAX } from "@/lib/pages/lander";
 import { cn } from "@/lib/utils";
 
-import { MicButton, SendButton, useComposerText } from "./composer-parts";
+import {
+  MicButton,
+  SendButton,
+  StopButton,
+  SWAP,
+  useComposerText,
+} from "./composer-parts";
 
 /**
  * Lander's composer in its panel (B3.1b, D105; Sidekick's card, 20 px corners there, the app's card
@@ -19,6 +26,8 @@ export function LanderComposer({
   target,
   working,
   hasThread,
+  stopping,
+  onStop,
   focusSignal,
   onClearTarget,
   onSend,
@@ -26,6 +35,9 @@ export function LanderComposer({
   target: LanderTarget;
   working: boolean;
   hasThread: boolean;
+  /** Stop was pressed on the running request. */
+  stopping: boolean;
+  onStop: () => void;
   /** Changes when the editor hands the composer a section: the field takes the focus. */
   focusSignal: number;
   onClearTarget: () => void;
@@ -109,7 +121,7 @@ export function LanderComposer({
         <span
           className={cn(
             "ml-auto text-type-caption-2 text-heading-06 tabular-nums transition-opacity duration-150",
-            left > 40 && "opacity-0",
+            left > 50 && "opacity-0",
           )}
         >
           {left}
@@ -124,12 +136,22 @@ export function LanderComposer({
             }
           />
         ) : null}
-        <SendButton
-          label="Send to Lander"
-          size="md"
-          disabled={!text.trim()}
-          busy={working}
-        />
+        <AnimatePresence initial={false} mode="popLayout">
+          {working ? (
+            <motion.span key="stop" className="flex" {...SWAP}>
+              <StopButton stopping={stopping} onStop={onStop} size="md" />
+            </motion.span>
+          ) : (
+            <motion.span key="send" className="flex" {...SWAP}>
+              <SendButton
+                label="Send to Lander"
+                size="md"
+                disabled={!text.trim()}
+                busy={false}
+              />
+            </motion.span>
+          )}
+        </AnimatePresence>
       </div>
     </form>
   );

@@ -23,36 +23,52 @@ function wrap(ui: ReactNode) {
 afterEach(cleanup);
 
 const HERO = { key: "hero", label: "Hero" };
+const lines = [
+  { number: 1, before: "Glow in 7 days", after: "Glow in a week" },
+  { number: 3, before: "Only $29 today", after: "Yours for $29" },
+];
 const done: TurnView = {
   turn: {
     id: "t1",
-    request: "Shorter and warmer",
+    request: "Shorter and warmer, then move the FAQ up",
     target: HERO,
     startedAt: 0,
     jobId: "j1",
     refused: null,
-    before: [],
-    editable: 2,
+    saved: null,
   },
   state: "done",
-  steps: [
-    { id: "read", label: "Read 2 lines in Hero", done: true },
-    { id: "write", label: "Rewrote 2 lines", done: true },
-    { id: "save", label: "Saved and checked the claims", done: true },
-  ],
-  lines: [
-    { number: 1, before: "Glow in 7 days", after: "Glow in a week" },
-    { number: 3, before: "Only $29 today", after: "Yours for $29" },
-  ],
-  closing: "Done. I rewrote 2 lines in Hero.",
-  error: null,
-  reason: "Redrafted Hero",
-  versionAfter: 5,
   queued: false,
+  plan: "I'll tighten the hero and move the questions up.",
+  steps: [
+    { label: "Read 2 lines in Hero", ok: true },
+    { label: "Rewrote 2 lines in Hero", ok: true },
+    { label: "Moved Questions up", ok: true },
+    { label: "Saved the page and checked the claims", ok: true },
+  ],
+  changes: [
+    {
+      kind: "lines",
+      label: "Rewrote 2 lines in Hero",
+      section: "hero",
+      section_label: "Hero",
+      lines,
+    },
+    {
+      kind: "section",
+      label: "Moved Questions up",
+      action: "move",
+      key: "faq",
+    },
+  ],
+  closing: "Done. I tightened the hero and moved the questions up.",
+  error: null,
+  reason: "Lander: rewrote 2 lines in Hero and 1 more change",
+  versionAfter: 5,
   took: 6,
 };
 
-describe("Lander (B3.1b)", () => {
+describe("Lander (B3.1b, B3.1c)", () => {
   it("sends from the floating bar, or opens the panel", () => {
     const onSend = vi.fn();
     const onOpen = vi.fn();
@@ -76,6 +92,8 @@ describe("Lander (B3.1b)", () => {
         target={HERO}
         working={false}
         hasThread={false}
+        stopping={false}
+        onStop={vi.fn()}
         focusSignal={0}
         onClearTarget={onClear}
         onSend={onSend}
@@ -126,7 +144,7 @@ describe("Lander (B3.1b)", () => {
     expect(onSuggestion).toHaveBeenCalled();
   });
 
-  it("tells a finished change: the steps, the lines before and after, Undo and the closing line", () => {
+  it("tells a finished request: its plan, a card per change, one Undo and the closing line", () => {
     const onUndo = vi.fn();
     const onShow = vi.fn();
     wrap(
@@ -143,41 +161,84 @@ describe("Lander (B3.1b)", () => {
         composer={<form aria-label="Composer" />}
       />,
     );
-    expect(screen.getByText("Shorter and warmer")).toBeTruthy();
-    expect(screen.getByText("Completed 3 steps · 6s")).toBeTruthy();
-    expect(
-      screen.getByText("I'll rewrite Hero with that in mind."),
-    ).toBeTruthy();
+    expect(screen.getByText(done.turn.request)).toBeTruthy();
+    expect(screen.getByText("Completed 4 steps · 6s")).toBeTruthy();
     expect(screen.getByText("Glow in 7 days")).toBeTruthy();
     expect(screen.getByText("Glow in a week")).toBeTruthy();
-    expect(screen.getByText("Done. I rewrote 2 lines in Hero.")).toBeTruthy();
+    expect(screen.getAllByText("Moved Questions up").length).toBe(1); // its card; steps folded
+    expect(screen.getByText("2 changes, one undo step")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(onUndo).toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Show on page" }));
-    expect(onShow).toHaveBeenCalled();
+    expect(onShow).toHaveBeenCalledWith([1, 3], "hero");
     // The steps fold away once it's done; the status line unfolds them.
-    expect(screen.queryByText("Rewrote 2 lines")).toBeNull();
-    fireEvent.click(screen.getByText("Completed 3 steps · 6s"));
-    expect(screen.getByText("Rewrote 2 lines")).toBeTruthy();
+    expect(screen.queryByText("Read 2 lines in Hero")).toBeNull();
+    fireEvent.click(screen.getByText("Completed 4 steps · 6s"));
+    expect(screen.getByText("Read 2 lines in Hero")).toBeTruthy();
   });
 
-  it("shows an undone change with Redo", () => {
-    const onRefine = vi.fn();
+  it("shows the steps as they happen, and Stop while Lander works", () => {
+    const working: TurnView = {
+      ...done,
+      state: "working",
+      plan: null,
+      steps: [{ label: "Read 2 lines in Hero", ok: true }],
+      changes: [],
+      closing: null,
+      took: null,
+    };
     wrap(
-      <ChangeCard
-        title="Hero"
-        lines={done.lines}
-        pending={false}
-        skeletonRows={2}
-        undo="undone"
+      <LanderThread
+        views={[working]}
+        suggestions={[]}
+        undoFor={() => "none"}
+        onSuggestion={vi.fn()}
         onUndo={vi.fn()}
         onRedo={vi.fn()}
         onShow={vi.fn()}
-        onRefine={onRefine}
+        onRefine={vi.fn()}
+        onRetry={vi.fn()}
+        composer={null}
+      />,
+    );
+    expect(screen.getByText("Read 2 lines in Hero")).toBeTruthy();
+    expect(screen.getByText("Thinking…")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+    cleanup();
+    const onStop = vi.fn();
+    wrap(
+      <LanderComposer
+        target={HERO}
+        working
+        hasThread
+        stopping={false}
+        onStop={onStop}
+        focusSignal={0}
+        onClearTarget={vi.fn()}
+        onSend={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Stop Lander" }));
+    expect(onStop).toHaveBeenCalled();
+  });
+
+  it("offers Redo once the request is undone", () => {
+    wrap(
+      <LanderThread
+        views={[done]}
+        suggestions={[]}
+        undoFor={() => "undone"}
+        onSuggestion={vi.fn()}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
+        onShow={vi.fn()}
+        onRefine={vi.fn()}
+        onRetry={vi.fn()}
+        composer={null}
       />,
     );
     expect(screen.getByRole("button", { name: "Redo" })).toBeTruthy();
-    expect(screen.getByText(/undone/)).toBeTruthy();
+    expect(screen.getByText(/one undo step · undone/)).toBeTruthy();
   });
 
   it("refines a change from its card", () => {
@@ -185,12 +246,7 @@ describe("Lander (B3.1b)", () => {
     wrap(
       <ChangeCard
         title="Hero"
-        lines={done.lines}
-        pending={false}
-        skeletonRows={2}
-        undo="can-undo"
-        onUndo={vi.fn()}
-        onRedo={vi.fn()}
+        lines={lines}
         onShow={vi.fn()}
         onRefine={onRefine}
       />,

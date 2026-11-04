@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from app.jobs.context import JobContext
 from app.jobs.kinds import (
+    agent_turn,
     brand_assets,
     brand_autofetch,
     build,
@@ -103,6 +104,16 @@ KINDS: dict[str, JobKind] = {
             payload_model=redraft.RedraftPayload,
             max_attempts=1,
             dedupe=redraft.dedupe_key,
+        ),
+        # Started by POST /builds/{id}/agent (B3.1c, D106): a request to Lander; shares the
+        # redraft's one-at-a-time key, so a page never has both running.
+        JobKind(
+            name="agent_turn",
+            title="Lander",
+            handler=agent_turn.run,
+            payload_model=agent_turn.AgentPayload,
+            max_attempts=1,
+            dedupe=agent_turn.dedupe_key,
         ),
         # Started by POST /builds/{id}/publish, which checks the gate and records the publication.
         JobKind(

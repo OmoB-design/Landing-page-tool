@@ -8,8 +8,9 @@ const nextConfig: NextConfig = {
     // it again. Saves and finished jobs call router.refresh, which clears it.
     staleTimes: { dynamic: 30 },
   },
-  // Dev-only badge; bottom-left would cover the Settings item in the icon rail.
-  devIndicators: { position: "bottom-right" },
+  // Dev-only badge, off: bottom-left covers Settings in the icon rail and bottom-right the page
+  // editor's send and Stop buttons (B3.1c). Next still shows its error overlay in development.
+  devIndicators: false,
   async redirects() {
     return [{ source: "/", destination: "/home", permanent: false }];
   },

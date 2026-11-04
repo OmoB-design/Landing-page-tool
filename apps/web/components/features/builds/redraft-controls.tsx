@@ -126,7 +126,9 @@ export function RedraftStatus() {
       <Spinner className="mt-0.5 size-3.5 shrink-0" label="Redrafting" />
       <div className="flex min-w-0 flex-col gap-0.5">
         <ShimmerText className="text-heading-02">
-          Redrafting {redraftLabel(redrafting.redraft, desk.sections)}…
+          {redrafting.redraft.scope === "agent"
+            ? `Lander is working on ${redraftLabel(redrafting.redraft, desk.sections)}…`
+            : `Redrafting ${redraftLabel(redrafting.redraft, desk.sections)}…`}
         </ShimmerText>
         <span className="text-type-caption-2 text-heading-05">
           {step && redrafting.job?.status === "running"

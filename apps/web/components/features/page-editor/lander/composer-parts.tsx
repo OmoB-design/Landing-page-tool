@@ -156,4 +156,52 @@ export function SendButton({
   );
 }
 
+/** Stop on Lander's running request (B3.1c): the send disc's place while it works; a spinner
+ * ring once pressed, until the request has stopped. */
+export function StopButton({
+  stopping,
+  onStop,
+  size = "sm",
+}: {
+  stopping: boolean;
+  onStop: () => void;
+  size?: "sm" | "md";
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={stopping ? "Stopping" : "Stop Lander"}
+          disabled={stopping}
+          onClick={onStop}
+          className={cn(
+            "relative flex shrink-0 items-center justify-center rounded-full bg-heading-01 text-surface-primary transition duration-150 ease-out outline-none hover:bg-heading-02 focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:active:scale-100",
+            size === "sm" ? "size-7" : "size-8",
+          )}
+        >
+          <AnimatePresence initial={false} mode="popLayout">
+            <motion.span
+              key={stopping ? "stopping" : "stop"}
+              className="flex"
+              {...SWAP}
+            >
+              {stopping ? (
+                <Spinner className="size-3.5" label="Stopping" />
+              ) : (
+                <StopIcon aria-hidden className="size-3 fill-current" />
+              )}
+            </motion.span>
+          </AnimatePresence>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {stopping
+          ? "Stopping after this step"
+          : "Stop: what Lander did so far is kept"}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export { SWAP };

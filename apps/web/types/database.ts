@@ -21,7 +21,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          job_id: string | null
           role: string
+          thread_id: string
         }
         Insert: {
           build_id: string
@@ -29,7 +31,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          job_id?: string | null
           role: string
+          thread_id?: string
         }
         Update: {
           build_id?: string
@@ -37,7 +41,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          job_id?: string | null
           role?: string
+          thread_id?: string
         }
         Relationships: [
           {
@@ -45,6 +51,13 @@ export type Database = {
             columns: ["build_id"]
             isOneToOne: false
             referencedRelation: "builds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_messages_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -679,6 +692,7 @@ export type Database = {
         Row: {
           attempts: number
           build_id: string | null
+          cancel_requested_at: string | null
           created_at: string
           created_by: string | null
           dedupe_key: string | null
@@ -701,6 +715,7 @@ export type Database = {
         Insert: {
           attempts?: number
           build_id?: string | null
+          cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
           dedupe_key?: string | null
@@ -723,6 +738,7 @@ export type Database = {
         Update: {
           attempts?: number
           build_id?: string | null
+          cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
           dedupe_key?: string | null

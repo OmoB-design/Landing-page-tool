@@ -8,13 +8,14 @@ from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app import analytics, builds, clones, desk, publishing, templates, trash
+from app import agent, analytics, builds, clones, desk, publishing, templates, trash
 from app.auth import CurrentUser, require_org_member
 from app.config import get_settings
 from app.jobs import queue
 from app.jobs.models import Job
 from app.jobs.registry import KINDS
 from app.log import configure_logging
+from app.models.agent import AgentRequest, AgentStart, AgentStop, AgentThread
 from app.models.analytics import AnalyticsRange, AnalyticsState
 from app.models.build import BuildRequest
 from app.models.clone import CloneRequest, CloneTermsRequest, CloneTermsState
@@ -281,6 +282,36 @@ def redraft_build(build_id: UUID, body: RedraftRequest, user: CurrentUser) -> De
     require_org_member(user, body.org_id)
     state: DeskState = _desk_call(desk.start_redraft, body.org_id, build_id, user.id, body)
     return state
+
+
+# ── Lander, the page editor's agent (BUILD_SPEC §11.3, B3.1c, D106) ──────────
+
+
+@app.post("/builds/{build_id}/agent")
+def agent_request(build_id: UUID, body: AgentRequest, user: CurrentUser) -> AgentStart:
+    """A request to Lander: saved in its conversation and queued as a job (one at a time per
+    page, shared with the redraft); the desk shows it running and pauses other changes."""
+    require_org_member(user, body.org_id)
+    started: AgentStart = _desk_call(agent.start, body.org_id, build_id, user.id, body)
+    return started
+
+
+@app.get("/builds/{build_id}/agent")
+def agent_conversation(
+    build_id: UUID, org_id: UUID, user: CurrentUser, thread_id: UUID | None = None
+) -> AgentThread:
+    """A conversation with Lander about the page: the one named, or the newest."""
+    require_org_member(user, org_id)
+    conversation: AgentThread = _desk_call(agent.thread, org_id, build_id, thread_id)
+    return conversation
+
+
+@app.post("/builds/{build_id}/agent/stop")
+def agent_stop(build_id: UUID, body: AgentStop, user: CurrentUser) -> dict[str, bool]:
+    """Stop: Lander keeps what it did by its next step and finishes."""
+    require_org_member(user, body.org_id)
+    _desk_call(agent.stop, body.org_id, build_id)
+    return {"stopping": True}
 
 
 # ── Publishing (BUILD_SPEC §12, D87) ─────────────────────────────────────────

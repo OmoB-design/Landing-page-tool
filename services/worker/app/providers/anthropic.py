@@ -41,9 +41,15 @@ class LLMResult:
     stop_reason: str | None
     fell_back: bool
     mock: bool
+    # The reply's content blocks as plain dicts (text, tool_use, …), to send back as the
+    # assistant turn of a tool-use loop.
+    blocks: tuple[dict[str, Any], ...] = ()
 
     def json(self) -> Any:
         return json.loads(self.text)
+
+    def tool_calls(self) -> list[dict[str, Any]]:
+        return [b for b in self.blocks if b.get("type") == "tool_use"]
 
 
 class LLMRefusalError(Exception):
@@ -89,16 +95,22 @@ def generate(
     max_tokens: int = 16000,
     effort: Effort | None = None,
     json_schema: dict[str, Any] | None = None,
+    tools: list[dict[str, Any]] | None = None,
+    cache: bool = False,
     mock: bool | None = None,
     mock_text: str | None = None,
+    mock_blocks: list[dict[str, Any]] | None = None,
 ) -> LLMResult:
     """One Messages API call. Give `prompt` (a single user turn) or `messages`. With
-    `json_schema`, the reply is constrained to JSON matching it (structured outputs)."""
+    `json_schema`, the reply is constrained to JSON matching it (structured outputs). With
+    `tools`, the reply may call them (its `blocks` carry the calls); `cache` marks the request's
+    last block for prompt caching, so a loop's next call reads the conversation so far from the
+    cache. In mock mode `mock_blocks` is the reply (a tool-use loop's scripted step)."""
     model = model_for(role)
     turns: list[dict[str, Any]] = messages or [{"role": "user", "content": prompt or ""}]
     use_mock = get_settings().lp_mock_llm if mock is None else mock
     if use_mock:
-        return _mock_reply(model, turns, system, json_schema, mock_text, ledger_kind)
+        return _mock_reply(model, turns, system, json_schema, mock_text, ledger_kind, mock_blocks)
 
     output_config: dict[str, Any] = {}
     if effort:
@@ -111,6 +123,10 @@ def generate(
         params["system"] = system
     if output_config:
         params["output_config"] = output_config
+    if tools:
+        params["tools"] = tools
+    if cache:
+        params["cache_control"] = {"type": "ephemeral"}
 
     ledger.check_budget()  # the brand's monthly AI budget (D54): refused before any charge
     client = _client()
@@ -145,6 +161,7 @@ def generate(
         stop_reason=response.stop_reason,
         fell_back=fell_back,
         mock=False,
+        blocks=tuple(block.model_dump(exclude_none=True) for block in response.content),
     )
 
 
@@ -183,8 +200,11 @@ def _mock_reply(
     json_schema: dict[str, Any] | None,
     mock_text: str | None,
     ledger_kind: ledger.LedgerKind,
+    mock_blocks: list[dict[str, Any]] | None = None,
 ) -> LLMResult:
-    if mock_text is not None:
+    if mock_blocks is not None:
+        text = "".join(str(b.get("text", "")) for b in mock_blocks if b.get("type") == "text")
+    elif mock_text is not None:
         text = mock_text
     elif json_schema is not None:
         text = json.dumps(mock_from_schema(json_schema))
@@ -207,9 +227,14 @@ def _mock_reply(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         cost_usd=Decimal(0),
-        stop_reason="end_turn",
+        stop_reason=(
+            "tool_use"
+            if mock_blocks and any(b.get("type") == "tool_use" for b in mock_blocks)
+            else "end_turn"
+        ),
         fell_back=False,
         mock=True,
+        blocks=tuple(mock_blocks) if mock_blocks is not None else ({"type": "text", "text": text},),
     )
 
 

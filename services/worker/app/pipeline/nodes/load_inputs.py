@@ -26,9 +26,12 @@ def _money(value: Any) -> str | None:
     return None if value is None else f"{value:.2f}"
 
 
-def read_inputs(org: UUID, build_id: UUID) -> tuple[dict[str, Any], str]:
+def read_inputs(
+    org: UUID, build_id: UUID, *, template_html: bool = True
+) -> tuple[dict[str, Any], str]:
     """The build's template, brand view, product and wizard as the pipeline's state holds them,
-    and the template's HTML (also used by the review desk's redraft)."""
+    and the template's HTML (also used by the review desk's redraft). Lander (B3.1c) needs only
+    the brief, so `template_html=False` skips the download and returns ""."""
     with transaction() as conn:
         build = conn.execute(
             "select * from builds where id = %(id)s and org_id = %(org)s",
@@ -68,7 +71,7 @@ def read_inputs(org: UUID, build_id: UUID) -> tuple[dict[str, Any], str]:
         urls = _asset_urls(conn, org, [*image_ids, *variant_ids, *brand_ids])
 
     bucket = "library" if template["org_id"] is None else "templates"
-    html = storage.download(bucket, template["html_path"]).decode("utf-8")
+    html = storage.download(bucket, template["html_path"]).decode("utf-8") if template_html else ""
     instructions = TemplateInstructions.model_validate(template["instructions"] or {})
 
     images = [

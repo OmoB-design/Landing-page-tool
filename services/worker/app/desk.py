@@ -117,15 +117,19 @@ def _next_seq(conn: Any, build_id: UUID) -> int:
     return int(row["seq"])
 
 
+# Jobs that rewrite the page while the desk waits: a redraft, or a request to Lander (B3.1c, D106).
+PAGE_JOBS = ("redraft", "agent_turn")
+
+
 def _redraft(conn: Any, build_id: UUID) -> dict[str, Any] | None:
-    """The redraft queued or running on this build, if any."""
+    """The redraft (or Lander's request, scope "agent") queued or running on this build, if any."""
     row = conn.execute(
         """
-        select id, status, payload from jobs
-        where build_id = %(b)s and kind = 'redraft' and status in ('queued', 'running')
+        select id, status, kind, payload from jobs
+        where build_id = %(b)s and kind = any(%(kinds)s) and status in ('queued', 'running')
         order by created_at desc limit 1
         """,
-        {"b": build_id},
+        {"b": build_id, "kinds": list(PAGE_JOBS)},
     ).fetchone()
     return dict(row) if row else None
 
@@ -268,7 +272,9 @@ def _state(
         redraft=DeskRedraft(
             job_id=redraft["id"],
             status=redraft["status"],
-            scope=redraft["payload"].get("scope", "page"),
+            scope="agent"
+            if redraft["kind"] == "agent_turn"
+            else redraft["payload"].get("scope", "page"),
             section=redraft["payload"].get("section"),
             block=redraft["payload"].get("block"),
         )
@@ -444,6 +450,33 @@ def _where(sections: list[str | None]) -> str:
     return f" in {', '.join(named)}" if len(named) == 1 else ""
 
 
+def copy_change(html: str, edits: list[CopyEdit]) -> tuple[str, list[str], list[str | None]]:
+    """The page with edited paragraphs written in (bold words, links and locked parts kept), the
+    new texts and the sections they're in. Shared by the desk and Lander (B3.1c). Raises
+    DeskConflictError when a line no longer reads as the edit expects, DeskEditError when it
+    can't take the edit (a line filled from data, one with no words)."""
+    sections: list[str | None] = []
+    written: list[str] = []
+    by_number = {p.number: p for p in paragraphs.paragraphs(html)}
+    for edit in edits:
+        paragraph = by_number.get(edit.block)
+        if paragraph is None:
+            raise DeskConflictError
+        if paragraph.locked:
+            raise DeskEditError(
+                "That line is filled from the brand or product, so change it there."
+            )
+        try:
+            html = paragraphs.rewrite(html, edit.block, edit.original, edit.text)
+        except paragraphs.ParagraphDriftError as exc:
+            raise DeskConflictError from exc
+        except paragraphs.ParagraphEditError as exc:
+            raise DeskEditError(str(exc)) from exc
+        sections.append(paragraph.section)
+        written.append(re.sub(r"\s+", " ", edit.text).strip())
+    return html, written, sections
+
+
 def edit_copy(
     org_id: UUID,
     build_id: UUID,
@@ -460,26 +493,7 @@ def edit_copy(
     with transaction() as conn:
         build = _load(conn, org_id, build_id, lock=True)
         _check(conn, build, base_version)
-        html = _page(build)
-        sections: list[str | None] = []
-        written: list[str] = []
-        by_number = {p.number: p for p in paragraphs.paragraphs(html)}
-        for edit in edits:
-            paragraph = by_number.get(edit.block)
-            if paragraph is None:
-                raise DeskConflictError
-            if paragraph.locked:
-                raise DeskEditError(
-                    "That line is filled from the brand or product, so change it there."
-                )
-            try:
-                html = paragraphs.rewrite(html, edit.block, edit.original, edit.text)
-            except paragraphs.ParagraphDriftError as exc:
-                raise DeskConflictError from exc
-            except paragraphs.ParagraphEditError as exc:
-                raise DeskEditError(str(exc)) from exc
-            sections.append(paragraph.section)
-            written.append(re.sub(r"\s+", " ", edit.text).strip())
+        html, written, sections = copy_change(_page(build), edits)
         count = len(written)
         reason = f"Edited {'a line' if count == 1 else f'{count} lines'}{_where(sections)}"
         merge = f"line:{edits[0].block}" if typing and count == 1 else None
@@ -622,50 +636,58 @@ def edit_sections(
         build = _load(conn, org_id, build_id, lock=True)
         _check(conn, build, base_version)
         html = _page(build)
-        layout = _layout(_rules(conn, build["template_id"]), html)
-        keys = [s.key for s in layout]
-        by_key = {s.key: s for s in layout}
-        labels = {s.key: s.label for s in layout}
-        if isinstance(action, ReorderAction):
-            if sorted(action.keys) != sorted(keys):
-                raise DeskConflictError
-            if action.keys == keys:
-                raise DeskEditError("The sections are already in that order.")
-            new_html, _ = apply_layout(html, action.keys)
-            if section_order(new_html) != action.keys:
-                raise DeskEditError(
-                    "That section can't move there: it sits in a different part of the page."
-                )
-            reason = _move_reason(keys, action.keys, labels, action.moved)
-        elif isinstance(action, RemoveAction):
-            section = by_key.get(action.key)
-            if section is None:
-                raise DeskConflictError
-            if not section.removable:
-                raise DeskEditError(f"{section.label} can't be removed from this page.")
-            if len(keys) == 1:
-                raise DeskEditError("A page needs at least one section.")
-            new_html, _ = apply_layout(html, [k for k in keys if k != action.key])
-            reason = f"Removed {section.label}"
-        elif isinstance(action, DuplicateAction):
-            section = by_key.get(action.key)
-            if section is None:
-                raise DeskConflictError
-            if not section.duplicable:
-                raise DeskEditError(f"{section.label} can't be duplicated.")
-            if len(keys) >= MAX_SECTIONS:
-                raise DeskEditError(f"A page can have up to {MAX_SECTIONS} sections.")
-            match = DUPLICATE_KEY.match(action.key)
-            root = match.group("base") if match and match.group("base") in by_key else action.key
-            n = 2
-            while f"{root}-{n}" in by_key:
-                n += 1
-            new_html = duplicate_section(html, action.key, f"{root}-{n}")
-            reason = f"Duplicated {section.label}"
-        else:  # pragma: no cover (the union is exhaustive)
-            raise DeskEditError("Unknown change.")
+        new_html, reason = section_change(
+            html, _layout(_rules(conn, build["template_id"]), html), action
+        )
         stale = _change(conn, build, reason=reason, user_id=user_id, html=new_html)
     return _finish(org_id, build_id, stale)
+
+
+def section_change(html: str, layout: list[DeskSection], action: SectionAction) -> tuple[str, str]:
+    """The page with a section moved, copied or removed by the template's rules (`layout`), and
+    what the change did ("Moved Hero up"). Shared by the editor and Lander (B3.1c)."""
+    keys = [s.key for s in layout]
+    by_key = {s.key: s for s in layout}
+    labels = {s.key: s.label for s in layout}
+    if isinstance(action, ReorderAction):
+        if sorted(action.keys) != sorted(keys):
+            raise DeskConflictError
+        if action.keys == keys:
+            raise DeskEditError("The sections are already in that order.")
+        new_html, _ = apply_layout(html, action.keys)
+        if section_order(new_html) != action.keys:
+            raise DeskEditError(
+                "That section can't move there: it sits in a different part of the page."
+            )
+        reason = _move_reason(keys, action.keys, labels, action.moved)
+    elif isinstance(action, RemoveAction):
+        section = by_key.get(action.key)
+        if section is None:
+            raise DeskConflictError
+        if not section.removable:
+            raise DeskEditError(f"{section.label} can't be removed from this page.")
+        if len(keys) == 1:
+            raise DeskEditError("A page needs at least one section.")
+        new_html, _ = apply_layout(html, [k for k in keys if k != action.key])
+        reason = f"Removed {section.label}"
+    elif isinstance(action, DuplicateAction):
+        section = by_key.get(action.key)
+        if section is None:
+            raise DeskConflictError
+        if not section.duplicable:
+            raise DeskEditError(f"{section.label} can't be duplicated.")
+        if len(keys) >= MAX_SECTIONS:
+            raise DeskEditError(f"A page can have up to {MAX_SECTIONS} sections.")
+        match = DUPLICATE_KEY.match(action.key)
+        root = match.group("base") if match and match.group("base") in by_key else action.key
+        n = 2
+        while f"{root}-{n}" in by_key:
+            n += 1
+        new_html = duplicate_section(html, action.key, f"{root}-{n}")
+        reason = f"Duplicated {section.label}"
+    else:  # pragma: no cover (the union is exhaustive)
+        raise DeskEditError("Unknown change.")
+    return new_html, reason
 
 
 def restore(
@@ -694,19 +716,24 @@ def recolor(
         build = _load(conn, org_id, build_id, lock=True)
         _check(conn, build, base_version)
         html = _page(build)
-        current = _colors(conn, build, html).page
-        if current is None:
-            raise DeskEditError("This page's colours aren't known, so it can't be recoloured.")
-        target = colors.model_dump()
-        if target == current.model_dump():
-            raise DeskEditError("Those are the page's colours already.")
-        new_html, stats = recolor_engine.recolor(
-            html, source_palette=current.model_dump(), brand_palette=target, brand_fonts={}
-        )
-        if not (stats["exact"] or stats["hue_shifted"] or stats["vars_set"]):
-            raise DeskEditError("No colours on this page matched, so nothing changed.")
+        new_html = recolor_change(html, _colors(conn, build, html).page, colors.model_dump())
         stale = _change(conn, build, reason="Recoloured the page", user_id=user_id, html=new_html)
     return _finish(org_id, build_id, stale)
+
+
+def recolor_change(html: str, current: DeskPalette | None, target: dict[str, str]) -> str:
+    """The page recoloured from its colours now (`current`) to `target`. Shared by the desk and
+    Lander (B3.1c)."""
+    if current is None:
+        raise DeskEditError("This page's colours aren't known, so it can't be recoloured.")
+    if target == current.model_dump():
+        raise DeskEditError("Those are the page's colours already.")
+    new_html, stats = recolor_engine.recolor(
+        html, source_palette=current.model_dump(), brand_palette=target, brand_fonts={}
+    )
+    if not (stats["exact"] or stats["hue_shifted"] or stats["vars_set"]):
+        raise DeskEditError("No colours on this page matched, so nothing changed.")
+    return str(new_html)
 
 
 def start_redraft(
