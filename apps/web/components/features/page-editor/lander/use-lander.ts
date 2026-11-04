@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { z } from "zod";
 
 import { toast } from "@/components/app/toaster";
 import { apiFetch } from "@/lib/api/client";
@@ -14,9 +15,12 @@ import {
 } from "@/lib/pages/lander";
 import {
   type AgentChange,
+  type AgentFeedback,
   type AgentStep,
+  type AgentThreadSummary,
   agentReplySchema,
   agentThreadSchema,
+  agentThreadsSchema,
 } from "@/lib/validators/agent";
 import type { JobDetail } from "@/lib/validators/jobs";
 
@@ -38,6 +42,8 @@ export type TurnView = {
   versionAfter: number | null;
   /** Seconds it took, once it finished. */
   took: number | null;
+  /** The rating given to the reply (B3.1e). */
+  feedback: AgentFeedback | null;
 };
 
 function tookOf(job: JobDetail): number | null {
@@ -63,6 +69,7 @@ function viewOf(
     reason: null,
     versionAfter: null,
     took: null,
+    feedback: turn.feedback,
   };
   if (turn.refused) return { ...base, state: "failed", error: turn.refused };
   if (settled) {
@@ -185,6 +192,7 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
         refused: null,
         saved: null,
         images,
+        feedback: null,
       };
       setTurns((all) => [...all, turn]);
       const started = await startAgent({
@@ -219,6 +227,64 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
     setThreadId(null);
   }, []);
 
+  // Recents (B3.1e): the page's conversations, and opening one to read and continue.
+  const listThreads = useCallback(
+    async (): Promise<AgentThreadSummary[]> =>
+      (
+        await apiFetch(
+          `/api/builds/${buildId}/agent/threads`,
+          agentThreadsSchema,
+        )
+      ).threads,
+    [buildId],
+  );
+  const openThread = useCallback(
+    async (id: string) => {
+      try {
+        const thread = await apiFetch(
+          `/api/builds/${buildId}/agent?thread=${encodeURIComponent(id)}`,
+          agentThreadSchema,
+        );
+        setThreadId(thread.thread_id);
+        setTurns(turnsFromThread(thread.messages, null));
+      } catch {
+        toast.error("Couldn’t open that conversation.");
+      }
+    },
+    [buildId],
+  );
+
+  // A rating shows at once and is put back if it couldn't be saved.
+  const rate = useCallback(
+    async (jobId: string, feedback: AgentFeedback | null) => {
+      const before = turns.find((t) => t.jobId === jobId)?.feedback ?? null;
+      const set = (value: AgentFeedback | null) =>
+        setTurns((all) =>
+          all.map((t) => (t.jobId === jobId ? { ...t, feedback: value } : t)),
+        );
+      set(feedback);
+      try {
+        await apiFetch(
+          `/api/builds/${buildId}/agent/feedback`,
+          z.object({ saved: z.boolean() }),
+          {
+            method: "POST",
+            body: JSON.stringify({
+              job_id: jobId,
+              rating: feedback?.rating ?? null,
+              reasons: feedback?.reasons ?? [],
+              note: feedback?.note ?? null,
+            }),
+          },
+        );
+      } catch {
+        set(before);
+        toast.error("Couldn’t save the rating.");
+      }
+    },
+    [buildId, turns],
+  );
+
   return {
     views,
     working,
@@ -230,5 +296,9 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
     send,
     stop,
     reset,
+    threadId,
+    listThreads,
+    openThread,
+    rate,
   };
 }

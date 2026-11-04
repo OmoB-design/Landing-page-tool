@@ -39,6 +39,8 @@ const DIAL = {
     /** Where "Work with Lander" sits: px from the page panel's foot (owner's tuning, 2026-11-04;
      * Sidekick's is 16). */
     fromBottom: [5, 0, 96, 1] as Range,
+    /** Opening the editor: the bar rises into place after this long (owner, 2026-11-05). */
+    enterDelay: [0.35, 0, 1.5, 0.05] as Range,
     sink: { type: "easing", duration: 0.32, ease: SINK } as Easing,
     distance: [84, 20, 160, 1] as Range,
     rise: { type: "spring", visualDuration: 0.55, bounce: 0.18 } as Spring,
@@ -111,6 +113,8 @@ export type LanderMotion = {
   reduced: boolean;
   /** The bar's place: px from the page panel's foot (a position, so reduced motion keeps it). */
   barFromBottom: number;
+  /** Seconds before the bar rises in when the editor opens. */
+  barEnterDelay: number;
   barDistance: number;
   barSink: Transition;
   barRise: Transition;
@@ -135,7 +139,7 @@ function resolve(
   if (reduced) {
     // Reduced motion: things fade; nothing travels, scales or blurs.
     return {
-      reduced, barFromBottom: dial.bar.fromBottom, barDistance: 0, barSink: fade, barRise: fade, pageSqueeze: fade,
+      reduced, barFromBottom: dial.bar.fromBottom, barEnterDelay: 0, barDistance: 0, barSink: fade, barRise: fade, pageSqueeze: fade,
       pageWiden: fade, panelEnter: fade, panelExit: fade, panelScaleFrom: 1,
       panelBlurFrom: 0, wordStagger: 0, wordBlur: 0, arrive: fade, sectionsToggle: fade,
     }; // prettier-ignore
@@ -143,6 +147,7 @@ function resolve(
   return {
     reduced,
     barFromBottom: dial.bar.fromBottom,
+    barEnterDelay: dial.bar.enterDelay * slow,
     barDistance: dial.bar.distance,
     barSink: asTransition(dial.bar.sink, DIAL.bar.sink, slow),
     barRise: asTransition(dial.bar.rise, DIAL.bar.rise, slow),

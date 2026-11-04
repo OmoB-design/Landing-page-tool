@@ -91,6 +91,7 @@ describe("Lander's thread (B3.1b, B3.1c)", () => {
         job_id: "j1",
         created_at: "2026-11-04T10:00:20Z",
         content: { state: "done", steps: [], changes: [], closing: "Done." },
+        feedback: { rating: "up", reasons: [] },
       },
       {
         id: "m3",
@@ -114,6 +115,8 @@ describe("Lander's thread (B3.1b, B3.1c)", () => {
       ["And the FAQ", "j3"],
     ]);
     expect(turns[0]?.saved?.closing).toBe("Done.");
+    expect(turns[0]?.feedback).toEqual({ rating: "up", reasons: [] });
+    expect(turns[1]?.feedback).toBeNull();
     // A request with no reply: the running one waits for its job; another never finished.
     expect(turns[1]?.saved?.state).toBe("failed");
     expect(turns[2]?.saved).toBeNull();

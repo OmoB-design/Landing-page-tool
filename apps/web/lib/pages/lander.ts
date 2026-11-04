@@ -8,6 +8,7 @@
 import {
   AGENT_REQUEST_MAX,
   type AgentChange,
+  type AgentFeedback,
   type AgentMessage,
   type AgentReply,
   type AgentStep,
@@ -32,6 +33,8 @@ export type LanderTurn = {
   saved: AgentReply | null;
   /** The pictures sent with it (links or, while sending, the pictures themselves). */
   images: string[];
+  /** The rating its reply was given (B3.1e). */
+  feedback: AgentFeedback | null;
 };
 
 export type TurnState = "starting" | "working" | "done" | "stopped" | "failed";
@@ -111,8 +114,12 @@ export function turnsFromThread(
   runningJobId: string | null,
 ): LanderTurn[] {
   const replies = new Map<string, AgentReply>();
+  const ratings = new Map<string, AgentFeedback>();
   for (const m of messages)
-    if (m.role === "assistant" && m.job_id) replies.set(m.job_id, m.content);
+    if (m.role === "assistant" && m.job_id) {
+      replies.set(m.job_id, m.content);
+      if (m.feedback) ratings.set(m.job_id, m.feedback);
+    }
   return messages.flatMap((m): LanderTurn[] => {
     if (m.role !== "user") return [];
     const reply = m.job_id ? replies.get(m.job_id) : undefined;
@@ -125,6 +132,7 @@ export function turnsFromThread(
         startedAt: Date.parse(m.created_at),
         jobId: m.job_id,
         refused: null,
+        feedback: (m.job_id && ratings.get(m.job_id)) || null,
         images: (m.content.image_urls ?? []).filter(
           (url): url is string => typeof url === "string",
         ),

@@ -9,7 +9,9 @@ import { LanderMotionProvider } from "../lander-motion";
 import { ChangeCard } from "./change-card";
 import { FloatingComposer } from "./floating-composer";
 import { LanderComposer } from "./lander-composer";
+import { LanderRecents } from "./lander-recents";
 import { LanderThread } from "./lander-thread";
+import { ReplyActions } from "./reply-actions";
 import type { TurnView } from "./use-lander";
 
 function wrap(ui: ReactNode) {
@@ -37,6 +39,7 @@ const done: TurnView = {
     refused: null,
     saved: null,
     images: [],
+    feedback: null,
   },
   state: "done",
   queued: false,
@@ -67,6 +70,7 @@ const done: TurnView = {
   reason: "Lander: rewrote 2 lines in Hero and 1 more change",
   versionAfter: 5,
   took: 6,
+  feedback: null,
 };
 
 describe("Lander (B3.1b, B3.1c)", () => {
@@ -135,6 +139,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
         onShow={vi.fn()}
         onRefine={vi.fn()}
         onRetry={vi.fn()}
+        onRate={vi.fn()}
         composer={<form aria-label="Composer" />}
       />,
     );
@@ -159,6 +164,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
         onShow={onShow}
         onRefine={vi.fn()}
         onRetry={vi.fn()}
+        onRate={vi.fn()}
         composer={<form aria-label="Composer" />}
       />,
     );
@@ -199,6 +205,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
         onShow={vi.fn()}
         onRefine={vi.fn()}
         onRetry={vi.fn()}
+        onRate={vi.fn()}
         composer={null}
       />,
     );
@@ -235,6 +242,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
         onShow={vi.fn()}
         onRefine={vi.fn()}
         onRetry={vi.fn()}
+        onRate={vi.fn()}
         composer={null}
       />,
     );
@@ -257,5 +265,81 @@ describe("Lander (B3.1b, B3.1c)", () => {
     fireEvent.change(field, { target: { value: "Even shorter" } });
     fireEvent.submit(field.closest("form") as HTMLFormElement);
     expect(onRefine).toHaveBeenCalledWith("Even shorter");
+  });
+
+  it("rates a reply: thumbs up, thumbs down with reasons and a note, and takes it back", () => {
+    const onRate = vi.fn();
+    const { rerender } = wrap(
+      <ReplyActions text="Done." feedback={null} onRate={onRate} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Good reply" }));
+    expect(onRate).toHaveBeenLastCalledWith({ rating: "up", reasons: [] });
+    rerender(
+      <TooltipProvider>
+        <LanderMotionProvider onReplay={() => {}}>
+          <ReplyActions
+            text="Done."
+            feedback={{ rating: "up", reasons: [] }}
+            onRate={onRate}
+          />
+        </LanderMotionProvider>
+      </TooltipProvider>,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Take back the thumbs up" }),
+    );
+    expect(onRate).toHaveBeenLastCalledWith(null);
+    fireEvent.click(screen.getByRole("button", { name: "Bad reply" }));
+    expect(onRate).toHaveBeenLastCalledWith({ rating: "down", reasons: [] });
+    fireEvent.click(screen.getByRole("button", { name: "Changed too much" }));
+    fireEvent.change(screen.getByLabelText("Anything else?"), {
+      target: { value: "Too much at once" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    expect(onRate).toHaveBeenLastCalledWith({
+      rating: "down",
+      reasons: ["changed_too_much"],
+      note: "Too much at once",
+    });
+    expect(screen.getByText("Thanks, that helps")).toBeTruthy();
+  });
+
+  it("lists the page's conversations in Recents and opens one", async () => {
+    const onOpen = vi.fn();
+    const onList = vi.fn().mockResolvedValue([
+      {
+        thread_id: "t2",
+        title: "Rewrite the FAQ",
+        requests: 1,
+        started_at: new Date().toISOString(),
+        last_at: new Date().toISOString(),
+      },
+      {
+        thread_id: "t1",
+        title: "Warmer hero",
+        requests: 2,
+        started_at: new Date().toISOString(),
+        last_at: new Date().toISOString(),
+      },
+    ]);
+    wrap(
+      <LanderRecents
+        current="t2"
+        disabled={false}
+        onList={onList}
+        onOpen={onOpen}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Recents" }));
+    const other = await screen.findByText("Warmer hero");
+    expect(screen.getByText(/2 requests/)).toBeTruthy();
+    expect(
+      screen
+        .getByText("Rewrite the FAQ")
+        .closest("button")
+        ?.getAttribute("aria-current"),
+    ).toBe("true");
+    fireEvent.click(other);
+    expect(onOpen).toHaveBeenCalledWith("t1");
   });
 });

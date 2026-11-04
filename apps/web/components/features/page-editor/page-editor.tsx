@@ -24,6 +24,7 @@ import { EditorTopBar } from "./editor-top-bar";
 import type { UndoState } from "./lander/change-card";
 import { FloatingComposer } from "./lander/floating-composer";
 import { LanderComposer } from "./lander/lander-composer";
+import { LanderRecents } from "./lander/lander-recents";
 import { LanderPanel, PANEL_WIDTH } from "./lander/lander-panel";
 import { LanderThread } from "./lander/lander-thread";
 import { type TurnView, useLander } from "./lander/use-lander";
@@ -149,6 +150,8 @@ function Editor({
   const [updating, setUpdating] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [focusSignal, setFocusSignal] = useState(0);
+  // The bar's first rise (opening the editor) waits a moment; later rises don't.
+  const [barArrived, setBarArrived] = useState(false);
   const settleRef = useRef<(() => Promise<void>) | null>(null);
   const settle = useCallback(async () => {
     await settleRef.current?.();
@@ -407,7 +410,9 @@ function Editor({
               // The bar's place, tunable on the DialKit panel (data, not styling).
               style={{ bottom: motionConfig.barFromBottom }}
             >
-              <AnimatePresence initial={false}>
+              {/* Opening the editor, the bar rises into place from the page's foot (owner,
+                  2026-11-05); afterwards it rises as Lander's panel closes. */}
+              <AnimatePresence>
                 {landerOpen ? null : (
                   <motion.div
                     key="bar"
@@ -419,8 +424,14 @@ function Editor({
                     animate={{
                       y: 0,
                       opacity: 1,
-                      transition: motionConfig.barRise,
+                      transition: barArrived
+                        ? motionConfig.barRise
+                        : {
+                            ...motionConfig.barRise,
+                            delay: motionConfig.barEnterDelay,
+                          },
                     }}
+                    onAnimationComplete={() => setBarArrived(true)}
                     exit={{
                       y: motionConfig.barDistance,
                       opacity: motionConfig.reduced ? 0 : 1,
@@ -481,6 +492,14 @@ function Editor({
               <LanderPanel
                 title={title}
                 working={lander.working}
+                recents={
+                  <LanderRecents
+                    current={lander.threadId}
+                    disabled={lander.working}
+                    onList={lander.listThreads}
+                    onOpen={(id) => void lander.openThread(id)}
+                  />
+                }
                 onNewChat={lander.reset}
                 onClose={() => setLanderOpen(false)}
               >
@@ -498,6 +517,9 @@ function Editor({
                   onShow={showOnPage}
                   onRefine={(to, request) => send(request, to)}
                   onRetry={(view) => send(view.turn.request, view.turn.target)}
+                  onRate={(jobId, feedback) =>
+                    void lander.rate(jobId, feedback)
+                  }
                   composer={
                     <LanderComposer
                       target={target}

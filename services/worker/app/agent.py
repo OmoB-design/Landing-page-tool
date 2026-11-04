@@ -26,10 +26,14 @@ from app.engines import copy_rules as rules
 from app.jobs import queue
 from app.models.agent import (
     MAX_IMAGE_BYTES,
+    AgentFeedback,
     AgentMessage,
+    AgentRate,
     AgentRequest,
     AgentStart,
     AgentThread,
+    AgentThreads,
+    AgentThreadSummary,
 )
 from app.models.desk import CopyEdit, DeskPalette, DeskSection
 from app.models.template import DuplicateAction, RemoveAction, ReorderAction
@@ -698,7 +702,9 @@ def thread(org_id: UUID, build_id: UUID, thread_id: UUID | None = None) -> Agent
             thread_id = newest["thread_id"]
         rows = conn.execute(
             """
-            select id, role, content, job_id, created_at from agent_messages
+            select id, role, content, job_id, created_at, feedback, feedback_reasons,
+                   feedback_note
+            from agent_messages
             where build_id = %(b)s and thread_id = %(t)s and role in ('user', 'assistant')
             order by created_at, id limit 200
             """,
@@ -706,8 +712,76 @@ def thread(org_id: UUID, build_id: UUID, thread_id: UUID | None = None) -> Agent
         ).fetchall()
     return AgentThread(
         thread_id=thread_id,
-        messages=[AgentMessage(**{**row, "content": with_links(row["content"])}) for row in rows],
+        messages=[
+            AgentMessage(
+                id=row["id"],
+                role=row["role"],
+                content=with_links(row["content"]),
+                job_id=row["job_id"],
+                created_at=row["created_at"],
+                feedback=AgentFeedback(
+                    rating=row["feedback"],
+                    reasons=list(row["feedback_reasons"] or []),
+                    note=row["feedback_note"],
+                )
+                if row["feedback"]
+                else None,
+            )
+            for row in rows
+        ],
     )
+
+
+def threads(org_id: UUID, build_id: UUID) -> AgentThreads:
+    """The page's conversations, newest first (Recents, B3.1e): each by its first request, how
+    many requests it has and when it started and last moved."""
+    with transaction() as conn:
+        desk._load(conn, org_id, build_id)  # the page is in this workspace
+        rows = conn.execute(
+            """
+            select t.thread_id, t.started_at, t.last_at, t.requests,
+                   coalesce(f.content ->> 'text', '') as title
+            from (
+                select thread_id, min(created_at) as started_at, max(created_at) as last_at,
+                       count(*) filter (where role = 'user') as requests
+                from agent_messages where build_id = %(b)s
+                group by thread_id
+            ) t
+            left join lateral (
+                select content from agent_messages
+                where build_id = %(b)s and thread_id = t.thread_id and role = 'user'
+                order by created_at limit 1
+            ) f on true
+            order by t.last_at desc
+            limit 30
+            """,
+            {"b": build_id},
+        ).fetchall()
+    return AgentThreads(threads=[AgentThreadSummary(**row) for row in rows if row["requests"]])
+
+
+def rate(org_id: UUID, build_id: UUID, rating: AgentRate) -> None:
+    """Saves a rating on the reply a job wrote (B3.1e), or takes it back. Reasons and a note
+    only go with a thumbs down."""
+    down = rating.rating == "down"
+    with transaction() as conn:
+        desk._load(conn, org_id, build_id)
+        row = conn.execute(
+            """
+            update agent_messages
+            set feedback = %(r)s, feedback_reasons = %(reasons)s, feedback_note = %(note)s,
+                feedback_at = case when %(r)s::text is null then null else now() end
+            where build_id = %(b)s and job_id = %(j)s and role = 'assistant'
+            returning id
+            """,
+            {
+                "r": rating.rating, "b": build_id, "j": rating.job_id,
+                "reasons": list(rating.reasons) if down else [],
+                "note": (rating.note or "").strip() or None if down else None,
+            },
+        ).fetchone()  # fmt: skip
+    if row is None:
+        raise desk.DeskNotFoundError
 
 
 def stop(org_id: UUID, build_id: UUID) -> None:

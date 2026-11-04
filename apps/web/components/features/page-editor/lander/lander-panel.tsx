@@ -14,12 +14,14 @@ export const PANEL_WIDTH = 356;
 /**
  * Lander's panel (B3.1b, D105; Sidekick's, docs/reference/sidekick-study.md): a second white panel
  * beside the page. The header holds Lander's mark and name, or the conversation's first request once
- * there is one, then New chat (once there's a thread and nothing running) and Close (⌘J). Below, the
+ * there is one, then Recents (the page's conversations, B3.1e), New chat (once there's a thread
+ * and nothing running) and Close (⌘J). Below, the
  * thread, and the composer at the foot. 356 px wide, fixed.
  */
 export function LanderPanel({
   title,
   working,
+  recents,
   onNewChat,
   onClose,
   children,
@@ -27,6 +29,8 @@ export function LanderPanel({
   /** The conversation's first request, or null for a new one. */
   title: string | null;
   working: boolean;
+  /** Recents (B3.1e): the page's conversations, opened from the header. */
+  recents: ReactNode;
   onNewChat: () => void;
   onClose: () => void;
   children: ReactNode;
@@ -63,6 +67,7 @@ export function LanderPanel({
               )}
             </AnimatePresence>
           </div>
+          {recents}
           {title && !working ? (
             <IconButton label="New chat" onClick={onNewChat}>
               <NewChatIcon aria-hidden className="size-4" />

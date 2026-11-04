@@ -20,6 +20,10 @@ export type Database = {
           content: Json
           created_at: string
           created_by: string | null
+          feedback: string | null
+          feedback_at: string | null
+          feedback_note: string | null
+          feedback_reasons: string[]
           id: string
           job_id: string | null
           role: string
@@ -30,6 +34,10 @@ export type Database = {
           content: Json
           created_at?: string
           created_by?: string | null
+          feedback?: string | null
+          feedback_at?: string | null
+          feedback_note?: string | null
+          feedback_reasons?: string[]
           id?: string
           job_id?: string | null
           role: string
@@ -40,6 +48,10 @@ export type Database = {
           content?: Json
           created_at?: string
           created_by?: string | null
+          feedback?: string | null
+          feedback_at?: string | null
+          feedback_note?: string | null
+          feedback_reasons?: string[]
           id?: string
           job_id?: string | null
           role?: string

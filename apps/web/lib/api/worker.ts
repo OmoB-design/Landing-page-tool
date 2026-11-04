@@ -17,11 +17,14 @@ import {
   deskStateSchema,
 } from "@/lib/validators/desk";
 import {
+  type AgentRateInput,
   type AgentRequestInput,
   type AgentStart,
   type AgentThread,
+  type AgentThreadSummary,
   agentStartSchema,
   agentThreadSchema,
+  agentThreadsSchema,
 } from "@/lib/validators/agent";
 import {
   type IntegrationsState,
@@ -279,6 +282,39 @@ export function getAgentThread(
     undefined,
     agentThreadSchema,
     "Couldn't load the conversation with Lander.",
+  );
+}
+
+/** The page's conversations with Lander, newest first (Recents, B3.1e). */
+export async function getAgentThreads(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<AgentThreadSummary[]> {
+  const body = await callWorker(
+    "GET",
+    `/builds/${encodeURIComponent(buildId)}/agent/threads?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    agentThreadsSchema,
+    "Couldn't load the earlier conversations.",
+  );
+  return body.threads;
+}
+
+/** Rates one of Lander's replies, or takes the rating back (B3.1e). */
+export function rateAgentReply(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+  body: AgentRateInput,
+): Promise<{ saved: boolean }> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/agent/feedback`,
+    accessToken,
+    { ...body, org_id: orgId },
+    z.object({ saved: z.boolean() }),
+    "Couldn't save the rating.",
   );
 }
 

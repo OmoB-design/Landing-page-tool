@@ -34,11 +34,12 @@ import {
   plural,
   statusLabel,
 } from "@/lib/pages/lander";
-import type { AgentChange } from "@/lib/validators/agent";
+import type { AgentChange, AgentFeedback } from "@/lib/validators/agent";
 import { cn } from "@/lib/utils";
 
 import { useLanderMotion } from "../lander-motion";
 import { ChangeCard, UndoControl, type UndoState } from "./change-card";
+import { ReplyActions } from "./reply-actions";
 import { LanderMark } from "./lander-mark";
 import { RollingLabel } from "./rolling-label";
 import { StreamText } from "./stream-text";
@@ -77,6 +78,7 @@ export function LanderThread({
   onShow,
   onRefine,
   onRetry,
+  onRate,
   composer,
 }: {
   views: TurnView[];
@@ -89,6 +91,8 @@ export function LanderThread({
   onShow: (lines: number[], section: string | null) => void;
   onRefine: (target: LanderTarget, request: string) => void;
   onRetry: (view: TurnView) => void;
+  /** Rates a reply (by its job), or takes the rating back (B3.1e). */
+  onRate: (jobId: string, feedback: AgentFeedback | null) => void;
   /** The composer, floating over the thread's foot. */
   composer: ReactNode;
 }) {
@@ -197,6 +201,9 @@ export function LanderThread({
                     onShow={onShow}
                     onRefine={onRefine}
                     onRetry={() => onRetry(view)}
+                    onRate={(feedback) =>
+                      view.turn.jobId && onRate(view.turn.jobId, feedback)
+                    }
                   />
                 </li>
               ))}
@@ -326,6 +333,7 @@ function Reply({
   onShow,
   onRefine,
   onRetry,
+  onRate,
 }: {
   view: TurnView;
   undo: UndoState;
@@ -334,6 +342,7 @@ function Reply({
   onShow: (lines: number[], section: string | null) => void;
   onRefine: (target: LanderTarget, request: string) => void;
   onRetry: () => void;
+  onRate: (feedback: AgentFeedback | null) => void;
 }) {
   const { arrive, reduced } = useLanderMotion();
   const { state, steps, turn, changes } = view;
@@ -346,7 +355,7 @@ function Reply({
   const finished = state === "done" || state === "stopped";
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="group/reply flex flex-col gap-2">
       <button
         type="button"
         disabled={live || steps.length === 0}
@@ -509,6 +518,16 @@ function Reply({
           text={view.closing}
           delay={0.25}
           className="text-type-body-small text-heading-01"
+        />
+      ) : null}
+
+      {finished && view.turn.jobId ? (
+        <ReplyActions
+          text={[view.plan, ...view.changes.map((c) => c.label), view.closing]
+            .filter(Boolean)
+            .join("\n\n")}
+          feedback={view.feedback}
+          onRate={onRate}
         />
       ) : null}
 

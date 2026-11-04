@@ -403,6 +403,81 @@ def test_a_picture_goes_with_the_request_and_comes_back_in_the_conversation(
 
 
 @needs_db
+def test_recents_list_the_pages_conversations_and_replies_can_be_rated(
+    client: TestClient, user: DbUser, finished: dict[str, Any]
+) -> None:
+    version = desk(client, user, finished)["build"]["page_version"]
+    first = ask(client, user, finished, version, "Warmer hero").json()
+    run_agent()
+    follow = ask(client, user, finished, version + 1, "Now shorter", thread_id=first["thread_id"])
+    run_agent()
+    second = ask(client, user, finished, version + 2, "Rewrite the FAQ").json()  # New chat
+    run_agent()
+
+    listed = client.get(
+        f"/builds/{finished['id']}/agent/threads",
+        params={"org_id": finished["org_id"]},
+        headers=bearer(user),
+    )
+    assert listed.status_code == 200, listed.text
+    threads = listed.json()["threads"]
+    assert [(t["title"], t["requests"]) for t in threads] == [
+        ("Rewrite the FAQ", 1),
+        ("Warmer hero", 2),
+    ]
+    assert threads[0]["thread_id"] == second["thread_id"] and follow.status_code == 200
+
+    def rate(**body: Any) -> Any:
+        return client.post(
+            f"/builds/{finished['id']}/agent/feedback",
+            json={"org_id": finished["org_id"], "job_id": first["job_id"], **body},
+            headers=bearer(user),
+        )
+
+    assert rate(rating="up").status_code == 200
+    down = rate(rating="down", reasons=["changed_too_much"], note=" Too much at once ")
+    assert down.status_code == 200, down.text
+    reply = next(
+        m
+        for m in conversation_of(client, user, finished, first["thread_id"])["messages"]
+        if m["role"] == "assistant" and m["job_id"] == first["job_id"]
+    )
+    assert reply["feedback"] == {
+        "rating": "down",
+        "reasons": ["changed_too_much"],
+        "note": "Too much at once",
+    }
+    assert rate(rating=None).status_code == 200  # taken back
+    assert rate(rating="sideways").status_code == 422
+    unknown = client.post(
+        f"/builds/{finished['id']}/agent/feedback",
+        json={"org_id": finished["org_id"], "job_id": str(uuid.uuid4()), "rating": "up"},
+        headers=bearer(user),
+    )
+    assert unknown.status_code == 404
+    with transaction() as conn:
+        row = conn.execute(
+            "select feedback, feedback_at from agent_messages"
+            " where job_id = %(j)s and role = 'assistant'",
+            {"j": first["job_id"]},
+        ).fetchone()
+    assert row and row["feedback"] is None and row["feedback_at"] is None
+
+
+def conversation_of(
+    client: TestClient, user: DbUser, build: dict[str, Any], thread_id: str
+) -> dict[str, Any]:
+    response = client.get(
+        f"/builds/{build['id']}/agent",
+        params={"org_id": build["org_id"], "thread_id": thread_id},
+        headers=bearer(user),
+    )
+    assert response.status_code == 200, response.text
+    body: dict[str, Any] = response.json()
+    return body
+
+
+@needs_db
 def test_a_failed_request_saves_nothing_and_says_so(
     client: TestClient, user: DbUser, finished: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:

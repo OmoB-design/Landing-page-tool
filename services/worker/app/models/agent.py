@@ -44,6 +44,18 @@ class AgentStart(BaseModel):
     message_id: UUID
 
 
+FEEDBACK_REASONS = ("did_not_do_it", "changed_too_much", "wrong_words", "looked_wrong")
+
+
+class AgentFeedback(BaseModel):
+    """A rating on one of Lander's replies (B3.1e): up or down, and for a down any quick reasons
+    and a note."""
+
+    rating: Literal["up", "down"]
+    reasons: list[str] = Field(default_factory=list)
+    note: str | None = None
+
+
 class AgentMessage(BaseModel):
     id: UUID
     role: Literal["user", "assistant"]
@@ -52,6 +64,36 @@ class AgentMessage(BaseModel):
     content: dict[str, Any]
     job_id: UUID | None
     created_at: datetime
+    # The rating given to an assistant reply, if any.
+    feedback: AgentFeedback | None = None
+
+
+class AgentThreadSummary(BaseModel):
+    """One of the page's conversations, for Recents (B3.1e)."""
+
+    thread_id: UUID
+    title: str
+    requests: int
+    started_at: datetime
+    last_at: datetime
+
+
+class AgentThreads(BaseModel):
+    threads: list[AgentThreadSummary]
+
+
+class AgentRate(BaseModel):
+    """Rate a reply (by the job that wrote it), or take the rating back (`rating` None)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    job_id: UUID
+    rating: Literal["up", "down"] | None
+    reasons: list[Literal["did_not_do_it", "changed_too_much", "wrong_words", "looked_wrong"]] = (
+        Field(default_factory=list, max_length=4)
+    )
+    note: str | None = Field(default=None, max_length=500)
 
 
 class AgentThread(BaseModel):

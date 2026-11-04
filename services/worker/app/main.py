@@ -15,7 +15,14 @@ from app.jobs import queue
 from app.jobs.models import Job
 from app.jobs.registry import KINDS
 from app.log import configure_logging
-from app.models.agent import AgentRequest, AgentStart, AgentStop, AgentThread
+from app.models.agent import (
+    AgentRate,
+    AgentRequest,
+    AgentStart,
+    AgentStop,
+    AgentThread,
+    AgentThreads,
+)
 from app.models.analytics import AnalyticsRange, AnalyticsState
 from app.models.build import BuildRequest
 from app.models.clone import CloneRequest, CloneTermsRequest, CloneTermsState
@@ -304,6 +311,22 @@ def agent_conversation(
     require_org_member(user, org_id)
     conversation: AgentThread = _desk_call(agent.thread, org_id, build_id, thread_id)
     return conversation
+
+
+@app.get("/builds/{build_id}/agent/threads")
+def agent_threads(build_id: UUID, org_id: UUID, user: CurrentUser) -> AgentThreads:
+    """The page's conversations with Lander, newest first (Recents, B3.1e)."""
+    require_org_member(user, org_id)
+    found: AgentThreads = _desk_call(agent.threads, org_id, build_id)
+    return found
+
+
+@app.post("/builds/{build_id}/agent/feedback")
+def agent_feedback(build_id: UUID, body: AgentRate, user: CurrentUser) -> dict[str, bool]:
+    """A rating on one of Lander's replies, or taking it back (B3.1e)."""
+    require_org_member(user, body.org_id)
+    _desk_call(agent.rate, body.org_id, build_id, body)
+    return {"saved": True}
 
 
 @app.post("/builds/{build_id}/agent/stop")

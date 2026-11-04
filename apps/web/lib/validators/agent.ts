@@ -84,10 +84,28 @@ export const agentReplySchema = z.object({
 });
 export type AgentReply = z.infer<typeof agentReplySchema>;
 
+/** Quick reasons for a thumbs down (worker FEEDBACK_REASONS, B3.1e). */
+export const FEEDBACK_REASONS = [
+  { id: "did_not_do_it", label: "Didn’t do what I asked" },
+  { id: "changed_too_much", label: "Changed too much" },
+  { id: "wrong_words", label: "Wrong words" },
+  { id: "looked_wrong", label: "Looked wrong" },
+] as const;
+export type FeedbackReason = (typeof FEEDBACK_REASONS)[number]["id"];
+
+/** A rating on one of Lander's replies (B3.1e). */
+export const agentFeedbackSchema = z.object({
+  rating: z.enum(["up", "down"]),
+  reasons: z.array(z.string()).default([]),
+  note: z.string().nullable().optional(),
+});
+export type AgentFeedback = z.infer<typeof agentFeedbackSchema>;
+
 const messageBase = {
   id: z.string(),
   job_id: z.string().nullable(),
   created_at: z.string(),
+  feedback: agentFeedbackSchema.nullable().optional(),
 };
 
 export const agentMessageSchema = z.discriminatedUnion("role", [
@@ -149,3 +167,38 @@ export const agentEventSchema = z.discriminatedUnion("type", [
   agentStepSchema.extend({ type: z.literal("step") }),
 ]);
 export type AgentEvent = z.infer<typeof agentEventSchema>;
+
+/** One of the page's conversations, for Recents (worker AgentThreadSummary, B3.1e). */
+export const agentThreadsSchema = z.object({
+  threads: z.array(
+    z.object({
+      thread_id: z.string(),
+      title: z.string(),
+      requests: z.number().int(),
+      started_at: z.string(),
+      last_at: z.string(),
+    }),
+  ),
+});
+export type AgentThreadSummary = z.infer<
+  typeof agentThreadsSchema
+>["threads"][number];
+
+/** POST /api/builds/[id]/agent/feedback: rate a reply (by its job), or take it back. */
+export const agentRateSchema = z.object({
+  job_id: z.string().uuid(),
+  rating: z.enum(["up", "down"]).nullable(),
+  reasons: z
+    .array(
+      z.enum([
+        "did_not_do_it",
+        "changed_too_much",
+        "wrong_words",
+        "looked_wrong",
+      ]),
+    )
+    .max(4)
+    .optional(),
+  note: z.string().max(500).nullable().optional(),
+});
+export type AgentRateInput = z.infer<typeof agentRateSchema>;

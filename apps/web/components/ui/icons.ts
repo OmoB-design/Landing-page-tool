@@ -34,6 +34,8 @@ export {
   WandSparkles as RewriteIcon,
   Square as StopIcon,
   ImagePlus as AttachImageIcon,
+  ThumbsUp as ThumbsUpIcon,
+  ThumbsDown as ThumbsDownIcon,
   ArrowUpDown as MoveSectionIcon,
   Palette as RecolorIcon,
   X as StepFailedIcon,
