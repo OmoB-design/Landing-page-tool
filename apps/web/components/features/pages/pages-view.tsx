@@ -26,6 +26,7 @@ import {
 } from "@/lib/pages/list";
 import { samplePages } from "@/lib/pages/sample";
 
+import { NewPageButton } from "./new-page-button";
 import { PagesDisplay } from "./pages-display";
 import { PagesFilter } from "./pages-filter";
 import { PagesLayoutToggle } from "./pages-layout-toggle";
@@ -79,7 +80,7 @@ export async function PagesView({
 
   return (
     <>
-      <PageHeader icon={PagesIcon} title="Pages" />
+      <PageHeader icon={PagesIcon} title="Pages" actions={<NewPageButton />} />
       <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-2 px-6 py-12">
         <PagesTitle sample={sample} />
         <div className="flex h-9 items-center justify-between gap-4 divider-b-thin">
@@ -147,7 +148,7 @@ function PagesTitle({ sample = false }: { sample?: boolean }) {
 export function PagesViewSkeleton() {
   return (
     <>
-      <PageHeader icon={PagesIcon} title="Pages" />
+      <PageHeader icon={PagesIcon} title="Pages" actions={<NewPageButton />} />
       <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-2 px-6 py-12">
         <PagesTitle />
         <SkeletonViewTabs labels={["All pages", "My pages"]}>
