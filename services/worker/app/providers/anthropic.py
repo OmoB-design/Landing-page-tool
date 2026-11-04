@@ -161,8 +161,17 @@ def generate(
         stop_reason=response.stop_reason,
         fell_back=fell_back,
         mock=False,
-        blocks=tuple(block.model_dump(exclude_none=True) for block in response.content),
+        blocks=tuple(_block_dict(block) for block in response.content),
     )
+
+
+def _block_dict(block: Any) -> dict[str, Any]:
+    """A reply block as a plain dict (the SDK's models dump themselves; anything else gives its
+    attributes), without empty fields, to send back in a tool-use loop."""
+    dump = getattr(block, "model_dump", None)
+    if callable(dump):
+        return dict(dump(exclude_none=True))
+    return {key: value for key, value in vars(block).items() if value is not None}
 
 
 def _price(response: Any, requested_model: str) -> tuple[Decimal | None, int, int, bool]:
