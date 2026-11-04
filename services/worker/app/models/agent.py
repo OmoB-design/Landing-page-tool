@@ -10,6 +10,9 @@ from app.models.desk import DeskState
 
 # The longest request Lander takes (the composer's limit).
 REQUEST_MAX = 500
+# Pictures a request can carry (B3.1d), and the largest one, decoded.
+MAX_IMAGES = 3
+MAX_IMAGE_BYTES = 3_000_000
 
 
 class AgentRequest(BaseModel):
@@ -22,6 +25,8 @@ class AgentRequest(BaseModel):
     target_key: str | None = Field(default=None, max_length=100)
     # The conversation to continue; None starts a new one.
     thread_id: UUID | None = None
+    # Pictures for reference (B3.1d): data URLs (PNG, JPEG or WebP), up to three.
+    images: list[str] = Field(default_factory=list, max_length=MAX_IMAGES)
 
 
 class AgentTarget(BaseModel):

@@ -18,12 +18,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from app import agent, desk
 from app.db import transaction
 from app.engines import comparison, paragraphs
+from app.fetch import browser
 from app.jobs.context import JobContext
 from app.jobs.errors import JobInterrupted, UserFacingError
 from app.models.agent import REQUEST_MAX, AgentTarget
 from app.pipeline import copy_pass
 from app.pipeline.nodes.load_inputs import read_inputs
-from app.providers import anthropic
+from app.providers import anthropic, storage
 from app.providers.ledger import node_context
 
 MAX_OUTPUT_TOKENS = 4096
@@ -38,6 +39,8 @@ class AgentPayload(BaseModel):
     message_id: UUID
     text: str = Field(min_length=1, max_length=REQUEST_MAX)
     target: AgentTarget | None = None
+    # The request's pictures, stored beside the page (B3.1d).
+    images: list[str] = Field(default_factory=list)
 
 
 def dedupe_key(payload: AgentPayload) -> str:
@@ -128,12 +131,28 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         inputs["template"], inputs["brand"], inputs["product"], inputs.get("wizard", {})
     )
     report = build["report"] or {}
+    looks = 0
+
+    def look(page: str, selector: str, width: int) -> tuple[bytes, str | None]:
+        """Lander looks (B3.1d): the page rendered in the guarded browser, one section pictured
+        and kept beside the page so the thread can show it."""
+        nonlocal looks
+        looks += 1
+        picture = browser.screenshot_part(page, selector, width=width)
+        path = f"{org_id}/{payload.build_id}/{agent.FOLDER}/{job_id}-look-{looks}.jpg"
+        try:
+            storage.upload(desk.BUCKET, path, picture, "image/jpeg", upsert=True)
+        except storage.StorageError:
+            return picture, None
+        return picture, path
+
     work = agent.Work(
         html=html,
         rules=rules_by_key,
         colors=colors,
         author_type=(build["wizard"] or {}).get("author_type"),
         facts=comparison.facts_from_report(report),
+        looker=look,
     )
     target = payload.target
     lines = len(paragraphs.paragraphs(html))
@@ -153,7 +172,22 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
     )
     messages: list[dict[str, Any]] = [
         *agent.history(payload.build_id, payload.thread_id, payload.message_id),
-        {"role": "user", "content": f"The page now:\n\n{work.outline()}\n\nRequest: {request}"},
+        {
+            "role": "user",
+            "content": [
+                *agent.image_blocks(payload.images),
+                {
+                    "type": "text",
+                    "text": f"The page now:\n\n{work.outline()}\n\nRequest: {request}"
+                    + (
+                        f"\n\n(The user attached {agent.plural(len(payload.images), 'picture')}"
+                        " above, for reference.)"
+                        if payload.images
+                        else ""
+                    ),
+                },
+            ],
+        },
     ]
     system = agent.system_prompt(brief)
     closing: str | None = None
@@ -204,7 +238,7 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
             )
             if call["name"] != "read_page" or failed:
                 reply["steps"].append(step.as_dict())
-                _event(ctx, step.label, "step", **step.as_dict())
+                _event(ctx, step.label, "step", **step.as_dict(), image_url=agent.link(step.image))
         if stopped:
             break
         messages.append({"role": "user", "content": outputs})
@@ -249,7 +283,12 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         "thread_id": str(payload.thread_id),
         "state": "stopped" if stopped else "done",
         "plan": reply["plan"],
-        "steps": reply["steps"],
+        # Links for the pictures Lander looked at, for the thread while the page is open (the
+        # saved conversation signs them again when it's loaded).
+        "steps": [
+            {**step, "image_url": agent.link(step["image"])} if step.get("image") else step
+            for step in reply["steps"]
+        ],
         "changes": work.changes,
         "closing": closing,
         "reason": reason,

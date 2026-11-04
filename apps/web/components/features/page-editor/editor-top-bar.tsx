@@ -1,11 +1,11 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 
 import { ShortcutButton } from "@/components/app/shortcut-button";
 import { TruncatedTitle } from "@/components/app/truncated-title";
 import { Button } from "@/components/ui/button";
+import { MorphText } from "@/components/ui/text-morph";
 import { SectionsCloseIcon, SectionsOpenIcon } from "@/components/ui/icons";
 import {
   BackArrowFigmaIcon,
@@ -25,8 +25,8 @@ import { DESKTOP_WIDTH, type Viewport, ViewportSwitch } from "./page-canvas";
  * The page editor's top bar (B3.1b, D105; as the template editor's): back to the review desk, the
  * page's name and its save status on the left; Sections (opens the section list), Desktop / Phone,
  * the zoom when the page is zoomed out to fit (Desktop keeps a 1280 px layout), then Undo and Redo
- * on the right. The save status crossfades between "Saving…", "Updating the
- * page…" (the canvas loading the newer page behind the one shown) and "Saved · version N", and the
+ * on the right. The save status morphs (torph) between "Saving…", "Updating the page…" (the canvas
+ * loading the newer page behind the one shown) and "Saved · version N", its number rolling; the
  * hint says the page can be typed in (or that it waits while Lander rewrites).
  */
 export function EditorTopBar({
@@ -86,21 +86,13 @@ export function EditorTopBar({
           )}
         />
         <span className="relative inline-grid">
-          <AnimatePresence initial={false} mode="popLayout">
-            <motion.span
-              key={status}
-              initial={{ opacity: 0, y: 3 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -3 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {status === "saving"
-                ? "Saving…"
-                : status === "updating"
-                  ? "Updating the page…"
-                  : `Saved · version ${version}`}
-            </motion.span>
-          </AnimatePresence>
+          <MorphText className="whitespace-nowrap">
+            {status === "saving"
+              ? "Saving…"
+              : status === "updating"
+                ? "Updating the page…"
+                : `Saved · version ${version}`}
+          </MorphText>
         </span>
       </p>
       <p className="hidden min-w-0 truncate text-type-caption-1 text-sub-text 2xl:block">
@@ -134,7 +126,7 @@ export function EditorTopBar({
                 tabIndex={0}
                 className="rounded-sm px-1 text-type-caption-1 text-sub-text tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {Math.round(zoom * 100)}%
+                <MorphText>{`${Math.round(zoom * 100)}%`}</MorphText>
               </span>
             </TooltipTrigger>
             <TooltipContent>

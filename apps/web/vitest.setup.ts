@@ -25,6 +25,14 @@ if (typeof window !== "undefined") {
     removeListener() {},
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
+  // Web Animations (torph's MorphText measures and runs its morphs with them): nothing runs.
+  Element.prototype.getAnimations ??= () => [];
+  Element.prototype.animate ??= (() => ({
+    cancel() {},
+    finish() {},
+    onfinish: null,
+    finished: Promise.resolve(),
+  })) as unknown as typeof Element.prototype.animate;
 }
 
 // Unmount components rendered by Testing Library after each test in DOM (jsdom) test files.

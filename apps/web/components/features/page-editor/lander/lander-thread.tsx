@@ -13,6 +13,7 @@ import { WorkingDots } from "@/components/app/working-dots";
 import { Button } from "@/components/ui/button";
 import {
   AlertIcon,
+  BrushIcon,
   CheckIcon,
   ChevronRightIcon,
   DuplicateIcon,
@@ -186,6 +187,7 @@ export function LanderThread({
                   <UserBubble
                     request={view.turn.request}
                     target={view.turn.target}
+                    images={view.turn.images}
                   />
                   <Reply
                     view={view}
@@ -230,8 +232,8 @@ function Empty({
           What should we change?
         </h2>
         <p className="max-w-64 text-type-caption-1 text-sub-text">
-          Ask Lander to rewrite lines, move or copy sections, or recolour the
-          page. Every request can be undone.
+          Ask Lander to rewrite lines, move sections, restyle a box or recolour
+          the page. Every request can be undone.
         </p>
       </motion.div>
       <div className="flex w-full flex-col gap-1">
@@ -271,9 +273,11 @@ function Empty({
 function UserBubble({
   request,
   target,
+  images,
 }: {
   request: string;
   target: LanderTarget;
+  images: string[];
 }) {
   const { arrive, reduced } = useLanderMotion();
   return (
@@ -283,6 +287,27 @@ function UserBubble({
       transition={arrive}
       className="flex flex-col items-end gap-1"
     >
+      {images.length ? (
+        <ul aria-label="Pictures sent" className="flex justify-end gap-1.5">
+          {images.map((url, i) => (
+            <li key={`${i}-${url.slice(-32)}`}>
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="block size-16 overflow-hidden rounded-md ring-thin ring-stroke outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- a signed storage link or a local picture */}
+                <img
+                  src={url}
+                  alt={`Picture ${i + 1}`}
+                  className="size-full object-cover"
+                />
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <p className="max-w-4/5 rounded-item bg-foreground-02 px-3 py-2 text-type-body-small text-heading-01">
         {request || `Give ${target ? target.label : "the page"} fresh words`}
       </p>
@@ -406,13 +431,31 @@ function Reply({
                     />
                   )}
                 </span>
-                <span
-                  className={cn(
-                    "text-type-caption-1 leading-5",
-                    step.ok ? "text-heading-05" : "text-sub-text",
-                  )}
-                >
-                  {step.label}
+                <span className="flex min-w-0 flex-col gap-1.5">
+                  <span
+                    className={cn(
+                      "text-type-caption-1 leading-5",
+                      step.ok ? "text-heading-05" : "text-sub-text",
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                  {step.image_url ? (
+                    <a
+                      href={step.image_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open what Lander saw: ${step.label}`}
+                      className="block w-48 overflow-hidden rounded-md ring-thin ring-stroke outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- a signed storage link */}
+                      <img
+                        src={step.image_url}
+                        alt=""
+                        className="max-h-32 w-full object-cover object-top"
+                      />
+                    </a>
+                  ) : null}
                 </span>
               </motion.li>
             ))}
@@ -524,7 +567,11 @@ function Change({
     );
   }
   const Icon =
-    change.kind === "colors" ? RecolorIcon : SECTION_ICONS[change.action];
+    change.kind === "colors"
+      ? RecolorIcon
+      : change.kind === "style"
+        ? BrushIcon
+        : SECTION_ICONS[change.action];
   return (
     <motion.div
       initial={{
@@ -537,8 +584,17 @@ function Change({
       className="flex min-h-9 items-center gap-2 rounded-item bg-surface-primary px-3 py-2 shadow-light ring-thin ring-stroke"
     >
       <Icon aria-hidden className="size-3.5 shrink-0 text-icon-system" />
-      <span className="min-w-0 flex-1 truncate text-type-caption-1 font-medium text-heading-02">
-        {change.label}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-type-caption-1 font-medium text-heading-02">
+          {change.label}
+        </span>
+        {change.kind === "style" ? (
+          <span className="truncate text-type-caption-2 text-heading-06">
+            {Object.entries(change.styles)
+              .map(([prop, value]) => `${prop} ${value}`)
+              .join(" · ")}
+          </span>
+        ) : null}
       </span>
       {change.kind === "colors" ? (
         <span

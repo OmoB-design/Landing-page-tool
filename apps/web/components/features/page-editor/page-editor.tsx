@@ -219,9 +219,13 @@ function Editor({
     setLanderOpen(true);
     setFocusSignal((n) => n + 1);
   }, [setLanderOpen]);
-  const send = (text: string, to: LanderTarget = target) => {
+  const send = (
+    text: string,
+    to: LanderTarget = target,
+    images: string[] = [],
+  ) => {
     setLanderOpen(true);
-    void lander.send(text, to);
+    void lander.send(text, to, images);
   };
   const improve = (key: string) => {
     select(key);
@@ -503,7 +507,7 @@ function Editor({
                       onStop={() => void lander.stop()}
                       focusSignal={focusSignal}
                       onClearTarget={() => setWholePage(true)}
-                      onSend={(text) => send(text)}
+                      onSend={(text, images) => send(text, target, images)}
                     />
                   }
                 />

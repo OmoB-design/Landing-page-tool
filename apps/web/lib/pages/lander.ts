@@ -30,6 +30,8 @@ export type LanderTurn = {
   refused: string | null;
   /** The saved reply, for a request loaded from the conversation. */
   saved: AgentReply | null;
+  /** The pictures sent with it (links or, while sending, the pictures themselves). */
+  images: string[];
 };
 
 export type TurnState = "starting" | "working" | "done" | "stopped" | "failed";
@@ -58,7 +60,13 @@ export function replyFromEvents(
     const e = parsed.data;
     if (e.type === "plan") plan = e.text;
     else if (e.type === "closing") closing = e.text;
-    else steps.push({ label: e.label, ok: e.ok, change: e.change ?? null });
+    else
+      steps.push({
+        label: e.label,
+        ok: e.ok,
+        change: e.change ?? null,
+        image_url: e.image_url ?? null,
+      });
   }
   const changes = steps.flatMap((s) => (s.change ? [s.change] : []));
   return { plan, steps, changes, closing };
@@ -117,6 +125,9 @@ export function turnsFromThread(
         startedAt: Date.parse(m.created_at),
         jobId: m.job_id,
         refused: null,
+        images: (m.content.image_urls ?? []).filter(
+          (url): url is string => typeof url === "string",
+        ),
         saved:
           reply ??
           (running

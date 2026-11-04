@@ -117,6 +117,23 @@ def remove_folder(bucket: str, folder: str) -> int:
     return len(paths)
 
 
+def signed_url(bucket: str, path: str, expires: int = 3600) -> str:
+    """A link to a private object that works for `expires` seconds (the thread's pictures in the
+    page editor, B3.1d)."""
+    response = _send(
+        "POST",
+        f"{_base()}/object/sign/{bucket}/{path}",
+        "signing",
+        headers=_headers(),
+        json={"expiresIn": expires},
+    )
+    body = response.json()
+    signed = body.get("signedURL") or body.get("signedUrl")
+    if not isinstance(signed, str):
+        raise StorageError("Storage signing answered without a link.")
+    return f"{_base()}{signed}"
+
+
 def public_url(bucket: str, path: str) -> str:
     """Only for public buckets (`assets`)."""
     return f"{_base()}/object/public/{bucket}/{path}"

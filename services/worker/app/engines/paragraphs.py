@@ -140,6 +140,13 @@ def paragraphs(html: str) -> list[Paragraph]:
     return out
 
 
+def element_of(soup: BeautifulSoup, number: int) -> Tag | None:
+    """The element paragraph `number` sits in, in an already parsed page (Lander's styling,
+    B3.1d)."""
+    entry = next((e for e in _index(soup) if e.number == number), None)
+    return entry.element if entry else None
+
+
 def numbers(html: str) -> dict[str, int]:
     """The paragraph number of each fragment id."""
     return {fid: entry.number for entry in _index(parse(html)) for fid, _ in entry.fragments}

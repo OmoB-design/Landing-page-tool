@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { MorphText } from "@/components/ui/text-morph";
 import {
   ChevronDownIcon,
   PagesIcon,
@@ -233,16 +234,17 @@ export function UndoControl({
 }) {
   const quiet =
     "h-7 px-2 text-type-caption-1 text-heading-02 hover:bg-foreground-03";
-  if (undo === "can-undo")
+  // One button whose word morphs (torph) as the request is undone and redone.
+  if (undo === "can-undo" || undo === "undone")
     return (
-      <Button variant="ghost" size="sm" onClick={onUndo} className={quiet}>
-        Undo
-      </Button>
-    );
-  if (undo === "undone")
-    return (
-      <Button variant="ghost" size="sm" onClick={onRedo} className={quiet}>
-        Redo
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={undo === "undone" ? onRedo : onUndo}
+        aria-label={undo === "undone" ? "Redo" : "Undo"}
+        className={quiet}
+      >
+        <MorphText>{undo === "undone" ? "Redo" : "Undo"}</MorphText>
       </Button>
     );
   if (undo === "later")

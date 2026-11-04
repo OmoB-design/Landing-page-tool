@@ -9,7 +9,9 @@ import type { CSSProperties, ReactNode } from "react";
  * highlight band through the letters of a label, like an AI "Thinking…" state. The styles are injected below.
  *
  * From AffectUI (https://www.affectui.com, MIT – see THIRD_PARTY_NOTICES.md). Colours, radius and
- * font follow our design tokens via app/globals.css (DECISIONS.md D48). Unmodified otherwise.
+ * font follow our design tokens via app/globals.css (DECISIONS.md D48). LP change: ShimmerText's
+ * `active` (B3.1d) turns the sweep off without remounting its children, so a morphing label inside
+ * keeps animating as work finishes.
  */
 
 export type SkeletonProps = {
@@ -30,6 +32,8 @@ export type ShimmerTextProps = {
   /** Seconds for one pass of the highlight */
   duration?: number;
   className?: string;
+  /** Whether the highlight runs (LP change): off, the children show as they are. */
+  active?: boolean;
 };
 
 const len = (v: number | string | undefined) =>
@@ -71,12 +75,15 @@ export function ShimmerText({
   children,
   duration = 2,
   className,
+  active = true,
 }: ShimmerTextProps) {
   return (
     <>
       <Style />
       <span
-        className={["ui-shm-text", className].filter(Boolean).join(" ")}
+        className={[active ? "ui-shm-text" : null, className]
+          .filter(Boolean)
+          .join(" ")}
         style={{ "--ui-shm-text-dur": `${duration}s` } as CSSProperties}
       >
         {children}

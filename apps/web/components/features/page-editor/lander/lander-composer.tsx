@@ -1,13 +1,17 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { type FormEvent, useEffect, useRef } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
-import { CloseIcon } from "@/components/ui/icons";
+import { toast } from "@/components/app/toaster";
+import { AttachImageIcon, CloseIcon } from "@/components/ui/icons";
+import { ATTACHABLE, attachable, shrink } from "@/lib/pages/attachments";
 import { type LanderTarget, REQUEST_MAX } from "@/lib/pages/lander";
 import { cn } from "@/lib/utils";
+import { AGENT_IMAGES_MAX } from "@/lib/validators/agent";
 
 import {
+  IconButton,
   MicButton,
   SendButton,
   StopButton,
@@ -20,7 +24,9 @@ import {
  * radius here): the request on top, growing with what you write; under it, what it's about (the
  * selected section, × for the whole page), the count as you near the limit, the mic and the send
  * disc. Enter sends, Shift+Enter starts a new line. While Lander works, a soft ring runs round it
- * and sending waits (the send disc spins).
+ * and the send disc becomes Stop. Pictures (B3.1d, up to three, for reference) come from the
+ * attach button, a paste or a drop, sized down in the browser, and show as thumbnails over the
+ * field until sent.
  */
 export function LanderComposer({
   target,
@@ -41,10 +47,33 @@ export function LanderComposer({
   /** Changes when the editor hands the composer a section: the field takes the focus. */
   focusSignal: number;
   onClearTarget: () => void;
-  onSend: (text: string) => void;
+  onSend: (text: string, images: string[]) => void;
 }) {
   const { text, setText, dictation } = useComposerText();
   const field = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
+  const [images, setImages] = useState<string[]>([]);
+  const [dropping, setDropping] = useState(false);
+
+  const attach = async (files: File[]) => {
+    const pictures = files.filter(attachable);
+    if (files.length && !pictures.length) {
+      toast.error("Pictures can be PNG, JPEG or WebP.");
+      return;
+    }
+    const room = AGENT_IMAGES_MAX - images.length;
+    if (pictures.length > room)
+      toast(`Up to ${AGENT_IMAGES_MAX} pictures a request.`);
+    const ready = await Promise.all(
+      pictures
+        .slice(0, Math.max(0, room))
+        .map((file) => shrink(file).catch(() => null)),
+    );
+    const good = ready.filter((url): url is string => url !== null);
+    if (good.length < ready.length) toast.error("A picture couldn’t be read.");
+    if (good.length)
+      setImages((now) => [...now, ...good].slice(0, AGENT_IMAGES_MAX));
+  };
 
   useEffect(() => {
     if (focusSignal > 0) field.current?.focus();
@@ -54,8 +83,9 @@ export function LanderComposer({
     event?.preventDefault();
     if (dictation.listening) dictation.stop();
     if (!text.trim() || working) return;
-    onSend(text.trim());
+    onSend(text.trim(), images);
     setText("");
+    setImages([]);
   };
 
   const left = REQUEST_MAX - text.length;
@@ -66,8 +96,66 @@ export function LanderComposer({
       onClick={(event) => {
         if (event.target === event.currentTarget) field.current?.focus();
       }}
-      className="lander-aura relative mx-3 mb-3 flex shrink-0 cursor-text flex-col gap-2 rounded-card bg-surface-primary p-3 shadow-pop ring-thin ring-stroke transition-shadow duration-200 ease-out focus-within:shadow-float"
+      onDragOver={(event) => {
+        if (!Array.from(event.dataTransfer.types).includes("Files")) return;
+        event.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+          setDropping(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDropping(false);
+        void attach(Array.from(event.dataTransfer.files));
+      }}
+      className={cn(
+        "lander-aura relative mx-3 mb-3 flex shrink-0 cursor-text flex-col gap-2 rounded-card bg-surface-primary p-3 shadow-pop ring-thin ring-stroke transition-shadow duration-200 ease-out focus-within:shadow-float",
+        dropping && "ring-stroke-input-active",
+      )}
     >
+      <AnimatePresence initial={false}>
+        {images.length ? (
+          <motion.ul
+            key="pictures"
+            aria-label="Pictures to send"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.2, 0.8, 0, 1] }}
+            className="-mb-0.5 flex gap-2 overflow-hidden"
+          >
+            {images.map((url, i) => (
+              <motion.li
+                key={url.slice(-48)}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="group relative size-12 shrink-0 overflow-hidden rounded-md ring-thin ring-stroke"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- a picture being sent: a local data URL */}
+                <img
+                  src={url}
+                  alt={`Picture ${i + 1}`}
+                  className="size-full object-cover"
+                />
+                <button
+                  type="button"
+                  aria-label={`Remove picture ${i + 1}`}
+                  onClick={() =>
+                    setImages((now) => now.filter((_, j) => j !== i))
+                  }
+                  className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center rounded-full bg-heading-01 text-surface-primary opacity-0 transition-opacity duration-150 outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <CloseIcon aria-hidden className="size-2.5" />
+                </button>
+              </motion.li>
+            ))}
+          </motion.ul>
+        ) : null}
+      </AnimatePresence>
       <label className="sr-only" htmlFor="lander-composer">
         Ask Lander
       </label>
@@ -86,6 +174,13 @@ export function LanderComposer({
               : "Ask Lander to change the page"
         }
         onChange={(event) => setText(event.target.value)}
+        onPaste={(event) => {
+          const files = Array.from(event.clipboardData.files);
+          if (files.some(attachable)) {
+            event.preventDefault();
+            void attach(files);
+          }
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
@@ -126,6 +221,27 @@ export function LanderComposer({
         >
           {left}
         </span>
+        <IconButton
+          label={
+            images.length >= AGENT_IMAGES_MAX
+              ? `Up to ${AGENT_IMAGES_MAX} pictures`
+              : "Attach a picture"
+          }
+          onClick={() => picker.current?.click()}
+        >
+          <AttachImageIcon aria-hidden className="size-4" />
+        </IconButton>
+        <input
+          ref={picker}
+          type="file"
+          accept={ATTACHABLE.join(",")}
+          multiple
+          hidden
+          onChange={(event) => {
+            void attach(Array.from(event.target.files ?? []));
+            event.target.value = "";
+          }}
+        />
         {dictation.supported ? (
           <MicButton
             listening={dictation.listening}

@@ -13,7 +13,7 @@ from typing import Any
 from urllib.parse import unquote, urlsplit
 
 import structlog
-from playwright.sync_api import Page, ProxySettings, Route, sync_playwright
+from playwright.sync_api import FloatRect, Page, ProxySettings, Route, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from pydantic import BaseModel, Field
 
@@ -27,6 +27,8 @@ USER_AGENT = (
     "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
 )
 NAV_TIMEOUT_MS = 30_000
+# Room around a part of a page Lander pictures (B3.1d), in CSS px.
+MARGIN = 24
 
 
 def _guard(route: Route) -> None:
@@ -188,3 +190,43 @@ def render_signals(url: str) -> RenderedSignals:
 def read_signals(page: Page) -> RenderedSignals:
     data: dict[str, Any] = page.evaluate(_COLLECT_JS)
     return RenderedSignals.model_validate(data)
+
+
+def screenshot_part(
+    html: str, selector: str | None, *, width: int = 1280, max_height: int = 1400
+) -> bytes:
+    """A JPEG of one part of a page (`selector`, else its top) at `width` CSS px, at most
+    `max_height` tall and 1000 px wide, for Lander to look at what it changed (B3.1d). Our own
+    page, but it still loads its images and fonts through the SSRF guard."""
+    from PIL import Image
+
+    with open_page() as page:
+        page.set_viewport_size({"width": width, "height": max_height})
+        with suppress(PlaywrightTimeoutError):
+            page.set_content(html, wait_until="load", timeout=15_000)
+        page.wait_for_timeout(500)  # web fonts and scripted layout
+        target = page.locator(selector).first if selector else None
+        box = None
+        if target is not None and target.count():
+            target.scroll_into_view_if_needed(timeout=5_000)
+            box = target.bounding_box()
+        if box:
+            # The part with a little room around it, inside the viewport it was scrolled into.
+            x, y = max(0.0, box["x"] - MARGIN), max(0.0, box["y"] - MARGIN)
+            clip: FloatRect = {
+                "x": x,
+                "y": y,
+                "width": min(width - x, box["width"] + 2 * MARGIN),
+                "height": min(max_height - y, box["height"] + 2 * MARGIN),
+            }
+            shot = page.screenshot(clip=clip, animations="disabled")
+        else:
+            shot = page.screenshot(clip={"x": 0, "y": 0, "width": width, "height": 900})
+    image = Image.open(io.BytesIO(shot)).convert("RGB")
+    if image.height > max_height:
+        image = image.crop((0, 0, image.width, max_height))
+    if image.width > 1000:
+        image = image.resize((1000, round(image.height * 1000 / image.width)))
+    out = io.BytesIO()
+    image.save(out, format="JPEG", quality=80, optimize=True)
+    return out.getvalue()

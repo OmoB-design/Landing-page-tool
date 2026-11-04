@@ -9,6 +9,8 @@ import { deskStateSchema } from "@/lib/validators/desk";
 
 /** The longest request Lander takes (worker AgentRequest.text). */
 export const AGENT_REQUEST_MAX = 500;
+/** Pictures a request can carry (worker AgentRequest.images, B3.1d). */
+export const AGENT_IMAGES_MAX = 3;
 
 export const agentTargetSchema = z
   .object({ key: z.string(), label: z.string() })
@@ -48,6 +50,13 @@ export const agentChangeSchema = z.discriminatedUnion("kind", [
     before: palette.nullable(),
     after: palette,
   }),
+  /** CSS Lander set on one box (B3.1d): "Fitted the Verified box to its text". */
+  z.object({
+    kind: z.literal("style"),
+    label: z.string(),
+    section: z.string().nullable(),
+    styles: z.record(z.string(), z.string()),
+  }),
 ]);
 export type AgentChange = z.infer<typeof agentChangeSchema>;
 
@@ -56,6 +65,8 @@ export const agentStepSchema = z.object({
   label: z.string(),
   ok: z.boolean(),
   change: agentChangeSchema.nullable().optional(),
+  /** What Lander looked at (B3.1d): a signed link to the picture, for an hour. */
+  image_url: z.string().nullable().optional(),
 });
 export type AgentStep = z.infer<typeof agentStepSchema>;
 
@@ -83,7 +94,12 @@ export const agentMessageSchema = z.discriminatedUnion("role", [
   z.object({
     ...messageBase,
     role: z.literal("user"),
-    content: z.object({ text: z.string(), target: agentTargetSchema }),
+    content: z.object({
+      text: z.string(),
+      target: agentTargetSchema,
+      /** The pictures attached (signed links, B3.1d). */
+      image_urls: z.array(z.string().nullable()).optional(),
+    }),
   }),
   z.object({
     ...messageBase,
@@ -113,6 +129,16 @@ export const agentRequestSchema = z.object({
   text: z.string().trim().min(1).max(AGENT_REQUEST_MAX),
   target_key: z.string().max(100).nullable().optional(),
   thread_id: z.string().uuid().nullable().optional(),
+  /** Pictures for reference, as data URLs (sized down in the browser first). */
+  images: z
+    .array(
+      z
+        .string()
+        .max(4_200_000)
+        .regex(/^data:image\/(png|jpeg|webp);base64,/),
+    )
+    .max(AGENT_IMAGES_MAX)
+    .optional(),
 });
 export type AgentRequestInput = z.infer<typeof agentRequestSchema>;
 

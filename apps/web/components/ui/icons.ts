@@ -33,6 +33,7 @@ export {
   HeartHandshake as WarmIcon,
   WandSparkles as RewriteIcon,
   Square as StopIcon,
+  ImagePlus as AttachImageIcon,
   ArrowUpDown as MoveSectionIcon,
   Palette as RecolorIcon,
   X as StepFailedIcon,

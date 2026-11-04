@@ -169,7 +169,7 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
   const working = Boolean(active) || desk.redraft !== null;
 
   const send = useCallback(
-    async (request: string, target: LanderTarget) => {
+    async (request: string, target: LanderTarget, images: string[] = []) => {
       if (working) {
         toast("Lander is still on the last request.");
         return;
@@ -184,12 +184,14 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
         jobId: null,
         refused: null,
         saved: null,
+        images,
       };
       setTurns((all) => [...all, turn]);
       const started = await startAgent({
         text: turn.request,
         target_key: target?.key ?? null,
         thread_id: threadId,
+        images,
       });
       if (started) setThreadId(started.thread_id);
       setTurns((all) =>

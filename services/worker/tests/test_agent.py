@@ -155,6 +155,54 @@ def test_lander_knows_which_colour_the_buttons_use_and_changes_only_that() -> No
     assert "#f5a524" in w2.html  # no sweep by hue
 
 
+BYLINE = (
+    "<html><head><style>.badge { display: block; padding: 4px 18px 4px 10px }</style></head>"
+    '<body><section data-lp-section="hero"><h1>Glow</h1><div class="byline">'
+    '<span class="name">Clara Bennett</span><div class="badge"><span>Verified</span></div>'
+    "</div></section></body></html>"
+)
+
+
+def test_lander_inspects_styles_and_looks_at_a_box() -> None:
+    """The owner's live ask (ALL-1): the Verified frame should hug its text with even padding."""
+    shots: list[tuple[str, int]] = []
+
+    def looker(html: str, selector: str, width: int) -> tuple[bytes, str | None]:
+        shots.append((selector, width))
+        assert "data-lp-look" in html
+        return b"jpeg", "org/build/agent/look-1.jpg"
+
+    w = agent.Work(html=BYLINE, rules={}, colors=None, looker=looker)
+    out, failed, step = w.run("inspect_element", {"line": 3})
+    assert not failed and "line 3, up 1: <div.badge>" in str(out)
+    out, failed, step = w.run(
+        "style_element",
+        {
+            "line": 3,
+            "up": 1,
+            "styles": {"width": "fit-content", "padding": "4px 10px", "position": "fixed"},
+            "label": "Fitted the Verified box to its text",
+        },
+    )
+    assert not failed and step.label == "Fitted the Verified box to its text"
+    assert "Set width: fit-content; padding: 4px 10px." in str(out) and "position" in str(out)
+    assert step.change == {
+        "kind": "style",
+        "label": "Fitted the Verified box to its text",
+        "section": "Hero",
+        "styles": {"width": "fit-content", "padding": "4px 10px"},
+    }
+    assert 'style="width: fit-content; padding: 4px 10px"' in w.html
+    out, failed, step = w.run("look", {"line": 3, "view": "phone"})
+    assert not failed and step.label == "Looked at Hero (phone)"
+    assert step.image == "org/build/agent/look-1.jpg" and shots == [("[data-lp-look]", 390)]
+    assert isinstance(out, list) and out[0]["type"] == "image"
+    assert out[0]["source"]["media_type"] == "image/jpeg"
+    # Without a renderer, looking says so instead of pretending.
+    _, failed, step = agent.Work(html=BYLINE, rules={}, colors=None).run("look", {"line": 3})
+    assert failed and step.label == "Couldn't look at Hero"
+
+
 def test_edited_lines_are_renumbered_after_sections_move() -> None:
     w = work()
     w.run("edit_lines", {"edits": [{"number": number(w, "Is it gentle?"), "text": "Gentle?"}]})
@@ -322,9 +370,36 @@ def test_stop_keeps_what_lander_did_and_follow_ups_see_the_conversation(
     turns = script.calls[0]["messages"]
     assert turns[0] == {"role": "user", "content": "Tidy the FAQ"}
     assert turns[1]["role"] == "assistant" and "Rewrote 1 line" in turns[1]["content"]
-    assert "Request: Put them first" in turns[2]["content"]
+    assert "Request: Put them first" in turns[2]["content"][-1]["text"]
     assert script.calls[0]["tools"] == agent.TOOLS and script.calls[0]["cache"] is True
     assert len(conversation(client, user, finished)["messages"]) == 4
+
+
+PIXEL = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+@needs_db
+def test_a_picture_goes_with_the_request_and_comes_back_in_the_conversation(
+    client: TestClient, user: DbUser, finished: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    version = desk(client, user, finished)["build"]["page_version"]
+    script = Script([{"type": "text", "text": "That's a reference picture; nothing to change."}])
+    monkeypatch.setattr(anthropic, "generate", script)
+    started = ask(client, user, finished, version, "Match this look", images=[PIXEL])
+    assert started.status_code == 200, started.text
+    bad = ask(client, user, finished, version, "Again", images=["data:text/html;base64,PGI+"])
+    assert bad.status_code == 422
+    job = run_agent()
+    assert job["status"] == "succeeded", job["error"]
+    first = script.calls[0]["messages"][-1]["content"]
+    assert first[0]["type"] == "image" and first[0]["source"]["media_type"] == "image/png"
+    assert "attached 1 picture" in first[-1]["text"]
+    request = conversation(client, user, finished)["messages"][0]["content"]
+    assert len(request["images"]) == 1 and request["images"][0].endswith(".png")
+    assert request["image_urls"][0].startswith("http") and "token=" in request["image_urls"][0]
 
 
 @needs_db

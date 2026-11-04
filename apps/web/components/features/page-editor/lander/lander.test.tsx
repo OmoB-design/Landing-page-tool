@@ -36,6 +36,7 @@ const done: TurnView = {
     jobId: "j1",
     refused: null,
     saved: null,
+    images: [],
   },
   state: "done",
   queued: false,
@@ -105,7 +106,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
     );
     fireEvent.change(box, { target: { value: "Warmer" } });
     fireEvent.keyDown(box, { key: "Enter" });
-    expect(onSend).toHaveBeenCalledWith("Warmer");
+    expect(onSend).toHaveBeenCalledWith("Warmer", []);
     fireEvent.click(
       screen.getByRole("button", {
         name: "Ask about the whole page instead of Hero",

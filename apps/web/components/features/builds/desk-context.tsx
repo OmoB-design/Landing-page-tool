@@ -105,6 +105,7 @@ type DeskContextValue = {
     text: string;
     target_key: string | null;
     thread_id: string | null;
+    images?: string[];
   }) => Promise<AgentStart | null>;
   /** Stop on Lander's running request: it keeps what it did by its next step. */
   stopAgent: () => Promise<void>;
@@ -386,6 +387,7 @@ export function DeskProvider({
       text: string;
       target_key: string | null;
       thread_id: string | null;
+      images?: string[];
     }) => {
       try {
         const started = await apiFetch(
