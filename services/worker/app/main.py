@@ -138,6 +138,11 @@ def create_build(body: BuildRequest, user: CurrentUser) -> BuildCreated:
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             "Confirm this cloned page's analysis before building from it.",
         ) from exc
+    except builds.CompetitorsMissingError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "A ranking page needs its four competitor pages. Add them in the Competitors step.",
+        ) from exc
     return BuildCreated(build=BuildSummary.model_validate(build), job=job)
 
 

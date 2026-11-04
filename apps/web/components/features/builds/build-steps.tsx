@@ -58,12 +58,15 @@ export function BuildSteps({
   jobId,
   finished,
   origin = "owned",
+  templateType = null,
 }: {
   jobId: string | null;
   /** The build has a report, so its steps are done even before the job loads. */
   finished: boolean;
   /** A cloned build has the clone-only steps too (B2.3). */
   origin?: string;
+  /** A Top 5 ranking build reads its competitors too (B2.4a). */
+  templateType?: string | null;
 }) {
   const { data: job } = useJob(jobId);
   usePageRefresh(
@@ -71,7 +74,11 @@ export function BuildSteps({
       ? job.id
       : null,
   );
-  const steps = buildSteps(job ?? null, finished, buildStepsFor(origin));
+  const steps = buildSteps(
+    job ?? null,
+    finished,
+    buildStepsFor(origin, templateType),
+  );
   const events =
     job?.events.filter(
       (event) =>

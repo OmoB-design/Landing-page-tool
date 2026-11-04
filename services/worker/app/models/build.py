@@ -4,7 +4,7 @@ creates one. The create wizard (B1.2) fills every field; test builds use the def
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 AuthorType = Literal["writer", "expert", "customer", "influencer"]
 
@@ -15,6 +15,28 @@ class Emphasis(BaseModel):
     benefits: list[str] = Field(default_factory=list, max_length=3)
     features: list[str] = Field(default_factory=list, max_length=3)
     objections: list[str] = Field(default_factory=list, max_length=3)
+
+
+class Competitors(BaseModel):
+    """A Top 5 ranking build's competitors (BUILD_SPEC §8.7, D102): four product pages, in rank
+    order (#2 to #5), and how the page names them. Neutral labels ("Brand B") are the default;
+    real names also show their photos."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    urls: list[str] = Field(min_length=4, max_length=4)
+    naming: Literal["neutral", "real"] = "neutral"
+
+    @field_validator("urls")
+    @classmethod
+    def _distinct(cls, urls: list[str]) -> list[str]:
+        cleaned = [url.strip() for url in urls]
+        if any(not url or len(url) > 2000 for url in cleaned):
+            raise ValueError("each competitor needs its product page's address")
+        keys = [url.lower().removeprefix("https://").removeprefix("http://") for url in cleaned]
+        if len({key.rstrip("/") for key in keys}) != len(keys):
+            raise ValueError("each competitor needs a different page")
+        return cleaned
 
 
 class BuildWizard(BaseModel):
@@ -29,6 +51,7 @@ class BuildWizard(BaseModel):
     audience_gender: Literal["any", "women", "men"] = "any"
     audience_age: str | None = Field(default=None, max_length=20)
     emphasis: Emphasis = Field(default_factory=Emphasis)
+    competitors: Competitors | None = None
 
 
 class BuildRequest(BaseModel):

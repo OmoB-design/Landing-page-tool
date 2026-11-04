@@ -265,6 +265,106 @@ export type Database = {
           },
         ]
       }
+      build_competitors: {
+        Row: {
+          build_id: string
+          claims: Json
+          currency: string | null
+          error: string | null
+          id: string
+          image_asset_id: string | null
+          label: string
+          name: string | null
+          org_id: string
+          price: number | null
+          pull_source: string | null
+          pulled_at: string
+          rank: number
+          rating: number | null
+          rating_best: number | null
+          rating_count: number | null
+          reviews: Json
+          sale_price: number | null
+          status: string
+          summary: string | null
+          url: string
+          vendor: string | null
+          warnings: Json
+        }
+        Insert: {
+          build_id: string
+          claims?: Json
+          currency?: string | null
+          error?: string | null
+          id?: string
+          image_asset_id?: string | null
+          label: string
+          name?: string | null
+          org_id: string
+          price?: number | null
+          pull_source?: string | null
+          pulled_at?: string
+          rank: number
+          rating?: number | null
+          rating_best?: number | null
+          rating_count?: number | null
+          reviews?: Json
+          sale_price?: number | null
+          status: string
+          summary?: string | null
+          url: string
+          vendor?: string | null
+          warnings?: Json
+        }
+        Update: {
+          build_id?: string
+          claims?: Json
+          currency?: string | null
+          error?: string | null
+          id?: string
+          image_asset_id?: string | null
+          label?: string
+          name?: string | null
+          org_id?: string
+          price?: number | null
+          pull_source?: string | null
+          pulled_at?: string
+          rank?: number
+          rating?: number | null
+          rating_best?: number | null
+          rating_count?: number | null
+          reviews?: Json
+          sale_price?: number | null
+          status?: string
+          summary?: string | null
+          url?: string
+          vendor?: string | null
+          warnings?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "build_competitors_build_id_fkey"
+            columns: ["build_id"]
+            isOneToOne: false
+            referencedRelation: "builds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "build_competitors_image_asset_id_fkey"
+            columns: ["image_asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "build_competitors_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       build_snapshots: {
         Row: {
           build_id: string

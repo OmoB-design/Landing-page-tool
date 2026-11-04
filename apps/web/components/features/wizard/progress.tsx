@@ -4,15 +4,12 @@ import { ProgressDoneIcon } from "@/components/ui/lp-icons";
 import { cn } from "@/lib/utils";
 import {
   type StepId,
-  WIZARD_STEPS,
   type WizardState,
   canOpen,
   stepIndex,
   stepReady,
+  wizardSteps,
 } from "@/lib/wizard/state";
-
-/** The steps that count towards "n/5 completed" (Review & build is where you finish). */
-const COUNTED = WIZARD_STEPS.filter((step) => step.id !== "review");
 
 /**
  * The wizard's progress column (Figma: Create new page, Progress), 200 px: a 52 px header on
@@ -30,8 +27,11 @@ export function WizardProgress({
   state: WizardState;
   onOpen: (step: StepId) => void;
 }) {
-  const current = stepIndex(state.step);
-  const done = COUNTED.filter(
+  const steps = wizardSteps(state.ranking);
+  // The steps that count towards "n/5 completed" (Review & build is where you finish).
+  const counted = steps.filter((step) => step.id !== "review");
+  const current = stepIndex(state.step, state.ranking);
+  const done = counted.filter(
     (step, index) => index < current && stepReady(state, step.id),
   ).length;
   return (
@@ -44,7 +44,7 @@ export function WizardProgress({
           Progress
         </span>
         <span className="text-type-caption-2 font-medium text-heading-05 tabular-nums">
-          {done}/{COUNTED.length} completed
+          {done}/{counted.length} completed
         </span>
       </div>
       <ol className="relative flex flex-col gap-1 px-3 pt-6 pb-3">
@@ -54,7 +54,7 @@ export function WizardProgress({
           // Under the current step: rows are 28 px with 4 px between (data, not styling).
           style={{ transform: `translateY(${current * 2}rem)` }}
         />
-        {WIZARD_STEPS.map((step, index) => {
+        {steps.map((step, index) => {
           const passed = index < current;
           const isCurrent = index === current;
           return (

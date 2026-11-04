@@ -21,11 +21,15 @@ from app.models.product import (
     ProductVariant,
     PulledProduct,
     PullSource,
+    Review,
+    ReviewSummary,
 )
 
 MAX_IMAGES = 8
 MAX_VARIANTS = 100
 TEXT_CHARS = 6000
+MAX_REVIEWS = 8
+REVIEW_CHARS = 600
 PRODUCT_PATH = re.compile(r"/products/([^/?#]+)")
 CATALOGUE_CUTOFF = 0.75
 SHOPIFY_IMAGE_WIDTH = 2048
@@ -459,3 +463,70 @@ def _page_currency(html: str) -> str | None:
     """Shopify themes set `Shopify.currency = {"active":"USD",…}` even without price tags."""
     match = re.search(r'Shopify\.currency\s*=\s*\{[^}]*"active"\s*:\s*"([A-Z]{3})"', html)
     return match.group(1) if match else None
+
+
+def _number(value: Any) -> Decimal | None:
+    try:
+        number = Decimal(str(value).strip().replace(",", "."))
+    except (InvalidOperation, ValueError):
+        return None
+    return number if number.is_finite() and number >= 0 else None
+
+
+def _count(value: Any) -> int | None:
+    digits = re.sub(r"[^\d]", "", str(value)) if value is not None else ""
+    return int(digits) if digits and len(digits) <= 9 else None
+
+
+def _author(value: Any) -> str | None:
+    name = value.get("name") if isinstance(value, dict) else value
+    for item in name if isinstance(name, list) else [name]:
+        if isinstance(item, str) and item.strip():
+            return item.strip()[:120]
+    return None
+
+
+def _review(node: dict[str, Any]) -> Review | None:
+    body = node.get("reviewBody") or node.get("description")
+    text = html_to_text(body) if isinstance(body, str) else ""
+    if not text:
+        return None
+    rating = node.get("reviewRating")
+    title = node.get("name") or node.get("headline")
+    return Review(
+        body=text[:REVIEW_CHARS],
+        title=str(title).strip()[:200] if isinstance(title, str) and title.strip() else None,
+        author=_author(node.get("author")),
+        rating=_number(rating.get("ratingValue")) if isinstance(rating, dict) else None,
+        best=_number(rating.get("bestRating")) if isinstance(rating, dict) else None,
+    )
+
+
+def reviews_from_html(html: str) -> ReviewSummary:
+    """A product page's rating and reviews from its JSON-LD (BUILD_SPEC §8.7): the product's
+    `aggregateRating` and `review` list, else stand-alone `AggregateRating` and `Review` nodes.
+    Empty when the page publishes none (many load reviews with scripts instead)."""
+    nodes = _jsonld_nodes(BeautifulSoup(html, "lxml"))
+    product = next((n for n in nodes if _types(n) & {"Product", "ProductGroup"}), None)
+    aggregate: Any = product.get("aggregateRating") if product else None
+    if not isinstance(aggregate, dict):
+        aggregate = next((n for n in nodes if "AggregateRating" in _types(n)), None)
+    raw: Any = product.get("review") or product.get("reviews") if product else None
+    items = raw if isinstance(raw, list) else [raw] if isinstance(raw, dict) else []
+    if not items:
+        items = [n for n in nodes if "Review" in _types(n)]
+    reviews: list[Review] = []
+    for item in items:
+        review = _review(item) if isinstance(item, dict) else None
+        if review and review.body not in {r.body for r in reviews}:
+            reviews.append(review)
+        if len(reviews) == MAX_REVIEWS:
+            break
+    if not isinstance(aggregate, dict):
+        return ReviewSummary(reviews=reviews)
+    rating = _number(aggregate.get("ratingValue"))
+    best = _number(aggregate.get("bestRating")) or (Decimal(5) if rating is not None else None)
+    if rating is not None and best is not None and rating > best:
+        rating = None
+    count = _count(aggregate.get("reviewCount")) or _count(aggregate.get("ratingCount"))
+    return ReviewSummary(rating=rating, best=best, count=count, reviews=reviews)

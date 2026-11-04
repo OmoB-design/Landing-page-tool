@@ -16,6 +16,29 @@ def _money(value: Decimal | None) -> float:
     return float(value or 0)
 
 
+def _competitors(competitors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A ranking build's competitors for the build page's Competitors card."""
+    return [
+        {
+            "rank": c["rank"],
+            "label": c["label"],
+            "name": c.get("name"),
+            "url": c["url"],
+            "status": c["status"],
+            "error": c.get("error"),
+            "price": c.get("sale_price") or c.get("price"),
+            "currency": c.get("currency"),
+            "rating": c.get("rating"),
+            "rating_count": c.get("rating_count"),
+            "claims": len(c.get("claims") or []),
+            "reviews": len(c.get("reviews") or []),
+            "photo": bool(c.get("image_url")),
+            "warnings": c.get("warnings") or [],
+        }
+        for c in competitors
+    ]
+
+
 @node("write_report", "Wrote the report")
 def write_report(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
     path = f"{build_prefix(state['org_id'], state['build_id'])}/working.html"
@@ -60,6 +83,8 @@ def write_report(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
             if state["origin"] == "cloned"
             else {}
         ),
+        # Top 5 ranking builds (B2.4a): the competitors as the page names them, and what was read.
+        **({"competitors": _competitors(state["competitors"])} if state.get("competitors") else {}),
         "cost": {
             "total_usd": round(sum(by_kind.values()), 6),
             "breakdown_by_kind": by_kind,

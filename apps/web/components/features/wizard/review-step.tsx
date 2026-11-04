@@ -40,6 +40,14 @@ export function ReviewStep({
     ["Brand", brand?.name ?? "—"],
     ["Product", product?.name ?? "—"],
     ["Template", template?.name ?? "—"],
+    ...(state.ranking
+      ? ([
+          [
+            "Competitors",
+            `${state.competitors.length} pages · ${state.naming === "real" ? "real names and photos" : "neutral labels (Brand B to E)"}`,
+          ],
+        ] as [string, string][])
+      : []),
     [
       "Imagery",
       state.ai
@@ -72,6 +80,21 @@ export function ReviewStep({
           </div>
         ))}
       </dl>
+      {state.ranking ? (
+        <ol aria-label="Competitors" className="flex flex-col gap-1.5">
+          {state.competitors.map((url, index) => (
+            <li
+              key={url || index}
+              className="flex gap-2 rounded-md bg-foreground-02 px-1.5 py-1.5 text-type-caption-1 font-medium text-heading-02 dark:bg-overlay"
+            >
+              <span className="shrink-0 text-heading-05 tabular-nums">
+                #{index + 2}
+              </span>
+              <span className="min-w-0 truncate">{url}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
       {emphasis.length > 0 ? (
         <ul className="flex flex-col gap-1.5">
           {emphasis.map((line) => (

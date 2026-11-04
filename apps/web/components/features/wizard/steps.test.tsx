@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { parseWizard } from "@/lib/wizard/state";
 
-import { AudienceStep, EmphasisStep } from "./steps";
+import { AudienceStep, CompetitorsStep, EmphasisStep } from "./steps";
 import type { useBriefing } from "./use-briefing";
 
 afterEach(cleanup);
@@ -94,5 +94,36 @@ describe("wizard steps", () => {
         }) as HTMLInputElement
       ).disabled,
     ).toBe(true);
+  });
+
+  it("takes four competitor pages and says what's wrong with one (B2.4a)", () => {
+    const update = vi.fn();
+    render(
+      <CompetitorsStep
+        state={{
+          ...base,
+          ranking: true,
+          competitors: ["https://a.test/p", "a.test/p", "", ""],
+        }}
+        update={update}
+      />,
+    );
+    expect(
+      screen.getByLabelText("Competitor at rank 2: product page"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("This page is already in the ranking"),
+    ).toBeTruthy();
+    fireEvent.change(
+      screen.getByLabelText("Competitor at rank 4: product page"),
+      {
+        target: { value: "https://c.test/p" },
+      },
+    );
+    expect(update).toHaveBeenCalledWith({
+      competitors: ["https://a.test/p", "a.test/p", "https://c.test/p", ""],
+    });
+    fireEvent.click(screen.getByLabelText(/Real names/));
+    expect(update).toHaveBeenCalledWith({ naming: "real" });
   });
 });

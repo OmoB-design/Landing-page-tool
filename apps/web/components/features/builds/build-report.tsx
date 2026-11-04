@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { RenameIcon } from "@/components/ui/icons";
 import { LocateFigmaIcon, SparkleFigmaIcon } from "@/components/ui/lp-icons";
 import { LOCATE_SECTION_EVENT } from "@/lib/builds/preview-anchors";
+import { formatPrice } from "@/lib/products/form";
 import {
   type Reminder,
   claimAction,
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 import type {
   BuildReport as Report,
   ComplianceFinding,
+  ReportCompetitor,
   Residue,
   ResidueFinding,
 } from "@/lib/validators/build";
@@ -38,9 +40,94 @@ export function BuildReport({ report }: { report: Report }) {
       {report.mode === "cloned" ? (
         <SourceLeaks residue={report.residue ?? null} />
       ) : null}
+      {report.competitors ? (
+        <Competitors competitors={report.competitors} />
+      ) : null}
       <ClaimCheck claims={reportClaims(report)} />
       <Reminders reminders={reportReminders(report)} />
     </>
+  );
+}
+
+/**
+ * Competitors (B2.4a; no Figma frame yet, drawn like Source leaks): a ranking build's four
+ * competitor pages. "n of 4 read" in the header; then a card per rank: the rank and the name the
+ * page uses (with the real product name beside a neutral label), what was taken from the page
+ * (price, rating, claims, reviews), any warning, and the page's address. A page that couldn't be
+ * read shows the Fix chip and why; the ranking closed up without it.
+ */
+export function Competitors({
+  competitors,
+}: {
+  competitors: ReportCompetitor[];
+}) {
+  const read = competitors.filter((c) => c.status === "pulled").length;
+  return (
+    <PanelSection
+      title="Competitors"
+      count={competitors.length > 0 ? competitors.length : undefined}
+      divided
+    >
+      <p className="text-type-caption-1 font-medium text-heading-05">
+        {read} of {competitors.length} pages read. Prices, ratings, claims and
+        reviews on the page come from these pages only.
+      </p>
+      <ol className="flex flex-col gap-2.5">
+        {competitors.map((c) => (
+          <CompetitorCard key={c.rank} competitor={c} />
+        ))}
+      </ol>
+    </PanelSection>
+  );
+}
+
+function CompetitorCard({ competitor: c }: { competitor: ReportCompetitor }) {
+  const failed = c.status === "failed";
+  const price = formatPrice(c.price ?? null, c.currency ?? null);
+  const facts = failed
+    ? []
+    : [
+        price ?? "No price",
+        c.rating != null
+          ? `${c.rating} stars${c.rating_count ? ` (${c.rating_count.toLocaleString("en")})` : ""}`
+          : "No rating",
+        `${c.claims} ${c.claims === 1 ? "claim" : "claims"}`,
+        `${c.reviews} ${c.reviews === 1 ? "review" : "reviews"}`,
+      ];
+  return (
+    <li className="flex gap-1.5 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium">
+      <span
+        className={cn(
+          "shrink-0 self-start rounded-lg px-1.5 text-type-caption-2 font-medium tabular-nums",
+          failed ? ACTION_CLASS.Fix : "bg-foreground-03 text-heading-02",
+        )}
+      >
+        {failed ? "Not read" : `#${c.rank}`}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <p className="text-heading-02">
+          {c.label}
+          {c.name && c.name !== c.label ? (
+            <span className="text-heading-05"> · {c.name}</span>
+          ) : null}
+        </p>
+        {failed ? (
+          <p className="text-text-danger">
+            {c.error ?? "Couldn’t read this page."}
+          </p>
+        ) : (
+          <p className="text-heading-05">{facts.join(" · ")}</p>
+        )}
+        {c.warnings.map((warning) => (
+          <p key={warning} className="text-heading-05">
+            {warning}
+          </p>
+        ))}
+        <p className="pt-1 font-mono text-type-caption-2 break-all text-heading-05 divider-t-half">
+          {c.url}
+        </p>
+      </div>
+    </li>
   );
 }
 

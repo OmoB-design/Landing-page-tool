@@ -7,6 +7,7 @@ import type { Briefing } from "@/lib/validators/product";
 export const WIZARD_STEPS = [
   { id: "product", label: "Brand & product" },
   { id: "template", label: "Template" },
+  { id: "competitors", label: "Competitors" },
   { id: "imagery", label: "Imagery" },
   { id: "audience", label: "Audience" },
   { id: "emphasis", label: "Emphasis" },
@@ -14,6 +15,40 @@ export const WIZARD_STEPS = [
 ] as const;
 export type StepId = (typeof WIZARD_STEPS)[number]["id"];
 
+/** The steps the wizard shows: Competitors only for a Top 5 ranking template (B2.4a). */
+export function wizardSteps(ranking: boolean) {
+  return ranking
+    ? WIZARD_STEPS
+    : WIZARD_STEPS.filter((step) => step.id !== "competitors");
+}
+
+/** A Top 5 ranking compares four competitors, at ranks #2 to #5 (BUILD_SPEC §8.7). */
+export const COMPETITOR_SLOTS = 4;
+export const MAX_URL_CHARS = 2000;
+export type Naming = "neutral" | "real";
+const URL_LIKE = /^(https?:\/\/)?[^\s/]+\.[^\s]+$/i;
+
+/** The address the same as another, whatever its scheme or trailing slash. */
+const urlKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/+$/, "");
+
+/** Why a competitor's address can't be used yet, or null when it can. */
+export function competitorProblem(
+  urls: string[],
+  index: number,
+): string | null {
+  const value = urls[index]?.trim() ?? "";
+  if (!value) return "Add a competitor’s product page";
+  if (!URL_LIKE.test(value) || value.length > MAX_URL_CHARS)
+    return "Enter a page address, e.g. https://brand.com/products/name";
+  if (urls.slice(0, index).some((other) => urlKey(other) === urlKey(value)))
+    return "This page is already in the ranking";
+  return null;
+}
 export const IMAGE_STYLES = [
   {
     id: "editorial",
@@ -101,6 +136,11 @@ export type WizardState = {
   features: string[];
   objections: string[];
   author: AuthorType;
+  /** The chosen template is a Top 5 ranking (set from the templates, not kept in the URL). */
+  ranking: boolean;
+  /** Ranks #2 to #5, in order: product page addresses (empty until filled). */
+  competitors: string[];
+  naming: Naming;
 };
 
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -138,6 +178,20 @@ export function parseWizard(params: Params): WizardState {
       params.get("step"),
       WIZARD_STEPS.map((s) => s.id),
       "product",
+    ),
+    ranking: false,
+    competitors: Array.from(
+      { length: COMPETITOR_SLOTS },
+      (_, i) =>
+        params
+          .get(`c${i + 2}`)
+          ?.trim()
+          .slice(0, MAX_URL_CHARS) ?? "",
+    ),
+    naming: oneOf(
+      params.get("naming"),
+      ["neutral", "real"] as const,
+      "neutral",
     ),
     brand: id("brand"),
     product: id("product"),
@@ -179,6 +233,10 @@ export function wizardSearch(state: WizardState): string {
   for (const kind of ["benefits", "features", "objections"] as const)
     for (const value of state[kind]) params.append(PARAM[kind], value);
   if (state.author !== "writer") params.set("author", state.author);
+  state.competitors.forEach((url, i) => {
+    if (url.trim()) params.set(`c${i + 2}`, url.trim());
+  });
+  if (state.naming !== "neutral") params.set("naming", state.naming);
   return params.toString();
 }
 
@@ -186,17 +244,28 @@ export function wizardSearch(state: WizardState): string {
 export function stepReady(state: WizardState, step: StepId): boolean {
   if (step === "product") return Boolean(state.brand && state.product);
   if (step === "template") return Boolean(state.template);
+  if (step === "competitors")
+    return (
+      !state.ranking ||
+      state.competitors.every(
+        (_, i) => !competitorProblem(state.competitors, i),
+      )
+    );
   return true;
 }
 
-/** A step can be opened once every step before it is ready. */
+/** A step can be opened once every step before it is ready (and the wizard shows it). */
 export function canOpen(state: WizardState, step: StepId): boolean {
-  const index = WIZARD_STEPS.findIndex((s) => s.id === step);
-  return WIZARD_STEPS.slice(0, index).every((s) => stepReady(state, s.id));
+  const steps = wizardSteps(state.ranking);
+  const index = steps.findIndex((s) => s.id === step);
+  return (
+    index >= 0 && steps.slice(0, index).every((s) => stepReady(state, s.id))
+  );
 }
 
-export function stepIndex(step: StepId): number {
-  return WIZARD_STEPS.findIndex((s) => s.id === step);
+/** Where a step sits among the steps the wizard shows (-1 if it doesn't show it). */
+export function stepIndex(step: StepId, ranking = false): number {
+  return wizardSteps(ranking).findIndex((s) => s.id === step);
 }
 
 export type WizardPayload = {
@@ -211,6 +280,7 @@ export type WizardPayload = {
     audience_gender: Gender;
     audience_age: string | null;
     emphasis: Record<EmphasisKind, string[]>;
+    competitors: { urls: string[]; naming: Naming } | null;
   };
 };
 
@@ -245,6 +315,12 @@ export function wizardPayload(
         features: state.features,
         objections: state.objections,
       },
+      competitors: state.ranking
+        ? {
+            urls: state.competitors.map((url) => url.trim()),
+            naming: state.naming,
+          }
+        : null,
     },
   };
 }

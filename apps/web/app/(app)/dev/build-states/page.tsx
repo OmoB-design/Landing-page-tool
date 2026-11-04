@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { StatusGlyph } from "@/components/app/status-glyph";
 import { BuildPreview } from "@/components/features/builds/build-preview";
 import {
+  Competitors,
   CopyChanges,
   Reminders,
   SourceLeaks,
@@ -657,6 +658,85 @@ export default function BuildStatesPage() {
               </PanelFrame>
             </Labeled>
           </div>
+        </State>
+
+        <State
+          number={21}
+          title="Competitors (Top 5 ranking pages)"
+          when="On a page built from a Top 5 ranking template (B2.4a), the Overview lists the four competitor pages the build read. Every price, rating, claim and review on the page comes from these pages."
+          shows={[
+            "How many of the four pages were read.",
+            "A card per rank: the name the page uses (with the real product name beside a neutral label), what was taken from the page, any warning and the page's address.",
+            "A page that couldn't be read shows why; the ranking closed up without it.",
+          ]}
+          design={["The Competitors card"]}
+        >
+          <Labeled label="Three read, one blocked">
+            <PanelFrame>
+              <Competitors
+                competitors={[
+                  {
+                    rank: 2,
+                    label: "Brand B",
+                    name: "Vitality Daily Greens",
+                    url: "https://vitality.example/products/daily-greens",
+                    status: "pulled",
+                    price: "59.00",
+                    currency: "USD",
+                    rating: "4.4",
+                    rating_count: 1203,
+                    claims: 4,
+                    reviews: 2,
+                    photo: false,
+                    warnings: [],
+                  },
+                  {
+                    rank: 3,
+                    label: "Brand C",
+                    name: "Greenly Super Mix",
+                    url: "https://greenly.example/products/super-mix",
+                    status: "pulled",
+                    price: "44.00",
+                    currency: "USD",
+                    rating: null,
+                    rating_count: null,
+                    claims: 3,
+                    reviews: 0,
+                    photo: false,
+                    warnings: [
+                      "The page publishes no rating or reviews the page can quote.",
+                    ],
+                  },
+                  {
+                    rank: 4,
+                    label: "Brand D",
+                    name: "Nutri Powder",
+                    url: "https://nutri.example/products/powder",
+                    status: "pulled",
+                    price: "39.00",
+                    currency: "USD",
+                    rating: "4.1",
+                    rating_count: 310,
+                    claims: 5,
+                    reviews: 1,
+                    photo: false,
+                    warnings: [],
+                  },
+                  {
+                    rank: 5,
+                    label: "Brand E",
+                    url: "https://blocked.example/products/x",
+                    status: "failed",
+                    error: "The site blocked the request.",
+                    claims: 0,
+                    reviews: 0,
+                    photo: false,
+                    warnings: [],
+                  },
+                ]}
+              />
+            </PanelFrame>
+          </Labeled>
         </State>
       </div>
     </>

@@ -4,7 +4,7 @@ import {
   SkeletonText,
 } from "@/components/app/skeletons";
 import { Skeleton } from "@/components/ui/shimmer-loader";
-import { WIZARD_STEPS } from "@/lib/wizard/state";
+import { wizardSteps } from "@/lib/wizard/state";
 
 /**
  * The create wizard while its brands, products and templates load: the same fixed frame, the
@@ -26,7 +26,7 @@ export function CreateWizardSkeleton() {
           <SkeletonText className="text-type-caption-2" width={72} />
         </div>
         <ol className="flex flex-col gap-1 px-3 pt-6 pb-3">
-          {WIZARD_STEPS.map((step) => (
+          {wizardSteps(false).map((step) => (
             <li
               key={step.id}
               className="flex h-7 items-center gap-1.5 px-1.5 text-type-body-small font-medium text-heading-05"

@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict
 from app.db import transaction
 from app.jobs.context import JobContext
 from app.jobs.errors import UserFacingError
-from app.pipeline.graph import ORDER, get_graph
+from app.pipeline.graph import get_graph, order_for
 from app.pipeline.runtime import BUCKET, PipelineContext
 from app.providers import storage
 
@@ -36,8 +36,9 @@ def run(ctx: JobContext) -> dict[str, Any]:
     with transaction() as conn:
         build = conn.execute(
             """
-            select id, origin, status, mock_images from builds
-            where id = %(b)s and org_id = %(o)s
+            select b.id, b.origin, b.status, b.mock_images, t.type as template_type
+            from builds b left join templates t on t.id = b.template_id
+            where b.id = %(b)s and b.org_id = %(o)s
             """,
             {"b": build_id, "o": org_id},
         ).fetchone()
@@ -53,7 +54,10 @@ def run(ctx: JobContext) -> dict[str, Any]:
     graph = get_graph()
     config: RunnableConfig = {"configurable": {"thread_id": str(build_id)}}
     context = PipelineContext(
-        job=ctx, org_id=org_id, build_id=build_id, order=ORDER[build["origin"]]
+        job=ctx,
+        org_id=org_id,
+        build_id=build_id,
+        order=order_for(build["origin"], build["template_type"]),
     )
     snapshot = graph.get_state(config)
     if snapshot.next:

@@ -36,7 +36,10 @@ import {
   type ImageStyle,
   MAX_EMPHASIS,
   MAX_EMPHASIS_CHARS,
+  MAX_URL_CHARS,
+  type Naming,
   type WizardState,
+  competitorProblem,
 } from "@/lib/wizard/state";
 
 import type { useBriefing } from "./use-briefing";
@@ -349,6 +352,132 @@ function TemplatePick({
         className="pointer-events-none absolute inset-0 rounded-card opacity-0 ring-2 ring-spot-500-blue transition-opacity duration-150 ease-out ring-inset group-has-checked/card:opacity-100"
       />
     </label>
+  );
+}
+
+// ── 2b. Competitors (Top 5 ranking only, B2.4a) ─────────────────────────────
+
+const NAMINGS: { value: Naming; title: string; hint: string }[] = [
+  {
+    value: "neutral",
+    title: "Neutral labels",
+    hint: "Brand B to Brand E with a plain silhouette. Their names are taken out of quoted claims and reviews.",
+  },
+  {
+    value: "real",
+    title: "Real names",
+    hint: "Their product names and photos, as their pages show them. Naming rivals carries more legal risk.",
+  },
+];
+
+/**
+ * Four competitor product pages, ranked #2 to #5 below the brand's product, then how the page
+ * names them. No Figma frame yet: each row is a 25 px rank tile (the option cards' Foreground-01
+ * tile) beside the Input Field (34 px, as Emphasis's own line), its problem under it in 11 px
+ * Text-Danger once there is something to check; then two option cards as Imagery's.
+ */
+export function CompetitorsStep({
+  state,
+  update,
+}: {
+  state: WizardState;
+  update: Update;
+}) {
+  const setUrl = (index: number, value: string) =>
+    update({
+      competitors: state.competitors.map((url, i) =>
+        i === index ? value.slice(0, MAX_URL_CHARS) : url,
+      ),
+    });
+  return (
+    <div className="flex flex-col gap-8">
+      <fieldset className="flex flex-col gap-3">
+        <legend className="flex flex-col gap-1 pb-3">
+          <span className="text-type-body-small font-medium text-heading-01">
+            Ranked below yours
+          </span>
+          <span className="text-type-caption-2 font-medium text-heading-05">
+            Paste each competitor’s product page, in the order to rank them.
+          </span>
+        </legend>
+        {state.competitors.map((url, index) => {
+          const rank = index + 2;
+          const problem = url.trim()
+            ? competitorProblem(state.competitors, index)
+            : null;
+          const id = `competitor-${rank}`;
+          return (
+            <div key={rank} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2.5">
+                <span
+                  aria-hidden
+                  className="flex size-6.25 shrink-0 items-center justify-center rounded-icon bg-foreground-01 text-type-caption-1 font-medium text-heading-02 tabular-nums"
+                >
+                  #{rank}
+                </span>
+                <Input
+                  id={id}
+                  type="url"
+                  inputMode="url"
+                  aria-label={`Competitor at rank ${rank}: product page`}
+                  aria-invalid={problem ? true : undefined}
+                  aria-describedby={problem ? `${id}-problem` : undefined}
+                  placeholder="https://competitor.com/products/name"
+                  value={url}
+                  onChange={(event) => setUrl(index, event.target.value)}
+                  className="h-8.5 rounded-md py-2"
+                />
+              </div>
+              {problem ? (
+                <p
+                  id={`${id}-problem`}
+                  className="pl-8.75 text-type-caption-2 font-medium text-text-danger"
+                >
+                  {problem}
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </fieldset>
+      <section aria-labelledby="naming" className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-1">
+          <h3
+            id="naming"
+            className="text-type-body-small font-medium text-heading-01"
+          >
+            How the page names them
+          </h3>
+          <p className="text-type-caption-2 font-medium text-heading-05">
+            Prices, ratings and claims always come from their own pages.
+          </p>
+        </div>
+        <div
+          role="radiogroup"
+          aria-labelledby="naming"
+          className="flex gap-2.5"
+        >
+          {NAMINGS.map((naming) => (
+            <ChoiceCard
+              key={naming.value}
+              type="radio"
+              name="naming"
+              value={naming.value}
+              checked={state.naming === naming.value}
+              onChange={() => update({ naming: naming.value })}
+              className="flex-1 gap-1"
+            >
+              <span className="text-type-body-small font-medium text-heading-01">
+                {naming.title}
+              </span>
+              <span className="text-type-caption-2 font-medium text-heading-05">
+                {naming.hint}
+              </span>
+            </ChoiceCard>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
 

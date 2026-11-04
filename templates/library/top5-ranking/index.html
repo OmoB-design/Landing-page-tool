@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The 5 best picks of the year, ranked</title>
+<meta name="description" content="We compared five popular options on price, ratings and what each one promises.">
+<!-- Top 5 ranking, starter shell (B2.4a, D102). The owner's design replaces it. -->
+<style>
+:root {
+  --lp-primary: #1f5f8b;
+  --lp-primary-dark: #163f5c;
+  --lp-tint: #e8f1f7;
+  --lp-accent: #e07a1f;
+  --lp-on-primary: #ffffff;
+  --lp-on-accent: #ffffff;
+  --lp-on-dark: #ffffff;
+  --lp-heading-font: Georgia, "Times New Roman", serif;
+  --lp-body-font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--lp-body-font); color: #1f2933; background: #ffffff; line-height: 1.6; }
+img { max-width: 100%; display: block; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+h1, h2, h3 { font-family: var(--lp-heading-font); line-height: 1.2; color: #111827; }
+h1 { font-size: clamp(28px, 5vw, 40px); margin: 12px 0 14px; }
+h2 { font-size: 24px; margin: 0 0 6px; }
+.ad-label { background: #f3f4f6; color: #4b5563; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; text-align: center; padding: 5px 12px; }
+.masthead { border-bottom: 1px solid #e5e7eb; padding: 14px 0; }
+.masthead .wrap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.publication { font-family: var(--lp-heading-font); font-size: 22px; font-weight: 700; color: var(--lp-primary-dark); }
+.dateline { font-size: 13px; color: #6b7280; }
+.hero { padding: 24px 0 8px; }
+.dek { font-size: 18px; color: #374151; margin: 0 0 18px; }
+.criteria { background: var(--lp-tint); border-radius: 10px; padding: 14px 18px; margin: 0 0 8px; }
+.criteria h3 { font-size: 15px; margin: 0 0 6px; font-family: var(--lp-body-font); }
+.criteria ul { margin: 0; padding-left: 18px; }
+.criterion { margin: 2px 0; font-size: 15px; }
+.entry { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; margin: 22px 0; }
+.entry.pick { border: 2px solid var(--lp-primary); box-shadow: 0 10px 28px rgba(31, 95, 139, 0.12); }
+.entry-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.rank { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%; background: #111827; color: #ffffff; font-weight: 700; font-size: 16px; }
+.pick .rank { background: var(--lp-primary); color: var(--lp-on-primary); }
+.rank::before { content: "#"; font-size: 12px; margin-right: 1px; }
+.chip { display: inline-block; background: var(--lp-accent); color: var(--lp-on-accent); font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.entry-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+@media (min-width: 640px) { .entry-grid { grid-template-columns: 200px 1fr; } }
+.entry-img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #f8fafc; border-radius: 10px; }
+.price-line { margin: 4px 0 10px; font-size: 15px; color: #4b5563; }
+.price { font-size: 22px; font-weight: 700; color: #111827; }
+.compare { color: #9ca3af; margin-left: 6px; }
+.rating { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #4b5563; margin: 4px 0 10px; }
+.stars { position: relative; display: inline-block; font-size: 16px; line-height: 1; letter-spacing: 2px; color: #d1d5db; }
+.stars::before { content: "★★★★★"; }
+.stars::after { content: "★★★★★"; position: absolute; inset: 0; width: var(--rating, 0%); overflow: hidden; color: #f5a524; white-space: nowrap; }
+.rating-value { font-weight: 700; color: #111827; }
+.label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; margin: 14px 0 6px; }
+.pros, .claims { list-style: none; padding: 0; margin: 0; }
+.pros li, .claims li { display: flex; gap: 8px; align-items: flex-start; margin: 5px 0; font-size: 15px; }
+.pros svg, .claims svg { flex: none; margin-top: 5px; }
+.quote { margin: 14px 0 0; padding: 12px 14px; background: #f9fafb; border-left: 3px solid #d1d5db; border-radius: 0 8px 8px 0; font-size: 14px; color: #374151; }
+.quote p { margin: 0 0 4px; font-style: italic; }
+.quote cite { font-style: normal; font-size: 13px; color: #6b7280; }
+.cta { display: inline-block; background: var(--lp-accent); color: var(--lp-on-accent); font-weight: 700; text-decoration: none; padding: 13px 26px; border-radius: 8px; margin-top: 14px; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 8px 0 0; }
+.compare-table th, .compare-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; }
+.compare-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; }
+.compare-table tr.pick-row td { background: var(--lp-tint); font-weight: 700; }
+.section { margin: 34px 0; }
+.verdict { background: var(--lp-tint); border-radius: 14px; padding: 26px 22px; text-align: center; margin: 34px 0; }
+footer { border-top: 1px solid #e5e7eb; padding: 22px 0 40px; font-size: 13px; color: #6b7280; }
+footer p { margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<header data-lp-section="masthead" data-lp-role="other">
+  <div class="ad-label" data-lp-lock>Advertisement</div>
+  <div class="masthead">
+    <div class="wrap">
+      <span class="publication" data-lp-lock>The Shopping Desk</span>
+      <span class="dateline" data-lp-lock>Buying guide</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+<section class="hero" data-lp-section="hero" data-lp-role="hero">
+  <h1>The 5 best picks of the year, ranked</h1>
+  <p class="dek">We compared five popular options side by side on price, what customers say and what each one promises, so you can choose with confidence.</p>
+  <div class="criteria">
+    <h3>How we ranked them</h3>
+    <ul>
+      <li class="criterion">What it's made of and how it works</li>
+      <li class="criterion">Price for what you get</li>
+      <li class="criterion">What customers say after using it</li>
+    </ul>
+  </div>
+</section>
+
+<article class="entry pick" data-lp-section="rank-1" data-lp-role="offer" data-lp-rank="1">
+  <div class="entry-head">
+    <span class="rank" data-lp-number>1</span>
+    <span class="chip" data-lp-lock>Our top pick</span>
+  </div>
+  <div class="entry-grid">
+    <img class="entry-img" data-lp-product src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22400%22%20height%3D%22400%22%20viewBox%3D%220%200%20400%20400%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23e5e7eb%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2218%22%20fill%3D%22%239ca3af%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3EPRODUCT%3C/text%3E%3C/svg%3E" alt="The top pick" width="400" height="400">
+    <div>
+      <h2 data-lp-product-name>Sample Product</h2>
+      <p class="price-line"><span class="price" data-lp-price>$49.00</span><span class="compare" data-lp-compare-price>$69.00</span></p>
+      <p class="pick-summary">The one we'd buy ourselves: it does the job well, it's built to last and it costs less than most of the field.</p>
+      <p class="label" data-lp-lock>Why we like it</p>
+      <ul class="pros" data-lp-usps>
+        <li><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="#1f9d55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lp-usp-text>Simple to use from day one</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="#1f9d55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lp-usp-text>Made with care and good materials</span></li>
+        <li><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="#1f9d55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-lp-usp-text>Fair price for what you get</span></li>
+      </ul>
+      <p class="why">It ranks first because it gets the basics right without asking you to change your routine, and it is backed by a clear guarantee.</p>
+      <a class="cta" data-lp-cta href="#">Check today's price</a>
+    </div>
+  </div>
+</article>
+
+<article class="entry" data-lp-section="rank-2" data-lp-role="comparison" data-lp-rank="2" data-lp-lock>
+  <div class="entry-head">
+    <span class="rank" data-lp-number>2</span>
+    <h2 data-lp-rank-name>Brand B</h2>
+  </div>
+  <div class="entry-grid">
+    <img class="entry-img" data-lp-keep data-lp-rank-image src="assets/silhouette.svg" alt="Brand B (product not shown)" width="400" height="400">
+    <div>
+      <p class="price-line"><span class="price" data-lp-rank-price>$00.00</span></p>
+      <div class="rating" data-lp-rank-rating><span class="stars" data-lp-rank-stars style="--rating: 80%"></span><span class="rating-value" data-lp-rank-rating-value>4.0</span><span data-lp-rank-rating-count>100 reviews</span></div>
+      <p data-lp-rank-summary>What the product is, in a sentence from its own page.</p>
+      <p class="label">What their page claims</p>
+      <ul class="claims" data-lp-rank-claims>
+        <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="#9ca3af"/></svg><span data-lp-rank-claim-text>A claim from the product's own page</span></li>
+      </ul>
+      <blockquote class="quote" data-lp-rank-quote><p data-lp-rank-quote-text>A customer review from the product's own page.</p><cite data-lp-rank-quote-author>Customer</cite></blockquote>
+    </div>
+  </div>
+</article>
+
+<article class="entry" data-lp-section="rank-3" data-lp-role="comparison" data-lp-rank="3" data-lp-lock>
+  <div class="entry-head">
+    <span class="rank" data-lp-number>3</span>
+    <h2 data-lp-rank-name>Brand C</h2>
+  </div>
+  <div class="entry-grid">
+    <img class="entry-img" data-lp-keep data-lp-rank-image src="assets/silhouette.svg" alt="Brand C (product not shown)" width="400" height="400">
+    <div>
+      <p class="price-line"><span class="price" data-lp-rank-price>$00.00</span></p>
+      <div class="rating" data-lp-rank-rating><span class="stars" data-lp-rank-stars style="--rating: 80%"></span><span class="rating-value" data-lp-rank-rating-value>4.0</span><span data-lp-rank-rating-count>100 reviews</span></div>
+      <p data-lp-rank-summary>What the product is, in a sentence from its own page.</p>
+      <p class="label">What their page claims</p>
+      <ul class="claims" data-lp-rank-claims>
+        <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="#9ca3af"/></svg><span data-lp-rank-claim-text>A claim from the product's own page</span></li>
+      </ul>
+      <blockquote class="quote" data-lp-rank-quote><p data-lp-rank-quote-text>A customer review from the product's own page.</p><cite data-lp-rank-quote-author>Customer</cite></blockquote>
+    </div>
+  </div>
+</article>
+
+<article class="entry" data-lp-section="rank-4" data-lp-role="comparison" data-lp-rank="4" data-lp-lock>
+  <div class="entry-head">
+    <span class="rank" data-lp-number>4</span>
+    <h2 data-lp-rank-name>Brand D</h2>
+  </div>
+  <div class="entry-grid">
+    <img class="entry-img" data-lp-keep data-lp-rank-image src="assets/silhouette.svg" alt="Brand D (product not shown)" width="400" height="400">
+    <div>
+      <p class="price-line"><span class="price" data-lp-rank-price>$00.00</span></p>
+      <div class="rating" data-lp-rank-rating><span class="stars" data-lp-rank-stars style="--rating: 80%"></span><span class="rating-value" data-lp-rank-rating-value>4.0</span><span data-lp-rank-rating-count>100 reviews</span></div>
+      <p data-lp-rank-summary>What the product is, in a sentence from its own page.</p>
+      <p class="label">What their page claims</p>
+      <ul class="claims" data-lp-rank-claims>
+        <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="#9ca3af"/></svg><span data-lp-rank-claim-text>A claim from the product's own page</span></li>
+      </ul>
+      <blockquote class="quote" data-lp-rank-quote><p data-lp-rank-quote-text>A customer review from the product's own page.</p><cite data-lp-rank-quote-author>Customer</cite></blockquote>
+    </div>
+  </div>
+</article>
+
+<article class="entry" data-lp-section="rank-5" data-lp-role="comparison" data-lp-rank="5" data-lp-lock>
+  <div class="entry-head">
+    <span class="rank" data-lp-number>5</span>
+    <h2 data-lp-rank-name>Brand E</h2>
+  </div>
+  <div class="entry-grid">
+    <img class="entry-img" data-lp-keep data-lp-rank-image src="assets/silhouette.svg" alt="Brand E (product not shown)" width="400" height="400">
+    <div>
+      <p class="price-line"><span class="price" data-lp-rank-price>$00.00</span></p>
+      <div class="rating" data-lp-rank-rating><span class="stars" data-lp-rank-stars style="--rating: 80%"></span><span class="rating-value" data-lp-rank-rating-value>4.0</span><span data-lp-rank-rating-count>100 reviews</span></div>
+      <p data-lp-rank-summary>What the product is, in a sentence from its own page.</p>
+      <p class="label">What their page claims</p>
+      <ul class="claims" data-lp-rank-claims>
+        <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="#9ca3af"/></svg><span data-lp-rank-claim-text>A claim from the product's own page</span></li>
+      </ul>
+      <blockquote class="quote" data-lp-rank-quote><p data-lp-rank-quote-text>A customer review from the product's own page.</p><cite data-lp-rank-quote-author>Customer</cite></blockquote>
+    </div>
+  </div>
+</article>
+
+<section class="section" data-lp-section="compare" data-lp-role="comparison">
+  <h2>Side by side</h2>
+  <table class="compare-table">
+    <thead><tr><th data-lp-lock>Rank</th><th data-lp-lock>Product</th><th data-lp-lock>Price</th><th data-lp-lock>Rating</th></tr></thead>
+    <tbody>
+      <tr class="pick-row" data-lp-lock><td>1</td><td data-lp-product-name>Sample Product</td><td data-lp-price>$49.00</td><td>Top pick</td></tr>
+      <tr data-lp-rank-row="2"><td>2</td><td data-lp-rank-name>Brand B</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td></tr>
+      <tr data-lp-rank-row="3"><td>3</td><td data-lp-rank-name>Brand C</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td></tr>
+      <tr data-lp-rank-row="4"><td>4</td><td data-lp-rank-name>Brand D</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td></tr>
+      <tr data-lp-rank-row="5"><td>5</td><td data-lp-rank-name>Brand E</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="verdict" data-lp-section="verdict" data-lp-role="cta">
+  <h2>Our verdict</h2>
+  <p class="verdict-text">If you want one that simply works, start with our top pick. It covers what matters most and it's easy to try.</p>
+  <a class="cta" data-lp-cta href="#">See the top pick</a>
+</section>
+</main>
+
+<footer data-lp-section="footer" data-lp-role="other">
+  <div class="wrap">
+    <p data-lp-lock>Advertisement. This page is paid content from <span data-lp-brand>Sample Brand</span>, the maker of our top pick.</p>
+    <p data-lp-lock>Prices, ratings and claims for the other products are taken from each product's own page on the day this page was made, and may have changed since.</p>
+  </div>
+</footer>
+</body>
+</html>

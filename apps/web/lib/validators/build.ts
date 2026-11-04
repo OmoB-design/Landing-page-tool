@@ -48,6 +48,25 @@ export const residueSchema = z.object({
 });
 export type Residue = z.infer<typeof residueSchema>;
 
+/** A Top 5 ranking build's competitor as its report lists it (B2.4a; worker write_report). */
+export const reportCompetitorSchema = z.object({
+  rank: z.number(),
+  label: z.string(),
+  name: z.string().nullish(),
+  url: z.string(),
+  status: z.enum(["pulled", "failed"]),
+  error: z.string().nullish(),
+  price: z.union([z.string(), z.number()]).nullish(),
+  currency: z.string().nullish(),
+  rating: z.union([z.string(), z.number()]).nullish(),
+  rating_count: z.number().nullish(),
+  claims: z.number().catch(0),
+  reviews: z.number().catch(0),
+  photo: z.boolean().catch(false),
+  warnings: z.array(z.string()).catch([]),
+});
+export type ReportCompetitor = z.infer<typeof reportCompetitorSchema>;
+
 export const buildReportSchema = z.object({
   mode: z.enum(["owned", "cloned"]),
   template: z.object({ name: z.string(), slug: z.string() }).loose(),
@@ -134,6 +153,8 @@ export const buildReportSchema = z.object({
   warnings: z.array(z.string()).catch([]),
   /** Clones only (B2.3): what's left of the source page, scored (BUILD_SPEC §13.2). */
   residue: residueSchema.nullish().catch(null),
+  /** Top 5 ranking builds only (B2.4a): the competitors at ranks #2 to #5. */
+  competitors: z.array(reportCompetitorSchema).nullish().catch(null),
   source: z
     .object({ host: z.string().nullish(), name: z.string().nullish() })
     .loose()
@@ -174,6 +195,13 @@ export const createPageSchema = z.object({
       features: emphasisList,
       objections: emphasisList,
     }),
+    // A Top 5 ranking's competitors (B2.4a): four product pages, ranks #2 to #5.
+    competitors: z
+      .object({
+        urls: z.array(z.string().trim().min(4).max(2000)).length(4),
+        naming: z.enum(["neutral", "real"]),
+      })
+      .nullable(),
   }),
 });
 export type CreatePageInput = z.infer<typeof createPageSchema>;

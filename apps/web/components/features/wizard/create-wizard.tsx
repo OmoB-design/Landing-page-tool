@@ -10,7 +10,6 @@ import { createPage } from "@/lib/builds/actions";
 import type { WizardData } from "@/lib/wizard/queries";
 import {
   type StepId,
-  WIZARD_STEPS,
   type WizardState,
   canOpen,
   parseWizard,
@@ -18,6 +17,7 @@ import {
   stepReady,
   wizardPayload,
   wizardSearch,
+  wizardSteps,
 } from "@/lib/wizard/state";
 
 import { Dossier } from "./dossier";
@@ -25,6 +25,7 @@ import { WizardProgress } from "./progress";
 import { ReviewStep } from "./review-step";
 import {
   AudienceStep,
+  CompetitorsStep,
   EmphasisStep,
   ImageryStep,
   ProductStep,
@@ -40,6 +41,10 @@ const HEADINGS: Record<StepId, { title: string; hint: string }> = {
   template: {
     title: "Choose a template",
     hint: "A proven page to rebrand.",
+  },
+  competitors: {
+    title: "Competitors",
+    hint: "Four competitor product pages to rank below yours, #2 to #5. Their own pages supply every price, rating and claim.",
   },
   imagery: {
     title: "Imagery",
@@ -63,6 +68,7 @@ const HEADINGS: Record<StepId, { title: string; hint: string }> = {
 const NOT_READY: Partial<Record<StepId, string>> = {
   product: "Choose a brand and a product first",
   template: "Choose a template first",
+  competitors: "Add four different competitor pages first",
 };
 
 /** Keeps the URL's choices consistent with what the org has (a product of the chosen brand, a
@@ -72,17 +78,18 @@ function normalise(state: WizardState, data: WizardData): WizardState {
   const brand =
     product?.brandId ??
     (data.brands.some((b) => b.id === state.brand) ? state.brand : null);
+  const template = data.templates.find((t) => t.id === state.template);
   const next: WizardState = {
     ...state,
     brand,
     product: product && product.brandId === brand ? product.id : null,
-    template: data.templates.some((t) => t.id === state.template)
-      ? state.template
-      : null,
+    template: template ? template.id : null,
+    ranking: template?.type === "top5_ranking",
   };
   if (!canOpen(next, next.step)) {
     next.step =
-      WIZARD_STEPS.find((s) => !stepReady(next, s.id))?.id ?? "product";
+      wizardSteps(next.ranking).find((s) => !stepReady(next, s.id))?.id ??
+      "product";
   }
   return next;
 }
@@ -137,7 +144,8 @@ export function CreateWizard({ data }: { data: WizardData }) {
     );
   };
   const update = (patch: Partial<WizardState>) => go(patch);
-  const index = stepIndex(state.step);
+  const steps = wizardSteps(state.ranking);
+  const index = stepIndex(state.step, state.ranking);
   const open = (step: StepId) => go({ step }, true);
 
   // A new step starts at the top of its scrolling area (and of the page on small screens, where
@@ -175,8 +183,8 @@ export function CreateWizard({ data }: { data: WizardData }) {
   }, [state.step]);
 
   const ready = stepReady(state, state.step);
-  const next = WIZARD_STEPS[index + 1];
-  const back = WIZARD_STEPS[index - 1];
+  const next = steps[index + 1];
+  const back = steps[index - 1];
   const { title, hint } = HEADINGS[state.step];
 
   // Build page (the last step): the worker creates the build; the build page shows its steps.
@@ -239,6 +247,8 @@ export function CreateWizard({ data }: { data: WizardData }) {
               <ProductStep data={data} state={state} update={update} />
             ) : state.step === "template" ? (
               <TemplateStep data={data} state={state} update={update} />
+            ) : state.step === "competitors" ? (
+              <CompetitorsStep state={state} update={update} />
             ) : state.step === "imagery" ? (
               <ImageryStep state={state} update={update} />
             ) : state.step === "audience" ? (

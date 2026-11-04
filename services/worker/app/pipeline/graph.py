@@ -1,5 +1,6 @@
 """The build graph (BUILD_SPEC §10.1, D7). The only difference between owned and cloned builds
-is the three conditional edges on `origin`: clone-only nodes are unreachable for owned builds.
+is the three conditional edges on `origin`: clone-only nodes are unreachable for owned builds. A
+Top 5 ranking template adds one step after `load_inputs`, `pull_competitors` (B2.4a, D102).
 
 Ported from docs/pipeline/graph_sketch.py.
 """
@@ -27,6 +28,7 @@ from app.pipeline.nodes.image_pass import image_pass
 from app.pipeline.nodes.load_inputs import load_inputs
 from app.pipeline.nodes.prepare_media_slots import prepare_media_slots
 from app.pipeline.nodes.product_fidelity import product_fidelity
+from app.pipeline.nodes.pull_competitors import pull_competitors
 from app.pipeline.nodes.purge_terms import purge_terms
 from app.pipeline.nodes.recolor import recolor
 from app.pipeline.nodes.regenerate_variants import regenerate_variants
@@ -53,12 +55,28 @@ ORDER: dict[Origin, list[str]] = {
         "write_report",
     ],
 }  # fmt: skip
+RANKING = "top5_ranking"
 NODES = [
-    load_inputs, apply_section_layout, recolor, swap_logos, regenerate_variants, copy_rewrite,
-    purge_terms, strip_chrome, prepare_media_slots, image_pass, finalize_common,
+    load_inputs, pull_competitors, apply_section_layout, recolor, swap_logos, regenerate_variants,
+    copy_rewrite, purge_terms, strip_chrome, prepare_media_slots, image_pass, finalize_common,
     scrub_source_brand, scrub_scripts, rewrite_links, purge_foreign_assets, product_fidelity,
     residue_scan, compliance_scan, write_report,
 ]  # fmt: skip
+
+
+def order_for(origin: Origin, template_type: str | None) -> list[str]:
+    """The node order for a build (step numbers in the UI): its origin's, plus the competitor
+    pull for a ranking template."""
+    order = list(ORDER[origin])
+    if template_type == RANKING:
+        order.insert(order.index("load_inputs") + 1, "pull_competitors")
+    return order
+
+
+def route_after_load(state: BuildState) -> Literal["pull_competitors", "apply_section_layout"]:
+    """A ranking build reads its competitors before anything else (B2.4a)."""
+    ranking = (state.get("template") or {}).get("type") == RANKING
+    return "pull_competitors" if ranking else "apply_section_layout"
 
 
 def route_before_images(state: BuildState) -> Literal["strip_chrome", "prepare_media_slots"]:
@@ -84,7 +102,11 @@ def build_graph(
         g.add_node(fn.__name__, fn)  # type: ignore[call-overload]
 
     g.add_edge(START, "load_inputs")
-    g.add_edge("load_inputs", "apply_section_layout")
+    g.add_conditional_edges(
+        "load_inputs", route_after_load,
+        {"pull_competitors": "pull_competitors", "apply_section_layout": "apply_section_layout"},
+    )  # fmt: skip
+    g.add_edge("pull_competitors", "apply_section_layout")
     g.add_edge("apply_section_layout", "recolor")
     g.add_edge("recolor", "swap_logos")
     g.add_edge("swap_logos", "regenerate_variants")

@@ -128,6 +128,7 @@ async function Build({
         jobId={build.jobId}
         finished={Boolean(build.report)}
         origin={build.origin}
+        templateType={build.templateType}
       />
       {build.report ? <BuildReport report={build.report} /> : null}
     </>
@@ -180,6 +181,7 @@ async function Build({
             failed={failed}
             jobId={build.jobId}
             origin={build.origin}
+            templateType={build.templateType}
           />
         }
         panel={

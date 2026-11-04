@@ -55,6 +55,7 @@ export function BuildPreview({
   progress: progressOverride,
   onRetry,
   origin = "owned",
+  templateType = null,
 }: {
   buildId: string;
   version: string;
@@ -67,6 +68,8 @@ export function BuildPreview({
   onRetry?: () => void;
   /** A cloned build counts the clone-only steps too (B2.3). */
   origin?: string;
+  /** A Top 5 ranking build counts its competitor step too (B2.4a). */
+  templateType?: string | null;
 }) {
   const router = useRouter();
   const [viewport, setViewport] = useState<Viewport>("desktop");
@@ -87,7 +90,9 @@ export function BuildPreview({
   const open = desk?.open;
   // The same query the steps poll (one request): the failed step's name, or the build's progress.
   const { data: job } = useJob(ready ? null : jobId);
-  const steps = job ? jobStepStates(buildStepsFor(origin), job) : null;
+  const steps = job
+    ? jobStepStates(buildStepsFor(origin, templateType), job)
+    : null;
   const stepName =
     failedStep ?? steps?.find((step) => step.status === "failed")?.label;
   const progress =

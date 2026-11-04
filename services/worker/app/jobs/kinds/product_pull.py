@@ -11,6 +11,8 @@
 Connected-store (Admin API) pulls come with the Shopify connection (B1.5)."""
 
 import json
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
@@ -63,19 +65,30 @@ def normalise_url(url: str) -> str:
     return url if url.lower().startswith(("http://", "https://")) else f"https://{url}"
 
 
-def run(ctx: JobContext) -> dict[str, Any]:
-    payload = ProductPullPayload.model_validate(ctx.job.payload)
-    org_id = ctx.job.org_id
-    brand = _brand(org_id, payload.brand_id)
-    url = check_public_url(normalise_url(payload.url))
-    warnings: list[str] = []
+@dataclass
+class ProductRead:
+    """What a product page and its store say, before anything is saved."""
 
+    pulled: PulledProduct
+    html: str | None
+    page_url: str
+    warnings: list[str] = field(default_factory=list)
+
+
+def read_product(
+    url: str,
+    *,
+    brand_name: str | None,
+    on_store: Callable[[PulledProduct | None], None] | None = None,
+) -> ProductRead:
+    """Steps 1 and 2: the store's product data, then the page (its text, and the product itself
+    when there is no store data). `url` must already be checked as public. Used by the Top 5
+    ranking's competitor pull too (B2.4a)."""
+    warnings: list[str] = []
     handle = product_extract.handle_from_url(url)
     pulled = _from_store(url, handle) if handle else None
-    ctx.progress(
-        f"Read the store's data for {pulled.name}" if pulled else "No store data; reading the page",
-        data={"step": 1, "total": TOTAL},
-    )
+    if on_store:
+        on_store(pulled)
 
     html: str | None = None
     page_url = url
@@ -90,7 +103,7 @@ def run(ctx: JobContext) -> dict[str, Any]:
             "description only."
         )
     if pulled is None and html is not None:
-        pulled = product_extract.from_html(html, page_url, brand_name=brand["name"])
+        pulled = product_extract.from_html(html, page_url, brand_name=brand_name)
     if pulled is None:
         raise UserFacingError(
             "Couldn't find a product on that page. Check it's a product page, or try the "
@@ -98,7 +111,7 @@ def run(ctx: JobContext) -> dict[str, Any]:
             code="no_product",
         )
     if html is not None and not pulled.currency:
-        from_page = product_extract.from_html(html, page_url, brand_name=brand["name"])
+        from_page = product_extract.from_html(html, page_url, brand_name=brand_name)
         pulled.currency = from_page.currency if from_page else None
     if pulled.pull_source == "h1":
         warnings.append(
@@ -107,12 +120,31 @@ def run(ctx: JobContext) -> dict[str, Any]:
         )
     if pulled.price is None:
         warnings.append("No price found on the page. Add it on the product.")
+    return ProductRead(pulled=pulled, html=html, page_url=page_url, warnings=warnings)
+
+
+def run(ctx: JobContext) -> dict[str, Any]:
+    payload = ProductPullPayload.model_validate(ctx.job.payload)
+    org_id = ctx.job.org_id
+    brand = _brand(org_id, payload.brand_id)
+    url = check_public_url(normalise_url(payload.url))
+
+    def on_store(pulled: PulledProduct | None) -> None:
+        ctx.progress(
+            f"Read the store's data for {pulled.name}"
+            if pulled
+            else "No store data; reading the page",
+            data={"step": 1, "total": TOTAL},
+        )
+
+    read = read_product(url, brand_name=brand["name"], on_store=on_store)
+    pulled, html, warnings = read.pulled, read.html, read.warnings
     ctx.progress(
         f"Loaded the page: {pulled.name}" if html else f"Using the store's data for {pulled.name}",
         data={"step": 2, "total": TOTAL},
     )
 
-    saved = _store_images(org_id, pulled, warnings)
+    saved = store_images(org_id, pulled, warnings)
     ctx.progress(
         f"Saved {saved} {'image' if saved == 1 else 'images'}", data={"step": 3, "total": TOTAL}
     )
@@ -174,7 +206,7 @@ def _from_store(url: str, handle: str) -> PulledProduct | None:
     return product_extract.from_shopify(product, js if isinstance(js, dict) else None, url)
 
 
-def _store_images(org_id: UUID, pulled: PulledProduct, warnings: list[str]) -> int:
+def store_images(org_id: UUID, pulled: PulledProduct, warnings: list[str]) -> int:
     stored: dict[str, UUID] = {}
     failed = 0
     for image in pulled.images:

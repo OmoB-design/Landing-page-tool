@@ -24,6 +24,10 @@ class TemplateNotReadyError(Exception):
     """A cloned template is built from once its analysis is confirmed (B2.2, D96)."""
 
 
+class CompetitorsMissingError(Exception):
+    """A Top 5 ranking build needs its four competitor pages (B2.4a)."""
+
+
 class BuildNotFoundError(Exception):
     """No such build in this org."""
 
@@ -46,7 +50,7 @@ def create_build(
     with transaction() as conn:
         template = conn.execute(
             """
-            select id, name, origin, version, blueprint, reviewed_at from templates
+            select id, name, type, origin, version, blueprint, reviewed_at from templates
             where id = %(t)s and (org_id is null or org_id = %(o)s)
               and deleted_at is null and status = 'active'
             """,
@@ -68,6 +72,11 @@ def create_build(
         ).fetchone()
         if template is None or product is None:
             raise BuildInputsMissingError
+        # Competitors belong to ranking pages only (B2.4a, D102).
+        if template["type"] == "top5_ranking" and wizard.competitors is None:
+            raise CompetitorsMissingError
+        if template["type"] != "top5_ranking":
+            wizard = wizard.model_copy(update={"competitors": None})
         key = conn.execute("select allocate_build_key(%(b)s) as key", {"b": brand_id}).fetchone()
         assert key is not None
         build = conn.execute(

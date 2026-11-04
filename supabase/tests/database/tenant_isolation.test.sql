@@ -4,7 +4,7 @@
 -- Run with: pnpm test:db  (runs on the linked cloud project; everything rolls back at the end)
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(28);
 
 -- Two sign-ups. The on_auth_user_created trigger runs exactly as for a real sign-up.
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -49,6 +49,11 @@ from brands b join products p on p.brand_id = b.id,
      templates t
 where b.prefix = 'LUM' and t.slug = 'advertorial-classic' and t.org_id is null;
 
+-- B2.4a: a ranking build's competitor, written by the worker.
+insert into build_competitors (org_id, build_id, rank, url, status, label)
+select b.org_id, b.id, 2, 'https://rival.test/products/serum', 'pulled', 'Brand B'
+from builds b where b.key = 'LUM-1';
+
 create temp table ids on commit drop as
 select (select org_id from org_members
         where user_id = '00000000-0000-4000-8000-00000000000a') as ada_org,
@@ -81,12 +86,18 @@ select throws_ok(
   '42501', null, 'members cannot record a publication (D87: the worker does, with the gate''s overrides)');
 select throws_ok($$ update orgs set allow_placeholder_publish = true $$, '42501', null,
                  'an org owner cannot flip the placeholder testing switch directly (the worker does)');
+select is((select count(*)::int from build_competitors), 1, 'Ada sees her ranking build''s competitors');
+select throws_ok(
+  $$ insert into build_competitors (org_id, build_id, rank, url, status, label)
+     select ada_org, ada_build, 3, 'https://x.test', 'pulled', 'Brand C' from ids $$,
+  '42501', null, 'members cannot write competitors (the worker pulls them)');
 
 -- ── As Bob ──────────────────────────────────────────────────────────────────
 set local request.jwt.claims to '{"sub": "00000000-0000-4000-8000-00000000000b", "role": "authenticated"}';
 
 select is((select string_agg(name, ',') from orgs), 'bob', 'Bob sees only his own org');
 select is((select count(*)::int from brands), 0, 'Bob cannot see Ada''s brand');
+select is((select count(*)::int from build_competitors), 0, 'Bob cannot see Ada''s competitors');
 select is((select count(*)::int from storage.objects where bucket_id = 'templates'), 0,
           'Bob cannot see Ada''s template files');
 select throws_ok(

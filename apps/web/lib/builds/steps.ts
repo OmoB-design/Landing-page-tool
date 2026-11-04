@@ -51,9 +51,21 @@ export const CLONED_BUILD_STEPS: StepDefinition[] = OWNED_BUILD_STEPS.flatMap(
   },
 );
 
-/** The steps for a build of this origin. */
+/** The step a Top 5 ranking build adds after loading (B2.4a, order_for in graph.py). */
+export const PULL_COMPETITORS_STEP: StepDefinition = {
+  id: "pull_competitors",
+  label: "Read the competitors",
+};
+
+/** The steps for a build of this origin and template type. */
 export function buildStepsFor(
   origin: string | null | undefined,
+  templateType?: string | null,
 ): StepDefinition[] {
-  return origin === "cloned" ? CLONED_BUILD_STEPS : OWNED_BUILD_STEPS;
+  const steps = origin === "cloned" ? CLONED_BUILD_STEPS : OWNED_BUILD_STEPS;
+  return templateType === "top5_ranking"
+    ? steps.flatMap((step) =>
+        step.id === "load_inputs" ? [step, PULL_COMPETITORS_STEP] : [step],
+      )
+    : steps;
 }

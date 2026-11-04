@@ -1,0 +1,84 @@
+{
+  "slug": "top5-ranking",
+  "name": "Top 5 ranking (starter)",
+  "type": "top5_ranking",
+  "description": "A neutral publisher's ranking: the brand's product at #1, four competitors at #2 to #5 from their own pages (price, rating, claims, a review), a comparison table and a verdict. Starter shell until the owner's design replaces it.",
+  "source_palette": {
+    "primary": "#1f5f8b",
+    "dark": "#163f5c",
+    "tint": "#e8f1f7",
+    "accent": "#e07a1f"
+  },
+  "sections": [
+    {
+      "key": "masthead",
+      "role": "other",
+      "label": "Publication and disclosure",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "hero",
+      "role": "hero",
+      "label": "Headline and how we ranked",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "rank-1",
+      "role": "offer",
+      "label": "#1: your product",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "rank-2",
+      "role": "comparison",
+      "label": "#2: competitor",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "rank-3",
+      "role": "comparison",
+      "label": "#3: competitor",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "rank-4",
+      "role": "comparison",
+      "label": "#4: competitor",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "rank-5",
+      "role": "comparison",
+      "label": "#5: competitor",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "compare",
+      "role": "comparison",
+      "label": "Comparison table",
+      "removable": true,
+      "duplicable": false
+    },
+    {
+      "key": "verdict",
+      "role": "cta",
+      "label": "Verdict",
+      "removable": false,
+      "duplicable": false
+    },
+    {
+      "key": "footer",
+      "role": "other",
+      "label": "Footer and disclosure",
+      "removable": false,
+      "duplicable": false
+    }
+  ]
+}

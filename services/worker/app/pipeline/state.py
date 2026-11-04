@@ -29,6 +29,7 @@ class BuildState(TypedDict, total=False):
     product: dict[str, Any]
     wizard: dict[str, Any]
     targeting: dict[str, Any]
+    competitors: list[dict[str, Any]]  # Top 5 ranking builds (B2.4a): Competitor, as JSON
 
     # the working page: a storage path in the `builds` bucket, never the HTML itself
     html_path: str

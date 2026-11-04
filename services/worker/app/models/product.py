@@ -53,6 +53,26 @@ class PulledProduct(BaseModel):
     pull_source: PullSource
 
 
+class Review(BaseModel):
+    """One customer review a page publishes in its structured data (JSON-LD `Review`)."""
+
+    body: str = Field(max_length=600)
+    title: str | None = Field(default=None, max_length=200)
+    author: str | None = Field(default=None, max_length=120)
+    rating: Decimal | None = None
+    best: Decimal | None = None
+
+
+class ReviewSummary(BaseModel):
+    """A product page's rating and reviews (JSON-LD `AggregateRating` and `Review`), for the
+    Top 5 ranking's competitors (B2.4a). Everything is optional: many pages publish none."""
+
+    rating: Decimal | None = None
+    best: Decimal | None = None
+    count: int | None = None
+    reviews: list[Review] = Field(default_factory=list)
+
+
 class ProductSpec(BaseModel):
     label: str
     value: str

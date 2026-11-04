@@ -123,7 +123,9 @@ export function Dossier({
         ["Positioning", Boolean(brand?.hasPositioning)],
       ]
     : [];
-  const reached = stepIndex(state.step);
+  const at = (step: Parameters<typeof stepIndex>[0]) =>
+    stepIndex(step, state.ranking);
+  const reached = at(state.step);
   const emphasis =
     state.benefits.length + state.features.length + state.objections.length;
   const audienceExtra = [
@@ -133,7 +135,15 @@ export function Dossier({
     state.age ? state.age.replace("-", "–") : null,
   ].filter(Boolean);
   const choices: [string, string][] = [
-    ...(reached > stepIndex("imagery")
+    ...(state.ranking && reached > at("competitors")
+      ? ([
+          [
+            "Competitors",
+            `${state.competitors.filter((url) => url.trim()).length} pages · ${state.naming === "real" ? "real names" : "neutral labels"}`,
+          ],
+        ] as [string, string][])
+      : []),
+    ...(reached > at("imagery")
       ? ([
           [
             "Imagery",
@@ -147,7 +157,7 @@ export function Dossier({
           ],
         ] as [string, string][])
       : []),
-    ...(reached > stepIndex("audience")
+    ...(reached > at("audience")
       ? ([
           [
             "Audience",
@@ -158,7 +168,7 @@ export function Dossier({
           ],
         ] as [string, string][])
       : []),
-    ...(reached > stepIndex("emphasis")
+    ...(reached > at("emphasis")
       ? ([
           ["Emphasis", emphasis > 0 ? `${emphasis} chosen` : "Desk’s pick"],
           [

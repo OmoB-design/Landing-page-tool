@@ -33,6 +33,8 @@ Library templates are authored HTML (from the owner, or built from his Figma fra
 | `data-lp-number` | an item number ("1", "01") | renumbered in page order after sections are reordered, removed or duplicated; zero-padding kept (B1.1a, D64) |
 | `data-lp-alternate="<class>"` | container of numbered sections | every other numbered section gets `<class>` (alternating photo sides) (B1.1a, D64) |
 | `data-lp-fixed` | page frame outside sections (progress bar, side rail) | left outside sections on purpose; the editor's Issues tab doesn't flag it (B1.1b, D64) |
+| `data-lp-rank="<2..5>"` | a Top 5 ranking's competitor entry (its section, or inside one) | filled from that competitor's own page and locked from the copy pass; removed with its section when there are fewer competitors (B2.4a, D102). Inside it: `data-lp-rank-name`, `-price`, `-summary`; `-rating` holding `-rating-value`, `-rating-count` and `-stars` (gets `--rating: <n>%`); `-claims` (first child cloned per claim, text in `-claim-text`); `-quote` with `-quote-text` and `-quote-author`; `img[data-lp-rank-image]` (keep the silhouette as its `src`, and `data-lp-keep`). Any field without data is removed. The brand's own entry is the usual product markup (`data-lp-product`, `-product-name`, `-price`, `-usps`) |
+| `tr[data-lp-rank-row="<n>"]` | a ranking's comparison table row | its `data-lp-rank-name`, `-price` and `-rating-value` cells filled ("—" when missing); removed with its competitor (B2.4a) |
 
 Styling rules for library templates:
 - Brand colours as CSS custom properties on `:root`: `--lp-primary`, `--lp-primary-dark`, `--lp-tint`, `--lp-accent`, `--lp-heading-font`, `--lp-body-font`. Recolour becomes a variable swap.
