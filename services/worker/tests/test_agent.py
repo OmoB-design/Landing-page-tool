@@ -108,6 +108,53 @@ def test_lander_recolours_and_checks_claims() -> None:
     assert out == "Nothing flagged." and step.label == "Checked the wording: nothing flagged"
 
 
+RANKED = (
+    "<html><head><style>:root { --lp-primary: #ece9e2; --lp-primary-dark: #a39472; "
+    "--lp-tint: #f5f3f0; --lp-accent: #ece9e2; --lp-on-accent: #111111; } "
+    ".cta { background: var(--lp-accent); color: var(--lp-on-accent); } "
+    ".chip { background: #ece9e2; } .stars { color: #f5a524; }</style></head><body>"
+    '<section data-lp-section="hero"><h1>The best sneakers</h1>'
+    '<span class="chip">Top pick</span><span class="stars">★★★★★</span>'
+    '<a class="cta" data-lp-cta href="#">Shop Men</a></section></body></html>'
+)
+
+
+def test_lander_knows_which_colour_the_buttons_use_and_changes_only_that() -> None:
+    """The owner's live case (ALL-5): buttons use the accent colour, primary and accent share
+    a beige, and gold stars sit nearby. "Make the button black" must change the buttons and
+    nothing else."""
+    w = agent.Work(
+        html=RANKED,
+        rules={},
+        colors=DeskPalette(primary="#ece9e2", dark="#a39472", tint="#f5f3f0", accent="#ece9e2"),
+    )
+    assert "On this page: buttons use the accent colour" in w.outline()
+    out, failed, step = w.run(
+        "recolor_page",
+        {"primary": "#ece9e2", "dark": "#a39472", "tint": "#f5f3f0", "accent": "#000000"},
+    )
+    assert not failed and step.label == "Changed the accent colour (buttons)"
+    assert "accent: #ece9e2 → #000000 (used by the buttons)" in out
+    assert "primary: unchanged" in out
+    tokens = w.html.split('id="lp-brand-tokens"')[1]
+    assert "--lp-accent: #000000" in tokens and "--lp-on-accent: #ffffff" in tokens
+    # Only the variable moved: colours written into the CSS (the chip, the stars) stay.
+    assert ".chip { background: #ece9e2; }" in w.html and "#f5a524" in w.html
+    # Changing the primary instead says plainly that the buttons don't use it.
+    w2 = agent.Work(
+        html=RANKED,
+        rules={},
+        colors=DeskPalette(primary="#ece9e2", dark="#a39472", tint="#f5f3f0", accent="#ece9e2"),
+    )
+    out, _, step = w2.run(
+        "recolor_page",
+        {"primary": "#000000", "dark": "#a39472", "tint": "#f5f3f0", "accent": "#ece9e2"},
+    )
+    assert step.label == "Changed the primary colour"
+    assert "accent: unchanged, #ece9e2 (used by the buttons)" in out
+    assert "#f5a524" in w2.html  # no sweep by hue
+
+
 def test_edited_lines_are_renumbered_after_sections_move() -> None:
     w = work()
     w.run("edit_lines", {"edits": [{"number": number(w, "Is it gentle?"), "text": "Gentle?"}]})

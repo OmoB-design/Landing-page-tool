@@ -21,3 +21,4 @@ apps/web/public/hairline/
 # Stageshow's kit, copied from its skill with only the changes in its LP-CHANGES.md (D101); kept in
 # the skill's format so it diffs cleanly against new versions
 apps/web/components/ui/stageshow/
+apps/web/components/ui/dotmatrix/

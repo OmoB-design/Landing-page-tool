@@ -60,6 +60,8 @@ const eslintConfig = defineConfig([
     "public/hairline/**",
     // Stageshow's kit, copied from its skill with only the changes in its LP-CHANGES.md (D101).
     "components/ui/stageshow/**",
+    // The dotmatrix loaders (vendored from the @dotmatrix registry; see its LP-CHANGES.md).
+    "components/ui/dotmatrix/**",
   ]),
 ]);
 

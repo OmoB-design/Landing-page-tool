@@ -309,6 +309,9 @@
   /* "Work with Lander" (B3.1b): a Lander-purple ring, so the bar reads over the page in light and
      dark (owner, 2026-11-04). */
   --color-lander-bar-ring: var(--purple-150);
+  /* Scrollbars (owner, 2026-11-04): a soft thumb, a step darker on hover. */
+  --color-scrollbar: var(--grey-200);
+  --color-scrollbar-hover: var(--grey-300);
   --color-highlight-purple-500: var(--purple-500);
   --color-highlight-yellow-50: var(--yellow-50);
   --color-highlight-yellow-150: var(--amber-50);
@@ -612,6 +615,8 @@
   --color-lander-aura-2: var(--blue-700);
   --color-lander-aura-3: var(--pink-850);
   --color-lander-bar-ring: var(--purple-700);
+  --color-scrollbar: var(--grey-800);
+  --color-scrollbar-hover: var(--grey-700);
   --color-highlight-yellow-50: var(--yellow-700);
   --color-highlight-yellow-150: var(--amber-850);
   --color-highlight-yellow-500: var(--amber-400);
@@ -691,6 +696,33 @@
 @layer base {
   * {
     @apply border-stroke;
+  }
+  /* Scrollbars (owner, 2026-11-04; Shopify's admin): thin and quiet everywhere, a soft rounded
+     thumb about 6 px wide in a 10 px lane on a clear track, darker on hover. Chromium and Safari
+     take the -webkit- parts (setting scrollbar-width there would switch them off); Firefox takes
+     the standard ones. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-scrollbar);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-scrollbar-hover);
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-scrollbar) transparent;
+    }
   }
   /* The root keeps the browser's 16 px so rem-based tokens (spacing, type) resolve to their
      stated sizes; the 13 px body size is set on body, not html. */

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 import { HeaderTools } from "./header-tools";
 import { SidebarToggleButton } from "./sidebar-state";
+import { TruncatedTitle } from "./truncated-title";
 
 type PageHeaderProps = {
   title: string;
@@ -71,16 +72,15 @@ export function PageHeader({
               {emoji}
             </span>
           ) : null}
-          <h1
-            className={cn(
-              "truncate",
+          <TruncatedTitle
+            className={
               crumb
                 ? "text-type-caption-1 font-medium text-heading-01"
-                : "text-type-body-small font-medium text-heading-01",
-            )}
+                : "text-type-body-small font-medium text-heading-01"
+            }
           >
             {title}
-          </h1>
+          </TruncatedTitle>
         </div>
       </div>
       {tabs ? (

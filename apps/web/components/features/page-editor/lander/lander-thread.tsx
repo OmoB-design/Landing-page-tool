@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+import { WorkingDots } from "@/components/app/working-dots";
 import { Button } from "@/components/ui/button";
 import {
   AlertIcon,
@@ -330,7 +331,7 @@ function Reply({
       >
         <span className="flex size-3.5 items-center justify-center">
           {live ? (
-            <Spinner className="size-3" label="Working" />
+            <WorkingDots />
           ) : state === "stopped" ? (
             <StopIcon
               aria-hidden

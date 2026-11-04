@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { ShortcutButton } from "@/components/app/shortcut-button";
+import { TruncatedTitle } from "@/components/app/truncated-title";
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
 import { Mover } from "@/components/app/mover";
@@ -253,9 +254,9 @@ export function TemplateEditor({
             <BackArrowFigmaIcon aria-hidden className="text-icon-nav-active" />
           </Link>
         </Button>
-        <h1 className="min-w-0 truncate text-type-body-small font-medium">
+        <TruncatedTitle className="text-type-body-small font-medium">
           {state.template.name}
-        </h1>
+        </TruncatedTitle>
         <p
           role="status"
           className="hidden shrink-0 items-center gap-1.5 text-type-caption-1 text-highlight-yellow-500 sm:flex"

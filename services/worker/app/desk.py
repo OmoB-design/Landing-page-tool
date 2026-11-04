@@ -721,15 +721,22 @@ def recolor(
     return _finish(org_id, build_id, stale)
 
 
-def recolor_change(html: str, current: DeskPalette | None, target: dict[str, str]) -> str:
+def recolor_change(
+    html: str, current: DeskPalette | None, target: dict[str, str], *, literals: bool = True
+) -> str:
     """The page recoloured from its colours now (`current`) to `target`. Shared by the desk and
-    Lander (B3.1c)."""
+    Lander (B3.1c), which sets only the colour variables when the page has them
+    (`literals=False`)."""
     if current is None:
         raise DeskEditError("This page's colours aren't known, so it can't be recoloured.")
     if target == current.model_dump():
         raise DeskEditError("Those are the page's colours already.")
     new_html, stats = recolor_engine.recolor(
-        html, source_palette=current.model_dump(), brand_palette=target, brand_fonts={}
+        html,
+        source_palette=current.model_dump(),
+        brand_palette=target,
+        brand_fonts={},
+        literals=literals,
     )
     if not (stats["exact"] or stats["hue_shifted"] or stats["vars_set"]):
         raise DeskEditError("No colours on this page matched, so nothing changed.")

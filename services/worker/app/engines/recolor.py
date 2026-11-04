@@ -191,7 +191,11 @@ def recolor(
     source_palette: Mapping[str, str | None] | None,
     brand_palette: Mapping[str, str | None],
     brand_fonts: Mapping[str, str | None],
+    literals: bool = True,
 ) -> tuple[str, dict[str, object]]:
+    """`literals=False` (Lander's colour changes, B3.1c) sets only the page's colour variables:
+    no colour written into the CSS is rewritten and nothing is swept by hue, so changing one
+    colour changes what uses that variable and nothing else."""
     brand = brand_colors(brand_palette)
     fonts: list[str] = []
     stats: dict[str, object] = {"vars_set": [], "exact": 0, "hue_shifted": 0, "fonts": fonts}
@@ -211,9 +215,9 @@ def recolor(
         if role in ROLES and (rgb := parse_color(value)) is not None
     }
     worker = _Recolourer(source, brand)
-    for style in template_styles:
+    for style in template_styles if literals else []:
         style.string = worker.text(style_text(style))
-    for tag in soup.find_all(True):
+    for tag in soup.find_all(True) if literals else []:
         if not isinstance(tag, Tag):
             continue
         if tag.has_attr("style"):
@@ -253,3 +257,59 @@ def recolor(
     stats["exact"] = worker.exact_count
     stats["hue_shifted"] = worker.hue_count
     return serialize(soup), stats
+
+
+def has_tokens(html: str) -> bool:
+    """Whether the page's own CSS declares the colour variables (library templates do; a clone
+    may not, and then only rewriting its colours can recolour it)."""
+    soup = parse(html)
+    css = " ".join(
+        style_text(s)
+        for s in soup.find_all("style")
+        if isinstance(s, Tag) and s.get("id") != TOKENS_ID
+    )
+    return any(var in dict(_ROOT_VAR.findall(css)) for var in VAR_FOR_ROLE.values())
+
+
+_RULE = re.compile(r"([^{}@]+)\{([^{}]*)\}")
+_USES = {
+    "buttons": re.compile(r"(?:^|;)\s*background(?:-color)?\s*:\s*var\((--lp-[a-z-]+)"),
+    "links": re.compile(r"(?:^|;)\s*color\s*:\s*var\((--lp-[a-z-]+)"),
+    "headings": re.compile(r"(?:^|;)\s*color\s*:\s*var\((--lp-[a-z-]+)"),
+}
+
+
+def color_roles(html: str) -> dict[str, str]:
+    """Which of the four colours the page's buttons, links and headings use, from its CSS (the
+    first rule that sets each with a colour variable): e.g. {"buttons": "accent", "links":
+    "primary", "headings": "dark"}. So Lander knows that a button is the accent colour on this
+    page, not assumes it."""
+    soup = parse(html)
+    cta_classes = {
+        cls
+        for tag in soup.select("[data-lp-cta]")
+        for cls in (tag.get("class") or [])
+        if isinstance(cls, str)
+    }
+    role_for = {var: role for role, var in VAR_FOR_ROLE.items()}
+    css = " ".join(style_text(s) for s in soup.find_all("style") if isinstance(s, Tag))
+    found: dict[str, str] = {}
+    for selector, body in _RULE.findall(css):
+        parts = [p.strip() for p in selector.split(",")]
+        kinds = []
+        if any(
+            "[data-lp-cta" in p or "button" in p or any(f".{c}" in p for c in cta_classes)
+            for p in parts
+        ):
+            kinds.append("buttons")
+        elif any(re.search(r"(?:^|[\s>])a(?::(?:hover|link|visited))?$", p) for p in parts):
+            kinds.append("links")
+        if any(re.search(r"(?:^|[\s>,])h[1-3]\b", p) for p in parts):
+            kinds.append("headings")
+        for kind in kinds:
+            if kind in found:
+                continue
+            match = _USES[kind].search(body.strip())
+            if match and match.group(1) in role_for:
+                found[kind] = role_for[match.group(1)]
+    return found

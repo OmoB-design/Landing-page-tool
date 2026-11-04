@@ -252,9 +252,30 @@ const WRITE_BRIDGE = `(function () {
  * again, shows the preview without asking the worker. Only this browser keeps it (`private`), and
  * only for the same sign-in (`Vary: Cookie`).
  */
+/**
+ * Thin, quiet scrollbars in the preview only (owner, 2026-11-04; as the app's, after Shopify's):
+ * the page's own scrollbar inside the frame, not the published page. A neutral grey that shows on
+ * light and dark pages alike.
+ */
+const PREVIEW_SCROLLBARS =
+  "<style>html::-webkit-scrollbar{width:10px;height:10px}" +
+  "html::-webkit-scrollbar-track{background:transparent}" +
+  "html::-webkit-scrollbar-thumb{background-color:color-mix(in srgb, gray 40%, transparent);border-radius:9999px;" +
+  "border:2px solid transparent;background-clip:content-box}" +
+  "html::-webkit-scrollbar-thumb:hover{background-color:color-mix(in srgb, gray 60%, transparent)}" +
+  "@supports not selector(::-webkit-scrollbar){html{scrollbar-width:thin;" +
+  "scrollbar-color:color-mix(in srgb, gray 40%, transparent) transparent}}</style>";
+
+function withScrollbars(html: string): string {
+  const head = html.search(/<\/head>/i);
+  return head === -1
+    ? PREVIEW_SCROLLBARS + html
+    : html.slice(0, head) + PREVIEW_SCROLLBARS + html.slice(head);
+}
+
 function page(html: string, nonce: string | null, versioned: boolean) {
   const storage = new URL(publicEnv.supabaseUrl).origin;
-  return new Response(html, {
+  return new Response(withScrollbars(html), {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": versioned
