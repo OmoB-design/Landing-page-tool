@@ -30,6 +30,9 @@ CLAIM_VERBS = (
     r"diagnos(?:e|es|ed|ing)|heals?|healed|healing|reverses?|reversed|reversing"
 )
 
+NUMBER_ONE = r"(?:#\s?1|\bno\.\s?1|\bnumber\s+one)\b"
+OPINION = r"(?:pick|choice|recommendation|favou?rite)s?\b"
+
 RULES: list[Rule] = [
     Rule(
         "disease_claim", "health", "high",
@@ -63,7 +66,9 @@ RULES: list[Rule] = [
     ),
     Rule(
         "number_one", "superlative", "medium",
-        r"(?:#\s?1|\bno\.\s?1|\bnumber\s+one)\b",
+        # "Our #1 pick" (choice, recommendation, favourite) is the page's own opinion (D103), not
+        # a claim to be the market's #1; "our #1 bestseller" or "your #1 choice" still is.
+        rf"(?<!\bour ){NUMBER_ONE}|(?<=\bour ){NUMBER_ONE}(?!\s+{OPINION})",
         "\"#1\" needs a source.",
     ),
     Rule(
@@ -82,3 +87,35 @@ RULES: list[Rule] = [
         "\"Risk-free\" and \"no side effects\" are hard to support.",
     ),
 ]  # fmt: skip
+
+# Top 5 ranking pages (D103): a comparison page that states its pick is the best, or runs the
+# others down, makes comparative claims it can't support. Added to RULES on ranking pages, where
+# every superlative finding is high risk.
+RANKING_RULES: list[Rule] = [
+    Rule(
+        "best_as_fact", "superlative", "high",
+        r"\b(?:is|are|was|were)\s+(?:(?:simply|truly|easily|clearly|by\s+far)\s+)?the\s+"
+        r"(?:very\s+)?best\b",
+        "States as fact that a product is the best. Say \"our top pick\" instead.",
+    ),
+    Rule(
+        "top_rated", "superlative", "high",
+        r"\b(?:top|highest)[\s-]rated\b",
+        "\"Top rated\" needs ratings that show it.",
+    ),
+    Rule(
+        "beats_all", "superlative", "high",
+        r"\b(?:beats|outperforms|better\s+than)\s+(?:all|every|any)\s+"
+        r"(?:other|of\s+the|the\s+rest|competitors?)\b",
+        "Claims to beat every other product, which the page can't show.",
+    ),
+    Rule(
+        "disparaging", "comparison", "high",
+        r"\b(?:worst|scam|rip-?off|knock-?off|cheaply\s+made|poor(?:ly)?\s+(?:quality|made)|"
+        r"inferior|avoid\s+(?:it|this|them))\b",
+        "Runs a competitor down. Keep the comparison fair and factual.",
+    ),
+]  # fmt: skip
+RANKING_SUPERLATIVE = (
+    ' On a comparison page this is a comparative claim: call it "our top pick" or remove it.'
+)

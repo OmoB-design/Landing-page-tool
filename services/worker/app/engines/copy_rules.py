@@ -145,8 +145,9 @@ TYPE_RULES = {
     "long_form": "Template type: long-form sales letter. Keep the narrative arc and the headings.",
     "product_page": "Template type: product page. Clear, scannable product copy.",
     "top5_ranking": (
-        "Template type: top 5 ranking. The brand's product is the #1 pick; keep the ranking "
-        "structure."
+        "Template type: top 5 ranking. The brand's product is our top pick; keep the ranking "
+        "structure. Call it 'our top pick' or 'our #1 pick'; never state as fact that it is the "
+        "best, top-rated, best-selling, number one or better than every other product."
     ),
 }
 

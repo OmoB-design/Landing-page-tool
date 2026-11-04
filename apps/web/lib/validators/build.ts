@@ -67,6 +67,44 @@ export const reportCompetitorSchema = z.object({
 });
 export type ReportCompetitor = z.infer<typeof reportCompetitorSchema>;
 
+const sourcedSchema = z.object({
+  text: z.string(),
+  sources: z.array(z.string()).catch([]),
+});
+
+/** A ranking build's comparison (B2.4b, D103; worker compare_products): "Our take" on each
+ * competitor and the points the table compares, each line citing the facts it rests on. */
+export const reportComparisonSchema = z
+  .object({
+    takes: z
+      .array(
+        z.object({
+          rank: z.number(),
+          stands_out: sourcedSchema,
+          worth_knowing: sourcedSchema,
+        }),
+      )
+      .catch([]),
+    axes: z
+      .array(
+        z.object({
+          name: z.string(),
+          cells: z
+            .array(
+              z.object({
+                rank: z.number(),
+                text: z.string(),
+                sources: z.array(z.string()).catch([]),
+              }),
+            )
+            .catch([]),
+        }),
+      )
+      .catch([]),
+  })
+  .loose();
+export type ReportComparison = z.infer<typeof reportComparisonSchema>;
+
 export const buildReportSchema = z.object({
   mode: z.enum(["owned", "cloned"]),
   template: z.object({ name: z.string(), slug: z.string() }).loose(),
@@ -155,6 +193,8 @@ export const buildReportSchema = z.object({
   residue: residueSchema.nullish().catch(null),
   /** Top 5 ranking builds only (B2.4a): the competitors at ranks #2 to #5. */
   competitors: z.array(reportCompetitorSchema).nullish().catch(null),
+  /** Top 5 ranking builds only (B2.4b): "Our take" and the comparison table. */
+  comparison: reportComparisonSchema.nullish().catch(null),
   source: z
     .object({ host: z.string().nullish(), name: z.string().nullish() })
     .loose()

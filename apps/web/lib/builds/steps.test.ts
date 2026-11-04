@@ -62,14 +62,15 @@ describe("build steps", () => {
     expect(old.residue?.score).toBeNull();
   });
 
-  it("adds the competitor step to a ranking build, after loading (B2.4a)", () => {
+  it("adds the competitor steps to a ranking build, after loading (B2.4a, B2.4b)", () => {
     const ids = buildStepsFor("owned", "top5_ranking").map((step) => step.id);
-    expect(ids.slice(0, 3)).toEqual([
+    expect(ids.slice(0, 4)).toEqual([
       "load_inputs",
       "pull_competitors",
+      "compare_products",
       "apply_section_layout",
     ]);
-    expect(ids).toHaveLength(OWNED_BUILD_STEPS.length + 1);
+    expect(ids).toHaveLength(OWNED_BUILD_STEPS.length + 2);
     expect(buildStepsFor("owned", "listicle")).toBe(OWNED_BUILD_STEPS);
   });
 

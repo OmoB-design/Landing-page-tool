@@ -116,7 +116,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 ### B2.4 — Top 5 ranking builder
 - `top5_ranking` template type: four competitor URLs → competitor pulls with reviews → ranked page with the brand at #1 (BUILD_SPEC §8.7, D53).
 - **Owner actions:** design the ranking shell template; confirm naming default and comparison wording rules.
-- *Split (owner, 2026-11-04, D102):* **B2.4a** the competitors come in (the wizard's Competitors step, the competitor pull with ratings and reviews, `build_competitors`, the Competitors card, a starter shell); **B2.4b** the page goes out (the ranking copy and comparison data from the pulled data only, the compliance trace check, the owner's designed shell).
+- *Split (owner, 2026-11-04, D102):* **B2.4a** the competitors come in (the wizard's Competitors step, the competitor pull with ratings and reviews, `build_competitors`, the Competitors card, a starter shell); **B2.4b** the page goes out ("Our take" and the comparison table from the pulled data only, the trace check and comparison rules, the disclosures filled with the brand and date; D103); **B2.4c** the owner's designed ranking shell, onboarded when the Figma frames are ready; *deferred by the owner (2026-11-04) to the later to-do list, revisited with it.*
 
 ---
 

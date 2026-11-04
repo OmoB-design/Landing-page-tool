@@ -43,3 +43,39 @@ class Competitor(BaseModel):
     reviews: list[Review] = Field(default_factory=list)
     pull_source: str | None = None
     warnings: list[str] = Field(default_factory=list)
+
+
+class Sourced(BaseModel):
+    """A sentence or table cell and the facts it rests on, by id ("2.c1", "1.price"; see
+    `engines.comparison`)."""
+
+    text: str
+    sources: list[str]
+
+
+class RankTake(BaseModel):
+    """'Our take' on one competitor (B2.4b, D103): what stands out, and a fair trade-off."""
+
+    rank: int
+    stands_out: Sourced
+    worth_knowing: Sourced
+
+
+class ComparisonCell(BaseModel):
+    rank: int
+    text: str
+    sources: list[str]
+
+
+class ComparisonAxis(BaseModel):
+    """One point the table compares (materials, returns…), with a cell per product, #1 included."""
+
+    name: str
+    cells: list[ComparisonCell]
+
+
+class Comparison(BaseModel):
+    """A ranking page's comparison, written by one AI call from the products' facts only."""
+
+    takes: list[RankTake]
+    axes: list[ComparisonAxis]

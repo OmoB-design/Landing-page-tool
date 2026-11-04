@@ -311,7 +311,7 @@ A guided template type, `top5_ranking`: a neutral "publisher" ranking page where
 
 - **Inputs:** the brand and product (as in the wizard), four competitor product page URLs, and a naming choice: real product names or neutral labels.
 - **Competitor pull:** each URL runs the product pull ladder (§7.4) plus customer reviews and ratings when the page has them (JSON-LD `Review`/`AggregateRating`). Competitor data is stored per build, not as brand products.
-- **Copy:** the #1 entry uses the brand's product data and briefing; the #2–#5 critiques quote the competitors' own claims, prices and reviews, never invented ones. Comparison data (axes, winner, table rows) is cached as `product_strategy` kind `comparison` (§7.5).
+- **Copy:** the #1 entry uses the brand's product data and briefing; the #2–#5 critiques quote the competitors' own claims, prices and reviews, never invented ones. Comparison data (axes, winner, table rows) is cached as `product_strategy` kind `comparison` (§7.5). *(D103: it is written per build and kept in the build's report, since the four competitors change with every build.)*
 - **Shell:** an owner-designed library template with ranked slots, onboarded like any library template.
 - **Compliance:** comparative claims must trace to pulled data; the legal desk flags unsupported superlatives. The naming default and any wording rules are confirmed with the owner when the build starts (CLAUDE.md §7).
 

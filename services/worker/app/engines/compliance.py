@@ -4,10 +4,10 @@ text are checked against `compliance_rules.RULES`. Reports; never changes the pa
 import re
 from dataclasses import asdict, dataclass
 
-from bs4 import Tag
+from bs4 import BeautifulSoup, Tag
 from bs4.element import NavigableString
 
-from app.engines.compliance_rules import RULES, Rule
+from app.engines.compliance_rules import RANKING_RULES, RANKING_SUPERLATIVE, RULES, Rule
 from app.engines.fragments import _nodes
 from app.engines.html import element_path, parse, text_nodes
 
@@ -57,13 +57,44 @@ EXPERT_NOTE = Finding(
 )
 
 
-def scan(html: str, *, author_type: str | None = None) -> dict[str, object]:
-    """`author_type="expert"` also flags credentials (high) and adds a reminder note (low)."""
-    soup = parse(html)
+_RANKING: list[tuple[Rule, re.Pattern[str]]] = [
+    (r, re.compile(r.pattern, re.IGNORECASE)) for r in RANKING_RULES
+]
+
+
+# On a ranking page, a competitor's own words quoted from its page (its claims, its summary, a
+# customer review) keep the normal rules: the ranking rules and their higher bar are for the
+# page's own words, which the user can change (D103).
+ATTRIBUTED = ("data-lp-rank-claims", "data-lp-rank-summary", "data-lp-rank-quote")
+
+
+def _attributed(element: Tag) -> bool:
+    node: Tag | None = element
+    while isinstance(node, Tag):
+        if any(node.has_attr(a) for a in ATTRIBUTED):
+            return True
+        node = node.parent if isinstance(node.parent, Tag) else None
+    return False
+
+
+def scan(
+    html: str | BeautifulSoup,
+    *,
+    author_type: str | None = None,
+    ranking: bool = False,
+    extra: list[Finding] | None = None,
+) -> dict[str, object]:
+    """`author_type="expert"` also flags credentials (high) and adds a reminder note (low).
+    `ranking` (a Top 5 ranking page, D103) adds the comparison rules and makes every superlative
+    high risk; `extra` are findings from other checks (the ranking's trace check) to report with
+    these."""
+    soup = html if isinstance(html, BeautifulSoup) else parse(html)
     findings: list[Finding] = [EXPERT_NOTE] if author_type == "expert" else []
     rules = _COMPILED + (
         [(CREDENTIALS, re.compile(CREDENTIALS.pattern))] if author_type == "expert" else []
     )
+    if ranking:
+        rules = rules + _RANKING
     fragment_ids = {id(node): f"f{i:04d}" for i, node in enumerate(_nodes(soup), start=1)}
 
     def block_fragment(block: Tag, needle: str) -> str | None:
@@ -88,8 +119,12 @@ def scan(html: str, *, author_type: str | None = None) -> dict[str, object]:
             sources.append((block.get_text(" ", strip=True), block, None))
 
     seen: set[tuple[str, str]] = set()
+    ranking_rules = {r.id for r, _ in _RANKING}
     for text, element, text_node in sources:
+        quoted = ranking and _attributed(element)
         for rule, pattern in rules:
+            if quoted and rule.id in ranking_rules:
+                continue
             match = pattern.search(text)
             if not match:
                 continue
@@ -104,17 +139,19 @@ def scan(html: str, *, author_type: str | None = None) -> dict[str, object]:
                 fragment = None
             else:
                 fragment = block_fragment(element, match.group(0).split()[0])
+            superlative = ranking and not quoted and rule.category == "superlative"
             findings.append(
                 Finding(
                     rule.id,
                     rule.category,
-                    rule.severity,
+                    "high" if superlative else rule.severity,
                     _snippet(text, match),
                     location,
-                    rule.reason,
+                    rule.reason + (RANKING_SUPERLATIVE if superlative else ""),
                     fragment,
                 )
             )
+    findings.extend(extra or [])
     order = {"high": 0, "medium": 1, "low": 2}
     findings.sort(key=lambda f: order.get(f.severity, 3))
     counts = {level: sum(1 for f in findings if f.severity == level) for level in order}

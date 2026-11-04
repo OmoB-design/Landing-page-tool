@@ -52,7 +52,7 @@ def test_owned_builds_route_past_every_clone_only_node() -> None:
     assert set(CLONE_ONLY) <= set(ORDER["cloned"])
     assert ORDER["cloned"].index("strip_chrome") < ORDER["cloned"].index("image_pass")  # D21
     graph_nodes = set(build_graph().get_graph().nodes) - {"__start__", "__end__"}
-    assert graph_nodes == set(ORDER["cloned"]) | {"pull_competitors"}  # + ranking builds (B2.4a)
+    assert graph_nodes == set(ORDER["cloned"]) | {"pull_competitors", "compare_products"}  # ranking
 
 
 def _png(color: tuple[int, int, int]) -> bytes:

@@ -16,6 +16,8 @@ TemplateType = Literal[
     "advertorial", "listicle", "versus", "comparison", "long_form", "quiz_bridge",
     "product_page", "top5_ranking", "other",
 ]  # fmt: skip
+# The Top 5 ranking builder's template type (D53): it adds the competitor steps (D102, D103).
+RANKING_TYPE: TemplateType = "top5_ranking"
 
 
 class LengthCap(BaseModel):

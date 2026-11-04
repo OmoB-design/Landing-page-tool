@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The 5 best picks of the year, ranked</title>
 <meta name="description" content="We compared five popular options on price, ratings and what each one promises.">
-<!-- Top 5 ranking, starter shell (B2.4a, D102). The owner's design replaces it. -->
+<!-- Top 5 ranking, starter shell (B2.4a and B2.4b; D102, D103). The owner's design replaces it. -->
 <style>
 :root {
   --lp-primary: #1f5f8b;
@@ -62,7 +62,14 @@ h2 { font-size: 24px; margin: 0 0 6px; }
 .quote p { margin: 0 0 4px; font-style: italic; }
 .quote cite { font-style: normal; font-size: 13px; color: #6b7280; }
 .cta { display: inline-block; background: var(--lp-accent); color: var(--lp-on-accent); font-weight: 700; text-decoration: none; padding: 13px 26px; border-radius: 8px; margin-top: 14px; }
-.compare-table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 8px 0 0; }
+.disclosure { font-size: 13px; color: #4b5563; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; margin: 0 0 16px; }
+.take { margin: 14px 0 0; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; }
+.take .label { margin-top: 0; }
+.take-row { margin: 6px 0 0; font-size: 15px; }
+.take-key { display: block; font-size: 13px; font-weight: 700; color: #111827; }
+.take-row p { margin: 2px 0 0; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.compare-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 15px; margin: 8px 0 0; }
 .compare-table th, .compare-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #e5e7eb; }
 .compare-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #6b7280; }
 .compare-table tr.pick-row td { background: var(--lp-tint); font-weight: 700; }
@@ -74,7 +81,7 @@ footer p { margin: 0 0 8px; }
 </head>
 <body>
 <header data-lp-section="masthead" data-lp-role="other">
-  <div class="ad-label" data-lp-lock>Advertisement</div>
+  <div class="ad-label" data-lp-lock data-lp-ad-label>Advertisement</div>
   <div class="masthead">
     <div class="wrap">
       <span class="publication" data-lp-lock>The Shopping Desk</span>
@@ -86,6 +93,7 @@ footer p { margin: 0 0 8px; }
 <main class="wrap">
 <section class="hero" data-lp-section="hero" data-lp-role="hero">
   <h1>The 5 best picks of the year, ranked</h1>
+  <p class="disclosure" data-lp-lock data-lp-disclosure="short">Sample Brand makes our #1 pick. Competitor prices, ratings and claims come from their own product pages.</p>
   <p class="dek">We compared five popular options side by side on price, what customers say and what each one promises, so you can choose with confidence.</p>
   <div class="criteria">
     <h3>How we ranked them</h3>
@@ -135,6 +143,11 @@ footer p { margin: 0 0 8px; }
       <ul class="claims" data-lp-rank-claims>
         <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="#9ca3af"/></svg><span data-lp-rank-claim-text>A claim from the product's own page</span></li>
       </ul>
+      <div class="take" data-lp-rank-take>
+        <p class="label">Our take</p>
+        <div class="take-row" data-lp-rank-take-strength><span class="take-key">What stands out</span><p data-lp-rank-take-text>A strength, from the product's own page.</p></div>
+        <div class="take-row" data-lp-rank-take-caveat><span class="take-key">Worth knowing</span><p data-lp-rank-take-text>A trade-off to weigh, from the product's own page.</p></div>
+      </div>
       <blockquote class="quote" data-lp-rank-quote><p data-lp-rank-quote-text>A customer review from the product's own page.</p><cite data-lp-rank-quote-author>Customer</cite></blockquote>
     </div>
   </div>
@@ -155,6 +168,11 @@ footer p { margin: 0 0 8px; }
       <ul class="claims" data-lp-rank-claims>
         <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="#9ca3af"/></svg><span data-lp-rank-claim-text>A claim from the product's own page</span></li>
       </ul>
+      <div class="take" data-lp-rank-take>
+        <p class="label">Our take</p>
+        <div class="take-row" data-lp-rank-take-strength><span class="take-key">What stands out</span><p data-lp-rank-take-text>A strength, from the product's own page.</p></div>
+        <div class="take-row" data-lp-rank-take-caveat><span class="take-key">Worth knowing</span><p data-lp-rank-take-text>A trade-off to weigh, from the product's own page.</p></div>
+      </div>
       <blockquote class="quote" data-lp-rank-quote><p data-lp-rank-quote-text>A customer review from the product's own page.</p><cite data-lp-rank-quote-author>Customer</cite></blockquote>
     </div>
   </div>
@@ -175,6 +193,11 @@ footer p { margin: 0 0 8px; }
       <ul class="claims" data-lp-rank-claims>
         <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="#9ca3af"/></svg><span data-lp-rank-claim-text>A claim from the product's own page</span></li>
       </ul>
+      <div class="take" data-lp-rank-take>
+        <p class="label">Our take</p>
+        <div class="take-row" data-lp-rank-take-strength><span class="take-key">What stands out</span><p data-lp-rank-take-text>A strength, from the product's own page.</p></div>
+        <div class="take-row" data-lp-rank-take-caveat><span class="take-key">Worth knowing</span><p data-lp-rank-take-text>A trade-off to weigh, from the product's own page.</p></div>
+      </div>
       <blockquote class="quote" data-lp-rank-quote><p data-lp-rank-quote-text>A customer review from the product's own page.</p><cite data-lp-rank-quote-author>Customer</cite></blockquote>
     </div>
   </div>
@@ -195,6 +218,11 @@ footer p { margin: 0 0 8px; }
       <ul class="claims" data-lp-rank-claims>
         <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="#9ca3af"/></svg><span data-lp-rank-claim-text>A claim from the product's own page</span></li>
       </ul>
+      <div class="take" data-lp-rank-take>
+        <p class="label">Our take</p>
+        <div class="take-row" data-lp-rank-take-strength><span class="take-key">What stands out</span><p data-lp-rank-take-text>A strength, from the product's own page.</p></div>
+        <div class="take-row" data-lp-rank-take-caveat><span class="take-key">Worth knowing</span><p data-lp-rank-take-text>A trade-off to weigh, from the product's own page.</p></div>
+      </div>
       <blockquote class="quote" data-lp-rank-quote><p data-lp-rank-quote-text>A customer review from the product's own page.</p><cite data-lp-rank-quote-author>Customer</cite></blockquote>
     </div>
   </div>
@@ -202,16 +230,18 @@ footer p { margin: 0 0 8px; }
 
 <section class="section" data-lp-section="compare" data-lp-role="comparison">
   <h2>Side by side</h2>
+  <div class="table-wrap">
   <table class="compare-table">
-    <thead><tr><th data-lp-lock>Rank</th><th data-lp-lock>Product</th><th data-lp-lock>Price</th><th data-lp-lock>Rating</th></tr></thead>
+    <thead><tr><th data-lp-lock>Rank</th><th data-lp-lock>Product</th><th data-lp-lock>Price</th><th data-lp-lock>Rating</th><th data-lp-lock data-lp-compare-axis>Feature</th></tr></thead>
     <tbody>
-      <tr class="pick-row" data-lp-lock><td>1</td><td data-lp-product-name>Sample Product</td><td data-lp-price>$49.00</td><td>Top pick</td></tr>
-      <tr data-lp-rank-row="2"><td>2</td><td data-lp-rank-name>Brand B</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td></tr>
-      <tr data-lp-rank-row="3"><td>3</td><td data-lp-rank-name>Brand C</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td></tr>
-      <tr data-lp-rank-row="4"><td>4</td><td data-lp-rank-name>Brand D</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td></tr>
-      <tr data-lp-rank-row="5"><td>5</td><td data-lp-rank-name>Brand E</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td></tr>
+      <tr class="pick-row" data-lp-lock data-lp-rank-row="1"><td data-lp-rank-number>1</td><td data-lp-product-name>Sample Product</td><td data-lp-price>$49.00</td><td>Top pick</td><td data-lp-compare-cell>Not stated</td></tr>
+      <tr data-lp-rank-row="2"><td data-lp-rank-number>2</td><td data-lp-rank-name>Brand B</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td><td data-lp-compare-cell>Not stated</td></tr>
+      <tr data-lp-rank-row="3"><td data-lp-rank-number>3</td><td data-lp-rank-name>Brand C</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td><td data-lp-compare-cell>Not stated</td></tr>
+      <tr data-lp-rank-row="4"><td data-lp-rank-number>4</td><td data-lp-rank-name>Brand D</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td><td data-lp-compare-cell>Not stated</td></tr>
+      <tr data-lp-rank-row="5"><td data-lp-rank-number>5</td><td data-lp-rank-name>Brand E</td><td data-lp-rank-price>$00.00</td><td data-lp-rank-rating-value>4.0</td><td data-lp-compare-cell>Not stated</td></tr>
     </tbody>
   </table>
+  </div>
 </section>
 
 <section class="verdict" data-lp-section="verdict" data-lp-role="cta">
@@ -223,8 +253,7 @@ footer p { margin: 0 0 8px; }
 
 <footer data-lp-section="footer" data-lp-role="other">
   <div class="wrap">
-    <p data-lp-lock>Advertisement. This page is paid content from <span data-lp-brand>Sample Brand</span>, the maker of our top pick.</p>
-    <p data-lp-lock>Prices, ratings and claims for the other products are taken from each product's own page on the day this page was made, and may have changed since.</p>
+    <p data-lp-lock data-lp-disclosure="full">Advertisement. This page is paid content from Sample Brand, the maker of our top pick, and isn't an independent review. Competitor details were taken from their public product pages and may have changed since.</p>
   </div>
 </footer>
 </body>

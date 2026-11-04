@@ -14,6 +14,7 @@ from app.jobs import queue
 from app.jobs.models import Job
 from app.jobs.registry import KINDS
 from app.models.build import BuildWizard
+from app.models.template import RANKING_TYPE
 
 
 class BuildInputsMissingError(Exception):
@@ -73,9 +74,9 @@ def create_build(
         if template is None or product is None:
             raise BuildInputsMissingError
         # Competitors belong to ranking pages only (B2.4a, D102).
-        if template["type"] == "top5_ranking" and wizard.competitors is None:
+        if template["type"] == RANKING_TYPE and wizard.competitors is None:
             raise CompetitorsMissingError
-        if template["type"] != "top5_ranking":
+        if template["type"] != RANKING_TYPE:
             wizard = wizard.model_copy(update={"competitors": None})
         key = conn.execute("select allocate_build_key(%(b)s) as key", {"b": brand_id}).fetchone()
         assert key is not None

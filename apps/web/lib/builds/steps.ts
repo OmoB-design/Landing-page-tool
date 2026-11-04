@@ -57,6 +57,12 @@ export const PULL_COMPETITORS_STEP: StepDefinition = {
   label: "Read the competitors",
 };
 
+/** B2.4b: "Our take", the comparison table and the disclosures (worker compare_products). */
+export const COMPARE_PRODUCTS_STEP: StepDefinition = {
+  id: "compare_products",
+  label: "Compare the products",
+};
+
 /** The steps for a build of this origin and template type. */
 export function buildStepsFor(
   origin: string | null | undefined,
@@ -65,7 +71,9 @@ export function buildStepsFor(
   const steps = origin === "cloned" ? CLONED_BUILD_STEPS : OWNED_BUILD_STEPS;
   return templateType === "top5_ranking"
     ? steps.flatMap((step) =>
-        step.id === "load_inputs" ? [step, PULL_COMPETITORS_STEP] : [step],
+        step.id === "load_inputs"
+          ? [step, PULL_COMPETITORS_STEP, COMPARE_PRODUCTS_STEP]
+          : [step],
       )
     : steps;
 }

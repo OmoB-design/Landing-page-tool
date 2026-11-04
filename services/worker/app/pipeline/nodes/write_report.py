@@ -85,6 +85,9 @@ def write_report(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
         ),
         # Top 5 ranking builds (B2.4a): the competitors as the page names them, and what was read.
         **({"competitors": _competitors(state["competitors"])} if state.get("competitors") else {}),
+        # B2.4b: the takes and table for the Competitors card, and the facts they cite, so the
+        # review desk can trace the page again after an edit (D103).
+        **({"comparison": state["comparison"]} if state.get("comparison") else {}),
         "cost": {
             "total_usd": round(sum(by_kind.values()), 6),
             "breakdown_by_kind": by_kind,

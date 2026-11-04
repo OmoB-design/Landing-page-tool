@@ -19,7 +19,7 @@ from psycopg import errors
 from psycopg.types.json import Jsonb
 
 from app.db import transaction
-from app.engines import compliance, fragments, paragraphs, proof
+from app.engines import comparison, fragments, paragraphs, proof
 from app.engines import recolor as recolor_engine
 from app.jobs import queue
 from app.models.desk import (
@@ -280,8 +280,10 @@ def _change(
         },
     )  # fmt: skip
     report = dict(build["report"] or {})
-    report["compliance"] = compliance.scan(
-        html, author_type=(build["wizard"] or {}).get("author_type")
+    report["compliance"] = comparison.check_claims(
+        html,
+        author_type=(build["wizard"] or {}).get("author_type"),
+        facts=comparison.facts_from_report(report),
     )
     if edited:
         desk = dict(report.get("desk") or {})
@@ -409,8 +411,10 @@ def undo(org_id: UUID, build_id: UUID, base_version: int) -> DeskState:
         newest = snapshots[0]
         html = storage.download(BUCKET, newest["html_path"]).decode("utf-8")
         report = dict(build["report"] or {})
-        report["compliance"] = compliance.scan(
-            html, author_type=(build["wizard"] or {}).get("author_type")
+        report["compliance"] = comparison.check_claims(
+            html,
+            author_type=(build["wizard"] or {}).get("author_type"),
+            facts=comparison.facts_from_report(report),
         )
         conn.execute(
             "delete from build_snapshots where build_id = %(b)s and seq = %(s)s",

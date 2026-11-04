@@ -53,6 +53,7 @@ def _proxy_settings(proxy: str) -> ProxySettings:
 def open_page(proxy: str | None = None) -> Iterator[Page]:
     with _ONE_BROWSER, sync_playwright() as playwright:
         browser = playwright.chromium.launch(proxy=_proxy_settings(proxy) if proxy else None)
+        page: Page | None = None
         try:
             context = browser.new_context(
                 user_agent=USER_AGENT, viewport={"width": 1440, "height": 900}
@@ -61,6 +62,11 @@ def open_page(proxy: str | None = None) -> Iterator[Page]:
             page.route("**/*", _guard)
             yield page
         finally:
+            if page is not None:
+                # Requests still in flight when the page closes would otherwise log a cancelled
+                # route handler's traceback (harmless, but noisy in the job loop's log).
+                with suppress(Exception):
+                    page.unroute_all(behavior="ignoreErrors")
             browser.close()
 
 

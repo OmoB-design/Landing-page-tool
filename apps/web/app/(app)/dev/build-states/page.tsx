@@ -668,8 +668,9 @@ export default function BuildStatesPage() {
             "How many of the four pages were read.",
             "A card per rank: the name the page uses (with the real product name beside a neutral label), what was taken from the page, any warning and the page's address.",
             "A page that couldn't be read shows why; the ranking closed up without it.",
+            "B2.4b: each read competitor's Our take (What stands out, Worth knowing), and Side by side: the points the page's table compares, with each product's cell.",
           ]}
-          design={["The Competitors card"]}
+          design={["The Competitors card", "Our take and Side by side (B2.4b)"]}
         >
           <Labeled label="Three read, one blocked">
             <PanelFrame>
@@ -703,9 +704,7 @@ export default function BuildStatesPage() {
                     claims: 3,
                     reviews: 0,
                     photo: false,
-                    warnings: [
-                      "The page publishes no rating or reviews the page can quote.",
-                    ],
+                    warnings: ["No rating or reviews found on the page."],
                   },
                   {
                     rank: 4,
@@ -734,6 +733,63 @@ export default function BuildStatesPage() {
                     warnings: [],
                   },
                 ]}
+                comparison={{
+                  takes: [
+                    {
+                      rank: 2,
+                      stands_out: {
+                        text: "Brand B packs 40 superfoods into one scoop and has 1,203 reviews averaging 4.4.",
+                        sources: ["2.c1", "2.rating"],
+                      },
+                      worth_knowing: {
+                        text: "At $59.00 it costs more than our pick, and its page doesn't say where it's made.",
+                        sources: ["2.price", "1.price"],
+                      },
+                    },
+                    {
+                      rank: 3,
+                      stands_out: {
+                        text: "Brand C adds a probiotic blend and comes in two flavours.",
+                        sources: ["3.c1", "3.c2"],
+                      },
+                      worth_knowing: {
+                        text: "Its page publishes no rating or reviews to go on.",
+                        sources: ["3.summary"],
+                      },
+                    },
+                    {
+                      rank: 4,
+                      stands_out: {
+                        text: "Brand D is the lowest price here at $39.00.",
+                        sources: ["4.price"],
+                      },
+                      worth_knowing: {
+                        text: "Returns are accepted within 15 days, shorter than our pick's 60.",
+                        sources: ["4.c3", "1.s2"],
+                      },
+                    },
+                  ],
+                  axes: [
+                    {
+                      name: "Returns",
+                      cells: [
+                        { rank: 1, text: "60 days", sources: ["1.s2"] },
+                        { rank: 2, text: "30 days", sources: ["2.c2"] },
+                        { rank: 3, text: "Not stated", sources: [] },
+                        { rank: 4, text: "15 days", sources: ["4.c3"] },
+                      ],
+                    },
+                    {
+                      name: "Made in",
+                      cells: [
+                        { rank: 1, text: "USA", sources: ["1.s1"] },
+                        { rank: 2, text: "Not stated", sources: [] },
+                        { rank: 3, text: "Canada", sources: ["3.c4"] },
+                        { rank: 4, text: "Not stated", sources: [] },
+                      ],
+                    },
+                  ],
+                }}
               />
             </PanelFrame>
           </Labeled>
@@ -789,7 +845,10 @@ function State({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-6 pt-10 divider-t-strong">
+    <section
+      id={`state-${number}`}
+      className="flex scroll-mt-6 flex-col gap-6 pt-10 divider-t-strong"
+    >
       <h2 className="flex items-baseline gap-3 text-type-h6 font-medium text-heading-01">
         <span className="text-type-body-small text-heading-06 tabular-nums">
           {number}

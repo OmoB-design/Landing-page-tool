@@ -1,6 +1,7 @@
 """The build graph (BUILD_SPEC §10.1, D7). The only difference between owned and cloned builds
 is the three conditional edges on `origin`: clone-only nodes are unreachable for owned builds. A
-Top 5 ranking template adds one step after `load_inputs`, `pull_competitors` (B2.4a, D102).
+Top 5 ranking template adds two steps after `load_inputs`: `pull_competitors` (B2.4a, D102)
+and `compare_products` (B2.4b, D103).
 
 Ported from docs/pipeline/graph_sketch.py.
 """
@@ -12,6 +13,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from app.models.template import RANKING_TYPE
 from app.pipeline.nodes.apply_section_layout import apply_section_layout
 from app.pipeline.nodes.clone_only import (
     purge_foreign_assets,
@@ -21,6 +23,7 @@ from app.pipeline.nodes.clone_only import (
     scrub_source_brand,
     strip_chrome,
 )
+from app.pipeline.nodes.compare_products import compare_products
 from app.pipeline.nodes.compliance_scan import compliance_scan
 from app.pipeline.nodes.copy_rewrite import copy_rewrite
 from app.pipeline.nodes.finalize_common import finalize_common
@@ -55,27 +58,28 @@ ORDER: dict[Origin, list[str]] = {
         "write_report",
     ],
 }  # fmt: skip
-RANKING = "top5_ranking"
 NODES = [
-    load_inputs, pull_competitors, apply_section_layout, recolor, swap_logos, regenerate_variants,
-    copy_rewrite, purge_terms, strip_chrome, prepare_media_slots, image_pass, finalize_common,
+    load_inputs, pull_competitors, compare_products, apply_section_layout, recolor, swap_logos,
+    regenerate_variants, copy_rewrite, purge_terms, strip_chrome, prepare_media_slots, image_pass,
+    finalize_common,
     scrub_source_brand, scrub_scripts, rewrite_links, purge_foreign_assets, product_fidelity,
     residue_scan, compliance_scan, write_report,
 ]  # fmt: skip
 
 
 def order_for(origin: Origin, template_type: str | None) -> list[str]:
-    """The node order for a build (step numbers in the UI): its origin's, plus the competitor
-    pull for a ranking template."""
+    """The node order for a build (step numbers in the UI): its origin's, plus reading and
+    comparing the competitors for a ranking template."""
     order = list(ORDER[origin])
-    if template_type == RANKING:
-        order.insert(order.index("load_inputs") + 1, "pull_competitors")
+    if template_type == RANKING_TYPE:
+        at = order.index("load_inputs") + 1
+        order[at:at] = ["pull_competitors", "compare_products"]
     return order
 
 
 def route_after_load(state: BuildState) -> Literal["pull_competitors", "apply_section_layout"]:
     """A ranking build reads its competitors before anything else (B2.4a)."""
-    ranking = (state.get("template") or {}).get("type") == RANKING
+    ranking = (state.get("template") or {}).get("type") == RANKING_TYPE
     return "pull_competitors" if ranking else "apply_section_layout"
 
 
@@ -106,7 +110,8 @@ def build_graph(
         "load_inputs", route_after_load,
         {"pull_competitors": "pull_competitors", "apply_section_layout": "apply_section_layout"},
     )  # fmt: skip
-    g.add_edge("pull_competitors", "apply_section_layout")
+    g.add_edge("pull_competitors", "compare_products")
+    g.add_edge("compare_products", "apply_section_layout")
     g.add_edge("apply_section_layout", "recolor")
     g.add_edge("recolor", "swap_logos")
     g.add_edge("swap_logos", "regenerate_variants")

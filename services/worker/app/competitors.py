@@ -22,7 +22,7 @@ from psycopg.types.json import Jsonb
 from app.db import transaction
 from app.engines import product_extract
 from app.engines.money import format_price
-from app.engines.ranking import RankEntry, neutral_label, neutralise
+from app.engines.ranking import RankEntry, name_forms, neutral_label, neutralise
 from app.fetch import ladder
 from app.fetch.safety import check_public_url
 from app.jobs.errors import UserFacingError
@@ -38,6 +38,14 @@ CLAIM_CHARS = 200
 SUBDOMAINS = {"www", "shop", "store", "us", "uk", "eu", "en", "m"}
 # Second-level labels under a country code (brand.co.uk).
 SECOND_LEVEL = {"co", "com", "org", "net", "ac"}
+# With neutral naming the AI calls every competitor this; it becomes "Brand B" to "Brand E" once
+# the ranks are known (they close up over pages that couldn't be read).
+PLACEHOLDER = "Brand X"
+NEUTRAL = (
+    f'Neutral naming: call the product and its maker only "{PLACEHOLDER}". Never write the '
+    "product's own name, model or line name, the brand's name or the store's name; describe a "
+    "material or technology the brand names as its own in plain words instead."
+)
 
 SYSTEM = (
     "You read a competitor's product page for a comparison page. Report only what the page "
@@ -78,20 +86,29 @@ def site_name(url: str) -> str | None:
     return parts[-2] if len(parts) >= 2 else None
 
 
-def _claims(name: str, vendor: str | None, description: str | None, text: str) -> CompetitorClaims:
+def own_names(name: str | None, vendor: str | None, url: str) -> list[str]:
+    """The names a competitor goes by, for neutral naming to replace: its product title and the
+    shorter forms copy calls it by, its vendor and its site's name."""
+    return [*name_forms(name), *(n for n in (vendor, site_name(url)) if n)]
+
+
+def _claims(
+    name: str, vendor: str | None, description: str | None, text: str, *, neutral: bool
+) -> CompetitorClaims:
     product = {"name": name, "vendor": vendor, "store_description": (description or "")[:3000]}
     digest = {"product": product, "page_text": text}
+    prompt = "Competitor product page (JSON):\n" + json.dumps(digest, ensure_ascii=False)
     result = anthropic.generate(
         role="analysis",
         ledger_kind="analysis",
         system=SYSTEM,
-        prompt="Competitor product page (JSON):\n" + json.dumps(digest, ensure_ascii=False),
+        prompt=f"{NEUTRAL}\n\n{prompt}" if neutral else prompt,
         max_tokens=1200,
         effort="low",
         json_schema=anthropic.strict_schema(CompetitorClaims),
         mock_text=json.dumps(
             {
-                "summary": f"(mock) {name}.",
+                "summary": f"(mock) {PLACEHOLDER if neutral else name}.",
                 "claims": ["(mock) A claim quoted from the page when mock mode is off."],
             }
         ),
@@ -127,13 +144,15 @@ def _pull_one(org_id: UUID, raw_url: str, naming: Naming) -> _Pulled:
         pulled = read.pulled
         text = product_extract.page_text(read.html) if read.html else ""
         reviews = product_extract.reviews_from_html(read.html) if read.html else ReviewSummary()
-        claims = _claims(pulled.name, pulled.vendor, pulled.description, text)
+        claims = _claims(
+            pulled.name, pulled.vendor, pulled.description, text, neutral=naming == "neutral"
+        )
         asset_id = image_url = None
         if naming == "real":
             asset_id, image_url = _first_image(org_id, [i.source_url for i in pulled.images])
         warnings = list(read.warnings)
         if reviews.rating is None and not reviews.reviews:
-            warnings.append("The page publishes no rating or reviews the page can quote.")
+            warnings.append("No rating or reviews found on the page.")
         return _Pulled(
             url=url,
             name=pulled.name,
@@ -161,7 +180,7 @@ def _competitor(item: _Pulled, rank: int, naming: Naming) -> Competitor:
     label = neutral_label(rank) if naming == "neutral" else (item.name or host)
     if item.error:
         return Competitor(rank=rank, url=item.url, status="failed", error=item.error, label=label)
-    names = [n for n in (item.name, item.vendor, site_name(item.url)) if n]
+    names = [PLACEHOLDER, *own_names(item.name, item.vendor, item.url)]
 
     def clean(text: str | None) -> str | None:
         if text is None:

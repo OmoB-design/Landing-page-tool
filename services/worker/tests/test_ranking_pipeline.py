@@ -198,4 +198,18 @@ def test_a_ranking_build_reads_its_competitors_and_ranks_the_product_first(
     assert [n.get_text() for n in soup.select("[data-lp-number]")] == ["1", "2", "3", "4"]
     assert soup.select_one("[data-lp-product-name]").get_text() == "Lume Greens"  # type: ignore[union-attr]
     assert "Advertisement" in soup.select_one(".ad-label").get_text()  # type: ignore[union-attr]
+
+    # B2.4b: "Our take" and the table cite the facts they rest on, and trace cleanly (D103).
+    assert events[2]["node"] == "compare_products"
+    takes = two.select("[data-lp-rank-take-text]")
+    assert len(takes) == 2 and all(t.has_attr("data-lp-sources") for t in takes)
+    assert takes[0].get_text().startswith("(mock) ")
+    assert [th.get_text() for th in soup.select("th[data-lp-compare-axis]")] == ["From the page"]
+    assert len(soup.select("td[data-lp-compare-cell]")) == 4  # #1 and the three read
+    disclosure = soup.select_one('[data-lp-disclosure="short"]')
+    assert disclosure is not None and disclosure.get_text().startswith("Lume Test makes our #1")
+    assert "Lume Test" in soup.select_one('[data-lp-disclosure="full"]').get_text()  # type: ignore[union-attr]
+    assert sorted(report["comparison"]["facts"]) == ["1", "2", "3", "4"]
+    assert [t["rank"] for t in report["comparison"]["takes"]] == [2, 3, 4]
+    assert report["compliance"]["high_risk_count"] == 0, report["compliance"]["findings"]
     storage.remove("builds", [build["working_html_path"]])

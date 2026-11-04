@@ -8,12 +8,14 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from app import competitors
 from app.competitors import site_name
 from app.engines.html import parse
 from app.engines.product_extract import reviews_from_html
-from app.engines.ranking import RankEntry, fill_ranking, neutral_label, neutralise
+from app.engines.ranking import RankEntry, fill_ranking, name_forms, neutral_label, neutralise
 from app.models.build import BuildWizard, Competitors
 from app.pipeline.graph import ORDER, build_graph, order_for, route_after_load
+from app.providers import anthropic
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PAGE = (FIXTURES / "competitor_page.html").read_text()
@@ -50,6 +52,52 @@ def test_neutral_naming_replaces_the_competitors_own_names() -> None:
     assert neutralise("revitalising", names, "Brand B") == "revitalising"
     assert site_name("https://www.ritual.com/products/x") == "ritual"
     assert site_name("https://shop.brand.co.uk/p") == "brand"
+
+
+def test_neutral_naming_catches_the_shorter_names_copy_uses() -> None:
+    assert name_forms("Men's Alta High Top - Mid Grey/Light Dune") == [
+        "Men's Alta High Top - Mid Grey/Light Dune",
+        "Men's Alta High Top",
+        "Alta High Top",
+    ]
+    assert name_forms("The Manhattan - Oatmeal") == ["The Manhattan - Oatmeal", "The Manhattan"]
+    # "Military" alone is a plain word: never replaced wherever it appears.
+    assert name_forms("Men's Military | White-Black-Stone") == [
+        "Men's Military | White-Black-Stone",
+        "Men's Military",
+    ]
+    assert name_forms("Capri X Leather Sneaker in Triple White")[1] == "Capri X Leather Sneaker"
+    assert name_forms(None) == []
+
+
+def test_neutral_naming_keeps_names_out_of_the_ai_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    prompts: list[str] = []
+
+    class Result:
+        def json(self) -> Any:
+            return {
+                "summary": "A waterproof winter boot from Brand X.",
+                "claims": ["The Alta High Top keeps feet dry.", "Every brand x shoe is vegan."],
+            }
+
+    def generate(**kwargs: Any) -> Result:
+        prompts.append(kwargs["prompt"])
+        return Result()
+
+    monkeypatch.setattr(anthropic, "generate", generate)
+    title = "Men's Alta High Top - Mid Grey"
+    claims = competitors._claims(title, "Vessi", None, "page text", neutral=True)
+    assert prompts[0].startswith(competitors.NEUTRAL)  # the AI is told to write "Brand X"
+    competitors._claims(title, "Vessi", None, "page text", neutral=False)
+    assert competitors.NEUTRAL not in prompts[1]
+    item = competitors._Pulled(
+        url="https://vessi.com/products/x", name=title, vendor="Vessi",
+        summary=claims.summary, claims=claims.claims,
+    )  # fmt: skip
+    # The placeholder takes the rank's label; a short model name it let slip is replaced too.
+    third = competitors._competitor(item, 3, "neutral")
+    assert third.summary == "A waterproof winter boot from Brand C."
+    assert third.claims == ["The Brand C keeps feet dry.", "Every Brand C shoe is vegan."]
 
 
 def _entry(rank: int, **extra: Any) -> RankEntry:
@@ -116,6 +164,8 @@ def test_ranking_builds_read_their_competitors_after_loading() -> None:
     assert route_after_load(ranking) == "pull_competitors"
     assert route_after_load(other) == "apply_section_layout"
     order = order_for("owned", "top5_ranking")
-    assert order[:3] == ["load_inputs", "pull_competitors", "apply_section_layout"]
+    assert order[:4] == [
+        "load_inputs", "pull_competitors", "compare_products", "apply_section_layout",
+    ]  # fmt: skip
     assert order_for("owned", "listicle") == ORDER["owned"]
     assert "pull_competitors" in set(build_graph().get_graph().nodes)

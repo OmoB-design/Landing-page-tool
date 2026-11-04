@@ -1,5 +1,5 @@
 {
-  "copy_rules": "A neutral publisher's voice: calm, specific, never shouting. The brand's product is the #1 pick; explain why in plain terms from its own facts. Never name, describe or judge the other ranked products outside their entries, and never invent tests, scores, statistics or awards. Keep the headline as 'The 5 best ... ' with the product category.",
+  "copy_rules": "A neutral publisher's voice: calm, specific, never shouting. The brand's product is the #1 pick; explain why in plain terms from its own facts. Never name, describe or judge the other ranked products outside their entries, and never invent tests, scores, statistics or awards. Keep the headline as 'The 5 best ... ' with the product category. Call the product 'our top pick' or 'our #1 pick': never state as fact that it is the best, top-rated, best-selling, number one or better than every other product.",
   "length_caps": [
     { "match": "h1", "max_chars": 90 },
     { "match": "p.dek", "max_chars": 260 },
@@ -12,5 +12,5 @@
   "generic_images": [],
   "keep_images": [],
   "forbidden_terms": [],
-  "notes": "Starter shell for B2.4a (D102); the owner's design replaces it. Competitor entries (#2 to #5) and the table rows are filled from the competitors' own pages and locked from the copy pass. The 'Advertisement' line and the disclosure in the footer are placeholder wording for the owner to confirm."
+  "notes": "Starter shell (B2.4a and B2.4b; D102, D103); the owner's design replaces it. Competitor entries (#2 to #5), their 'Our take' lines and the comparison table are filled from the competitors' own pages and locked from the copy pass. The Advertisement line, the disclosure under the headline and the footer disclosure are filled with fixed wording, the brand and the date, and locked."
 }

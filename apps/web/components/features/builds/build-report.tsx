@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import type {
   BuildReport as Report,
   ComplianceFinding,
+  ReportComparison,
   ReportCompetitor,
   Residue,
   ResidueFinding,
@@ -41,7 +42,10 @@ export function BuildReport({ report }: { report: Report }) {
         <SourceLeaks residue={report.residue ?? null} />
       ) : null}
       {report.competitors ? (
-        <Competitors competitors={report.competitors} />
+        <Competitors
+          competitors={report.competitors}
+          comparison={report.comparison ?? null}
+        />
       ) : null}
       <ClaimCheck claims={reportClaims(report)} />
       <Reminders reminders={reportReminders(report)} />
@@ -55,12 +59,20 @@ export function BuildReport({ report }: { report: Report }) {
  * page uses (with the real product name beside a neutral label), what was taken from the page
  * (price, rating, claims, reviews), any warning, and the page's address. A page that couldn't be
  * read shows the Fix chip and why; the ranking closed up without it.
+ *
+ * B2.4b (D103): each card adds "Our take" (What stands out, Worth knowing) as the page shows it,
+ * and "Side by side" lists the points the table compares, a card per point with each product's
+ * cell ("#1 60 days"). Every line on the page cites what it rests on; the claim check traces it.
  */
 export function Competitors({
   competitors,
+  comparison = null,
 }: {
   competitors: ReportCompetitor[];
+  comparison?: ReportComparison | null;
 }) {
+  const takes = new Map((comparison?.takes ?? []).map((t) => [t.rank, t]));
+  const axes = comparison?.axes ?? [];
   const read = competitors.filter((c) => c.status === "pulled").length;
   return (
     <PanelSection
@@ -74,14 +86,51 @@ export function Competitors({
       </p>
       <ol className="flex flex-col gap-2.5">
         {competitors.map((c) => (
-          <CompetitorCard key={c.rank} competitor={c} />
+          <CompetitorCard
+            key={c.rank}
+            competitor={c}
+            take={c.status === "pulled" ? takes.get(c.rank) : undefined}
+          />
         ))}
       </ol>
+      {axes.length > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-type-caption-1 font-medium text-heading-02">
+            Side by side
+          </p>
+          <ul className="flex flex-col gap-1.5">
+            {axes.map((axis) => (
+              <li
+                key={axis.name}
+                className="flex flex-col gap-1 rounded-md bg-foreground-01 p-1.5 text-type-caption-1 font-medium"
+              >
+                <p className="text-heading-02">{axis.name}</p>
+                {axis.cells.map((cell) => (
+                  <p key={cell.rank} className="flex gap-1.5 text-heading-05">
+                    <span className="w-5 shrink-0 tabular-nums">
+                      #{cell.rank}
+                    </span>
+                    <span className="min-w-0">{cell.text}</span>
+                  </p>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </PanelSection>
   );
 }
 
-function CompetitorCard({ competitor: c }: { competitor: ReportCompetitor }) {
+type Take = ReportComparison["takes"][number];
+
+function CompetitorCard({
+  competitor: c,
+  take,
+}: {
+  competitor: ReportCompetitor;
+  take?: Take;
+}) {
   const failed = c.status === "failed";
   const price = formatPrice(c.price ?? null, c.currency ?? null);
   const facts = failed
@@ -118,6 +167,23 @@ function CompetitorCard({ competitor: c }: { competitor: ReportCompetitor }) {
         ) : (
           <p className="text-heading-05">{facts.join(" · ")}</p>
         )}
+        {take ? (
+          <div className="flex flex-col gap-1 rounded-md bg-foreground-03 px-1.5 py-1">
+            {(
+              [
+                ["What stands out", take.stands_out.text],
+                ["Worth knowing", take.worth_knowing.text],
+              ] as const
+            )
+              .filter(([, text]) => text.trim())
+              .map(([key, text]) => (
+                <p key={key} className="text-heading-02">
+                  <span className="text-heading-05">{key}: </span>
+                  {text}
+                </p>
+              ))}
+          </div>
+        ) : null}
         {c.warnings.map((warning) => (
           <p key={warning} className="text-heading-05">
             {warning}

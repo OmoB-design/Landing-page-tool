@@ -28,11 +28,31 @@ QUOTE_CHARS = 220
 LETTERS = {2: "B", 3: "C", 4: "D", 5: "E"}
 # A host's name ("ritual" from ritual.com) is only treated as a brand name from this length.
 MIN_NAME = 3
+# Where a product title's own name ends: "The Manhattan - Oatmeal", "Capri X Sneaker in White".
+TITLE_BREAK = re.compile(r"\s+(?:[-|/:\u2013\u2014]|in|by)\s+", re.IGNORECASE)
+# Words a title starts with that aren't its name: "The", "Men's", "Women's".
+TITLE_LEAD = re.compile(r"^(?:the|unisex|(?:wo)?men['\u2019]?s|kids['\u2019]?)\s+", re.IGNORECASE)
 
 
 def neutral_label(rank: int) -> str:
     """The name a competitor goes by with neutral naming: "Brand B" for #2, up to "Brand E"."""
     return f"Brand {LETTERS[rank]}"
+
+
+def name_forms(title: str | None) -> list[str]:
+    """A product title and the shorter forms copy calls it by: "Men's Alta High Top - Mid Grey"
+    gives itself, "Men's Alta High Top" and "Alta High Top". A form without its leading words
+    must keep two words, so a plain word ("Military" from "Men's Military") is never replaced
+    wherever it appears."""
+    title = (title or "").strip()
+    if not title:
+        return []
+    head = TITLE_BREAK.split(title, maxsplit=1)[0].strip()
+    bare = head
+    while (shorter := TITLE_LEAD.sub("", bare)) != bare:
+        bare = shorter
+    forms = [title, head] + ([bare] if len(bare.split()) >= 2 else [])
+    return list(dict.fromkeys(f for f in forms if f))
 
 
 def neutralise(text: str, names: list[str], label: str) -> str:
@@ -68,7 +88,7 @@ def _fill(scope: Tag, attr: str, text: str | None) -> None:
             el.decompose()
 
 
-def _short(text: str, limit: int) -> str:
+def shorten(text: str, limit: int) -> str:
     text = " ".join(text.split())
     if len(text) <= limit:
         return text
@@ -117,7 +137,7 @@ def _fill_entry(scope: Tag, entry: RankEntry) -> dict[str, int]:
         if not entry.quote:
             block.decompose()
             continue
-        _fill(block, "data-lp-rank-quote-text", _short(entry.quote, QUOTE_CHARS))
+        _fill(block, "data-lp-rank-quote-text", shorten(entry.quote, QUOTE_CHARS))
         _fill(block, "data-lp-rank-quote-author", entry.quote_author)
 
     for img in scope.select("img[data-lp-rank-image]"):
