@@ -1,0 +1,157 @@
+/*
+ * The connect pictures (I4, D101): a page, the service's mark, and what comes out, on the modal's
+ * own surface (no ground), in LP's theme-following look. Every rule is scoped to `.ic`.
+ */
+
+.ic .ss-stage {
+  overflow: visible;
+  background: transparent;
+}
+
+/* The page: a small white card in the brand, its band, two lines, a picture and a button. */
+.ic .ic-page {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 4px 5px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-primary);
+  box-shadow:
+    0 0 0 0.5px var(--color-stroke-strong),
+    var(--shadow-raise);
+}
+.ic .ic-page__band {
+  height: 5px;
+  margin: 0 -1px;
+  border-radius: 2px;
+}
+.ic .ic-page__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ic .ic-page__picture {
+  flex: 1;
+  border-radius: 3px;
+}
+.ic .ic-page__button {
+  width: 24px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+/* The service's mark on the Shopify header's double tile (Figma 683:15111): a white tile inside
+   a washed one, both with the half-pixel Stroke edge. Ticked once connected. */
+.ic .ic-tile {
+  position: absolute;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--color-dashboard);
+  box-shadow: inset 0 0 0 0.5px var(--color-stroke);
+}
+.dark .ic .ic-tile {
+  background: var(--color-surface-primary);
+}
+.ic .ic-tile__inner {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-primary);
+  box-shadow: inset 0 0 0 0.5px var(--color-stroke);
+}
+.dark .ic .ic-tile__inner {
+  background: var(--color-foreground-02);
+}
+.ic .ic-tile__vercel {
+  width: 18px;
+  color: var(--color-heading-01);
+}
+.ic .ic-tile__shopify {
+  height: 21px;
+}
+.ic .ic-tile__check {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-spot-500-green);
+  box-shadow: 0 0 0 2px var(--color-surface-modal);
+  color: var(--color-surface-primary);
+  opacity: 0;
+  scale: 0.5;
+  transition:
+    opacity 180ms var(--ease-out),
+    scale 240ms var(--ease-out);
+}
+.ic .ic-tile__check svg {
+  width: 9px;
+  height: 9px;
+}
+.ic .ic-tile[data-on] .ic-tile__check {
+  opacity: 1;
+  scale: 1;
+}
+
+/* What comes out: a pill, the live address with the Live dot, or the draft with a hollow one. */
+.ic .ic-result {
+  position: absolute;
+  display: flex;
+  width: max-content;
+  height: 26px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 9px;
+  border-radius: 999px;
+  background: var(--color-surface-primary);
+  box-shadow:
+    0 0 0 0.5px var(--color-stroke-strong),
+    var(--shadow-raise);
+  color: var(--color-heading-01);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-6px, -50%);
+  transition:
+    opacity 240ms var(--ease-out),
+    transform 240ms var(--ease-out);
+}
+.ic .ic-result[data-in] {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+.ic .ic-result__dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1.25px var(--color-heading-05);
+}
+.ic .ic-result[data-live] .ic-result__dot {
+  background: var(--color-spot-500-green);
+  box-shadow: none;
+}
+
+/* The lines: the kit's connector, drawn quicker and in Stroke-Strong, so the picture stays calm
+   and the green tick and the result carry the moment. */
+.ic .ic-line .ss-connector__line {
+  stroke: var(--color-heading-05);
+  stroke-width: 1;
+  transition-duration: 480ms, 250ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ic .ic-tile__check,
+  .ic .ic-result {
+    transition: none;
+  }
+}

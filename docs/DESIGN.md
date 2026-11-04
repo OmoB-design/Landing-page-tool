@@ -201,7 +201,7 @@ Button, Input (*D76:* the Figma Input Field, Default type; `InputGroup` for icon
 | `WizardStepper` | Step indicator for the create wizard. *B1.2:* horizontal step bar. *D79:* replaced by the vertical Progress column (`components/features/wizard/progress.tsx`); the old component was removed (2026-10-15). |
 | `OptionCard` | *B1.2:* a selectable card on a real radio or checkbox input. *D79:* replaced by the "Create new page card" inside `components/features/wizard/steps.tsx`; the old component was removed (2026-10-15). |
 | `EmptyState` | Illustration slot + title + body + action. |
-| `illustrations/` | *I1, D101:* scenes drawn with the Stageshow kit (`components/ui/stageshow`, vendored): `look.css` (LP's look as the kit's tokens; `lp-look-light` stays light in dark mode), `home/` (the three Home card scenes on Quality's 398 px canvas, `frame.ts`). Review and film them at `/dev/illustrations`. |
+| `illustrations/` | *I1, D101:* scenes drawn with the Stageshow kit (`components/ui/stageshow`, vendored): `look.css` (LP's look as the kit's tokens; `lp-look-light` stays light in dark mode, `lp-look` follows the theme), `home/` (the three Home card scenes on Quality's 398 px canvas, `frame.ts`), *I4:* `connect/` (`ConnectScene`, the picture at the top of the Connect Vercel and Connect a Shopify store modals). Review and film them at `/dev/illustrations`. |
 | `CountBadge` | Tinted count used by `ListToolbar` (B0.3b). |
 | `ToolbarButton` | Quiet icon + label button for list toolbars; icon-only on phones (B0.3b). |
 | `PersonAvatar` | Initials avatar; assignee placeholder in rows (B0.3b). |

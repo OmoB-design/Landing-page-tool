@@ -6,8 +6,8 @@
  *
  * `lp-look-light` is LP's light theme whatever the app's theme is: the Home card drawings stay
  * light in dark mode, as drawn (Home canvas, 2026-10-11). It reads LP's primitives, which don't
- * change with the theme. A look that follows the app's theme comes with the first illustration
- * that needs one (the empty states).
+ * change with the theme. `lp-look` follows the app's theme (the connect pictures, I4): it reads
+ * LP's semantic tokens, which the `.dark` class redefines.
  */
 .lp-look-light .ss-stage {
   --ss-font: var(--font-sans);
@@ -71,4 +71,50 @@
   --ss-shadow-float: var(--shadow-float);
   --ss-shadow-lift: var(--shadow-float);
   --ss-shadow-ground: var(--shadow-illustration-window);
+}
+
+/* LP's look, following the app's theme (Surface-Primary, Dashboard, the Foregrounds, the
+   Headings, Sub-text, the Strokes). Status, accent, radii, type and density as in the light look. */
+.lp-look .ss-stage {
+  --ss-font: var(--font-sans);
+  --ss-mono: var(--font-mono);
+
+  --ss-surface: var(--color-surface-primary);
+  --ss-raised: var(--color-surface-modal);
+  --ss-chrome: var(--color-surface-primary);
+  --ss-canvas: var(--color-dashboard);
+  --ss-well: var(--color-foreground-01);
+  --ss-fill: var(--color-foreground-02);
+
+  --ss-ink-1: var(--color-foreground-01);
+  --ss-ink-2: var(--color-foreground-02);
+  --ss-ink-3: var(--color-foreground-03);
+  --ss-ink-4: var(--color-foreground-03);
+  --ss-ink-5: var(--color-heading-05);
+
+  --ss-line: var(--color-stroke-strong);
+  --ss-line-faint: var(--color-stroke);
+
+  --ss-text-strong: var(--color-heading-01);
+  --ss-text: var(--color-heading-04);
+  --ss-text-faint: var(--color-sub-text);
+  --ss-icon: var(--color-icon-system);
+  --ss-icon-faint: var(--color-heading-05);
+
+  --ss-accent: var(--color-button-primary);
+  --ss-accent-soft: var(--color-foreground-02);
+  --ss-accent-text: var(--color-spot-500-blue);
+  --ss-success: var(--color-spot-500-green);
+
+  --ss-radius-sm: var(--radius-sm);
+  --ss-radius-md: var(--radius-md);
+  --ss-radius-lg: var(--radius-lg);
+  --ss-radius-window: var(--radius-lg);
+  --ss-control: 30px;
+  --ss-row: 28px;
+
+  --ss-shadow-satellite: var(--shadow-pop);
+  --ss-shadow-card: var(--shadow-panel);
+  --ss-shadow-float: var(--shadow-float);
+  --ss-shadow-lift: var(--shadow-float);
 }

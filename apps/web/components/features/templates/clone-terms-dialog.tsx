@@ -105,7 +105,7 @@ export function CloneTermsDialog({
               type="button"
               variant="ghost"
               size="compact"
-              className="text-body"
+              className="text-body hover:bg-foreground-03"
               disabled={accepting}
               onClick={() => onOpenChange(false)}
             >

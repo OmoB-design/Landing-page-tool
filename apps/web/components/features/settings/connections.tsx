@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { type ReactNode, useId, useState } from "react";
 
+import { ConnectScene } from "@/components/app/illustrations/connect";
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
 import {
@@ -511,9 +512,8 @@ export function VercelConnectDialog({
         >
           <div className="flex flex-col gap-6 px-6 pt-8 pb-6">
             <div className="flex flex-col items-center gap-3 text-center">
-              <LogoTile large>
-                <VercelLogo className="w-8 text-heading-01" />
-              </LogoTile>
+              {/* I4: what connecting does, in place of the logo tile. */}
+              <ConnectScene service="vercel" />
               <div className="flex flex-col gap-1">
                 <DialogTitle className="text-type-body-small font-medium text-heading-01">
                   {replacing ? "Replace the Vercel token" : "Connect Vercel"}

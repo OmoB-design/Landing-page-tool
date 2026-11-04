@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { type ReactNode, useId, useState } from "react";
 
+import { ConnectScene } from "@/components/app/illustrations/connect";
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -146,6 +147,7 @@ export function ShopifyConnectForm({
       <ModalCard className="rounded-lg pt-2 pb-2.5">
         <ShopifyCardHeader
           onBack={stacked ? onCancel : undefined}
+          picture={<ConnectScene service="shopify" />}
           title={
             brandId && brandName
               ? `Connect ${brandName}’s Shopify store`
@@ -256,12 +258,13 @@ export function ShopifyConnectForm({
         ) : (
           <span className="flex-1" />
         )}
-        {/* Figma 686:15456: Cancel is plain text on the frame, as the published modal's Done. */}
+        {/* Figma 686:15456: Cancel is plain text on the frame, as the published modal's Done;
+            Foreground-03 on hover, so it shows on the grey frame (owner, 2026-11-04). */}
         <Button
           type="button"
           variant="ghost"
           size="compact"
-          className="text-body"
+          className="text-body hover:bg-foreground-03"
           disabled={connect.isPending}
           onClick={onCancel}
         >
@@ -602,15 +605,19 @@ export function ShopifyFullWidthDialog({
 /** ← Back at the top of a stacked card. */
 /**
  * A Shopify card's header, inside its white card (Figma 683:15111): ← Back when it's stacked, the
- * bag on a white tile inside a washed one, the title and the line under it, centred.
+ * bag on a white tile inside a washed one, the title and the line under it, centred. The connect
+ * form shows what connecting does in place of the tile (`picture`, I4).
  */
 function ShopifyCardHeader({
   onBack,
+  picture,
   title,
   children,
 }: {
   /** Stacked on the published modal: ← Back goes back to it. */
   onBack?: () => void;
+  /** Takes the tile's place (I4: the connect picture). */
+  picture?: ReactNode;
   title: string;
   children: ReactNode;
 }) {
@@ -623,11 +630,13 @@ function ShopifyCardHeader({
     >
       {onBack ? <BackLink onClick={onBack} /> : null}
       <div className="flex flex-col items-center gap-3 text-center">
-        <div className="rounded-md bg-dashboard p-0.5 ring-half ring-stroke dark:bg-surface-primary">
-          <div className="flex size-10 items-center justify-center rounded-sm bg-surface-primary ring-half ring-stroke dark:bg-foreground-02">
-            <ShopifyLogo className="h-5.25" />
+        {picture ?? (
+          <div className="rounded-md bg-dashboard p-0.5 ring-half ring-stroke dark:bg-surface-primary">
+            <div className="flex size-10 items-center justify-center rounded-sm bg-surface-primary ring-half ring-stroke dark:bg-foreground-02">
+              <ShopifyLogo className="h-5.25" />
+            </div>
           </div>
-        </div>
+        )}
         <div className="flex flex-col gap-1">
           <ModalStackTitle className="text-type-body-small font-medium text-heading-01">
             {title}

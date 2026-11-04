@@ -736,12 +736,13 @@ export function PublishedModal() {
         </ModalCard>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4">
-          {/* Figma 686:15362: Done is plain text on the frame, no fill or edge. */}
+          {/* Figma 686:15362: Done is plain text on the frame, no fill or edge; Foreground-03 on
+              hover, so it shows on the grey frame (owner, 2026-11-04). */}
           <Button
             type="button"
             variant="ghost"
             size="compact"
-            className="text-body"
+            className="text-body hover:bg-foreground-03"
             onClick={() => setModalOpen(false)}
           >
             Done

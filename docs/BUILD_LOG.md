@@ -882,3 +882,16 @@ as new entries.
 - **Owner confirmed:** no
 - **Next:** the connect explainers (Vercel and Shopify connect steps), and the clone explainer once the owner signs off on the terms wording.
 
+### I4 — Connect pictures (Stageshow)
+- **Status:** complete (owner: "let's see, i will revert if i don't like it. so go ahead."; committed and pushed on the owner's go)
+- **Date:** 2026-11-04
+- **Summary:** the Connect Vercel and Connect a Shopify store modals open with a small picture of what connecting does, in place of the logo tile: a page in the brand, a line to the service's mark, a green tick as it connects, a line on, then the result (Vercel: the live address `lp-lum.vercel.app` with the Live dot; Shopify: Draft page). It plays once when the modal opens (about 1.4 s) and holds; reduced motion shows the end; it follows the app's theme. The Shopify picture shows wherever its connect form opens (Settings, and stacked on the published modal).
+- **Key files:** `apps/web/components/app/illustrations/connect/{connect-scene.tsx,connect.css,index.ts,connect-scene.test.tsx}`, `illustrations/look.css` (`lp-look`, the theme-following look), `components/features/settings/connections.tsx` (the Vercel modal), `components/features/settings/shopify.tsx` (`ShopifyCardHeader`'s `picture`), `components/features/dev/connect-preview.tsx` and `app/dev/illustrations/page.tsx` (the review), `vitest.setup.ts` (a `matchMedia` stand-in: jsdom has none, and the publish tests open the Shopify form), `docs/DECISIONS.md` (D101), `docs/DESIGN.md`.
+- **Schema changes:** none. **New dependencies:** none.
+- **Decisions:** D101 (its connect-pictures paragraph).
+- **Deviations from the plan:** 98 px tall, not 96 (the filming check asks for a 16 px gutter above and below the page); the mark is centred where the tile was, the page and the result either side.
+- **Verification:** web typecheck, eslint, token check, Prettier, vitest 199/199. The real modals filmed in Settings → Connections in light and dark (a throwaway account and brand, deleted afterwards; the local worker API only, no job loop). Stageshow's filming gate on both pictures: rehearsal passed after the gutter fix; coverage "inconclusive" on this machine, the tool's own 404 and the hydration notice from the attributes it adds before hydration.
+- **Owner actions requested:** review at `/dev/illustrations` (Connect pictures, Replay) and in Settings → Connections → Connect.
+- **Owner confirmed:** no
+- **Next:** the clone terms explainer, once the owner signs off on the terms wording; otherwise the Stageshow list is done (I1 Home cards, I3 live results, I4 connect pictures).
+- **Follow-up (owner, same day):** the plain-text Cancel and Done on the grey modal frames (Connect a Shopify store, the clone terms, the published modal) hover with Foreground-03, so the hover shows on the frame. Cancel stays beside the primary button, as the published modal's Done does (moving it to the far left was tried and undone at the owner's word).
