@@ -205,6 +205,8 @@ const SAMPLE_DESK_BASE: Omit<DeskState, "paragraphs"> = {
   sections: { hero: "Hero", reviews: "Reviews", faq: "FAQ" },
   snapshots: [],
   redraft: null,
+  layout: [],
+  can_redo: false,
   colors: SAMPLE_DESK_COLORS,
 };
 

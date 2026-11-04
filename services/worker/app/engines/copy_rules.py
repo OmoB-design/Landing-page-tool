@@ -20,6 +20,8 @@ COUNTDOWN_UNIT = re.compile(r"^(?:days?|hrs?|hours?|mins?|minutes?|secs?|seconds
 BYLINE = re.compile(r"^(?:written\s+)?by\s+[A-Z]", re.I)
 JOB_TITLE_HINT = re.compile(r"(?:title|role|job|position|credential)", re.I)
 BADGE_HINT = re.compile(r"badge|chip|pill|tag\b|label", re.I)
+# A tag written as text ("</br>", "<b>", "&lt;br&gt;"): a slip of the model's, never copy.
+MARKUP = re.compile(r"<\s*/?\s*[A-Za-z][\w-]*(?:\s[^<>]*)?/?\s*>|&lt;\s*/?\s*[A-Za-z]", re.I)
 
 
 def length_budget(fragment: Fragment, caps: list[LengthCap]) -> int:
@@ -45,10 +47,20 @@ def is_structural(fragment: Fragment) -> bool:
     return fragment.words == 1 and text.isupper() and len(text) <= 14
 
 
+def has_markup(text: str) -> bool:
+    return MARKUP.search(text) is not None
+
+
 def protect(fragments: list[Fragment], replacements: dict[str, str]) -> dict[str, str]:
-    """Drops replacements for locked and structural fragments (the original stays)."""
-    keep = {f.id for f in fragments if not f.locked and not is_structural(f)}
-    return {k: v for k, v in replacements.items() if k in keep}
+    """Drops replacements for locked and structural fragments, and any that carry markup the
+    original didn't (a tag written as text, such as "call.s.</br>" from a live redraft): the
+    original stays."""
+    keep = {f.id: f for f in fragments if not f.locked and not is_structural(f)}
+    return {
+        k: v
+        for k, v in replacements.items()
+        if k in keep and not (has_markup(v) and not has_markup(keep[k].text))
+    }
 
 
 def strict_candidates(fragments: list[Fragment], replacements: dict[str, str]) -> list[str]:

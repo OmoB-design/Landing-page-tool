@@ -25,6 +25,7 @@ import {
   type DeskRedraft,
   type DeskState,
   type RedraftScope,
+  type SectionAction,
   deskStateSchema,
 } from "@/lib/validators/desk";
 
@@ -35,6 +36,15 @@ export type DeskFocus = { block: number; nonce: number; scroll: boolean };
 
 /** A paragraph by its number, or by one of its fragments (a click in the preview, a claim). */
 export type DeskTarget = { block: number } | { fragment: string };
+
+/** A redraft that has finished, as the page editor's Lander keeps it (B3.1b): how it ended, its
+ * result, and the page's lines afterwards (to show what changed). */
+export type SettledRedraft = {
+  job: JobDetail;
+  /** The page's lines once the desk caught up (null if it couldn't be fetched). */
+  paragraphs: { number: number; text: string; section: string | null }[] | null;
+  pageVersion: number | null;
+};
 
 /** What to redraft (D86): the page, a section, a paragraph, or the lines left unwritten. */
 export type RedraftInput = {
@@ -65,9 +75,28 @@ type DeskContextValue = {
   saveEdit: (block: number, original: string, text: string) => Promise<boolean>;
   setStatus: (status: "approved" | "needs_review") => void;
   undo: () => void;
+  /** Puts back the change Undo took off last (the page editor, B3.1a). */
+  redo: () => void;
+  /** Moves, copies or removes a section (the page editor, B3.1a). */
+  editSections: (action: SectionAction) => Promise<boolean>;
+  /** Saves a line typed on the page (the page editor, D104) without refreshing the route: saves
+   * of one line share an undo step. Resolves to the new desk, or null when it was refused. */
+  saveTyping: (
+    block: number,
+    original: string,
+    text: string,
+  ) => Promise<DeskState | null>;
   restore: (seq: number) => void;
+  /** The page version the editor's canvas should show: changes but this tab's typing (which the
+   * canvas already shows, so loading it again would lose your place). */
+  frameVersion: number;
   /** Queues a redraft; the Copy tab shows it running and other changes wait until it's done. */
   redraft: (input: RedraftInput) => Promise<boolean>;
+  /** Queues a redraft and resolves to its job's id (null when refused): the page editor's Lander
+   * follows that job in its thread (B3.1b). */
+  startRedraft: (input: RedraftInput) => Promise<string | null>;
+  /** Redrafts that finished while this desk was open, by job id (B3.1b). */
+  settledRedrafts: Record<string, SettledRedraft>;
   /** Recolours the page to these colours (undoable). */
   recolor: (colors: DeskPalette) => Promise<boolean>;
   /** Fetches the desk again (publishing changes the status without a new page version). */
@@ -105,6 +134,7 @@ export function DeskProvider({
   onChange,
   initialTab = "overview",
   initialEditing,
+  quietRedrafts = false,
   children,
 }: {
   buildId: string;
@@ -114,6 +144,8 @@ export function DeskProvider({
   initialTab?: DeskTab;
   /** A paragraph open for editing at first (the states page). */
   initialEditing?: number;
+  /** The page editor (B3.1b): a finished redraft is told in Lander's thread, not a toast. */
+  quietRedrafts?: boolean;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -122,6 +154,16 @@ export function DeskProvider({
   const [editing, setEditing] = useState<number | null>(initialEditing ?? null);
   const [focus, setFocus] = useState<DeskFocus | null>(null);
   const desk = pickDesk(local, initial);
+  const [shownVersion, setShownVersion] = useState(initial.build.page_version);
+  // A desk from anywhere but typing moves the canvas on; typing saves leave it where it is.
+  const showDesk = useCallback((next: DeskState) => {
+    setLocal(next);
+    setShownVersion(next.build.page_version);
+  }, []);
+  const frameVersion =
+    local === null
+      ? initial.build.page_version
+      : Math.max(shownVersion, desk === local ? 0 : desk.build.page_version);
 
   const mutation = useMutation({
     mutationFn: ({
@@ -136,7 +178,7 @@ export function DeskProvider({
         body: JSON.stringify(body),
       }),
     onSuccess: (next) => {
-      setLocal(next);
+      showDesk(next);
       router.refresh();
     },
     onError: (error) => {
@@ -157,9 +199,15 @@ export function DeskProvider({
     },
   });
 
+  // Typing saves follow each other faster than renders: each change uses the version the last
+  // typing save returned, when that's newer than the desk this render has.
+  const typedVersion = useRef(desk.build.page_version);
   const run = useCallback(
     async (action: DeskAction, body: Record<string, unknown>) => {
-      const payload = { base_version: desk.build.page_version, ...body };
+      const payload = {
+        base_version: Math.max(typedVersion.current, desk.build.page_version),
+        ...body,
+      };
       if (onChange) {
         onChange(action, payload);
         return true;
@@ -179,7 +227,53 @@ export function DeskProvider({
     latestRun.current = run;
   }, [run]);
 
+  const saveTyping = useCallback(
+    async (block: number, original: string, text: string) => {
+      const base = Math.max(typedVersion.current, desk.build.page_version);
+      const body = {
+        base_version: base,
+        edits: [{ block, original, text }],
+        typing: true,
+      };
+      if (onChange) {
+        onChange("copy", body);
+        return null;
+      }
+      try {
+        const next = await apiFetch(
+          `/api/builds/${buildId}/desk/copy`,
+          deskStateSchema,
+          { method: "POST", body: JSON.stringify(body) },
+        );
+        typedVersion.current = next.build.page_version;
+        setLocal(next);
+        return next;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Couldn’t save the line.";
+        if (error instanceof ApiError && error.status === 409) {
+          toast.error(message, {
+            action: {
+              label: "Reload",
+              onClick: () => {
+                setLocal(null);
+                router.refresh();
+              },
+            },
+          });
+        } else {
+          toast.error(message);
+        }
+        return null;
+      }
+    },
+    [buildId, desk.build.page_version, onChange, router],
+  );
+
   const redraftInput = useRef<RedraftInput | null>(null);
+  const [settledRedrafts, setSettledRedrafts] = useState<
+    Record<string, SettledRedraft>
+  >({});
   const redraft = useCallback(
     async (input: RedraftInput) => {
       redraftInput.current = input;
@@ -227,17 +321,54 @@ export function DeskProvider({
         });
       }
     };
+    const remember = (next: DeskState | null) =>
+      setSettledRedrafts((all) => ({
+        ...all,
+        [finished.id]: {
+          job: finished,
+          paragraphs:
+            next?.paragraphs.map(({ number, text, section }) => ({
+              number,
+              text,
+              section,
+            })) ?? null,
+          pageVersion: next?.build.page_version ?? null,
+        },
+      }));
     void apiFetch(`/api/builds/${buildId}/desk`, deskStateSchema)
       .then((next) => {
-        setLocal(next);
+        showDesk(next);
+        remember(next);
         router.refresh();
-        announce(next.build.page_version);
+        if (!quietRedrafts) announce(next.build.page_version);
       })
       .catch(() => {
+        remember(null);
         router.refresh();
-        announce();
+        if (!quietRedrafts) announce();
       });
-  }, [job.data, buildId, router]);
+  }, [job.data, buildId, router, showDesk, quietRedrafts]);
+
+  const startRedraft = useCallback(
+    async (input: RedraftInput) => {
+      redraftInput.current = input;
+      const body = {
+        base_version: Math.max(typedVersion.current, desk.build.page_version),
+        ...input,
+      };
+      if (onChange) {
+        onChange("redraft", body);
+        return null;
+      }
+      try {
+        const next = await mutation.mutateAsync({ action: "redraft", body });
+        return next.redraft?.job_id ?? null;
+      } catch {
+        return null;
+      }
+    },
+    [desk.build.page_version, mutation, onChange],
+  );
 
   const blockOf = useCallback(
     (target: DeskTarget) => {
@@ -298,15 +429,21 @@ export function DeskProvider({
       },
       setStatus: (status) => void run("status", { status }),
       undo: () => void run("undo", {}),
+      redo: () => void run("redo", {}),
+      editSections: (action) => run("sections", { action }),
+      saveTyping,
+      frameVersion,
       restore: (seq) => void run("restore", { seq }),
       redraft,
+      startRedraft,
+      settledRedrafts,
       reload: async () => {
         if (onChange) return;
         const next = await apiFetch(
           `/api/builds/${buildId}/desk`,
           deskStateSchema,
         ).catch(() => null);
-        if (next) setLocal(next);
+        if (next) showDesk(next);
         router.refresh();
       },
       recolor: async (colors) => {
@@ -340,6 +477,11 @@ export function DeskProvider({
       blockOf,
       run,
       redraft,
+      startRedraft,
+      settledRedrafts,
+      saveTyping,
+      frameVersion,
+      showDesk,
       onChange,
       router,
       job.data,

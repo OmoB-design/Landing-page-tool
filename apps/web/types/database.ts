@@ -372,7 +372,9 @@ export type Database = {
           created_by: string | null
           html_path: string
           id: string
+          merge_key: string | null
           reason: string
+          redo: boolean
           seq: number
         }
         Insert: {
@@ -381,7 +383,9 @@ export type Database = {
           created_by?: string | null
           html_path: string
           id?: string
+          merge_key?: string | null
           reason: string
+          redo?: boolean
           seq: number
         }
         Update: {
@@ -390,7 +394,9 @@ export type Database = {
           created_by?: string | null
           html_path?: string
           id?: string
+          merge_key?: string | null
           reason?: string
+          redo?: boolean
           seq?: number
         }
         Relationships: [

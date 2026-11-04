@@ -1,13 +1,13 @@
 "use client";
 
-import { type ComponentType, type SVGProps, useState } from "react";
+import { useState } from "react";
 
+import { IconAction } from "@/components/app/icon-action";
 import {
   type DragHandleProps,
   SortableList,
 } from "@/components/app/sortable-list";
 import { toast } from "@/components/app/toaster";
-import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -389,37 +389,6 @@ function SectionName({
         </button>
       </TooltipTrigger>
       <TooltipContent>Rename</TooltipContent>
-    </Tooltip>
-  );
-}
-
-/** A square icon button with its name in a tooltip; when unavailable, the tooltip says why. */
-function IconAction({
-  icon: ActionIcon,
-  label,
-  unavailable,
-  onClick,
-}: {
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-  label: string;
-  unavailable: string | null;
-  onClick: () => void;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={label}
-          aria-disabled={unavailable ? true : undefined}
-          onClick={unavailable ? undefined : onClick}
-          className="bg-foreground-01 text-icon-system hover:bg-foreground-02 hover:text-body aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
-        >
-          <ActionIcon aria-hidden />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{unavailable ?? label}</TooltipContent>
     </Tooltip>
   );
 }

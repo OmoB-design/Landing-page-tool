@@ -22,6 +22,8 @@ function desk(version: number, status = "needs_review", id = "b1"): DeskState {
     fragments: [],
     paragraphs: [],
     redraft: null,
+    layout: [],
+    can_redo: false,
     colors: { page: null, brand: null },
     sections: {},
     snapshots: [],

@@ -24,6 +24,7 @@ from app.models.desk import (
     DeskState,
     RecolorRequest,
     RedraftRequest,
+    SectionRequest,
     SnapshotRestoreRequest,
     StatusRequest,
 )
@@ -174,9 +175,9 @@ PAGE_CHANGED_ELSEWHERE = (
 )
 
 
-def _desk_call(fn: Any, *args: Any) -> Any:
+def _desk_call(fn: Any, *args: Any, **kwargs: Any) -> Any:
     try:
-        return fn(*args)
+        return fn(*args, **kwargs)
     except desk.DeskNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That page isn't available.") from exc
     except desk.DeskConflictError as exc:
@@ -210,8 +211,9 @@ def edit_build_copy(build_id: UUID, body: CopyEditRequest, user: CurrentUser) ->
     """Saves edited sentences, after a snapshot of the page as it was."""
     require_org_member(user, body.org_id)
     state: DeskState = _desk_call(
-        desk.edit_copy, body.org_id, build_id, user.id, body.base_version, body.edits
-    )
+        desk.edit_copy, body.org_id, build_id, user.id, body.base_version, body.edits,
+        typing=body.typing,
+    )  # fmt: skip
     return state
 
 
@@ -229,7 +231,25 @@ def set_build_status(build_id: UUID, body: StatusRequest, user: CurrentUser) -> 
 def undo_build_change(build_id: UUID, body: DeskChange, user: CurrentUser) -> DeskState:
     """Puts back the page before the last change."""
     require_org_member(user, body.org_id)
-    state: DeskState = _desk_call(desk.undo, body.org_id, build_id, body.base_version)
+    state: DeskState = _desk_call(desk.undo, body.org_id, build_id, user.id, body.base_version)
+    return state
+
+
+@app.post("/builds/{build_id}/redo")
+def redo_build_change(build_id: UUID, body: DeskChange, user: CurrentUser) -> DeskState:
+    """Puts back the change Undo took off last (the page editor, B3.1a)."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(desk.redo, body.org_id, build_id, user.id, body.base_version)
+    return state
+
+
+@app.post("/builds/{build_id}/sections")
+def edit_build_sections(build_id: UUID, body: SectionRequest, user: CurrentUser) -> DeskState:
+    """Moves, duplicates or removes a section of the page (the page editor, B3.1a)."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(
+        desk.edit_sections, body.org_id, build_id, user.id, body.base_version, body.action
+    )
     return state
 
 

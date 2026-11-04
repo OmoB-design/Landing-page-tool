@@ -9,6 +9,10 @@ points the build at the new file, in one transaction, so a failed save never lea
 page. Undo points the build back at the newest snapshot's page and drops that snapshot; Restore
 makes an older page current as a new change (so it can be undone). The newest 12 snapshots are
 kept; files no kept snapshot or the build uses are deleted after the commit.
+
+The page editor (B3.1a, D104) adds section changes (move, duplicate, remove, by the template's
+rules), typing saves that share one undo step per line (`merge_key`), and Redo: Undo keeps the
+page it undid as a redo row until the next new change.
 """
 
 import re
@@ -21,6 +25,14 @@ from psycopg.types.json import Jsonb
 from app.db import transaction
 from app.engines import comparison, fragments, paragraphs, proof
 from app.engines import recolor as recolor_engine
+from app.engines.html import parse
+from app.engines.sections import (
+    DUPLICATE_KEY,
+    apply_layout,
+    duplicate_section,
+    section_order,
+    top_level_sections,
+)
 from app.jobs import queue
 from app.models.desk import (
     CopyEdit,
@@ -30,15 +42,21 @@ from app.models.desk import (
     DeskPalette,
     DeskParagraph,
     DeskRedraft,
+    DeskSection,
     DeskSnapshot,
     DeskState,
     RecolorColors,
     RedraftRequest,
+    SectionAction,
 )
+from app.models.template import DuplicateAction, RemoveAction, ReorderAction
 from app.providers import storage
 
 BUCKET = "builds"
-MAX_SNAPSHOTS = 12  # BUILD_SPEC §11.2: keep 12 snapshots
+MAX_SNAPSHOTS = 12  # BUILD_SPEC §11.2: keep 12 snapshots (and up to 12 undone pages for Redo)
+MAX_SECTIONS = 40
+# Typing saves of one line share an undo step while they come at most this far apart (D104).
+MERGE_SECONDS = 60
 MAX_EDITED = 300
 # A page can be changed on the desk once it is built (not while it builds or after it failed). A
 # change to an approved or published page sends it back to Needs review (a published page stays
@@ -74,17 +92,29 @@ def _load(conn: Any, org_id: UUID, build_id: UUID, *, lock: bool = False) -> dic
     return dict(build)
 
 
-def _snapshots(conn: Any, build_id: UUID) -> list[dict[str, Any]]:
+def _snapshots(conn: Any, build_id: UUID, *, redo: bool = False) -> list[dict[str, Any]]:
+    """The build's undo snapshots (or, with `redo`, the pages undone and kept for Redo), newest
+    first. `recent`: taken (or last merged into) within the typing merge window."""
     return [
         dict(r)
         for r in conn.execute(
             """
-            select seq, html_path, reason, created_at, created_by from build_snapshots
-            where build_id = %(b)s order by seq desc
+            select seq, html_path, reason, created_at, created_by, merge_key,
+                   created_at > now() - make_interval(secs => %(window)s) as recent
+            from build_snapshots
+            where build_id = %(b)s and redo = %(redo)s order by seq desc
             """,
-            {"b": build_id},
+            {"b": build_id, "redo": redo, "window": MERGE_SECONDS},
         ).fetchall()
     ]
+
+
+def _next_seq(conn: Any, build_id: UUID) -> int:
+    row = conn.execute(
+        "select coalesce(max(seq), 0) + 1 as seq from build_snapshots where build_id = %(b)s",
+        {"b": build_id},
+    ).fetchone()
+    return int(row["seq"])
 
 
 def _redraft(conn: Any, build_id: UUID) -> dict[str, Any] | None:
@@ -134,24 +164,60 @@ def _page(build: dict[str, Any]) -> str:
     return storage.download(BUCKET, build["working_html_path"]).decode("utf-8")
 
 
-def _labels(conn: Any, template_id: UUID) -> dict[str, str]:
+def _rules(conn: Any, template_id: UUID) -> dict[str, dict[str, Any]]:
+    """The template's sections: label, and whether each may be removed or duplicated."""
     return {
-        r["key"]: r["label"]
+        r["key"]: dict(r)
         for r in conn.execute(
-            "select key, label from template_sections where template_id = %(t)s",
+            """
+            select key, label, removable, duplicable from template_sections
+            where template_id = %(t)s
+            """,
             {"t": template_id},
         ).fetchall()
     }
+
+
+def _labels(conn: Any, template_id: UUID) -> dict[str, str]:
+    return {key: rule["label"] for key, rule in _rules(conn, template_id).items()}
+
+
+def _layout(rules: dict[str, dict[str, Any]], html: str) -> list[DeskSection]:
+    """The page's sections in order, with the template's rules. A copy (`hero-2`) is named and
+    ruled after its original and can always be removed; a section the template doesn't list (a
+    clone's) can be removed but not copied."""
+    out: list[DeskSection] = []
+    containers: dict[int, int] = {}
+    for tag in top_level_sections(parse(html)):
+        key = str(tag["data-lp-section"])
+        group = containers.setdefault(id(tag.parent), len(containers))
+        rule = rules.get(key)
+        match = DUPLICATE_KEY.match(key)
+        base = rules.get(match.group("base")) if rule is None and match else None
+        if rule is not None:
+            out.append(DeskSection(key=key, label=rule["label"], removable=rule["removable"],
+                                   duplicable=rule["duplicable"], group=group))  # fmt: skip
+        elif base is not None:
+            out.append(DeskSection(key=key, label=f"{base['label']} (copy)", removable=True,
+                                   duplicable=base["duplicable"], group=group))  # fmt: skip
+        else:
+            label = key.replace("-", " ").replace("_", " ").strip().capitalize() or key
+            out.append(DeskSection(key=key, label=label, removable=True, duplicable=False,
+                                   group=group))  # fmt: skip
+    return out
 
 
 def _state(
     build: dict[str, Any],
     snapshots: list[dict[str, Any]],
     html: str,
-    labels: dict[str, str],
+    rules: dict[str, dict[str, Any]],
     redraft: dict[str, Any] | None,
     colors: DeskColors,
+    redos: list[dict[str, Any]],
 ) -> DeskState:
+    layout = _layout(rules, html)
+    labels = {key: rule["label"] for key, rule in rules.items()} | {s.key: s.label for s in layout}
     edited = set((build["report"] or {}).get("desk", {}).get("edited", []))
     paras = paragraphs.paragraphs(html)
     number_of = {fid: p.number for p in paras for fid in p.fragment_ids}
@@ -209,6 +275,9 @@ def _state(
         if redraft
         else None,
         colors=colors,
+        layout=layout,
+        can_redo=bool(redos),
+        redo_reason=redos[0]["reason"] if redos else None,
     )
 
 
@@ -218,11 +287,12 @@ def desk_state(org_id: UUID, build_id: UUID) -> DeskState:
     with transaction() as conn:
         build = _load(conn, org_id, build_id)
         snapshots = _snapshots(conn, build_id)
-        labels = _labels(conn, build["template_id"])
+        redos = _snapshots(conn, build_id, redo=True)
+        rules = _rules(conn, build["template_id"])
         redraft = _redraft(conn, build_id)
         html = _page(build)
         colors = _colors(conn, build, html)
-    return _state(build, snapshots, html, labels, redraft, colors)
+    return _state(build, snapshots, html, rules, redraft, colors, redos)
 
 
 def proof_html(org_id: UUID, build_id: UUID) -> tuple[str, int]:
@@ -254,12 +324,18 @@ def _change(
     html_path: str | None = None,
     edited: list[str] | None = None,
     clear_copy_error: bool = False,
+    merge_key: str | None = None,
+    keep_redo: bool = False,
 ) -> list[str]:
     """Saves a change: the current page becomes the newest snapshot (`reason` says what the change
     does), the build points at the new page (`html` to store, or an existing `html_path`), its
     version goes up, an approval is withdrawn, the claims are checked again and the export is
     marked out of date. `clear_copy_error` drops the build's "copy wasn't rewritten" error (a
-    redraft wrote those lines). Returns files to delete after the commit."""
+    redraft wrote those lines). Returns files to delete after the commit.
+
+    A new change drops the pages kept for Redo (`keep_redo` is Redo itself). With `merge_key`
+    (typing in the editor, D104), a save that follows the same person's save of the same line
+    within a minute joins that undo step instead of taking a new snapshot."""
     version = build["page_version"] + 1
     if html is not None:
         html_path = f"{build['org_id']}/{build['id']}/pages/v{version}.html"
@@ -268,17 +344,42 @@ def _change(
         assert html_path is not None
         html = storage.download(BUCKET, html_path).decode("utf-8")
     snapshots = _snapshots(conn, build["id"])
-    seq = max([s["seq"] for s in snapshots], default=0) + 1
-    conn.execute(
-        """
-        insert into build_snapshots (build_id, seq, html_path, reason, created_by)
-        values (%(b)s, %(seq)s, %(path)s, %(reason)s, %(user)s)
-        """,
-        {
-            "b": build["id"], "seq": seq, "path": build["working_html_path"], "reason": reason,
-            "user": user_id,
-        },
-    )  # fmt: skip
+    redos = [] if keep_redo else _snapshots(conn, build["id"], redo=True)
+    if redos:
+        conn.execute(
+            "delete from build_snapshots where build_id = %(b)s and redo",
+            {"b": build["id"]},
+        )
+    newest = snapshots[0] if snapshots else None
+    merged = (
+        merge_key is not None
+        and newest is not None
+        and newest["merge_key"] == merge_key
+        and newest["created_by"] == user_id
+        and bool(newest["recent"])
+    )
+    if merged:
+        assert newest is not None
+        seq = newest["seq"]
+        # The page between the two saves isn't anyone's undo step: it goes.
+        conn.execute(
+            "update build_snapshots set created_at = now() where build_id = %(b)s and seq = %(s)s",
+            {"b": build["id"], "s": seq},
+        )
+        superseded = [build["working_html_path"]]
+    else:
+        seq = _next_seq(conn, build["id"])
+        conn.execute(
+            """
+            insert into build_snapshots (build_id, seq, html_path, reason, created_by, merge_key)
+            values (%(b)s, %(seq)s, %(path)s, %(reason)s, %(user)s, %(merge)s)
+            """,
+            {
+                "b": build["id"], "seq": seq, "path": build["working_html_path"],
+                "reason": reason, "user": user_id, "merge": merge_key,
+            },
+        )  # fmt: skip
+        superseded = []
     report = dict(build["report"] or {})
     report["compliance"] = comparison.check_claims(
         html,
@@ -287,7 +388,10 @@ def _change(
     )
     if edited:
         desk = dict(report.get("desk") or {})
-        desk["edited"] = (list(desk.get("edited", [])) + edited)[-MAX_EDITED:]
+        earlier = list(desk.get("edited", []))
+        if merged:  # the line's earlier wording, from the save this one joins
+            earlier = earlier[: -len(edited)] if len(earlier) >= len(edited) else []
+        desk["edited"] = (earlier + edited)[-MAX_EDITED:]
         report["desk"] = desk
     if clear_copy_error and (error := (report.get("copy") or {}).get("error")):
         report["copy"] = {**report["copy"], "error": None}
@@ -309,15 +413,20 @@ def _change(
             "o": build["org_id"],
         },
     )  # fmt: skip
-    kept = [{"seq": seq, "html_path": build["working_html_path"]}, *snapshots][:MAX_SNAPSHOTS]
+    if merged:
+        kept = snapshots[:MAX_SNAPSHOTS]
+    else:
+        kept = [{"seq": seq, "html_path": build["working_html_path"]}, *snapshots][:MAX_SNAPSHOTS]
     dropped = [s for s in snapshots if s["seq"] not in {k["seq"] for k in kept}]
     if dropped:
         conn.execute(
             "delete from build_snapshots where build_id = %(b)s and seq = any(%(s)s)",
             {"b": build["id"], "s": [s["seq"] for s in dropped]},
         )
-    in_use = {html_path, *(k["html_path"] for k in kept)}
-    return sorted({s["html_path"] for s in dropped} - in_use)
+    still_redo = _snapshots(conn, build["id"], redo=True) if keep_redo else []
+    in_use = {html_path, *(k["html_path"] for k in kept), *(r["html_path"] for r in still_redo)}
+    gone = {s["html_path"] for s in dropped} | {r["html_path"] for r in redos} | set(superseded)
+    return sorted(gone - in_use)
 
 
 def _remove(paths: list[str]) -> None:
@@ -336,11 +445,18 @@ def _where(sections: list[str | None]) -> str:
 
 
 def edit_copy(
-    org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int, edits: list[CopyEdit]
+    org_id: UUID,
+    build_id: UUID,
+    user_id: UUID | None,
+    base_version: int,
+    edits: list[CopyEdit],
+    *,
+    typing: bool = False,
 ) -> DeskState:
     """Writes edited paragraphs into the page, keeping their bold words, links and locked parts.
     Each edit names the paragraph and the text the desk showed; if any no longer reads that way,
-    nothing is saved."""
+    nothing is saved. `typing` (the page editor's saves while you type, D104): saves of one line
+    share an undo step."""
     with transaction() as conn:
         build = _load(conn, org_id, build_id, lock=True)
         _check(conn, build, base_version)
@@ -366,7 +482,11 @@ def edit_copy(
             written.append(re.sub(r"\s+", " ", edit.text).strip())
         count = len(written)
         reason = f"Edited {'a line' if count == 1 else f'{count} lines'}{_where(sections)}"
-        stale = _change(conn, build, reason=reason, user_id=user_id, html=html, edited=written)
+        merge = f"line:{edits[0].block}" if typing and count == 1 else None
+        stale = _change(
+            conn, build, reason=reason, user_id=user_id, html=html, edited=written,
+            merge_key=merge,
+        )  # fmt: skip
     return _finish(org_id, build_id, stale)
 
 
@@ -400,8 +520,9 @@ def set_status(
     return desk_state(org_id, build_id)
 
 
-def undo(org_id: UUID, build_id: UUID, base_version: int) -> DeskState:
-    """Puts back the page before the last change and drops its snapshot."""
+def undo(org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int) -> DeskState:
+    """Puts back the page before the last change and drops its snapshot. The page it undid is
+    kept for Redo (B3.1a) until the next new change."""
     with transaction() as conn:
         build = _load(conn, org_id, build_id, lock=True)
         _check(conn, build, base_version)
@@ -422,6 +543,23 @@ def undo(org_id: UUID, build_id: UUID, base_version: int) -> DeskState:
         )
         conn.execute(
             """
+            insert into build_snapshots (build_id, seq, html_path, reason, created_by, redo)
+            values (%(b)s, %(seq)s, %(path)s, %(reason)s, %(user)s, true)
+            """,
+            {
+                "b": build_id, "seq": _next_seq(conn, build_id),
+                "path": build["working_html_path"], "reason": newest["reason"], "user": user_id,
+            },
+        )  # fmt: skip
+        redos = _snapshots(conn, build_id, redo=True)
+        pruned = redos[MAX_SNAPSHOTS:]
+        if pruned:
+            conn.execute(
+                "delete from build_snapshots where build_id = %(b)s and seq = any(%(s)s)",
+                {"b": build_id, "s": [r["seq"] for r in pruned]},
+            )
+        conn.execute(
+            """
             update builds set working_html_path = %(path)s, page_version = page_version + 1,
                    report = %(report)s, export_html_path = null,
                    status = case when status in ('approved', 'published')
@@ -434,9 +572,99 @@ def undo(org_id: UUID, build_id: UUID, base_version: int) -> DeskState:
             """,
             {"path": newest["html_path"], "report": Jsonb(report), "b": build_id, "o": org_id},
         )
-        in_use = {newest["html_path"], *(s["html_path"] for s in snapshots[1:])}
-        abandoned = build["working_html_path"]
-        stale = [] if abandoned in in_use else [abandoned]
+        in_use = {
+            newest["html_path"],
+            *(s["html_path"] for s in snapshots[1:]),
+            *(r["html_path"] for r in redos[:MAX_SNAPSHOTS]),
+        }
+        stale = sorted({r["html_path"] for r in pruned} - in_use)
+    return _finish(org_id, build_id, stale)
+
+
+def redo(org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int) -> DeskState:
+    """Puts back the change Undo took off last (B3.1a), as a change of its own (undoable)."""
+    with transaction() as conn:
+        build = _load(conn, org_id, build_id, lock=True)
+        _check(conn, build, base_version)
+        redos = _snapshots(conn, build_id, redo=True)
+        if not redos:
+            raise DeskEditError("Nothing to redo.")
+        top = redos[0]
+        conn.execute(
+            "delete from build_snapshots where build_id = %(b)s and seq = %(s)s",
+            {"b": build_id, "s": top["seq"]},
+        )
+        stale = _change(
+            conn, build, reason=top["reason"], user_id=user_id, html_path=top["html_path"],
+            keep_redo=True,
+        )  # fmt: skip
+    return _finish(org_id, build_id, stale)
+
+
+def _move_reason(old: list[str], new: list[str], labels: dict[str, str], moved: str | None) -> str:
+    """ "Moved Hero up" when one section moved (the one the user moved, if they said); otherwise
+    "Reordered sections"."""
+    for key in [moved, *old] if moved in old else old:
+        assert key is not None
+        if [k for k in old if k != key] == [k for k in new if k != key]:
+            direction = "up" if new.index(key) < old.index(key) else "down"
+            return f"Moved {labels.get(key, key)} {direction}"
+    return "Reordered sections"
+
+
+def edit_sections(
+    org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int, action: SectionAction
+) -> DeskState:
+    """The page editor's section changes (B3.1a, D104): move, duplicate or remove a section of
+    the page, by the template's rules (a ranking's competitor entries can't be removed), as one
+    undoable change."""
+    with transaction() as conn:
+        build = _load(conn, org_id, build_id, lock=True)
+        _check(conn, build, base_version)
+        html = _page(build)
+        layout = _layout(_rules(conn, build["template_id"]), html)
+        keys = [s.key for s in layout]
+        by_key = {s.key: s for s in layout}
+        labels = {s.key: s.label for s in layout}
+        if isinstance(action, ReorderAction):
+            if sorted(action.keys) != sorted(keys):
+                raise DeskConflictError
+            if action.keys == keys:
+                raise DeskEditError("The sections are already in that order.")
+            new_html, _ = apply_layout(html, action.keys)
+            if section_order(new_html) != action.keys:
+                raise DeskEditError(
+                    "That section can't move there: it sits in a different part of the page."
+                )
+            reason = _move_reason(keys, action.keys, labels, action.moved)
+        elif isinstance(action, RemoveAction):
+            section = by_key.get(action.key)
+            if section is None:
+                raise DeskConflictError
+            if not section.removable:
+                raise DeskEditError(f"{section.label} can't be removed from this page.")
+            if len(keys) == 1:
+                raise DeskEditError("A page needs at least one section.")
+            new_html, _ = apply_layout(html, [k for k in keys if k != action.key])
+            reason = f"Removed {section.label}"
+        elif isinstance(action, DuplicateAction):
+            section = by_key.get(action.key)
+            if section is None:
+                raise DeskConflictError
+            if not section.duplicable:
+                raise DeskEditError(f"{section.label} can't be duplicated.")
+            if len(keys) >= MAX_SECTIONS:
+                raise DeskEditError(f"A page can have up to {MAX_SECTIONS} sections.")
+            match = DUPLICATE_KEY.match(action.key)
+            root = match.group("base") if match and match.group("base") in by_key else action.key
+            n = 2
+            while f"{root}-{n}" in by_key:
+                n += 1
+            new_html = duplicate_section(html, action.key, f"{root}-{n}")
+            reason = f"Duplicated {section.label}"
+        else:  # pragma: no cover (the union is exhaustive)
+            raise DeskEditError("Unknown change.")
+        stale = _change(conn, build, reason=reason, user_id=user_id, html=new_html)
     return _finish(org_id, build_id, stale)
 
 

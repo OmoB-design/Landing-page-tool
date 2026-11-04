@@ -122,10 +122,10 @@ Goal: the shared foundation and one owned template building end to end in mock m
 
 ## M3 — Review and edit
 
-- B3.1 Full editor: section rail, canvas editing, element popover, improve section/element.
+- B3.1 Full editor: section rail, canvas editing, element popover, improve section/element. *Split (owner, 2026-11-04, D104):* **B3.1a** the editor (full screen; sections on the left, the page in the middle, typing on the page with autosave and one undo step per line, section move/duplicate/remove by the template's rules, Redo, Ask AI on the right starting as an Improve box that runs the section redraft); **B3.1b** the full AI composer (the old B3.4 moved up: a thread per page, plan then steps then result, image attachments, every change undoable; built from AffectUI's composer components, Antigravity and Claude chat studied for a design of its own). The element popover follows later, mostly as composer requests. *Split again (owner, 2026-11-04, D105):* **B3.1b** the editor reorganised around Lander, a floating composer modelled on Shopify's Sidekick (page first; Sections in a drawer; "Work with Lander" at the foot of the page; the panel that squeezes the page; each request runs today's redraft, with plan, steps, a change card and Undo; dictation; motion on DialKit); **B3.1c** Lander as an agent with the editor's tools, image attachments, stop, saved conversations.
 - B3.2 Image studio.
 - B3.3 Mobile optimise + QA screenshots + OG image.
-- B3.4 Edit agent chat.
+- B3.4 Edit agent chat. *Moved up as B3.1b (owner, 2026-11-04).*
 - B3.5 Batch build (all templates for one product).
 - B3.6 Client review link (BUILD_SPEC §11.4, D55).
 

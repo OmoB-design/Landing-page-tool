@@ -59,6 +59,194 @@ const DESK_BRIDGE = `(function () {
 })();`;
 
 /**
+ * Runs inside the page editor's canvas (`?mode=write`, B3.1a, D104), on the same proof as the
+ * desk's. Hovering outlines a line (dashed) and its section; clicking a line selects its section
+ * and lets you type in it, unless it's filled from data (the editor says why) or the editor has
+ * paused editing (a redraft is running). Text filled from data inside a line can't be typed over.
+ * Paste is plain text; Enter or a click away ends the line, Escape puts it back. The text it reports
+ * is the line as the worker reads it (every text node of the line, whitespace collapsed), so a
+ * save matches the paragraph it's checked against. ⌘Z / ⇧⌘Z outside a line go to the editor.
+ * B3.1b: the lines Lander is rewriting breathe (`lp-busy`), and Show on page flashes the lines a
+ * change rewrote and scrolls to them (`lp-flash`).
+ * Talks to the editor only through postMessage; the frame has an opaque origin.
+ */
+const WRITE_BRIDGE = `(function () {
+  var colour = "Highlight", locked = {}, paused = false, busy = [], flash = [], flashTimer = 0;
+  var section = null, hoverSection = null, hoverBlock = null, editing = null, saved = "";
+  var style = document.createElement("style");
+  (document.head || document.documentElement).appendChild(style);
+  function send(data) { parent.postMessage(data, "*"); }
+  function closest(el, attr) {
+    for (; el && el !== document.documentElement; el = el.parentElement)
+      if (el.nodeType === 1 && el.hasAttribute(attr)) return el;
+    return null;
+  }
+  function topSection(el) {
+    var found = null;
+    for (; el && el !== document.documentElement; el = el.parentElement)
+      if (el.nodeType === 1 && el.hasAttribute("data-lp-section")) found = el;
+    return found;
+  }
+  function number(el) { return Number(el.getAttribute("data-lp-block")); }
+  function blockSel(n) { return '[data-lp-block="' + Number(n) + '"]'; }
+  function numbers(list) { return Array.isArray(list) ? list.filter(function (n) { return typeof n === "number"; }) : []; }
+  function textOf(block) {
+    var walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT), out = "", space = false, n;
+    while ((n = walk.nextNode())) {
+      if (closest(n.parentElement, "data-lp-block") !== block) continue;
+      var t = n.nodeValue;
+      for (var i = 0; i < t.length; i++) {
+        if (/\\s/.test(t[i])) { if (out && !space) out += " "; space = true; }
+        else { out += t[i]; space = false; }
+      }
+    }
+    return out.replace(/ +$/, "");
+  }
+  function key(el) { return el ? el.getAttribute("data-lp-section") : null; }
+  function sel(k) { return '[data-lp-section="' + String(k).replace(/"/g, "") + '"]'; }
+  function paint() {
+    var css = "[data-lp-block]{cursor:text}[data-lp-locked-block]{cursor:default}" +
+      "[contenteditable]{outline:2px solid " + colour + " !important;outline-offset:3px !important;border-radius:2px;cursor:text}" +
+      "[contenteditable] [data-lp-frag-locked]{text-decoration:underline dotted;text-underline-offset:3px}";
+    if (hoverSection && hoverSection !== section)
+      css += sel(hoverSection) + "{outline:1.5px dashed " + colour + " !important;outline-offset:-2px !important}";
+    if (section)
+      css += sel(section) + "{outline:2px solid " + colour + " !important;outline-offset:-2px !important}";
+    if (hoverBlock && !editing)
+      css += '[data-lp-block="' + hoverBlock + '"]:not([data-lp-locked-block]){outline:1.5px dashed ' + colour + " !important;outline-offset:3px !important;border-radius:2px}";
+    if (busy.length)
+      css += busy.map(blockSel).join(",") + "{animation:lp-busy 1.6s ease-in-out infinite}" +
+        "@keyframes lp-busy{0%,100%{opacity:1}50%{opacity:.42}}" +
+        "@media (prefers-reduced-motion:reduce){" + busy.map(blockSel).join(",") + "{animation:none;opacity:.6}}";
+    if (flash.length)
+      css += flash.map(blockSel).join(",") + "{animation:lp-flash 1.9s cubic-bezier(.2,.8,0,1) 1;border-radius:3px}" +
+        "@keyframes lp-flash{0%{background-color:color-mix(in srgb," + colour + " 22%,transparent);box-shadow:0 0 0 4px color-mix(in srgb," + colour + " 22%,transparent)}100%{background-color:transparent;box-shadow:0 0 0 4px transparent}}";
+    style.textContent = css;
+  }
+  function finish(cancel) {
+    if (!editing) return;
+    var block = editing;
+    editing = null;
+    if (cancel) block.innerHTML = saved;
+    block.removeAttribute("contenteditable");
+    var inner = block.querySelectorAll("[data-lp-frag-locked]");
+    for (var i = 0; i < inner.length; i++) inner[i].removeAttribute("contenteditable");
+    send({ type: cancel ? "lp-cancel" : "lp-commit", block: number(block), text: textOf(block) });
+    paint();
+  }
+  function start(block, x, y) {
+    finish(false);
+    editing = block;
+    saved = block.innerHTML;
+    var inner = block.querySelectorAll("[data-lp-frag-locked]");
+    for (var i = 0; i < inner.length; i++) inner[i].setAttribute("contenteditable", "false");
+    try { block.contentEditable = "plaintext-only"; } catch (e) { block.contentEditable = "true"; }
+    if (block.contentEditable !== "plaintext-only") block.contentEditable = "true";
+    block.focus();
+    var range = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
+    if (range && block.contains(range.startContainer)) {
+      var s = getSelection(); s.removeAllRanges(); s.addRange(range);
+    }
+    send({ type: "lp-start", block: number(block), text: textOf(block) });
+    paint();
+  }
+  document.addEventListener("mouseover", function (e) {
+    var b = closest(e.target, "data-lp-block"), s = key(topSection(e.target));
+    var n = b ? b.getAttribute("data-lp-block") : null;
+    if (n !== hoverBlock || s !== hoverSection) { hoverBlock = n; hoverSection = s; paint(); }
+  });
+  document.documentElement.addEventListener("mouseleave", function () {
+    hoverBlock = null; hoverSection = null; paint();
+  });
+  document.addEventListener("click", function (e) {
+    var b = closest(e.target, "data-lp-block");
+    if (editing && b === editing) return;
+    e.preventDefault();
+    var s = key(topSection(e.target));
+    if (s && s !== section) { section = s; send({ type: "lp-section", key: s }); }
+    if (!b) { finish(false); paint(); return; }
+    if (paused) { finish(false); send({ type: "lp-paused" }); paint(); return; }
+    if (locked[number(b)]) { finish(false); send({ type: "lp-locked", block: number(b) }); paint(); return; }
+    start(b, e.clientX, e.clientY);
+  }, true);
+  document.addEventListener("input", function (e) {
+    if (editing && editing.contains(e.target))
+      send({ type: "lp-input", block: number(editing), text: textOf(editing) });
+  });
+  document.addEventListener("keydown", function (e) {
+    var mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase();
+    if (editing) {
+      if (e.key === "Enter") { e.preventDefault(); finish(false); }
+      else if (e.key === "Escape") { e.preventDefault(); finish(true); }
+      return;
+    }
+    if (mod && (k === "z" || k === "y")) {
+      e.preventDefault();
+      send({ type: "lp-key", key: k === "y" || e.shiftKey ? "redo" : "undo" });
+    }
+  });
+  document.addEventListener("paste", function (e) {
+    if (!editing) return;
+    e.preventDefault();
+    var text = (e.clipboardData && e.clipboardData.getData("text/plain")) || "";
+    document.execCommand("insertText", false, text.replace(/\\s+/g, " "));
+  });
+  document.addEventListener("drop", function (e) { e.preventDefault(); });
+  document.addEventListener("focusout", function (e) {
+    if (editing && e.target === editing) finish(false);
+  });
+  document.addEventListener("submit", function (e) { e.preventDefault(); }, true);
+  var ticking = false;
+  addEventListener("scroll", function () {
+    if (ticking) return;
+    ticking = true;
+    setTimeout(function () { ticking = false; send({ type: "lp-scroll", y: scrollY }); }, 150);
+  });
+  addEventListener("message", function (e) {
+    var d = e.data;
+    if (e.source !== parent || !d || typeof d.type !== "string") return;
+    if (typeof d.colour === "string" && /^[#\\w(),.%\\s-]+$/.test(d.colour)) colour = d.colour;
+    if (d.type === "lp-setup") {
+      locked = {};
+      (d.locked || []).forEach(function (n) { locked[n] = true; });
+      var blocks = document.querySelectorAll("[data-lp-block]");
+      for (var i = 0; i < blocks.length; i++) {
+        if (locked[number(blocks[i])]) blocks[i].setAttribute("data-lp-locked-block", "");
+        else blocks[i].removeAttribute("data-lp-locked-block");
+      }
+      paused = Boolean(d.paused);
+      if (paused) finish(false);
+      if (typeof d.y === "number") scrollTo(0, d.y);
+      send({ type: "lp-placed" });
+    }
+    if (d.type === "lp-busy") busy = numbers(d.blocks);
+    if (d.type === "lp-flash") {
+      flash = numbers(d.blocks);
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(function () { flash = []; paint(); }, 2000);
+      var first = flash.length && document.querySelector(blockSel(flash[0]));
+      if (first && d.scroll) {
+        var r = first.getBoundingClientRect();
+        if (r.top < 40 || r.bottom > innerHeight - 90)
+          scrollTo({ top: r.top + scrollY - innerHeight * 0.32, behavior: "smooth" });
+      }
+    }
+    if (d.type === "lp-section-select") {
+      section = typeof d.key === "string" ? d.key : null;
+      var el = section && document.querySelector(sel(section));
+      if (el && d.scroll) {
+        var box = el.getBoundingClientRect();
+        if (box.top < 0 || box.top > innerHeight * 0.6)
+          scrollTo({ top: box.top + scrollY - 24, behavior: d.instant ? "auto" : "smooth" });
+      }
+    }
+    paint();
+  });
+  paint();
+  send({ type: "lp-ready" });
+})();`;
+
+/**
  * `versioned`: the address names this exact version of the page (it changes with every edit and
  * every rebuild), so the browser may keep it for an hour: going back to a page, or opening it
  * again, shows the preview without asking the worker. Only this browser keeps it (`private`), and
@@ -93,6 +281,7 @@ function page(html: string, nonce: string | null, versioned: boolean) {
  * runs with scripts off and can't reach this app: the CSP sandbox gives it an opaque origin.
  * `?mode=edit` serves the review desk's proof instead: the page with its sentences marked (from
  * the worker) and the desk's bridge script, allowed by a nonce; the page's own scripts stay off.
+ * `?mode=write` serves the same proof with the page editor's bridge (typing on the page, B3.1a).
  */
 export async function GET(
   request: Request,
@@ -100,7 +289,8 @@ export async function GET(
 ) {
   const { buildId } = await params;
   const query = new URL(request.url).searchParams;
-  if (query.get("mode") === "edit") {
+  const mode = query.get("mode");
+  if (mode === "edit" || mode === "write") {
     const session = await getApiSession();
     if (!session) return new Response("Not found", { status: 404 });
     let html: string;
@@ -115,7 +305,8 @@ export async function GET(
       throw error;
     }
     const nonce = crypto.randomUUID().replaceAll("-", "");
-    const script = `<script nonce="${nonce}">${DESK_BRIDGE}</script>`;
+    const bridge = mode === "write" ? WRITE_BRIDGE : DESK_BRIDGE;
+    const script = `<script nonce="${nonce}">${bridge}</script>`;
     const marked = addSectionAnchors(html);
     const end = marked.lastIndexOf("</body>");
     return page(

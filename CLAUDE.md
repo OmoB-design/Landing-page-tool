@@ -122,6 +122,7 @@ lp-platform/
 │       │   │   ├── analytics/
 │       │   │   └── settings/          ← org, members, integrations (Vercel, Shopify)
 │       │   ├── (editor)/templates/[templateId]/ ← full-screen section editor (no workspace shell)
+│       │   ├── (studio)/pages/[buildId]/editor/ ← full-screen page editor with Lander (B3.1a, B3.1b; canvas only)
 │       │   ├── preview/[buildId]/route.ts ← serves built HTML into a sandboxed iframe
 │       │   └── api/                   ← thin route handlers that call the worker API
 │       ├── components/

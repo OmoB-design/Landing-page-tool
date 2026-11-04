@@ -89,6 +89,28 @@ def test_structural_labels_are_protected() -> None:
     assert kept == {"f0002": "y"}
 
 
+def test_lines_with_markup_written_as_text_are_dropped() -> None:
+    fragments = [
+        Fragment("f0001", "We looked at five sneakers so you can choose.", "p", False, None),
+        Fragment("f0002", "Pick the one you love", "p", False, None),
+        Fragment("f0003", "Rated <3 by readers", "p", False, None),
+        Fragment("f0004", "Use the <b> tag sparingly", "p", False, None),
+    ]
+    kept = rules.protect(
+        fragments,
+        {
+            # The live slip (2026-11-04): a stray closing tag and junk at the end of a line.
+            "f0001": "We compared five sneakers, so your next pair is an easy call.s.</br>",
+            "f0002": "Pick the pair &lt;br&gt; you love",
+            "f0003": "Loved <3 by readers",
+            "f0004": "Use the <b> tag with care",
+        },
+    )
+    # Markup the original didn't have is dropped; "<3" isn't a tag; a tag the original already
+    # had may stay.
+    assert kept == {"f0003": "Loved <3 by readers", "f0004": "Use the <b> tag with care"}
+
+
 def test_strict_candidates_are_substantial_and_unchanged() -> None:
     fragments = [
         Fragment("f0001", "This sentence stayed exactly the same", "p", False, None),

@@ -98,6 +98,8 @@ const DESK: DeskState = {
     },
   ],
   redraft: null,
+  layout: [],
+  can_redo: false,
   colors: {
     page: {
       primary: "#2f6fde",

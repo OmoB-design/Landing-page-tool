@@ -1,10 +1,12 @@
 """The review desk's API shapes (BUILD_SPEC §11.1, D84)."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.models.template import DuplicateAction, RemoveAction, ReorderAction
 
 
 class DeskFragment(BaseModel):
@@ -76,6 +78,18 @@ class DeskColors(BaseModel):
     brand: DeskPalette | None
 
 
+class DeskSection(BaseModel):
+    """A section of the page, in page order, as the editor lists it (B3.1a, D104)."""
+
+    key: str
+    label: str
+    # The template's rules for it; a copy follows its original's and can always be removed.
+    removable: bool
+    duplicable: bool
+    # Sections in different parts of the page (different containers) can't swap places.
+    group: int = 0
+
+
 class DeskState(BaseModel):
     build: DeskBuild
     # The page's fragments (for the preview's clicks and the claims), each with its paragraph.
@@ -87,6 +101,11 @@ class DeskState(BaseModel):
     snapshots: list[DeskSnapshot]
     redraft: DeskRedraft | None
     colors: DeskColors
+    # The page's sections in order, with what the editor may do to each (B3.1a).
+    layout: list[DeskSection] = Field(default_factory=list)
+    # Redo (B3.1a): the newest undone change, kept until the next new change.
+    can_redo: bool = False
+    redo_reason: str | None = None
 
 
 class DeskChange(BaseModel):
@@ -110,6 +129,19 @@ class CopyEdit(BaseModel):
 
 class CopyEditRequest(DeskChange):
     edits: list[CopyEdit] = Field(min_length=1, max_length=50)
+    # Saved by the page editor while typing (B3.1a): saves of one line by one person, a minute
+    # apart at most, share one undo step.
+    typing: bool = False
+
+
+# The page editor's section changes (B3.1a): the template editor's, without renaming.
+SectionAction = Annotated[
+    ReorderAction | RemoveAction | DuplicateAction, Field(discriminator="type")
+]
+
+
+class SectionRequest(DeskChange):
+    action: SectionAction
 
 
 class StatusRequest(DeskChange):

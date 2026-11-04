@@ -83,12 +83,29 @@ export const deskStateSchema = z.object({
     page: deskPaletteSchema.nullable(),
     brand: deskPaletteSchema.nullable(),
   }),
+  /** The page's sections in order, with what the editor may do to each (B3.1a, D104). */
+  layout: z
+    .array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        removable: z.boolean(),
+        duplicable: z.boolean(),
+        /** Sections in different parts of the page can't swap places. */
+        group: z.number().int().catch(0),
+      }),
+    )
+    .catch([]),
+  /** Redo (B3.1a): the newest undone change, kept until the next new change. */
+  can_redo: z.boolean().catch(false),
+  redo_reason: z.string().nullish().catch(null),
 });
 
 export type DeskState = z.infer<typeof deskStateSchema>;
 export type DeskFragment = DeskState["fragments"][number];
 export type DeskParagraph = DeskState["paragraphs"][number];
 export type DeskSnapshot = DeskState["snapshots"][number];
+export type DeskSection = DeskState["layout"][number];
 export type DeskPalette = z.infer<typeof deskPaletteSchema>;
 export type DeskRedraft = NonNullable<DeskState["redraft"]>;
 export type RedraftScope = (typeof REDRAFT_SCOPES)[number];
@@ -108,9 +125,12 @@ export const deskActionSchemas = {
       )
       .min(1)
       .max(50),
+    /** The page editor's saves while typing (D104): one line's saves share an undo step. */
+    typing: z.boolean().optional(),
   }),
   status: base.extend({ status: z.enum(["approved", "needs_review"]) }),
   undo: base,
+  redo: base,
   restore: base.extend({ seq: z.number().int().min(1) }),
   redraft: base.extend({
     scope: z.enum(REDRAFT_SCOPES),
@@ -123,7 +143,23 @@ export const deskActionSchemas = {
       .optional(),
   }),
   recolor: base.extend({ colors: deskPaletteSchema }),
+  /** The page editor's section changes (B3.1a): move, copy or remove, by the template's rules. */
+  sections: base.extend({
+    action: z.discriminatedUnion("type", [
+      z.object({
+        type: z.literal("reorder"),
+        keys: z.array(z.string().max(100)).min(1).max(100),
+        moved: z.string().max(100).optional(),
+      }),
+      z.object({ type: z.literal("remove"), key: z.string().max(100) }),
+      z.object({ type: z.literal("duplicate"), key: z.string().max(100) }),
+    ]),
+  }),
 } as const;
+
+export type SectionAction = z.infer<
+  (typeof deskActionSchemas)["sections"]
+>["action"];
 
 export type DeskAction = keyof typeof deskActionSchemas;
 

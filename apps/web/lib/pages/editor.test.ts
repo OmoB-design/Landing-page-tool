@@ -1,0 +1,51 @@
+import { describe, expect, it } from "vitest";
+
+import type { DeskParagraph, DeskSection } from "@/lib/validators/desk";
+
+import {
+  canMoveSection,
+  keepsGroups,
+  lockedBlocks,
+  textToSave,
+} from "./editor";
+
+const layout: DeskSection[] = [
+  { key: "hero", label: "Hero", removable: false, duplicable: true, group: 0 },
+  { key: "faq", label: "FAQ", removable: true, duplicable: false, group: 0 },
+  {
+    key: "footer",
+    label: "Footer",
+    removable: true,
+    duplicable: false,
+    group: 1,
+  },
+];
+
+describe("page editor rules (B3.1a)", () => {
+  it("moves sections only within their part of the page", () => {
+    expect(canMoveSection(layout, 0, 1)).toBe(true);
+    expect(canMoveSection(layout, 0, -1)).toBe(false);
+    expect(canMoveSection(layout, 1, 1)).toBe(false); // the footer sits elsewhere
+    expect(keepsGroups(layout, ["faq", "hero", "footer"])).toBe(true);
+    expect(keepsGroups(layout, ["footer", "hero", "faq"])).toBe(false);
+  });
+
+  it("saves a typed line only when it changed and still has words", () => {
+    expect(textToSave("Glow in 7 days", "Glow in  7 days ")).toBeNull();
+    expect(textToSave("Glow in 7 days", "Glow in 5 days")).toBe(
+      "Glow in 5 days",
+    );
+    expect(textToSave("Glow", "  ")).toBeNull();
+    expect(textToSave("Only $29", "$19")).toBe("$19"); // a price alone is a line (as the worker says)
+    expect(textToSave("Only $29", "Now $19")).toBe("Now $19");
+    expect(textToSave("Hi", "Ça va")).toBe("Ça va");
+  });
+
+  it("knows which lines are filled from data", () => {
+    const paragraph = (number: number, locked: boolean) =>
+      ({ number, locked }) as DeskParagraph;
+    expect(lockedBlocks([paragraph(1, false), paragraph(2, true)])).toEqual([
+      2,
+    ]);
+  });
+});

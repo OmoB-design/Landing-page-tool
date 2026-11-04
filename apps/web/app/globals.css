@@ -302,6 +302,13 @@
   --color-highlight-green-500: var(--green-500);
   --color-highlight-purple-50: var(--purple-50);
   --color-highlight-purple-150: var(--purple-150);
+  /* Lander's working ring (B3.1b): three soft hues that run round the composer. */
+  --color-lander-aura-1: var(--purple-150);
+  --color-lander-aura-2: var(--blue-150);
+  --color-lander-aura-3: var(--pink-150);
+  /* "Work with Lander" (B3.1b): a Lander-purple ring, so the bar reads over the page in light and
+     dark (owner, 2026-11-04). */
+  --color-lander-bar-ring: var(--purple-150);
   --color-highlight-purple-500: var(--purple-500);
   --color-highlight-yellow-50: var(--yellow-50);
   --color-highlight-yellow-150: var(--amber-50);
@@ -438,6 +445,8 @@
   --spacing-menu-display: 200px; /* Pages → Display menu (w-menu-display); not in a frame yet */
   --spacing-menu-row: 132px; /* Figma All Pages: the row ⋯ menu (w-menu-row) */
   --spacing-home-card: 285px; /* Figma Home: a getting-started card (w-home-card) */
+  --spacing-lander-bar: 376px; /* the page editor's floating composer, as Sidekick's (w-lander-bar; B3.1b, D105) */
+  --spacing-lander-panel: 356px; /* Lander's chat panel (w-lander-panel), fixed: Sidekick's width */
   --spacing-home-row: calc(
     var(--spacing-home-card) * 3 + var(--spacing) * 8
   ); /* three cards and two 16 px gaps (max-w-home-row) */
@@ -599,6 +608,10 @@
   --color-highlight-green-50: var(--green-700);
   --color-highlight-purple-50: var(--purple-850);
   --color-highlight-purple-150: var(--purple-850);
+  --color-lander-aura-1: var(--purple-700);
+  --color-lander-aura-2: var(--blue-700);
+  --color-lander-aura-3: var(--pink-850);
+  --color-lander-bar-ring: var(--purple-700);
   --color-highlight-yellow-50: var(--yellow-700);
   --color-highlight-yellow-150: var(--amber-850);
   --color-highlight-yellow-500: var(--amber-400);
@@ -1520,5 +1533,116 @@
   }
   &.button-primary:hover {
     --button-fill: var(--color-button-primary-active);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Lander (the page editor's AI, B3.1b, D105): while it works, a soft ring of three hues runs round
+   its composer (the reference video's quiet aura). A 1 px conic gradient masked to the edge; it
+   fades in and out with the work, and holds still with reduced motion.
+   ───────────────────────────────────────────────────────────────────────────── */
+@property --lander-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.lander-aura::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--lander-angle),
+    var(--color-lander-aura-1),
+    var(--color-lander-aura-2),
+    var(--color-lander-aura-3),
+    var(--color-lander-aura-1)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 400ms var(--ease-out);
+}
+.lander-aura[data-working]::before {
+  opacity: 1;
+  animation: lander-aura 3.2s linear infinite;
+}
+@keyframes lander-aura {
+  to {
+    --lander-angle: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lander-aura[data-working]::before {
+    animation: none;
+  }
+}
+
+/* Lander's thread (B3.1b, D105): the composer floats over its foot, and the messages fade out over
+   a short eased stretch ending just under the composer's top edge (Stageshow's edge fade, eased as
+   scroll-fade-b; owner, 2026-11-04), so they read as sliding in behind it. --lander-dock is the
+   composer's height, set from script; a mask, so it needs no colour and works in both themes. */
+.lander-thread-fade {
+  --lander-fade: 24px;
+  --lander-fade-end: calc(100% - var(--lander-dock, 0px) + 6px);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(var(--lander-fade-end) - var(--lander-fade)),
+    rgb(0 0 0 / 0.8) calc(var(--lander-fade-end) - var(--lander-fade) * 0.75),
+    rgb(0 0 0 / 0.5) calc(var(--lander-fade-end) - var(--lander-fade) * 0.5),
+    rgb(0 0 0 / 0.2) calc(var(--lander-fade-end) - var(--lander-fade) * 0.25),
+    transparent var(--lander-fade-end)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(var(--lander-fade-end) - var(--lander-fade)),
+    rgb(0 0 0 / 0.8) calc(var(--lander-fade-end) - var(--lander-fade) * 0.75),
+    rgb(0 0 0 / 0.5) calc(var(--lander-fade-end) - var(--lander-fade) * 0.5),
+    rgb(0 0 0 / 0.2) calc(var(--lander-fade-end) - var(--lander-fade) * 0.25),
+    transparent var(--lander-fade-end)
+  );
+}
+
+/* The page editor's canvas while a newer page loads behind the one shown (B3.1b, D105): a 2 px
+   line along its top with a Highlight-Yellow glint crossing it. Reduced motion: a still line. */
+.canvas-updating {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.canvas-updating::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-highlight-yellow-500),
+    transparent
+  );
+  animation: canvas-updating 1.2s var(--ease-in-out) infinite;
+}
+@keyframes canvas-updating {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas-updating::before {
+    width: 100%;
+    opacity: 0.5;
+    animation: none;
   }
 }

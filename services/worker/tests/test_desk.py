@@ -341,3 +341,138 @@ def test_locked_parts_stay_and_drift_is_refused() -> None:
 def test_the_proof_marks_paragraphs() -> None:
     marked = parse(proof.mark(PARA))
     assert [el.get("data-lp-block") for el in marked.select("[data-lp-block]")] == ["1", "2", "3"]
+
+
+# ── the page editor (B3.1a, D104) ─────────────────────────────────────────────
+
+
+@pytest.fixture
+def ruled(user: DbUser, finished: dict[str, Any]) -> dict[str, Any]:
+    """The finished build, on an org template whose rules say: Hero can't be removed but can be
+    copied; Questions (faq) can be removed but not copied."""
+    with transaction() as conn:
+        template = conn.execute(
+            """
+            insert into templates (org_id, origin, slug, name, type, html_path)
+            values (%(o)s, 'owned', 'editor-test', 'Editor test', 'advertorial', 'x/index.html')
+            returning id
+            """,
+            {"o": user.org_id},
+        ).fetchone()
+        assert template is not None
+        conn.execute(
+            """
+            insert into template_sections (template_id, key, label, position, removable,
+                                           duplicable)
+            values (%(t)s, 'hero', 'Hero', 0, false, true),
+                   (%(t)s, 'faq', 'Questions', 1, true, false)
+            """,
+            {"t": template["id"]},
+        )
+        conn.execute(
+            "update builds set template_id = %(t)s where id = %(b)s",
+            {"t": template["id"], "b": finished["id"]},
+        )
+    return finished
+
+
+def section_change(
+    client: TestClient, user: DbUser, build: dict[str, Any], version: int, **action: Any
+) -> Any:
+    return client.post(
+        f"/builds/{build['id']}/sections",
+        json={"org_id": build["org_id"], "base_version": version, "action": action},
+        headers=bearer(user),
+    )
+
+
+@needs_db
+def test_the_editor_moves_copies_and_removes_sections_by_the_templates_rules(
+    client: TestClient, user: DbUser, ruled: dict[str, Any]
+) -> None:
+    state = desk(client, user, ruled)
+    assert [(s["key"], s["label"], s["removable"], s["duplicable"]) for s in state["layout"]] == [
+        ("hero", "Hero", False, True),
+        ("faq", "Questions", True, False),
+    ]
+    v = state["build"]["page_version"]
+    moved = section_change(client, user, ruled, v, type="reorder", keys=["faq", "hero"],
+                           moved="faq").json()  # fmt: skip
+    assert [s["key"] for s in moved["layout"]] == ["faq", "hero"]
+    assert moved["snapshots"][0]["reason"] == "Moved Questions up"
+
+    copied = section_change(client, user, ruled, v + 1, type="duplicate", key="hero").json()
+    assert [s["key"] for s in copied["layout"]] == ["faq", "hero", "hero-2"]
+    assert copied["layout"][2]["label"] == "Hero (copy)" and copied["layout"][2]["removable"]
+    assert copied["sections"]["hero-2"] == "Hero (copy)"
+
+    refused = section_change(client, user, ruled, v + 2, type="remove", key="hero")
+    assert refused.status_code == 422 and "can't be removed" in refused.json()["detail"]
+    no_copy = section_change(client, user, ruled, v + 2, type="duplicate", key="faq")
+    assert no_copy.status_code == 422 and "can't be duplicated" in no_copy.json()["detail"]
+
+    removed = section_change(client, user, ruled, v + 2, type="remove", key="hero-2").json()
+    assert [s["key"] for s in removed["layout"]] == ["faq", "hero"]
+    assert removed["snapshots"][0]["reason"] == "Removed Hero (copy)"
+    assert section_change(client, user, ruled, v, type="remove", key="faq").status_code == 409
+
+
+def typed(
+    client: TestClient, user: DbUser, build: dict[str, Any], state: dict[str, Any],
+    original: str, text: str,
+) -> dict[str, Any]:  # fmt: skip
+    block = fragment(state, original)["number"]
+    response = client.post(
+        f"/builds/{build['id']}/copy",
+        json={
+            "org_id": build["org_id"], "base_version": state["build"]["page_version"],
+            "edits": [{"block": block, "original": original, "text": text}], "typing": True,
+        },
+        headers=bearer(user),
+    )  # fmt: skip
+    assert response.status_code == 200, response.text
+    body: dict[str, Any] = response.json()
+    return body
+
+
+@needs_db
+def test_typing_in_one_line_is_one_undo_step(
+    client: TestClient, user: DbUser, finished: dict[str, Any]
+) -> None:
+    state = desk(client, user, finished)
+    state = typed(client, user, finished, state, "Is it gentle?", "Is it")
+    state = typed(client, user, finished, state, "Is it", "Is it kind to skin?")
+    assert len(state["snapshots"]) == 1  # two saves of one line: one undo step
+    assert state["build"]["page_version"] == 3
+    edited = build_row(finished)["report"]["desk"]["edited"]
+    assert edited == ["Is it kind to skin?"]  # not the half-typed "Is it"
+    with pytest.raises(storage.StorageError):  # the page between the two saves is gone
+        storage.download("builds", f"{finished['org_id']}/{finished['id']}/pages/v2.html")
+
+    state = typed(client, user, finished, state, "Yes, for every skin.", "Yes, for all skin.")
+    assert len(state["snapshots"]) == 2  # another line: its own step
+    state = post(client, user, finished, "undo", base_version=4).json()
+    state = post(client, user, finished, "undo", base_version=5).json()
+    assert fragment(state, "Is it gentle?") and state["snapshots"] == []
+
+
+@needs_db
+def test_redo_puts_back_what_undo_took_off_until_a_new_change(
+    client: TestClient, user: DbUser, finished: dict[str, Any]
+) -> None:
+    state = desk(client, user, finished)
+    assert state["can_redo"] is False
+    state = edit(client, user, finished, state, "Is it gentle?", "First.").json()
+    undone = post(client, user, finished, "undo", base_version=2).json()
+    assert fragment(undone, "Is it gentle?") and undone["can_redo"] is True
+    assert undone["redo_reason"].startswith("Edited a line")
+
+    redone = post(client, user, finished, "redo", base_version=3).json()
+    assert fragment(redone, "First.") and redone["can_redo"] is False
+    assert len(redone["snapshots"]) == 1  # Redo is itself undoable
+    assert post(client, user, finished, "redo", base_version=4).status_code == 422
+
+    again = post(client, user, finished, "undo", base_version=4).json()
+    assert again["can_redo"] is True
+    changed = edit(client, user, finished, again, "Yes, for every skin.", "Yes.").json()
+    assert changed["can_redo"] is False  # a new change drops what was undone

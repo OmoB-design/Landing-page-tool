@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -34,7 +35,8 @@ import {
   HeaderDivider,
   StatusActions,
 } from "@/components/features/builds/status-actions";
-import { PagesIcon } from "@/components/ui/icons";
+import { Button } from "@/components/ui/button";
+import { PagesIcon, RenameIcon } from "@/components/ui/icons";
 import { getBuildDesk, getPublishing } from "@/lib/api/worker";
 import { getSessionContext } from "@/lib/auth/session";
 import { getBuild } from "@/lib/builds/queries";
@@ -144,6 +146,18 @@ async function Build({
           <div className="flex items-center gap-2.5">
             {desk ? (
               <>
+                {/* B3.1a: the page editor, full screen. */}
+                <Button
+                  asChild
+                  variant="outline"
+                  size="compact"
+                  className="px-3"
+                >
+                  <Link href={`/pages/${build.id}/editor`}>
+                    <RenameIcon aria-hidden className="size-3.5" />
+                    Edit page
+                  </Link>
+                </Button>
                 <StatusActions
                   fixCount={
                     build.report

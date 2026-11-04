@@ -28,6 +28,8 @@ const DESK: DeskState = {
   sections: {},
   snapshots: [],
   redraft: null,
+  layout: [],
+  can_redo: false,
   colors: { page: null, brand: null },
 };
 

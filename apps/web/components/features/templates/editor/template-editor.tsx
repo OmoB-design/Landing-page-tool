@@ -12,6 +12,7 @@ import {
   useTransition,
 } from "react";
 
+import { ShortcutButton } from "@/components/app/shortcut-button";
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
 import { Mover } from "@/components/app/mover";
@@ -413,40 +414,5 @@ export function TemplateEditor({
         />
       </div>
     </div>
-  );
-}
-
-function ShortcutButton({
-  label,
-  shortcut,
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  shortcut: string;
-  disabled: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-disabled={disabled || undefined}
-          aria-keyshortcuts={shortcut === "⌘Z" ? "Meta+Z" : "Meta+Shift+Z"}
-          onClick={disabled ? undefined : onClick}
-          className="text-sub-text aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
-          {children}
-          <span className="sr-only sm:not-sr-only">{label}</span>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {label} <kbd className="font-sans text-caption-1">{shortcut}</kbd>
-      </TooltipContent>
-    </Tooltip>
   );
 }
