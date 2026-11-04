@@ -987,3 +987,4 @@ as new entries.
 - **Owner actions requested:** on ALL-1 (or any page), ask Lander for a layout change like the byline frame; attach a picture and ask it to match; open what Lander looked at from the thread.
 - **Owner confirmed:** no
 - **Next:** B3.1e — Recents (earlier conversations) and thumbs on replies; or B3.2, the image studio, so Lander can change images.
+- **Follow-up (owner, same day): torph in the next spots.** The review desk's status chip morphs ("Needs review" → "Approved" → "Published"), Publish morphs to "Publishing…" and "Publish again", Copy in the published modal morphs to "Copied" for 1.6 s, and the characters-left count in Lander's composer and the build steps' "12/15 completed" roll their numbers (all through `MorphText`). Verified: web typecheck, eslint, vitest (builds, editor, lib: 146 passed); in the browser (throwaway account, free): Approve → the chip reads "Approved" with the header otherwise unchanged.

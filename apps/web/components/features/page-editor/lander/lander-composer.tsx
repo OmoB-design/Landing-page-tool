@@ -5,6 +5,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { AttachImageIcon, CloseIcon } from "@/components/ui/icons";
+import { MorphText } from "@/components/ui/text-morph";
 import { ATTACHABLE, attachable, shrink } from "@/lib/pages/attachments";
 import { type LanderTarget, REQUEST_MAX } from "@/lib/pages/lander";
 import { cn } from "@/lib/utils";
@@ -219,7 +220,7 @@ export function LanderComposer({
             left > 50 && "opacity-0",
           )}
         >
-          {left}
+          <MorphText>{left}</MorphText>
         </span>
         <IconButton
           label={

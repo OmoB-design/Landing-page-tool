@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
+import { MorphText } from "@/components/ui/text-morph";
 import { DialogClose } from "@/components/ui/dialog";
 import {
   Popover,
@@ -97,11 +98,13 @@ export function PublishButton() {
           {running || starting ? (
             <Spinner className="size-3.5" label="Publishing" />
           ) : null}
-          {running
-            ? "Publishing…"
-            : status === "published"
-              ? "Publish again"
-              : "Publish"}
+          <MorphText className="whitespace-nowrap">
+            {running
+              ? "Publishing…"
+              : status === "published"
+                ? "Publish again"
+                : "Publish"}
+          </MorphText>
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -511,6 +514,8 @@ export function PublishedModal() {
   const hydrated = useHydrated();
   const [viewport, setViewport] = useState<"desktop" | "phone">("desktop");
   const [confirming, setConfirming] = useState(false);
+  // Copy morphs to "Copied" for a moment after the link is copied (torph).
+  const [copied, setCopied] = useState(false);
   const live = publishing.live;
   if (!live?.url) return null;
   const url = live.url;
@@ -521,7 +526,11 @@ export function PublishedModal() {
   const copy = () =>
     void navigator.clipboard
       .writeText(url)
-      .then(() => toast.success("Link copied"))
+      .then(() => {
+        toast.success("Link copied");
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      })
       .catch(() => toast.error("Couldn’t copy the link."));
   const who = live.created_by === meId ? "you" : "a teammate";
   const details = [
@@ -646,8 +655,9 @@ export function PublishedModal() {
                   size="sm"
                   className={ROW_ACTION}
                   onClick={copy}
+                  aria-label={copied ? "Copied" : "Copy the link"}
                 >
-                  Copy
+                  <MorphText>{copied ? "Copied" : "Copy"}</MorphText>
                 </Button>
               </div>
 

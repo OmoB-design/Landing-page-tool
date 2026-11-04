@@ -7,6 +7,7 @@ import {
   type StatusGlyphKind,
 } from "@/components/app/status-glyph";
 import { Button } from "@/components/ui/button";
+import { MorphText } from "@/components/ui/text-morph";
 import {
   ApprovedFigmaIcon,
   StatusChipRingFigmaIcon,
@@ -82,7 +83,11 @@ export function StatusChip({ status }: { status: string }) {
           <StatusGlyph status={status as StatusGlyphKind} />
         )}
       </span>
-      <span className="max-sm:sr-only">{STATUS_LABELS[status] ?? status}</span>
+      <span className="max-sm:sr-only">
+        <MorphText className="whitespace-nowrap">
+          {STATUS_LABELS[status] ?? status}
+        </MorphText>
+      </span>
     </span>
   );
 }

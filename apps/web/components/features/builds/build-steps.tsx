@@ -2,6 +2,7 @@
 
 import { SkeletonText } from "@/components/app/skeletons";
 import { BuildSpinnerIcon, BuildStepIcon } from "@/components/ui/lp-icons";
+import { MorphText } from "@/components/ui/text-morph";
 import { buildStepsFor } from "@/lib/builds/steps";
 import type { StepDefinition } from "@/lib/jobs/steps";
 import { usePageRefresh } from "@/lib/hooks/use-page-refresh";
@@ -160,7 +161,9 @@ export function BuildStepsCard({
               complete ? "ring-spot-500-blue" : "ring-stroke",
             )}
           >
-            {done}/{steps.length} completed
+            <MorphText className="whitespace-nowrap">
+              {`${done}/${steps.length} completed`}
+            </MorphText>
           </span>
         )}
       </div>
