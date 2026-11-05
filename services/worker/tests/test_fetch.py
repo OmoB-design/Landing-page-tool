@@ -124,3 +124,18 @@ def test_rendered_signals_from_real_chromium() -> None:
     assert "rgb(228, 87, 46)" in buttons
     assert signals.heading_font is not None and "Lume Display" in signals.heading_font
     assert signals.lang == "en-GB"
+
+
+def test_looking_at_a_part_that_isnt_showing_says_so_in_real_chromium() -> None:
+    """Lander's look (B3.1d): a hidden part, or a fixed bar parked off the screen until the page
+    scrolls (ALL-1's sticky shop bar), raises NotShownError instead of timing out."""
+    page = (
+        "<html><body style='margin:0'><section id='shown' style='height:300px'>Hi</section>"
+        "<div id='hidden' style='display:none'>Shop now</div>"
+        "<div id='parked' style='position:fixed;left:0;right:0;bottom:0;height:60px;"
+        "transform:translateY(200%)'>Shop now</div></body></html>"
+    )
+    assert browser.screenshot_part(page, "#shown", width=390)[:2] == b"\xff\xd8"
+    for selector in ("#hidden", "#parked"):
+        with pytest.raises(browser.NotShownError):
+            browser.screenshot_part(page, selector, width=390)

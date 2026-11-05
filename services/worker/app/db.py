@@ -42,14 +42,17 @@ def get_pool() -> ConnectionPool[Connection[DictRow]]:
     settings = get_settings()
     return ConnectionPool(
         settings.database_url,
-        # The Supabase session pooler takes 15 clients in all, shared by every worker process
-        # (local and Railway, API and job loop, and the old containers during a deploy). So keep
-        # one open, and close spare ones once they've been unused for POOL_MAX_IDLE_SECONDS
-        # (psycopg closes one per period; the default was ten minutes).
+        # DATABASE_URL is Supabase's transaction pooler (port 6543, D113): a connection holds one
+        # of the database's few server connections only while a transaction runs, so every worker
+        # process (local and Railway, API and job loop, old containers during a deploy) can keep
+        # its own. Spare ones still close once unused for POOL_MAX_IDLE_SECONDS (psycopg closes
+        # one per period). The session pooler (5432) also works, with its 15-client limit.
         min_size=1,
         max_size=settings.lp_worker_concurrency + 4,
         max_idle=POOL_MAX_IDLE_SECONDS,
-        kwargs={"row_factory": dict_row},
+        # No prepared statements: the transaction pooler hands each transaction to whichever
+        # server connection is free, where a statement prepared on another one doesn't exist.
+        kwargs={"row_factory": dict_row, "prepare_threshold": None},
         connection_class=Connection[DictRow],
         # A connection the server closed while it sat in the pool is replaced before use.
         check=check_connection,

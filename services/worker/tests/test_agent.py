@@ -203,6 +203,20 @@ def test_lander_inspects_styles_and_looks_at_a_box() -> None:
     assert failed and step.label == "Couldn't look at Hero"
 
 
+def test_a_part_that_isnt_showing_is_a_step_lander_reads_not_a_crash() -> None:
+    """ALL-1, "is the phone layout good?": the sticky shop bar is hidden until the visitor
+    scrolls, and looking at it used to fail the whole request."""
+
+    def looker(html: str, selector: str, width: int) -> tuple[bytes, str | None]:
+        raise agent.PartNotShown("hidden at this width")
+
+    w = agent.Work(html=BYLINE, rules={}, colors=None, looker=looker)
+    out, failed, step = w.run("look", {"line": 3, "view": "phone"})
+    assert failed and not step.ok
+    assert step.label == "Couldn't look at Hero (phone): it isn't showing"
+    assert "isn't showing at phone width (390 px)" in str(out) and "Carry on" in str(out)
+
+
 def test_lander_says_what_it_is_doing_before_each_tool() -> None:
     w = work()
     assert w.doing("read_page", {}) == ("Reading", "Reading the page…")

@@ -192,12 +192,19 @@ def read_signals(page: Page) -> RenderedSignals:
     return RenderedSignals.model_validate(data)
 
 
+class NotShownError(ValueError):
+    """The part asked for isn't on the screen at that width: hidden (`display: none`), or a
+    fixed bar the page only brings in with a script after a scroll or a click. Nothing to
+    picture."""
+
+
 def screenshot_part(
     html: str, selector: str | None, *, width: int = 1280, max_height: int = 1400
 ) -> bytes:
     """A JPEG of one part of a page (`selector`, else its top) at `width` CSS px, at most
     `max_height` tall and 1000 px wide, for Lander to look at what it changed (B3.1d). Our own
-    page, but it still loads its images and fonts through the SSRF guard."""
+    page, but it still loads its images and fonts through the SSRF guard. Raises NotShownError
+    when the part isn't showing at that width (ALL-1's sticky shop bar, hidden until scrolled)."""
     from PIL import Image
 
     with open_page() as page:
@@ -208,8 +215,14 @@ def screenshot_part(
         target = page.locator(selector).first if selector else None
         box = None
         if target is not None and target.count():
-            target.scroll_into_view_if_needed(timeout=5_000)
+            if not target.is_visible():
+                raise NotShownError("hidden at this width")
+            # A fixed bar parked off the screen can't be scrolled to: then its box says so.
+            with suppress(PlaywrightTimeoutError):
+                target.scroll_into_view_if_needed(timeout=5_000)
             box = target.bounding_box()
+            if box is None or not _on_screen(box, width, max_height):
+                raise NotShownError("off the screen")
         if box:
             # The part with a little room around it, inside the viewport it was scrolled into.
             x, y = max(0.0, box["x"] - MARGIN), max(0.0, box["y"] - MARGIN)
@@ -230,6 +243,18 @@ def screenshot_part(
     out = io.BytesIO()
     image.save(out, format="JPEG", quality=80, optimize=True)
     return out.getvalue()
+
+
+def _on_screen(box: FloatRect, width: int, height: int) -> bool:
+    """Whether at least a 2 px sliver of the box is inside the viewport."""
+    return (
+        box["width"] >= 2
+        and box["height"] >= 2
+        and box["x"] < width - 2
+        and box["x"] + box["width"] > 2
+        and box["y"] < height - 2
+        and box["y"] + box["height"] > 2
+    )
 
 
 # ── QA screenshots and the share image (BUILD_SPEC §11.1, B3.3a, D111) ───────────────────────

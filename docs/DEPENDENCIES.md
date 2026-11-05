@@ -112,7 +112,7 @@ Never expose the secret (service-role) key to the web app.
 |---|---|---|
 | `SUPABASE_URL` | — | Supabase URL |
 | `SUPABASE_SECRET_KEY` | — | secret key, service-role access (worker only); replaces the legacy service_role key (D32, B0.2) |
-| `DATABASE_URL` | — | Postgres connection (queue, checkpoints): the Session pooler string, port 5432 (D73) |
+| `DATABASE_URL` | — | Postgres connection (queue, checkpoints): the Transaction pooler string, port 6543 (D113; D73 had the session pooler) |
 | `ANTHROPIC_API_KEY` | — | Claude |
 | `FAL_KEY` | — | fal.ai |
 | `LP_MODEL_COPY` | `claude-sonnet-5-5` | copy rewrite |

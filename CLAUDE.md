@@ -256,7 +256,7 @@ vercel deploy --target preview   # preview build on Vercel's servers; prints the
 # queue (D85), so the live job loop never runs their jobs.
 ```
 
-`apps/web/.env.local` and `services/worker/.env` hold the cloud project's URL and keys (gitignored). To recreate them, copy the `.env.example` files and fill in the values from the dashboard: Project Settings → API Keys (publishable key for the web app, secret key for the worker), and Connect → Session pooler for `DATABASE_URL`.
+`apps/web/.env.local` and `services/worker/.env` hold the cloud project's URL and keys (gitignored). To recreate them, copy the `.env.example` files and fill in the values from the dashboard: Project Settings → API Keys (publishable key for the web app, secret key for the worker), and Connect → Transaction pooler (port 6543, D113) for `DATABASE_URL`.
 
 ---
 

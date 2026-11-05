@@ -25,7 +25,10 @@ def get_checkpointer() -> PostgresSaver:
         max_idle=POOL_MAX_IDLE_SECONDS,
         kwargs={
             "autocommit": True,
-            "prepare_threshold": 0,
+            # No prepared statements, for the transaction pooler (app/db.py, D113). The pooler
+            # keeps the search_path from the startup options on every statement (checked
+            # 2026-11-05).
+            "prepare_threshold": None,
             "row_factory": dict_row,
             "options": "-c search_path=langgraph",
         },

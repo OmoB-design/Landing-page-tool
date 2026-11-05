@@ -364,19 +364,46 @@ describe("Lander's text (owner, 2026-11-05)", () => {
       "I fitted the **byline frame**.\n\nThe pill is an `img`:\n- cropped\n- rounded",
     );
     expect(paragraphs).toHaveLength(2);
-    expect(paragraphs[0]?.[0]).toEqual([
+    expect(paragraphs[0]?.[0]?.pieces).toEqual([
       { text: "I fitted the ", mark: "plain" },
       { text: "byline frame", mark: "bold" },
       { text: ".", mark: "plain" },
     ]);
     expect(paragraphs[1]).toHaveLength(3);
-    expect(paragraphs[1]?.[0]?.[1]).toEqual({ text: "img", mark: "code" });
-    expect(paragraphs[1]?.[1]?.[0]?.text).toBe("• cropped");
+    expect(paragraphs[1]?.[0]?.pieces[1]).toEqual({
+      text: "img",
+      mark: "code",
+    });
+    expect(paragraphs[1]?.[1]).toEqual({
+      kind: "bullet",
+      pieces: [{ text: "cropped", mark: "plain" }],
+    });
     expect(plainText("Done **now**.\n\nNext `x`.")).toBe(
       "Done now.\n\nNext x.",
     );
     wrap(<StreamText text={"One.\n\nTwo **bold**."} />);
     expect(screen.getAllByText("bold").length).toBeGreaterThan(0);
     expect(document.querySelectorAll("p[aria-hidden]").length).toBe(2);
+  });
+
+  it("numbers the points Lander lists, so they can be picked by number", () => {
+    const text =
+      "Three things I'd flag:\n1. **Contrast:** the body text is pale.\n2. **Images:** too much space.\n3) **Indent:** a stray space.";
+    const [lines] = formatted(text);
+    expect(lines?.map((line) => [line.kind, line.number])).toEqual([
+      ["text", undefined],
+      ["number", "1"],
+      ["number", "2"],
+      ["number", "3"],
+    ]);
+    expect(lines?.[1]?.pieces[0]).toEqual({ text: "Contrast:", mark: "bold" });
+    expect(plainText(text)).toBe(
+      "Three things I'd flag:\n1. Contrast: the body text is pale.\n2. Images: too much space.\n3. Indent: a stray space.",
+    );
+    // A year or a price at the start of a sentence isn't a numbered point.
+    expect(formatted("2026. A good year.")[0]?.[0]?.kind).toBe("text");
+    wrap(<StreamText text={text} />);
+    for (const n of ["1", "2", "3"]) expect(screen.getByText(n)).toBeTruthy();
+    expect(screen.getAllByText("Contrast:").length).toBeGreaterThan(0);
   });
 });

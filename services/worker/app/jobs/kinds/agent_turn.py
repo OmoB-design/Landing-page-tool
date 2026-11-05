@@ -156,8 +156,11 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         """Lander looks (B3.1d): the page rendered in the guarded browser, one section pictured
         and kept beside the page so the thread can show it."""
         nonlocal looks
+        try:
+            picture = browser.screenshot_part(page, selector, width=width)
+        except browser.NotShownError as exc:
+            raise agent.PartNotShown(str(exc)) from exc
         looks += 1
-        picture = browser.screenshot_part(page, selector, width=width)
         path = f"{org_id}/{payload.build_id}/{agent.FOLDER}/{job_id}-look-{looks}.jpg"
         try:
             storage.upload(desk.BUCKET, path, picture, "image/jpeg", upsert=True)
