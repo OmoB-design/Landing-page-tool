@@ -53,6 +53,7 @@ import { ChangeCard, UndoControl, type UndoState } from "./change-card";
 import { ReplyActions } from "./reply-actions";
 import { LanderMark } from "./lander-mark";
 import { RollingLabel } from "./rolling-label";
+import { ChangeStack, UNPIN_EVENT, groupChanges } from "./change-stack";
 import { StreamText, plainText } from "./stream-text";
 import type { TurnView } from "./use-lander";
 
@@ -152,6 +153,10 @@ export function LanderThread({
       if (["ArrowUp", "PageUp", "Home"].includes(event.key))
         pinned.current = false;
     };
+    // Opening or closing a stack of changes keeps it where it is (change-stack.tsx).
+    const onUnpin = () => {
+      pinned.current = false;
+    };
     const observer = new ResizeObserver(() => {
       if (pinned.current) box.scrollTop = box.scrollHeight;
     });
@@ -159,12 +164,14 @@ export function LanderThread({
     box.addEventListener("wheel", onWheel, { passive: true });
     box.addEventListener("touchmove", onTouch, { passive: true });
     box.addEventListener("keydown", onKey);
+    box.addEventListener(UNPIN_EVENT, onUnpin);
     observer.observe(inner);
     return () => {
       box.removeEventListener("scroll", onScroll);
       box.removeEventListener("wheel", onWheel);
       box.removeEventListener("touchmove", onTouch);
       box.removeEventListener("keydown", onKey);
+      box.removeEventListener(UNPIN_EVENT, onUnpin);
       observer.disconnect();
     };
   }, []);
@@ -556,15 +563,34 @@ function Reply({
         ) : null}
       </AnimatePresence>
 
-      {changes.slice(0, cardsShown).map((change, i) => (
-        <Change
-          key={`${i}-${change.label}`}
-          change={change}
-          onShow={onShow}
-          onRefine={onRefine}
-          onImage={onImage}
-        />
-      ))}
+      {groupChanges(changes.slice(0, cardsShown).map((c) => c.kind)).map(
+        (group) => {
+          const card = (i: number) => {
+            const change = changes[i];
+            return change ? (
+              <Change
+                key={`${i}-${change.label}`}
+                change={change}
+                onShow={onShow}
+                onRefine={onRefine}
+                onImage={onImage}
+              />
+            ) : null;
+          };
+          return group.kind === "single" ? (
+            card(group.index)
+          ) : (
+            // Many one-line cards in a row stack, with their count (owner, 2026-11-05).
+            <ChangeStack
+              key={`stack-${group.indices[0]}`}
+              cards={group.indices.map((i) => ({
+                key: `${i}-${changes[i]?.label}`,
+                node: card(i),
+              }))}
+            />
+          );
+        },
+      )}
 
       {finished && caughtUp && changes.length > 0 ? (
         <div className="flex items-center justify-between gap-2 pl-0.5">

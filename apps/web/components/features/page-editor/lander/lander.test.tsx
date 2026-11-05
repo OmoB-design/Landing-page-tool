@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { LanderMotionProvider } from "../lander-motion";
 import { ChangeCard } from "./change-card";
+import { ChangeStack, groupChanges } from "./change-stack";
 import { FloatingComposer } from "./floating-composer";
 import { LanderComposer } from "./lander-composer";
 import { LanderRecents } from "./lander-recents";
@@ -405,5 +406,46 @@ describe("Lander's text (owner, 2026-11-05)", () => {
     wrap(<StreamText text={text} />);
     for (const n of ["1", "2", "3"]) expect(screen.getByText(n)).toBeTruthy();
     expect(screen.getAllByText("Contrast:").length).toBeGreaterThan(0);
+  });
+});
+
+describe("Lander's change stack (owner, 2026-11-05)", () => {
+  it("stacks four or more one-line cards in a row, leaving line cards alone", () => {
+    expect(
+      groupChanges(["style", "style", "style", "style", "lines", "style"]),
+    ).toEqual([
+      { kind: "stack", indices: [0, 1, 2, 3] },
+      { kind: "single", index: 4 },
+      { kind: "single", index: 5 },
+    ]);
+    expect(groupChanges(["style", "style", "style"])).toEqual([
+      { kind: "single", index: 0 },
+      { kind: "single", index: 1 },
+      { kind: "single", index: 2 },
+    ]);
+  });
+
+  it("keeps the first card on top with the count, and fans them all out", () => {
+    const cards = [1, 2, 3, 4, 5].map((n) => ({
+      key: String(n),
+      node: <p>Darkened item {n} number</p>,
+    }));
+    wrap(<ChangeStack cards={cards} />);
+    const hidden = (n: number) =>
+      screen
+        .getByText(`Darkened item ${n} number`)
+        .closest("[aria-hidden='true']") !== null;
+    // Stacked: the first card shows; the others are tucked under it, hidden and inert.
+    expect(hidden(1)).toBe(false);
+    for (const n of [2, 3, 4, 5]) expect(hidden(n)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Show all 5 changes" }));
+    for (const n of [1, 2, 3, 4, 5]) expect(hidden(n)).toBe(false);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Stack the 5 changes" }),
+    );
+    expect(hidden(3)).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Show all 5 changes" }),
+    ).toBeTruthy();
   });
 });
