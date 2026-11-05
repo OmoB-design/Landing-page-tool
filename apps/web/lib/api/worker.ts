@@ -27,6 +27,13 @@ import {
   agentThreadsSchema,
 } from "@/lib/validators/agent";
 import {
+  type ImageAction,
+  type ImageStudio,
+  type UploadedImage,
+  imageStudioSchema,
+  uploadedImageSchema,
+} from "@/lib/validators/images";
+import {
   type IntegrationsState,
   type PublishingState,
   type ShopifyTemplate,
@@ -246,6 +253,59 @@ export function changeBuildDesk(
     body,
     deskStateSchema,
     "Could not save the change.",
+  );
+}
+
+// ── The image studio (worker /builds/{id}/images, B3.2a, D109) ──────────────
+
+/** One image of a page: its details, what it can become, and its last five versions. */
+export function getImageStudio(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+  number: number,
+): Promise<ImageStudio> {
+  return callWorker(
+    "GET",
+    `/builds/${encodeURIComponent(buildId)}/images/${number}?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    imageStudioSchema,
+    "Couldn't load that image.",
+  );
+}
+
+/** Replaces, crops or restores an image (one undoable change); returns the new desk. */
+export function changeImage(
+  accessToken: string,
+  buildId: string,
+  number: number,
+  action: ImageAction,
+  body: Record<string, unknown> & { org_id: string },
+): Promise<DeskState> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/images/${number}/${action}`,
+    accessToken,
+    body,
+    deskStateSchema,
+    "Couldn't change the image.",
+  );
+}
+
+/** Stores a picture from the user's computer as one of the workspace's assets. */
+export function uploadImage(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+  dataUrl: string,
+): Promise<UploadedImage> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/images/upload`,
+    accessToken,
+    { org_id: orgId, data_url: dataUrl },
+    uploadedImageSchema,
+    "Couldn't upload that picture.",
+    30_000,
   );
 }
 

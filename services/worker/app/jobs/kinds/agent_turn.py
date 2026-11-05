@@ -15,7 +15,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import agent, desk
+from app import agent, desk, images
 from app.db import transaction
 from app.engines import comparison, paragraphs
 from app.fetch import browser
@@ -127,6 +127,8 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         raise changed_elsewhere
 
     inputs, _ = read_inputs(org_id, payload.build_id, template_html=False)
+    with transaction() as conn:
+        product_photos = images._product_photos(conn, org_id, payload.build_id)
     brief = copy_pass.brief(
         inputs["template"], inputs["brand"], inputs["product"], inputs.get("wizard", {})
     )
@@ -153,6 +155,7 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         author_type=(build["wizard"] or {}).get("author_type"),
         facts=comparison.facts_from_report(report),
         looker=look,
+        product_photos=product_photos,
     )
     target = payload.target
     lines = len(paragraphs.paragraphs(html))
@@ -273,6 +276,14 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
             )
         except desk.DeskConflictError as exc:
             raise changed_elsewhere from exc
+        # New pictures join their image's history (B3.2a), so the image studio can restore them.
+        with transaction() as conn:
+            for change in work.changes:
+                if change["kind"] == "image" and change.get("before") is not None:
+                    images.record(
+                        conn, payload.build_id, change["number"], before=change["before"],
+                        src=change["src"], source=change["source"],
+                    )  # fmt: skip
         saved = agent.Step("Saved the page and checked the claims", True)
         reply["steps"].append(saved.as_dict())
         _event(ctx, saved.label, "step", **saved.as_dict())

@@ -11,9 +11,24 @@ export function attachable(file: File): boolean {
 }
 
 /** A picture as a JPEG data URL, at most 1600 px on its longest side (on white, for PNGs). */
-export async function shrink(file: File): Promise<string> {
+export function shrink(file: File): Promise<string> {
+  return redraw(file, { longest: LONGEST, type: "image/jpeg", quality: 0.85 });
+}
+
+/**
+ * A picture redrawn at most `longest` px on its longest side, as a data URL of `type`. JPEG has
+ * no transparency, so it's drawn on white; WebP keeps it.
+ */
+export async function redraw(
+  file: File,
+  {
+    longest,
+    type,
+    quality,
+  }: { longest: number; type: "image/jpeg" | "image/webp"; quality: number },
+): Promise<string> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, LONGEST / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, longest / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
   const canvas = document.createElement("canvas");
@@ -21,9 +36,11 @@ export async function shrink(file: File): Promise<string> {
   canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("This browser can't prepare pictures.");
-  context.fillStyle = "white";
-  context.fillRect(0, 0, width, height);
+  if (type === "image/jpeg") {
+    context.fillStyle = "white";
+    context.fillRect(0, 0, width, height);
+  }
   context.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
-  return canvas.toDataURL("image/jpeg", 0.85);
+  return canvas.toDataURL(type, quality);
 }

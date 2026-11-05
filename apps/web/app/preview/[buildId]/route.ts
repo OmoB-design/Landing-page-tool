@@ -68,11 +68,15 @@ const DESK_BRIDGE = `(function () {
  * save matches the paragraph it's checked against. ⌘Z / ⇧⌘Z outside a line go to the editor.
  * B3.1b: the lines Lander is rewriting breathe (`lp-busy`), and Show on page flashes the lines a
  * change rewrote and scrolls to them (`lp-flash`).
+ * B3.2a: a numbered image (`data-lp-img`) outlines on hover and clicking it opens it in the image
+ * studio (`lp-image`), even under an overlay; the editor outlines the one it has open
+ * (`lp-image-select`). The brand's logo says where to change it instead (`lp-logo`).
  * Talks to the editor only through postMessage; the frame has an opaque origin.
  */
 const WRITE_BRIDGE = `(function () {
   var colour = "Highlight", locked = {}, paused = false, busy = [], flash = [], flashTimer = 0;
   var section = null, hoverSection = null, hoverBlock = null, editing = null, saved = "";
+  var image = null, hoverImage = null;
   var style = document.createElement("style");
   (document.head || document.documentElement).appendChild(style);
   function send(data) { parent.postMessage(data, "*"); }
@@ -103,9 +107,20 @@ const WRITE_BRIDGE = `(function () {
     return out.replace(/ +$/, "");
   }
   function key(el) { return el ? el.getAttribute("data-lp-section") : null; }
+  function picture(e) {
+    if (closest(e.target, "data-lp-block")) return null;
+    var under = document.elementsFromPoint ? document.elementsFromPoint(e.clientX, e.clientY) : [e.target];
+    for (var i = 0; i < under.length; i++) {
+      var el = under[i];
+      if (el.tagName === "IMG" && /^\\d+$/.test(el.getAttribute("data-lp-img") || "")) return el;
+      if (el.hasAttribute && el.hasAttribute("data-lp-block")) return null;
+    }
+    return null;
+  }
+  function imgSel(n) { return 'img[data-lp-img="' + Number(n) + '"]'; }
   function sel(k) { return '[data-lp-section="' + String(k).replace(/"/g, "") + '"]'; }
   function paint() {
-    var css = "[data-lp-block]{cursor:text}[data-lp-locked-block]{cursor:default}" +
+    var css = "[data-lp-block]{cursor:text}[data-lp-locked-block]{cursor:default}img[data-lp-img]{cursor:pointer}img[data-lp-logo]{cursor:default}" +
       "[contenteditable]{outline:2px solid " + colour + " !important;outline-offset:3px !important;border-radius:2px;cursor:text}" +
       "[contenteditable] [data-lp-frag-locked]{text-decoration:underline dotted;text-underline-offset:3px}";
     if (hoverSection && hoverSection !== section)
@@ -114,6 +129,10 @@ const WRITE_BRIDGE = `(function () {
       css += sel(section) + "{outline:2px solid " + colour + " !important;outline-offset:-2px !important}";
     if (hoverBlock && !editing)
       css += '[data-lp-block="' + hoverBlock + '"]:not([data-lp-locked-block]){outline:1.5px dashed ' + colour + " !important;outline-offset:3px !important;border-radius:2px}";
+    if (hoverImage && hoverImage !== image)
+      css += imgSel(hoverImage) + ":not([data-lp-logo]){outline:1.5px dashed " + colour + " !important;outline-offset:-2px !important}";
+    if (image)
+      css += imgSel(image) + "{outline:2px solid " + colour + " !important;outline-offset:-2px !important}";
     if (busy.length)
       css += busy.map(blockSel).join(",") + "{animation:lp-busy 1.6s ease-in-out infinite}" +
         "@keyframes lp-busy{0%,100%{opacity:1}50%{opacity:.42}}" +
@@ -153,10 +172,13 @@ const WRITE_BRIDGE = `(function () {
   document.addEventListener("mouseover", function (e) {
     var b = closest(e.target, "data-lp-block"), s = key(topSection(e.target));
     var n = b ? b.getAttribute("data-lp-block") : null;
-    if (n !== hoverBlock || s !== hoverSection) { hoverBlock = n; hoverSection = s; paint(); }
+    var p = picture(e), m = p ? p.getAttribute("data-lp-img") : null;
+    if (n !== hoverBlock || s !== hoverSection || m !== hoverImage) {
+      hoverBlock = n; hoverSection = s; hoverImage = m; paint();
+    }
   });
   document.documentElement.addEventListener("mouseleave", function () {
-    hoverBlock = null; hoverSection = null; paint();
+    hoverBlock = null; hoverSection = null; hoverImage = null; paint();
   });
   document.addEventListener("click", function (e) {
     var b = closest(e.target, "data-lp-block");
@@ -164,6 +186,16 @@ const WRITE_BRIDGE = `(function () {
     e.preventDefault();
     var s = key(topSection(e.target));
     if (s && s !== section) { section = s; send({ type: "lp-section", key: s }); }
+    var p = picture(e);
+    if (p) {
+      finish(false);
+      if (p.hasAttribute("data-lp-logo")) { send({ type: "lp-logo" }); paint(); return; }
+      image = p.getAttribute("data-lp-img");
+      send({ type: "lp-image", number: Number(image) });
+      paint();
+      return;
+    }
+    if (image) { image = null; send({ type: "lp-image", number: null }); }
     if (!b) { finish(false); paint(); return; }
     if (paused) { finish(false); send({ type: "lp-paused" }); paint(); return; }
     if (locked[number(b)]) { finish(false); send({ type: "lp-locked", block: number(b) }); paint(); return; }
@@ -229,6 +261,15 @@ const WRITE_BRIDGE = `(function () {
         var r = first.getBoundingClientRect();
         if (r.top < 40 || r.bottom > innerHeight - 90)
           scrollTo({ top: r.top + scrollY - innerHeight * 0.32, behavior: "smooth" });
+      }
+    }
+    if (d.type === "lp-image-select") {
+      image = typeof d.number === "number" ? String(d.number) : null;
+      var pic = image && document.querySelector(imgSel(image));
+      if (pic && d.scroll) {
+        var at = pic.getBoundingClientRect();
+        if (at.bottom < 40 || at.top > innerHeight - 90)
+          scrollTo({ top: at.top + scrollY - innerHeight * 0.25, behavior: "smooth" });
       }
     }
     if (d.type === "lp-section-select") {

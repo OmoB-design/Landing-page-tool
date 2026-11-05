@@ -21,7 +21,7 @@ from psycopg.types.json import Jsonb
 
 from app import desk
 from app.db import transaction
-from app.engines import comparison, compliance, paragraphs, recolor, styling
+from app.engines import comparison, compliance, image_edits, paragraphs, recolor, styling
 from app.engines import copy_rules as rules
 from app.jobs import queue
 from app.models.agent import (
@@ -78,8 +78,10 @@ too when it matters.
 colour together). When several elements share a colour (all the buttons) and read_page says \
 which colour they use, change it once with recolor_page; style them one by one only when they \
 don't share one.
-- You can't change or add images, or write new sections from nothing. If asked, say so in a \
-sentence and offer what you can do.
+- You can swap an image for one of the product's photos or another image already on the page, \
+and change an image's shape, fit, focus and alt text (read_page lists the images and photos by \
+number). You can't generate new images or edit what's in a picture yet, or write new sections from \
+nothing: say so in a sentence and offer what you can do.
 - If the user asks whether a change worked or how something looks, look at it (and read the page \
 for words and colours) and say what it shows now; if it didn't take, say so and fix it.
 - Pictures the user attaches are for reference (a look to match, something to point at). You \
@@ -268,6 +270,45 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "replace_image",
+        "description": (
+            "Swaps an image (by its number in read_page) for one of the product's photos "
+            "(product: 1 to n) or another image already on the page (image: its number). Logos "
+            "come from the brand and can't be swapped. Look at the section after to check."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "number": {"type": "integer", "minimum": 1},
+                "product": {"type": "integer", "minimum": 1},
+                "image": {"type": "integer", "minimum": 1},
+            },
+            "required": ["number"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "adjust_image",
+        "description": (
+            "Changes an image's shape (ratio: original, 1:1, 4:3, 3:4, 16:9), fit (cover fills "
+            "the shape, contain shows all of it), focus (center, top, bottom: what stays in view "
+            "when it's filled) or alt text (what a screen reader says: describe the picture "
+            "plainly, no 'image of')."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "number": {"type": "integer", "minimum": 1},
+                "ratio": {"type": "string", "enum": ["original", "1:1", "4:3", "3:4", "16:9"]},
+                "fit": {"type": "string", "enum": ["cover", "contain"]},
+                "focus": {"type": "string", "enum": ["center", "top", "bottom"]},
+                "alt": {"type": "string", "maxLength": 250},
+            },
+            "required": ["number"],
+            "additionalProperties": False,
+        },
+    },
+    {
         "name": "check_claims",
         "description": (
             "Checks wording against the claims rules (health claims, guarantees, superlatives, "
@@ -325,6 +366,8 @@ class Work:
     facts: dict[int, list[comparison.Fact]] | None = None
     changes: list[dict[str, Any]] = field(default_factory=list)
     looker: Looker | None = None
+    # The product's photos (B3.2a), numbered from 1 in read_page.
+    product_photos: list[str] = field(default_factory=list)
 
     def layout(self) -> list[DeskSection]:
         return desk._layout(self.rules, self.html)
@@ -351,6 +394,15 @@ class Work:
                 if uses
                 else "On this page: which elements use which colour isn't marked."
             )
+        pictures = [i for i in image_edits.page_images(self.html) if i.kind != "logo"]
+        if pictures:
+            rows.append("\nImages:")
+            for image in pictures:
+                where = labels.get(image.section or "", image.section or "the page")
+                alt = f' alt "{image.alt}"' if image.alt else " no alt text"
+                rows.append(f"image {image.number}: {image.kind} in {where},{alt}")
+        if self.product_photos:
+            rows.append(f"Product photos: 1 to {len(self.product_photos)}")
         rows.append("\nLines:")
         current: str | None = "\0"
         for p in paragraphs.paragraphs(self.html):
@@ -370,6 +422,10 @@ class Work:
                 return self._style(args)
             if name == "look":
                 return self._look(args)
+            if name == "replace_image":
+                return self._replace_image(args)
+            if name == "adjust_image":
+                return self._adjust_image(args)
             if name == "read_page":
                 return self.outline(), False, Step("Read the page", True)
             if name == "edit_lines":
@@ -384,6 +440,7 @@ class Work:
             desk.DeskEditError,
             desk.DeskConflictError,
             styling.StyleError,
+            image_edits.ImageEditError,
             ValueError,
             KeyError,
         ) as exc:
@@ -577,6 +634,63 @@ class Work:
             {"type": "text", "text": f"{where} as it looks now, at {view} width ({width} px)."},
         ]
         return content, False, Step(label, True, image=path)
+
+    def _image_where(self, number: int) -> str:
+        image = next((i for i in image_edits.page_images(self.html) if i.number == number), None)
+        if image is None:
+            raise image_edits.ImageEditError(f"There's no image {number} on this page.")
+        labels = {s.key: s.label for s in self.layout()}
+        return labels.get(image.section or "", image.section or "the page")
+
+    def _replace_image(self, args: dict[str, Any]) -> tuple[str, bool, Step]:
+        number = int(args["number"])
+        where = self._image_where(number)
+        if args.get("product") is not None:
+            index = int(args["product"])
+            if not 1 <= index <= len(self.product_photos):
+                raise image_edits.ImageEditError(f"There's no product photo {index}.")
+            src, source, what = self.product_photos[index - 1], "product", "a product photo"
+        elif args.get("image") is not None:
+            other = int(args["image"])
+            found = next((i for i in image_edits.page_images(self.html) if i.number == other), None)
+            if found is None or not found.src.startswith("https://"):
+                raise image_edits.ImageEditError(f"There's no image {other} to reuse.")
+            src, source, what = found.src, "reused", f"image {other}"
+        else:
+            raise image_edits.ImageEditError("Say which product photo or image to use.")
+        self.html, before = image_edits.set_src(self.html, number, src)
+        label = f"Replaced image {number} in {where} with {what}"
+        change = {
+            "kind": "image", "label": label, "number": number, "before": before, "src": src,
+            "source": source,
+        }  # fmt: skip
+        self.changes.append(change)
+        return f"{label}. Look at it to check.", False, Step(label, True, change)
+
+    def _adjust_image(self, args: dict[str, Any]) -> tuple[str, bool, Step]:
+        number = int(args["number"])
+        where = self._image_where(number)
+        shape = {k: args.get(k) for k in ("ratio", "fit", "focus") if args.get(k)}
+        if shape:
+            self.html = image_edits.set_shape(self.html, number, **shape)
+        if args.get("alt") is not None:
+            self.html = image_edits.set_alt(self.html, number, str(args["alt"]))
+        if not shape and args.get("alt") is None:
+            raise image_edits.ImageEditError("Say the shape, fit, focus or alt text to set.")
+        parts = [f"{k} {v}" for k, v in shape.items()]
+        if args.get("alt") is not None:
+            parts.append("alt text")
+        label = f"Adjusted image {number} in {where}"
+        src = next(i.src for i in image_edits.page_images(self.html) if i.number == number)
+        change = {
+            "kind": "image",
+            "label": label,
+            "number": number,
+            "src": src,
+            "detail": ", ".join(parts),
+        }
+        self.changes.append(change)
+        return f"{label}: {', '.join(parts)}.", False, Step(label, True, change)
 
     def _check_claims(self, args: dict[str, Any]) -> tuple[str, bool, Step]:
         text = _clean(str(args["text"]))[:2000]

@@ -21,6 +21,7 @@ import { isActive } from "@/lib/jobs/progress";
 import { useJob } from "@/lib/queries/jobs";
 import type { JobDetail } from "@/lib/validators/jobs";
 import { type AgentStart, agentStartSchema } from "@/lib/validators/agent";
+import type { ImageAction, ImageActionBody } from "@/lib/validators/images";
 import {
   type DeskAction,
   type DeskPalette,
@@ -111,11 +112,18 @@ type DeskContextValue = {
   stopAgent: () => Promise<void>;
   /** Recolours the page to these colours (undoable). */
   recolor: (colors: DeskPalette) => Promise<boolean>;
+  /** Replaces, crops or restores image `number` (the image studio, B3.2a; undoable). */
+  changeImage: <A extends ImageAction>(
+    number: number,
+    action: A,
+    body: ImageActionBody<A>,
+  ) => Promise<boolean>;
   /** Fetches the desk again (publishing changes the status without a new page version). */
   reload: () => Promise<void>;
   /** The redraft queued or running on the page, with its job (progress) once loaded. */
   redrafting: { redraft: DeskRedraft; job: JobDetail | undefined } | null;
-  pending: DeskAction | null;
+  /** The change saving now ("image" for the image studio's). */
+  pending: DeskAction | "image" | null;
 };
 
 const DeskContext = createContext<DeskContextValue | null>(null);
@@ -181,14 +189,21 @@ export function DeskProvider({
     mutationFn: ({
       action,
       body,
+      path,
     }: {
-      action: DeskAction;
+      action: DeskAction | "image";
       body: Record<string, unknown>;
+      /** Where the change goes, when it isn't the desk's own route (the image studio's). */
+      path?: string;
     }) =>
-      apiFetch(`/api/builds/${buildId}/desk/${action}`, deskStateSchema, {
-        method: "POST",
-        body: JSON.stringify(body),
-      }),
+      apiFetch(
+        path ?? `/api/builds/${buildId}/desk/${action}`,
+        deskStateSchema,
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+        },
+      ),
     onSuccess: (next) => {
       showDesk(next);
       router.refresh();
@@ -215,17 +230,21 @@ export function DeskProvider({
   // typing save returned, when that's newer than the desk this render has.
   const typedVersion = useRef(desk.build.page_version);
   const run = useCallback(
-    async (action: DeskAction, body: Record<string, unknown>) => {
+    async (
+      action: DeskAction | "image",
+      body: Record<string, unknown>,
+      path?: string,
+    ) => {
       const payload = {
         base_version: Math.max(typedVersion.current, desk.build.page_version),
         ...body,
       };
       if (onChange) {
-        onChange(action, payload);
+        if (action !== "image") onChange(action, payload);
         return true;
       }
       try {
-        await mutation.mutateAsync({ action, body: payload });
+        await mutation.mutateAsync({ action, body: payload, path });
         return true;
       } catch {
         return false;
@@ -533,6 +552,8 @@ export function DeskProvider({
         }
         return done;
       },
+      changeImage: (number, action, body) =>
+        run("image", body, `/api/builds/${buildId}/images/${number}/${action}`),
       redrafting: desk.redraft
         ? {
             redraft: desk.redraft,

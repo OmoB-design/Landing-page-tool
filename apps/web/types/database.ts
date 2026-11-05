@@ -571,6 +571,7 @@ export type Database = {
           seq: number
           slot: number
           source: Database["public"]["Enums"]["image_source"]
+          src: string | null
         }
         Insert: {
           asset_id?: string | null
@@ -582,6 +583,7 @@ export type Database = {
           seq: number
           slot: number
           source: Database["public"]["Enums"]["image_source"]
+          src?: string | null
         }
         Update: {
           asset_id?: string | null
@@ -593,6 +595,7 @@ export type Database = {
           seq?: number
           slot?: number
           source?: Database["public"]["Enums"]["image_source"]
+          src?: string | null
         }
         Relationships: [
           {

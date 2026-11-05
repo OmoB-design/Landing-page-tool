@@ -56,6 +56,9 @@ function highlight(): string {
  * rewrites, its lines breathe (`busyLines`), and Show on page flashes a change's lines (`flash`),
  * on the page that has them. A reload loads behind the page you see and takes
  * its place once it's ready and scrolled to your spot, so the canvas never goes blank.
+ *
+ * B3.2a (D109): clicking an image opens it in the image studio (`onImage`); the open one is
+ * outlined (`image`), and a click anywhere else on the page closes it.
  */
 export function PageCanvas({
   buildId,
@@ -71,6 +74,8 @@ export function PageCanvas({
   viewport,
   busyLines,
   flash,
+  image,
+  onImage,
 }: {
   buildId: string;
   /** The build's last update as the editor opened (a rebuild), so the frame's address names one
@@ -91,6 +96,10 @@ export function PageCanvas({
   viewport: Viewport;
   busyLines: number[];
   flash: FlashRequest | null;
+  /** The image open in the image studio (its `data-lp-img` number). */
+  image: number | null;
+  /** An image was clicked on the page (null: somewhere else was). */
+  onImage: (number: number | null) => void;
 }) {
   const { desk, saveTyping, frameVersion } = useDesk();
   const version = desk.build.page_version;
@@ -157,9 +166,9 @@ export function PageCanvas({
   // typing waits for a redraft, and where you were.
   const locked = lockedBlocks(desk.paragraphs);
   const paused = desk.redraft !== null;
-  const setup = useRef({ locked, paused, busyLines, flash });
+  const setup = useRef({ locked, paused, busyLines, flash, image });
   useEffect(() => {
-    setup.current = { locked, paused, busyLines, flash };
+    setup.current = { locked, paused, busyLines, flash, image };
   });
   const post = useCallback(
     (message: Record<string, unknown>, to?: Window | null) => {
@@ -211,6 +220,7 @@ export function PageCanvas({
       );
       post({ type: "lp-section-select", key: selected, scroll: false }, to);
       post({ type: "lp-busy", blocks: now.busyLines }, to);
+      post({ type: "lp-image-select", number: now.image, scroll: false }, to);
       if (
         now.flash &&
         flashed.current !== now.flash.nonce &&
@@ -241,6 +251,7 @@ export function PageCanvas({
         block?: unknown;
         text?: unknown;
         y?: unknown;
+        number?: unknown;
       } | null;
       if (!data || typeof data.type !== "string") return;
       const block = typeof data.block === "number" ? data.block : null;
@@ -297,6 +308,14 @@ export function PageCanvas({
           if (timer.current) clearTimeout(timer.current);
           line.current = null;
           break;
+        case "lp-image":
+          onImage(typeof data.number === "number" ? data.number : null);
+          break;
+        case "lp-logo":
+          toast(
+            "The logo comes from the brand, so change it on the brand’s page.",
+          );
+          break;
         case "lp-locked":
           toast(
             "This line is filled from your brand or product, so change it there.",
@@ -313,7 +332,7 @@ export function PageCanvas({
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [flush, onRedo, onSelect, onUndo, post, selected, show]);
+  }, [flush, onImage, onRedo, onSelect, onUndo, post, selected, show]);
 
   // A selection made outside the frame scrolls it into view; the desk's changes reach the frame.
   useEffect(() => {
@@ -329,6 +348,9 @@ export function PageCanvas({
     // `locked` is a new array each render; its contents follow the page's version.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post, paused, version]);
+  useEffect(() => {
+    post({ type: "lp-image-select", number: image, scroll: true });
+  }, [post, image]);
   const busyKey = busyLines.join(",");
   useEffect(() => {
     post({

@@ -21,6 +21,7 @@ import type { SectionAction } from "@/lib/validators/desk";
 
 import { useDesk } from "../builds/desk-context";
 import { EditorTopBar } from "./editor-top-bar";
+import { ImagePanel } from "./image-panel";
 import type { UndoState } from "./lander/change-card";
 import { FloatingComposer } from "./lander/floating-composer";
 import { LanderComposer } from "./lander/lander-composer";
@@ -94,7 +95,8 @@ function useWide(): boolean {
  * with AI, or sending a request) sinks the bar, squeezes the page and brings Lander's panel in
  * beside it, and puts the section list away so the page keeps its room; closing Lander reverses
  * it, and brings the list back if it was open. Sections pressed while Lander is open shows both.
- * In development a DialKit panel tunes all of the motion.
+ * Clicking an image on the page opens the image studio in the same drawer (B3.2a, D109); its back
+ * arrow returns to the section list. In development a DialKit panel tunes all of the motion.
  */
 export function PageEditor({
   build,
@@ -173,8 +175,12 @@ function Editor({
     if (landerOpen) setBeside(false);
   }
   const sectionsOpen = sectionsWanted && (!landerOpen || beside);
+  // The image open in the image studio, which takes the drawer while it's open (B3.2a).
+  const [image, setImage] = useState<number | null>(null);
+  const drawerOpen = sectionsOpen || image !== null;
   const toggleSections = () => {
-    if (sectionsOpen) {
+    if (drawerOpen) {
+      setImage(null);
       setOpenChoice(false);
       setBeside(false);
       remember(STORE.sections, "closed");
@@ -207,6 +213,13 @@ function Editor({
   const select = (key: string) => {
     setChosen(key);
     setWholePage(false);
+  };
+  // Back from an image shows the section list, open beside Lander if Lander is open.
+  const backToSections = () => {
+    setImage(null);
+    if (sectionsOpen) return;
+    setOpenChoice(true);
+    if (landerOpen) setBeside(true);
   };
   const edit = async (action: SectionAction) => {
     const before = keys;
@@ -340,7 +353,7 @@ function Editor({
           zoom={zoom}
           version={desk.build.page_version}
           rewriting={desk.redraft !== null}
-          sectionsOpen={sectionsOpen}
+          sectionsOpen={drawerOpen}
           onToggleSections={toggleSections}
           viewport={viewport}
           onViewport={setViewport}
@@ -352,7 +365,7 @@ function Editor({
         <div className="flex min-h-0 min-w-0 flex-1">
           <motion.div
             initial={false}
-            animate={{ width: sectionsOpen ? sectionsWidth : 0 }}
+            animate={{ width: drawerOpen ? sectionsWidth : 0 }}
             transition={motionConfig.sectionsToggle}
             className="relative shrink-0"
           >
@@ -362,18 +375,27 @@ function Editor({
                 className="h-full overflow-y-auto"
                 style={{ width: sectionsWidth }}
               >
-                <SectionPanel
-                  layout={layout}
-                  paragraphs={desk.paragraphs}
-                  selected={selected}
-                  busy={busy}
-                  onSelect={select}
-                  onEdit={(action) => void edit(action)}
-                  onImprove={improve}
-                />
+                {image !== null ? (
+                  <ImagePanel
+                    buildId={build.id}
+                    number={image}
+                    busy={busy}
+                    onBack={backToSections}
+                  />
+                ) : (
+                  <SectionPanel
+                    layout={layout}
+                    paragraphs={desk.paragraphs}
+                    selected={selected}
+                    busy={busy}
+                    onSelect={select}
+                    onEdit={(action) => void edit(action)}
+                    onImprove={improve}
+                  />
+                )}
               </div>
             </div>
-            {sectionsOpen ? (
+            {drawerOpen ? (
               <Mover
                 value={sectionsWidth}
                 min={SECTIONS_MIN}
@@ -404,6 +426,8 @@ function Editor({
               viewport={viewport}
               busyLines={lander.busyLines}
               flash={flash}
+              image={image}
+              onImage={setImage}
             />
             <div
               className="pointer-events-none absolute inset-x-4 z-20 flex justify-center"
@@ -520,6 +544,7 @@ function Editor({
                   onRate={(jobId, feedback) =>
                     void lander.rate(jobId, feedback)
                   }
+                  onImage={setImage}
                   composer={
                     <LanderComposer
                       target={target}

@@ -57,6 +57,16 @@ export const agentChangeSchema = z.discriminatedUnion("kind", [
     section: z.string().nullable(),
     styles: z.record(z.string(), z.string()),
   }),
+  /** An image Lander swapped or adjusted (B3.2a): "Replaced image 3 in Hero with a product
+   * photo"; `detail` lists what an adjustment set. */
+  z.object({
+    kind: z.literal("image"),
+    label: z.string(),
+    number: z.number().int(),
+    src: z.string(),
+    source: z.string().optional(),
+    detail: z.string().optional(),
+  }),
 ]);
 export type AgentChange = z.infer<typeof agentChangeSchema>;
 

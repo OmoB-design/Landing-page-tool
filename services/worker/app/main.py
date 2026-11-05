@@ -8,7 +8,17 @@ from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app import agent, analytics, builds, clones, desk, publishing, templates, trash
+from app import (
+    agent,
+    analytics,
+    builds,
+    clones,
+    desk,
+    images,
+    publishing,
+    templates,
+    trash,
+)
 from app.auth import CurrentUser, require_org_member
 from app.config import get_settings
 from app.jobs import queue
@@ -35,6 +45,14 @@ from app.models.desk import (
     SectionRequest,
     SnapshotRestoreRequest,
     StatusRequest,
+)
+from app.models.images import (
+    ImageAdjust,
+    ImageReplace,
+    ImageRestore,
+    ImageStudio,
+    ImageUpload,
+    UploadedImage,
 )
 from app.models.publishing import (
     IntegrationsState,
@@ -288,6 +306,49 @@ def redraft_build(build_id: UUID, body: RedraftRequest, user: CurrentUser) -> De
     """Queues a redraft (a job, D86); the desk shows it running and pauses other changes."""
     require_org_member(user, body.org_id)
     state: DeskState = _desk_call(desk.start_redraft, body.org_id, build_id, user.id, body)
+    return state
+
+
+# ── The image studio (BUILD_SPEC §11.2, B3.2a, D109) ───────────────────────────
+
+
+@app.get("/builds/{build_id}/images/{number}")
+def image_studio(build_id: UUID, number: int, org_id: UUID, user: CurrentUser) -> ImageStudio:
+    """One image of the page: its details, its last five versions and what it can become."""
+    require_org_member(user, org_id)
+    found: ImageStudio = _desk_call(images.studio, org_id, build_id, number)
+    return found
+
+
+@app.post("/builds/{build_id}/images/upload")
+def image_upload(build_id: UUID, body: ImageUpload, user: CurrentUser) -> UploadedImage:
+    """A picture from the user's computer, stored as one of the workspace's assets."""
+    require_org_member(user, body.org_id)
+    stored: UploadedImage = _desk_call(images.upload, body.org_id, build_id, body)
+    return stored
+
+
+@app.post("/builds/{build_id}/images/{number}/replace")
+def image_replace(build_id: UUID, number: int, body: ImageReplace, user: CurrentUser) -> DeskState:
+    """The image shows a product photo, another image on the page, or an upload (undoable)."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(images.replace, body.org_id, build_id, user.id, number, body)
+    return state
+
+
+@app.post("/builds/{build_id}/images/{number}/adjust")
+def image_adjust(build_id: UUID, number: int, body: ImageAdjust, user: CurrentUser) -> DeskState:
+    """The image's shape, fit, focus or alt text (undoable)."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(images.adjust, body.org_id, build_id, user.id, number, body)
+    return state
+
+
+@app.post("/builds/{build_id}/images/{number}/restore")
+def image_restore(build_id: UUID, number: int, body: ImageRestore, user: CurrentUser) -> DeskState:
+    """The image shows one of its earlier versions again (undoable)."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(images.restore, body.org_id, build_id, user.id, number, body)
     return state
 
 

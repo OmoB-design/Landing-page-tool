@@ -34,6 +34,7 @@ export {
   WandSparkles as RewriteIcon,
   Square as StopIcon,
   ImagePlus as AttachImageIcon,
+  Upload as UploadIcon,
   ThumbsUp as ThumbsUpIcon,
   ThumbsDown as ThumbsDownIcon,
   ArrowUpDown as MoveSectionIcon,

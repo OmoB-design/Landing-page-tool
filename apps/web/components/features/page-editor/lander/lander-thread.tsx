@@ -17,6 +17,7 @@ import {
   CheckIcon,
   ChevronRightIcon,
   DuplicateIcon,
+  ImageIcon,
   MoveSectionIcon,
   RecolorIcon,
   RemoveIcon,
@@ -79,6 +80,7 @@ export function LanderThread({
   onRefine,
   onRetry,
   onRate,
+  onImage,
   composer,
 }: {
   views: TurnView[];
@@ -93,6 +95,8 @@ export function LanderThread({
   onRetry: (view: TurnView) => void;
   /** Rates a reply (by its job), or takes the rating back (B3.1e). */
   onRate: (jobId: string, feedback: AgentFeedback | null) => void;
+  /** Opens an image Lander changed in the image studio (B3.2a). */
+  onImage?: (number: number) => void;
   /** The composer, floating over the thread's foot. */
   composer: ReactNode;
 }) {
@@ -200,6 +204,7 @@ export function LanderThread({
                     onRedo={onRedo}
                     onShow={onShow}
                     onRefine={onRefine}
+                    onImage={onImage}
                     onRetry={() => onRetry(view)}
                     onRate={(feedback) =>
                       view.turn.jobId && onRate(view.turn.jobId, feedback)
@@ -334,6 +339,7 @@ function Reply({
   onRefine,
   onRetry,
   onRate,
+  onImage,
 }: {
   view: TurnView;
   undo: UndoState;
@@ -341,6 +347,7 @@ function Reply({
   onRedo: () => void;
   onShow: (lines: number[], section: string | null) => void;
   onRefine: (target: LanderTarget, request: string) => void;
+  onImage?: (number: number) => void;
   onRetry: () => void;
   onRate: (feedback: AgentFeedback | null) => void;
 }) {
@@ -498,6 +505,7 @@ function Reply({
           change={change}
           onShow={onShow}
           onRefine={onRefine}
+          onImage={onImage}
         />
       ))}
 
@@ -554,16 +562,18 @@ const SECTION_ICONS = {
   remove: RemoveIcon,
 } as const;
 
-/** One change in the thread: a card of lines before and after, or a one-line section or colour
- * change. */
+/** One change in the thread: a card of lines before and after, or a one-line section, colour,
+ * style or image change (an image's shows the new picture, which opens it in the studio). */
 function Change({
   change,
   onShow,
   onRefine,
+  onImage,
 }: {
   change: AgentChange;
   onShow: (lines: number[], section: string | null) => void;
   onRefine: (target: LanderTarget, request: string) => void;
+  onImage?: (number: number) => void;
 }) {
   const { arrive, reduced } = useLanderMotion();
   if (change.kind === "lines") {
@@ -590,7 +600,9 @@ function Change({
       ? RecolorIcon
       : change.kind === "style"
         ? BrushIcon
-        : SECTION_ICONS[change.action];
+        : change.kind === "image"
+          ? ImageIcon
+          : SECTION_ICONS[change.action];
   return (
     <motion.div
       initial={{
@@ -614,7 +626,24 @@ function Change({
               .join(" · ")}
           </span>
         ) : null}
+        {change.kind === "image" && change.detail ? (
+          <span className="truncate text-type-caption-2 text-heading-06">
+            {change.detail}
+          </span>
+        ) : null}
       </span>
+      {change.kind === "image" ? (
+        <button
+          type="button"
+          aria-label={`Open image ${change.number}`}
+          disabled={!onImage}
+          onClick={() => onImage?.(change.number)}
+          className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-foreground-02 ring-thin ring-stroke outline-none ring-inset hover:ring-stroke-input-active focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- the picture Lander put on the page */}
+          <img src={change.src} alt="" className="size-full object-cover" />
+        </button>
+      ) : null}
       {change.kind === "colors" ? (
         <span
           className="flex shrink-0 items-center gap-1.5"
