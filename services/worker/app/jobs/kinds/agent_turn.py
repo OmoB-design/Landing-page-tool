@@ -129,6 +129,7 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
     inputs, _ = read_inputs(org_id, payload.build_id, template_html=False)
     with transaction() as conn:
         product_photos = images._product_photos(conn, org_id, payload.build_id)
+        own_styles = images.own_styles(conn, payload.build_id)
     brief = copy_pass.brief(
         inputs["template"], inputs["brand"], inputs["product"], inputs.get("wizard", {})
     )
@@ -156,6 +157,7 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         facts=comparison.facts_from_report(report),
         looker=look,
         product_photos=product_photos,
+        own_styles=own_styles,
     )
     target = payload.target
     lines = len(paragraphs.paragraphs(html))

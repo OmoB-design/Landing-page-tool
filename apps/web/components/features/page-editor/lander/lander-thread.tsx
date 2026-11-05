@@ -23,6 +23,7 @@ import {
   MoveSectionIcon,
   RecolorIcon,
   RemoveIcon,
+  RestoreIcon,
   RewriteIcon,
   SharpenIcon,
   ShortenIcon,
@@ -85,6 +86,7 @@ export function LanderThread({
   onRetry,
   onRate,
   onImage,
+  onRestore,
   composer,
 }: {
   views: TurnView[];
@@ -101,6 +103,8 @@ export function LanderThread({
   onRate: (jobId: string, feedback: AgentFeedback | null) => void;
   /** Opens an image Lander changed in the image studio (B3.2a). */
   onImage?: (number: number) => void;
+  /** Restore page to here: the page as it was when this request was sent. */
+  onRestore?: (messageId: string) => void;
   /** The composer, floating over the thread's foot. */
   composer: ReactNode;
 }) {
@@ -206,6 +210,15 @@ export function LanderThread({
                     request={view.turn.request}
                     target={view.turn.target}
                     images={view.turn.images}
+                    onRestore={
+                      onRestore &&
+                      view.turn.messageId &&
+                      view.turn.restorable &&
+                      view.state !== "starting" &&
+                      view.state !== "working"
+                        ? () => onRestore(view.turn.messageId as string)
+                        : undefined
+                    }
                   />
                   <Reply
                     view={view}
@@ -296,10 +309,13 @@ function UserBubble({
   request,
   target,
   images,
+  onRestore,
 }: {
   request: string;
   target: LanderTarget;
   images: string[];
+  /** Restore page to here, when the page as it was then is still kept. */
+  onRestore?: () => void;
 }) {
   const { arrive, reduced } = useLanderMotion();
   return (
@@ -307,7 +323,7 @@ function UserBubble({
       initial={{ opacity: 0, y: reduced ? 0 : 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={arrive}
-      className="flex flex-col items-end gap-1"
+      className="group/request flex flex-col items-end gap-1"
     >
       {images.length ? (
         <ul aria-label="Pictures sent" className="flex justify-end gap-1.5">
@@ -333,8 +349,21 @@ function UserBubble({
       <p className="max-w-4/5 rounded-item bg-foreground-02 px-3 py-2 text-type-body-small text-heading-01">
         {request || `Give ${target ? target.label : "the page"} fresh words`}
       </p>
-      <span className="pr-1 text-type-caption-2 text-heading-06">
-        {target ? target.label : "Whole page"}
+      <span className="flex items-center gap-2 pr-1">
+        {onRestore ? (
+          // Quiet until the request is hovered or focused, as the reply's actions are.
+          <button
+            type="button"
+            onClick={onRestore}
+            className="flex h-5 items-center gap-1 rounded-xsm text-type-caption-2 text-sub-text opacity-0 transition-opacity duration-150 outline-none group-hover/request:opacity-100 hover:text-body focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <RestoreIcon aria-hidden className="size-3" />
+            Restore page to here
+          </button>
+        ) : null}
+        <span className="text-type-caption-2 text-heading-06">
+          {target ? target.label : "Whole page"}
+        </span>
       </span>
     </motion.div>
   );
@@ -557,7 +586,7 @@ function Connector({
 /**
  * One step Lander took: a dot on the line (red when it couldn't), its label and what it touched
  * under it. A step with a picture (what Lander looked at) is drawn as the overview's reminders: the
- * label in a Dashboard chip on a Foreground-01 card, the picture under it (owner, 2026-11-05).
+ * label in a Foreground-01 chip on a Dashboard-grey card, the picture under it (owner, 2026-11-05).
  */
 function StepRow({
   step,
@@ -599,8 +628,8 @@ function StepRow({
         <span className="sr-only">{step.ok ? "Done" : "Couldn’t"}</span>
       </span>
       {picture && step.image_url ? (
-        <span className="flex min-w-0 flex-1 flex-col gap-1.5 rounded-md bg-foreground-01 p-1.5">
-          <span className="rounded-sm bg-dashboard px-1.5 py-1 text-type-caption-1 leading-5 font-medium text-heading-02">
+        <span className="flex min-w-0 flex-1 flex-col gap-1.5 rounded-md bg-dashboard p-1.5">
+          <span className="rounded-sm bg-foreground-01 px-1.5 py-1 text-type-caption-1 leading-5 font-medium text-heading-02">
             {step.label}
           </span>
           <a

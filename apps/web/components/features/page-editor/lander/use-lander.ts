@@ -198,6 +198,8 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
         saved: null,
         images,
         feedback: null,
+        messageId: null,
+        restorable: false,
       };
       setTurns((all) => [...all, turn]);
       const started = await startAgent({
@@ -211,7 +213,12 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
         all.map((t) =>
           t.id === id
             ? started
-              ? { ...t, jobId: started.job_id }
+              ? {
+                  ...t,
+                  jobId: started.job_id,
+                  messageId: started.message_id,
+                  restorable: true,
+                }
               : { ...t, refused: "Lander couldn’t start that." }
             : t,
         ),

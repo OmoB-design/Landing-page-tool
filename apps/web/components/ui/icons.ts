@@ -45,6 +45,7 @@ export {
   PanelRightClose as ComposerCloseIcon,
   PanelRightOpen as ComposerOpenIcon,
   Redo2 as RedoIcon,
+  RotateCcw as RestoreIcon,
   Pencil as RenameIcon,
   Undo2 as UndoIcon,
   TriangleAlert as WarningIcon,

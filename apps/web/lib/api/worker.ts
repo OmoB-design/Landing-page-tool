@@ -362,6 +362,23 @@ export async function getAgentThreads(
   return body.threads;
 }
 
+/** Restore page to here: the page as it was when one of Lander's requests was sent (one undoable
+ * change); returns the new desk. */
+export function restoreAgentPage(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+  body: { base_version: number; message_id: string },
+): Promise<DeskState> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/agent/restore`,
+    accessToken,
+    { ...body, org_id: orgId },
+    deskStateSchema,
+    "Couldn't restore the page.",
+  );
+}
+
 /** Rates one of Lander's replies, or takes the rating back (B3.1e). */
 export function rateAgentReply(
   accessToken: string,

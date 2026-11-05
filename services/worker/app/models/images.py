@@ -21,6 +21,8 @@ class StudioImage(BaseModel):
     ratio: str
     fit: str
     focus: str
+    # The studio changed how it's shown (shape, fit, focus): Reset puts it back as it was built.
+    changed: bool = False
 
 
 class ImageVersion(BaseModel):

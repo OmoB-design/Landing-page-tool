@@ -30,6 +30,7 @@ const STUDIO: ImageStudio = {
     ratio: "original",
     fit: "cover",
     focus: "center",
+    changed: true,
   },
   versions: [
     {
@@ -116,6 +117,12 @@ describe("image studio (B3.2a)", () => {
     fireEvent.keyDown(alt, { key: "Enter" });
     expect(changeImage).toHaveBeenLastCalledWith(3, "adjust", {
       alt: "A warm bath",
+    });
+
+    // The studio changed how it's shown, so Reset puts it back as it was built.
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(changeImage).toHaveBeenLastCalledWith(3, "adjust", {
+      ratio: "original",
     });
 
     expect(screen.getByText("On the page")).toBeTruthy();

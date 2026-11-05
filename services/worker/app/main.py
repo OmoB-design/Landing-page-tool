@@ -28,6 +28,7 @@ from app.log import configure_logging
 from app.models.agent import (
     AgentRate,
     AgentRequest,
+    AgentRestore,
     AgentStart,
     AgentStop,
     AgentThread,
@@ -372,6 +373,15 @@ def agent_conversation(
     require_org_member(user, org_id)
     conversation: AgentThread = _desk_call(agent.thread, org_id, build_id, thread_id)
     return conversation
+
+
+@app.post("/builds/{build_id}/agent/restore")
+def agent_restore(build_id: UUID, body: AgentRestore, user: CurrentUser) -> DeskState:
+    """Restore page to here: the page as it was when one of Lander's requests was sent (one
+    undoable change)."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(agent.restore_to, body.org_id, build_id, user.id, body)
+    return state
 
 
 @app.get("/builds/{build_id}/agent/threads")

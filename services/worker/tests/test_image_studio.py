@@ -89,6 +89,29 @@ def test_shape_fit_focus_and_alt_are_set_and_read_back() -> None:
     assert img(described, 3)["alt"].startswith("A bath x") and len(img(described, 3)["alt"]) == 250
 
 
+def test_original_puts_the_image_back_as_the_build_made_it() -> None:
+    """The owner's ALL-1 profile photo: cropped, restored, and still stretched to its box."""
+    own = f'<img data-lp-img="4" src="{CDN}/me.jpg" style="width:64px;border-radius:50%">'
+    page = PAGE.replace("</section></body>", own + "</section></body>")
+    cropped = image_edits.set_shape(page, 4, ratio="1:1", focus="top")
+    assert img(cropped, 4)[image_edits.OWN_STYLE] == "width:64px;border-radius:50%"
+    fitted = image_edits.set_shape(cropped, 4, fit="contain")
+    back = image_edits.set_shape(fitted, 4, ratio="original")
+    tag = img(back, 4)
+    assert tag["style"] == "width:64px;border-radius:50%"
+    assert not tag.has_attr(image_edits.OWN_STYLE)
+    # Shaped before the studio kept the image's own style: it comes from the page's history.
+    legacy = page.replace(
+        'style="width:64px;border-radius:50%"',
+        'style="width: 100%; height: auto; object-fit: cover"',
+    )
+    fixed = image_edits.set_shape(legacy, 4, ratio="original", own_style="width:64px")
+    assert img(fixed, 4)["style"] == "width:64px"
+    # With nothing to go back to, only the crop's ratio comes off.
+    bare = image_edits.set_shape(image_edits.set_shape(PAGE, 3, ratio="4:3"), 3, ratio="original")
+    assert not img(bare, 3).has_attr("style") or "aspect-ratio" not in img(bare, 3)["style"]
+
+
 # ── Lander's image tools ──────────────────────────────────────────────────────
 
 
@@ -218,6 +241,8 @@ def test_a_replace_is_one_undoable_change_with_a_history_to_restore(
     assert restored.status_code == 200, restored.text
     assert restored.json()["snapshots"][0]["reason"].startswith("Restored an earlier image")
     assert img(page_of(pictured), 3)["src"] == f"{CDN}/bath.jpg"
+    again = change(client, user, pictured, 3, "restore", version_id=versions[-1]["id"])
+    assert again.status_code == 422 and "already" in again.json()["detail"]
     after = studio(client, user, pictured, 3).json()["versions"]
     assert [v["current"] for v in after] == [False, False, True]
 
@@ -274,6 +299,9 @@ def test_crop_and_alt_text_are_desk_changes(
     assert img(page, 3)["alt"] == "A warm bath with the serum"
     shown = studio(client, user, pictured, 2).json()["image"]
     assert (shown["ratio"], shown["focus"]) == ("16:9", "bottom")
+    back = change(client, user, pictured, 2, "adjust", ratio="original")
+    assert back.status_code == 200, back.text
+    assert not img(page_of(pictured), 2).has_attr("style")  # as the build made it
 
 
 def _png() -> str:

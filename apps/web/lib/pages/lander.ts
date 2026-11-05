@@ -36,6 +36,10 @@ export type LanderTurn = {
   images: string[];
   /** The rating its reply was given (B3.1e). */
   feedback: AgentFeedback | null;
+  /** The request's message, once saved (Restore page to here goes by it). */
+  messageId: string | null;
+  /** The page as it was when it was sent can still be restored. */
+  restorable: boolean;
 };
 
 export type TurnState = "starting" | "working" | "done" | "stopped" | "failed";
@@ -140,6 +144,8 @@ export function turnsFromThread(
     return [
       {
         id: m.id,
+        messageId: m.id,
+        restorable: m.content.restorable ?? true,
         request: m.content.text,
         target: m.content.target,
         startedAt: Date.parse(m.created_at),

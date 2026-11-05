@@ -556,3 +556,55 @@ def test_stop_marks_the_running_request(
     job = run_agent()  # it stops before asking Claude anything
     assert job["result"]["state"] == "stopped" and job["result"]["changes"] == []
     assert job["result"]["closing"] == "Stopped. Nothing changed."
+
+
+@needs_db
+def test_restore_page_to_before_a_request(
+    client: TestClient, user: DbUser, other_org: uuid.UUID, finished: dict[str, Any]
+) -> None:
+    """Restore page to here (owner, 2026-11-05): the page as it was when a request was sent."""
+    version = desk(client, user, finished)["build"]["page_version"]
+    first = ask(client, user, finished, version, "Warmer", target_key="hero").json()
+    run_agent()  # mock mode: "Glow in 7 days" → "Glow in 7 days (mock)"
+    second = ask(
+        client, user, finished, version + 1, "Again", target_key="hero",
+        thread_id=first["thread_id"],
+    ).json()  # fmt: skip
+    run_agent()
+    texts = [p["text"] for p in desk(client, user, finished)["paragraphs"]]
+    assert "Glow in 7 days (mock) (mock)" in texts
+
+    def restore(message: str, base: int, org: str | None = None) -> Any:
+        return client.post(
+            f"/builds/{finished['id']}/agent/restore",
+            json={"org_id": org or finished["org_id"], "base_version": base, "message_id": message},
+            headers=bearer(user),
+        )
+
+    thread = conversation(client, user, finished)
+    flags = [m["content"]["restorable"] for m in thread["messages"] if m["role"] == "user"]
+    assert flags == [True, True]
+
+    back = restore(second["message_id"], version + 2)
+    assert back.status_code == 200, back.text
+    state = back.json()
+    assert "Glow in 7 days (mock)" in [p["text"] for p in state["paragraphs"]]
+    assert state["snapshots"][0]["reason"] == "Restored the page to before “Again”"
+    # Now the page is as it was when "Again" was sent: nothing to restore for it.
+    again = restore(second["message_id"], version + 3)
+    assert again.status_code == 422 and "already" in again.json()["detail"]
+
+    start = restore(first["message_id"], version + 3)
+    assert start.status_code == 200, start.text
+    assert "Glow in 7 days" in [p["text"] for p in start.json()["paragraphs"]]
+    undone = client.post(
+        f"/builds/{finished['id']}/undo",
+        json={"org_id": finished["org_id"], "base_version": version + 4},
+        headers=bearer(user),
+    )
+    assert undone.status_code == 200, undone.text  # one undo step puts it back
+    assert "Glow in 7 days (mock)" in [p["text"] for p in undone.json()["paragraphs"]]
+
+    assert restore(first["message_id"], version + 5, str(other_org)).status_code == 403
+    assert restore(str(uuid.uuid4()), version + 5).status_code == 404
+    assert restore(first["message_id"], 1).status_code == 409

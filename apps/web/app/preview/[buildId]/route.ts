@@ -55,6 +55,19 @@ const DESK_BRIDGE = `(function () {
         window.scrollTo({ top: box.top + scrollY - innerHeight * 0.3, behavior: e.data.instant ? "auto" : "smooth" });
     }
   });
+  // The template's reading meter (a bar that fills as you scroll) runs on the page's own script,
+  // which is off here, so the bridge fills it (owner, 2026-11-05: "the page loader isn't working").
+  var meter = document.querySelector(".scroll-meter-pct");
+  if (meter) {
+    meter.style.transform = "none";
+    var fill = function () {
+      var max = (document.documentElement.scrollHeight - innerHeight) || 1;
+      meter.style.width = Math.max(0, Math.min(1, scrollY / max)) * 100 + "%";
+    };
+    addEventListener("scroll", fill, { passive: true });
+    addEventListener("resize", fill, { passive: true });
+    fill();
+  }
   parent.postMessage({ type: "lp-ready" }, "*");
 })();`;
 
@@ -71,6 +84,7 @@ const DESK_BRIDGE = `(function () {
  * B3.2a: a numbered image (`data-lp-img`) outlines on hover and clicking it opens it in the image
  * studio (`lp-image`), even under an overlay; the editor outlines the one it has open
  * (`lp-image-select`). The brand's logo says where to change it instead (`lp-logo`).
+ * Both bridges fill the template's reading meter as the page scrolls (its own script is off).
  * Talks to the editor only through postMessage; the frame has an opaque origin.
  */
 const WRITE_BRIDGE = `(function () {
@@ -283,6 +297,19 @@ const WRITE_BRIDGE = `(function () {
     }
     paint();
   });
+  // The template's reading meter (a bar that fills as you scroll) runs on the page's own script,
+  // which is off here, so the bridge fills it (owner, 2026-11-05: "the page loader isn't working").
+  var meter = document.querySelector(".scroll-meter-pct");
+  if (meter) {
+    meter.style.transform = "none";
+    var fill = function () {
+      var max = (document.documentElement.scrollHeight - innerHeight) || 1;
+      meter.style.width = Math.max(0, Math.min(1, scrollY / max)) * 100 + "%";
+    };
+    addEventListener("scroll", fill, { passive: true });
+    addEventListener("resize", fill, { passive: true });
+    fill();
+  }
   paint();
   send({ type: "lp-ready" });
 })();`;

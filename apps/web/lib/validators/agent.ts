@@ -129,6 +129,9 @@ export const agentMessageSchema = z.discriminatedUnion("role", [
       target: agentTargetSchema,
       /** The pictures attached (signed links, B3.1d). */
       image_urls: z.array(z.string().nullable()).optional(),
+      /** The page as it was when this was sent is still kept and isn't the page now (Restore
+       * page to here). */
+      restorable: z.boolean().optional(),
     }),
   }),
   z.object({

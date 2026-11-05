@@ -129,7 +129,7 @@ function Editor({
   setLanderOpen: (open: boolean | ((open: boolean) => boolean)) => void;
 }) {
   const motionConfig = useLanderMotion();
-  const { desk, undo, redo, editSections, pending } = useDesk();
+  const { desk, undo, redo, editSections, pending, restoreTo } = useDesk();
 
   // The selected section: drives the canvas's outline and what Lander's requests are about.
   const layout = desk.layout;
@@ -545,6 +545,9 @@ function Editor({
                     void lander.rate(jobId, feedback)
                   }
                   onImage={setImage}
+                  onRestore={(messageId) =>
+                    void settle().then(() => restoreTo(messageId))
+                  }
                   composer={
                     <LanderComposer
                       target={target}

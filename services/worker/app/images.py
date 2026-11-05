@@ -19,6 +19,7 @@ from app import desk
 from app.config import get_settings
 from app.db import transaction
 from app.engines import image_edits
+from app.engines.html import parse
 from app.models.desk import DeskState
 from app.models.images import (
     MAX_UPLOAD_BYTES,
@@ -101,7 +102,13 @@ def studio(org_id: UUID, build_id: UUID, number: int) -> ImageStudio:
         labels = desk._labels(conn, build["template_id"])
         photos = _product_photos(conn, org_id, build_id)
         versions = _versions(conn, build_id, number)
+        built = own_styles(conn, build_id).get(number)
     image = _image(html, number)
+    # Changed by the studio: it kept the image's own style, or (changed before it kept one) the
+    # page's oldest version styled it differently.
+    changed = (image.own_style is not None and image.own_style != image.style) or (
+        image.own_style is None and built is not None and built != image.style
+    )
     others = [
         i
         for i in image_edits.page_images(html)
@@ -128,6 +135,7 @@ def studio(org_id: UUID, build_id: UUID, number: int) -> ImageStudio:
             ratio=image.ratio,
             fit=image.fit,
             focus=image.focus,
+            changed=changed,
         ),
         versions=[
             ImageVersion(
@@ -215,6 +223,26 @@ def record(
     )
 
 
+def own_styles(conn: Any, build_id: UUID) -> dict[int, str]:
+    """Each image's style on the page's oldest kept version, for "Original" on an image the studio
+    changed before it kept the image's own style (empty when there's no older page)."""
+    row = conn.execute(
+        "select html_path from build_snapshots where build_id = %(b)s order by seq limit 1",
+        {"b": build_id},
+    ).fetchone()
+    if not row or not row["html_path"]:
+        return {}
+    try:
+        old = storage.download(desk.BUCKET, row["html_path"]).decode("utf-8")
+    except Exception:  # the old page is gone: "Original" takes off the crop only
+        return {}
+    return {
+        int(str(tag["data-lp-img"])): str(tag.get("style") or "")
+        for tag in parse(old).select("img[data-lp-img]")
+        if str(tag.get("data-lp-img", "")).isdigit() and not tag.has_attr(image_edits.OWN_STYLE)
+    }
+
+
 def _where(conn: Any, build: dict[str, Any], image: image_edits.PageImage) -> str:
     if not image.section:
         return ""
@@ -257,12 +285,14 @@ def adjust(
         desk._check(conn, build, request.base_version)
         html = desk._page(build)
         image = _image(html, number)
+        own = own_styles(conn, build_id).get(number) if request.ratio == "original" else None
         try:
             new_html = html
             if request.ratio or request.fit or request.focus:
                 new_html = image_edits.set_shape(
-                    new_html, number, ratio=request.ratio, fit=request.fit, focus=request.focus
-                )
+                    new_html, number, ratio=request.ratio, fit=request.fit, focus=request.focus,
+                    own_style=own,
+                )  # fmt: skip
             if request.alt is not None:
                 new_html = image_edits.set_alt(new_html, number, request.alt)
         except image_edits.ImageEditError as exc:
@@ -294,9 +324,21 @@ def restore(
         if version is None or not version["src"]:
             raise desk.DeskEditError("That version isn't kept any more.")
         try:
-            new_html, _ = image_edits.set_src(html, number, version["src"])
+            new_html = (
+                html
+                if image.src == version["src"]
+                else image_edits.set_src(html, number, version["src"])[0]
+            )
+            if version["source"] == "original":
+                # The build's own picture comes back as it was built: the crop goes too.
+                new_html = image_edits.set_shape(
+                    new_html, number, ratio="original",
+                    own_style=own_styles(conn, build_id).get(number),
+                )  # fmt: skip
         except image_edits.ImageEditError as exc:
             raise desk.DeskEditError(str(exc)) from exc
+        if new_html == html:
+            raise desk.DeskEditError("That picture is already on the page as it was.")
         reason = f"Restored an earlier image{_where(conn, build, image)}"
         stale = desk._change(conn, build, reason=reason, user_id=user_id, html=new_html)
         # Two steps: one current version per image is a unique index, checked row by row.

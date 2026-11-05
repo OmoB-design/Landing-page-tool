@@ -112,6 +112,8 @@ type DeskContextValue = {
   stopAgent: () => Promise<void>;
   /** Recolours the page to these colours (undoable). */
   recolor: (colors: DeskPalette) => Promise<boolean>;
+  /** Restore page to here: the page as it was when a request to Lander was sent (undoable). */
+  restoreTo: (messageId: string) => Promise<boolean>;
   /** Replaces, crops or restores image `number` (the image studio, B3.2a; undoable). */
   changeImage: <A extends ImageAction>(
     number: number,
@@ -550,6 +552,21 @@ export function DeskProvider({
             },
           });
         }
+        return done;
+      },
+      restoreTo: async (messageId) => {
+        const done = await run(
+          "restore",
+          { message_id: messageId },
+          `/api/builds/${buildId}/agent/restore`,
+        );
+        if (done && !onChange)
+          toast.success("Restored the page to how it was then", {
+            action: {
+              label: "Undo",
+              onClick: () => void latestRun.current("undo", {}),
+            },
+          });
         return done;
       },
       changeImage: (number, action, body) =>

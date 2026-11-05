@@ -284,7 +284,24 @@ function Studio({
         </div>
       </Group>
 
-      <Group title="Crop and fit">
+      <Group
+        title="Crop and fit"
+        action={
+          image.changed ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={waiting}
+              onClick={() =>
+                void onChange(image.number, "adjust", { ratio: "original" })
+              }
+              className="-my-1 h-6 px-1.5 text-type-caption-1 text-heading-02 hover:bg-foreground-03"
+            >
+              Reset
+            </Button>
+          ) : null
+        }
+      >
         <Options
           label="Shape"
           options={RATIO_LABELS}
@@ -368,16 +385,22 @@ function Studio({
 
 function Group({
   title,
+  action,
   children,
 }: {
   title: string;
+  /** A control beside the title (Crop and fit's Reset). */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="flex flex-col gap-2.5 border-t border-stroke pt-3">
-      <h3 className="text-type-caption-1 font-medium text-heading-02">
-        {title}
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-type-caption-1 font-medium text-heading-02">
+          {title}
+        </h3>
+        {action}
+      </div>
       {children}
     </section>
   );

@@ -107,3 +107,13 @@ class AgentStop(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     org_id: UUID
+
+
+class AgentRestore(BaseModel):
+    """Restore page to here: the page as it was when this request (its message) was sent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    base_version: int = Field(ge=1)
+    message_id: UUID

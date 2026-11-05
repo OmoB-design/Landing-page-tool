@@ -33,6 +33,8 @@ export const imageStudioSchema = z.object({
     ratio: z.enum(IMAGE_RATIOS).catch("original"),
     fit: z.enum(IMAGE_FITS).catch("cover"),
     focus: z.enum(IMAGE_FOCUSES).catch("center"),
+    /** The studio changed how it's shown: Reset puts it back as it was built. */
+    changed: z.boolean().catch(false),
   }),
   versions: z.array(
     z.object({

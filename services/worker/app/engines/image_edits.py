@@ -26,6 +26,9 @@ KINDS = (
     ("data-lp-keep", "kept"),
 )
 _STYLE = re.compile(r"\s*([a-z-]+)\s*:\s*([^;]+)")
+# The image's own style before the studio first changed it, so "Original" can put it back exactly
+# (exports strip `data-lp-*`).
+OWN_STYLE = "data-lp-style0"
 
 
 class ImageEditError(ValueError):
@@ -42,6 +45,10 @@ class PageImage:
     ratio: str
     fit: str
     focus: str
+    # Its inline style as it is now, and its own style from before the studio changed it (None when
+    # the studio hasn't kept one).
+    style: str = ""
+    own_style: str | None = None
 
 
 def _style(tag: Tag) -> dict[str, str]:
@@ -82,6 +89,8 @@ def _describe(tag: Tag) -> PageImage:
         if style.get("object-fit") in ("cover", "contain")
         else "cover",
         focus=focus,
+        style=str(tag.get("style") or ""),
+        own_style=str(tag[OWN_STYLE]) if tag.has_attr(OWN_STYLE) else None,
     )
 
 
@@ -127,21 +136,41 @@ def set_src(html: str, number: int, src: str) -> tuple[str, str]:
 
 def set_shape(
     html: str, number: int, *, ratio: Ratio | None = None, fit: Fit | None = None,
-    focus: Focus | None = None,
+    focus: Focus | None = None, own_style: str | None = None,
 ) -> str:  # fmt: skip
     """The page with image `number`'s shape (aspect ratio), fit (fill or fit the shape) and focus
-    (which part stays in view when it's filled) set as its inline style."""
+    (which part stays in view when it's filled) set as its inline style. "original" puts back the
+    image as the build made it: its own style from before the studio first changed it (kept on
+    the image, or `own_style` for an image changed before that was kept), so the crop's width,
+    height, fit and focus go too (owner, 2026-11-05: a restored profile photo stayed stretched)."""
     soup = parse(html)
     tag = _find(soup, number)
-    style = _style(tag)
-    if ratio is not None:
-        if ratio == "original":
+    if ratio == "original":
+        kept = tag.get(OWN_STYLE)
+        own = str(kept) if kept is not None else own_style
+        if own is None:  # nothing to go back to: take off the crop itself
+            style = _style(tag)
             style.pop("aspect-ratio", None)
         else:
-            style["aspect-ratio"] = RATIOS[ratio]
-            style.setdefault("width", "100%")
-            style["height"] = "auto"
-            style.setdefault("object-fit", "cover")
+            style = {k.lower(): " ".join(v.split()) for k, v in _STYLE.findall(own)}
+        if tag.has_attr(OWN_STYLE):
+            del tag[OWN_STYLE]
+        if fit is None and focus is None:
+            if own is not None and own.strip():
+                tag["style"] = own  # exactly as it was
+            else:
+                _write_style(tag, style)
+            return serialize(soup)
+        tag[OWN_STYLE] = own if own is not None else str(tag.get("style") or "")
+    else:
+        if not tag.has_attr(OWN_STYLE):
+            tag[OWN_STYLE] = str(tag.get("style") or "")
+        style = _style(tag)
+    if ratio is not None and ratio != "original":
+        style["aspect-ratio"] = RATIOS[ratio]
+        style.setdefault("width", "100%")
+        style["height"] = "auto"
+        style.setdefault("object-fit", "cover")
     if fit is not None:
         style["object-fit"] = fit
     if focus is not None:

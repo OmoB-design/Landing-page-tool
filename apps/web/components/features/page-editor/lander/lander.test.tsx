@@ -40,6 +40,8 @@ const done: TurnView = {
     saved: null,
     images: [],
     feedback: null,
+    messageId: "m1",
+    restorable: true,
   },
   state: "done",
   queued: false,
@@ -154,6 +156,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
   it("tells a finished request: its plan, a card per change, one Undo and the closing line", () => {
     const onUndo = vi.fn();
     const onShow = vi.fn();
+    const onRestore = vi.fn();
     wrap(
       <LanderThread
         views={[done]}
@@ -166,10 +169,16 @@ describe("Lander (B3.1b, B3.1c)", () => {
         onRefine={vi.fn()}
         onRetry={vi.fn()}
         onRate={vi.fn()}
+        onRestore={onRestore}
         composer={<form aria-label="Composer" />}
       />,
     );
     expect(screen.getByText(done.turn.request)).toBeTruthy();
+    // Restore page to here: the page as it was when the request was sent.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Restore page to here" }),
+    );
+    expect(onRestore).toHaveBeenCalledWith("m1");
     expect(screen.getByText("Completed 4 steps · 6s")).toBeTruthy();
     expect(screen.getByText("Glow in 7 days")).toBeTruthy();
     expect(screen.getByText("Glow in a week")).toBeTruthy();
