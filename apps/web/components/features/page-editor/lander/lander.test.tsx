@@ -154,7 +154,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
     expect(onSuggestion).toHaveBeenCalled();
   });
 
-  it("tells a finished request: its plan, a card per change, one Undo and the closing line", () => {
+  it("tells a finished request: its plan, a card per change, one Undo and the closing line", async () => {
     const onUndo = vi.fn();
     const onShow = vi.fn();
     const onRestore = vi.fn();
@@ -181,6 +181,9 @@ describe("Lander (B3.1b, B3.1c)", () => {
     );
     expect(onRestore).toHaveBeenCalledWith("m1");
     expect(screen.getByText("Completed 4 steps · 6s")).toBeTruthy();
+    // Steps, then cards, then the closing line, in order (owner, 2026-11-05).
+    expect(screen.queryByText("2 changes, one undo step")).toBeNull();
+    expect(await screen.findByText("2 changes, one undo step")).toBeTruthy();
     expect(screen.getByText("Glow in 7 days")).toBeTruthy();
     expect(screen.getByText("Glow in a week")).toBeTruthy();
     expect(screen.getAllByText("Moved Questions up").length).toBe(1); // its card; steps folded
@@ -195,7 +198,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
     expect(screen.getByText("Read 2 lines in Hero")).toBeTruthy();
   });
 
-  it("shows the steps as they happen, and Stop while Lander works", () => {
+  it("shows the steps as they happen, and Stop while Lander works", async () => {
     const working: TurnView = {
       ...done,
       state: "working",
@@ -220,7 +223,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
         composer={null}
       />,
     );
-    expect(screen.getByText("Read 2 lines in Hero")).toBeTruthy();
+    expect(await screen.findByText("Read 2 lines in Hero")).toBeTruthy();
     expect(screen.getByText("Thinking…")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
     cleanup();
@@ -241,7 +244,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
     expect(onStop).toHaveBeenCalled();
   });
 
-  it("offers Redo once the request is undone", () => {
+  it("offers Redo once the request is undone", async () => {
     wrap(
       <LanderThread
         views={[done]}
@@ -257,7 +260,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
         composer={null}
       />,
     );
-    expect(screen.getByRole("button", { name: "Redo" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Redo" })).toBeTruthy();
     expect(screen.getByText(/one undo step · undone/)).toBeTruthy();
   });
 

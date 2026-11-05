@@ -36,4 +36,6 @@ export function progressPercent(event: JobEvent | null): number | null {
 
 /** Polling cadence (BUILD_SPEC §6.2): fast while something runs, slow when idle. */
 export const POLL_ACTIVE_MS = 1500;
+/** Lander's request while it runs (owner, 2026-11-05): its steps arrive one by one, not in clumps. */
+export const POLL_FAST_MS = 500;
 export const POLL_IDLE_MS = 15000;

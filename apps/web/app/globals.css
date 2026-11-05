@@ -1619,6 +1619,13 @@
    a short eased stretch ending just under the composer's top edge (Stageshow's edge fade, eased as
    scroll-fade-b; owner, 2026-11-04), so they read as sliding in behind it. --lander-dock is the
    composer's height, set from script; a mask, so it needs no colour and works in both themes. */
+/* The composer's field once it scrolls (owner, 2026-11-05): its top 14 px fade instead of a line
+   being cut in half at the card's edge. A mask, so it works in both themes. */
+.lander-field-fade {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+}
+
 .lander-thread-fade {
   --lander-fade: 24px;
   --lander-fade-end: calc(100% - var(--lander-dock, 0px) + 6px);

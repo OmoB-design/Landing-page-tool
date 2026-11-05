@@ -4,7 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { apiFetch } from "@/lib/api/client";
-import { POLL_ACTIVE_MS, POLL_IDLE_MS, isActive } from "@/lib/jobs/progress";
+import {
+  POLL_ACTIVE_MS,
+  POLL_FAST_MS,
+  POLL_IDLE_MS,
+  isActive,
+} from "@/lib/jobs/progress";
 import {
   type StartJobInput,
   enqueueResponseSchema,
@@ -30,15 +35,17 @@ export function useJobs() {
   });
 }
 
-/** One job with its events: polls every 1.5 s until it finishes, then stops. */
-export function useJob(id: string | null) {
+/** One job with its events: polls every 1.5 s (0.5 s when `fast`) until it finishes, then
+ * stops. */
+export function useJob(id: string | null, fast = false) {
   return useQuery({
     queryKey: jobKeys.detail(id ?? ""),
     queryFn: () => apiFetch(`/api/jobs/${id}`, jobDetailSchema),
     enabled: id !== null,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === undefined || isActive(status) ? POLL_ACTIVE_MS : false;
+      if (status !== undefined && !isActive(status)) return false;
+      return fast ? POLL_FAST_MS : POLL_ACTIVE_MS;
     },
   });
 }

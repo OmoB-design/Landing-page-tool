@@ -52,6 +52,7 @@ export function LanderComposer({
 }) {
   const { text, setText, dictation } = useComposerText();
   const field = useRef<HTMLTextAreaElement>(null);
+  const [scrolled, setScrolled] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<string[]>([]);
   const [dropping, setDropping] = useState(false);
@@ -175,6 +176,7 @@ export function LanderComposer({
               : "Ask Lander to change the page"
         }
         onChange={(event) => setText(event.target.value)}
+        onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 2)}
         onPaste={(event) => {
           const files = Array.from(event.clipboardData.files);
           if (files.some(attachable)) {
@@ -189,7 +191,11 @@ export function LanderComposer({
           }
           if (event.key === "Escape" && dictation.listening) dictation.stop();
         }}
-        className="field-sizing-content max-h-40 min-h-10 resize-none bg-transparent px-0.5 text-type-body-small text-heading-01 outline-none placeholder:text-caption-1"
+        className={cn(
+          "field-sizing-content max-h-40 min-h-10 resize-none bg-transparent px-0.5 text-type-body-small text-heading-01 outline-none placeholder:text-caption-1",
+          // Once it scrolls, its top edge fades rather than cutting a line in half.
+          scrolled && "lander-field-fade",
+        )}
       />
       {dictation.listening && dictation.interim ? (
         <p className="-mt-1 px-0.5 text-type-caption-1 text-caption-1">

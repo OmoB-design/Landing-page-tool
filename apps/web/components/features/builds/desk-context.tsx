@@ -318,7 +318,11 @@ export function DeskProvider({
   );
 
   // A redraft's job: polled while it runs; when it ends, the desk catches up once.
-  const job = useJob(onChange ? null : (desk.redraft?.job_id ?? null));
+  // Lander's request is followed closely, so its steps arrive one at a time.
+  const job = useJob(
+    onChange ? null : (desk.redraft?.job_id ?? null),
+    desk.redraft?.scope === "agent",
+  );
   const settled = useRef<string | null>(null);
   useEffect(() => {
     const finished = job.data;

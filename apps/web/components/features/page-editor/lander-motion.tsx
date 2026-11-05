@@ -59,7 +59,8 @@ const DIAL = {
   },
   thread: {
     wordStagger: [0.022, 0, 0.1, 0.002] as Range,
-    wordBlur: [4, 0, 10, 0.5] as Range,
+    // 2 px: enough to bridge each word in, not a smudge across a sentence (emil-design-eng).
+    wordBlur: [2, 0, 10, 0.5] as Range,
     arrive: { type: "easing", duration: 0.34, ease: ARRIVE } as Easing,
   },
   sections: {

@@ -460,8 +460,10 @@ class Work:
     # The product's photos (B3.2a), numbered from 1 in read_page.
     product_photos: list[str] = field(default_factory=list)
     # Each image's style before the image studio changed it, from the page's oldest kept version
-    # (for "original" on an image changed before the studio kept it).
+    # (for "original" on an image changed before the studio kept it): given, or loaded the first
+    # time an image is reset (it's a download most requests don't need).
     own_styles: dict[int, str] = field(default_factory=dict)
+    own_styles_loader: Callable[[], dict[int, str]] | None = None
     # Makes a picture (B3.2b): (mode, image number, prompt, reference photos, page) → (address,
     # asset id, whether it's a mock placeholder). None where pictures can't be made.
     imager: Imager | None = None
@@ -827,6 +829,9 @@ class Work:
         where = self._image_where(number)
         shape = {k: args.get(k) for k in ("ratio", "fit", "focus") if args.get(k)}
         if shape:
+            if shape.get("ratio") == "original" and self.own_styles_loader is not None:
+                self.own_styles = {**self.own_styles_loader(), **self.own_styles}
+                self.own_styles_loader = None
             self.html = image_edits.set_shape(
                 self.html, number, **shape, own_style=self.own_styles.get(number)
             )

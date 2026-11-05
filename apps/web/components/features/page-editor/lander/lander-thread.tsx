@@ -383,6 +383,24 @@ function UserBubble({
   );
 }
 
+/**
+ * How many of `count` things to show (owner, 2026-11-05): when several arrive together they're
+ * shown one at a time, `stepMs` apart, so a request reads as steps rather than a jump; a reply
+ * loaded from the conversation (`enabled` false) shows at once.
+ */
+function useCatchUp(count: number, stepMs: number, enabled: boolean): number {
+  const [shown, setShown] = useState(enabled ? 0 : count);
+  useEffect(() => {
+    if (!enabled || shown >= count) return;
+    const id = window.setTimeout(
+      () => setShown((n) => n + 1),
+      shown === 0 ? 0 : stepMs,
+    );
+    return () => window.clearTimeout(id);
+  }, [enabled, shown, count, stepMs]);
+  return enabled ? Math.min(shown, count) : count;
+}
+
 function Reply({
   view,
   undo,
@@ -411,6 +429,19 @@ function Reply({
   const [unfolded, setUnfolded] = useState<boolean | null>(null);
   // The steps show while it works and fold away once it's done (the status line unfolds them).
   const showSteps = unfolded ?? live;
+  // A request made in this visit reveals its steps, then its change cards, then its closing
+  // line, in order; one loaded from the conversation shows at once.
+  const animated = turn.saved === null && !reduced;
+  const stepsShown = useCatchUp(steps.length, 120, animated);
+  const visibleSteps = steps.slice(0, stepsShown);
+  const cardsDue = Math.min(
+    changes.length,
+    stepsShown >= steps.length
+      ? changes.length
+      : visibleSteps.filter((s) => s.change).length,
+  );
+  const cardsShown = useCatchUp(cardsDue, 140, animated);
+  const caughtUp = stepsShown >= steps.length && cardsShown >= changes.length;
   const label = statusLabel(
     state,
     steps,
@@ -480,20 +511,19 @@ function Reply({
               aria-label="Steps"
               className="flex flex-col rounded-item px-2.5 py-1.5 ring-thin ring-stroke ring-inset"
             >
-              {steps.map((step, i) => (
+              {visibleSteps.map((step, i) => (
                 <StepRow
                   key={`${i}-${step.label}`}
                   step={step}
                   first={i === 0}
-                  last={i === steps.length - 1 && !live}
+                  last={i === visibleSteps.length - 1 && !live}
                 />
               ))}
               {live ? (
-                <motion.li
+                // The running row stays at the foot: rows above it open by height, so it moves
+                // down with them rather than under them, and its words crossfade.
+                <li
                   key="doing"
-                  layout="position"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
                   className="relative flex items-start gap-2.5 py-1"
                 >
                   <Connector part="above" />
@@ -503,19 +533,30 @@ function Reply({
                     <Spinner className="size-3" label="Working" />
                   </span>
                   <ShimmerText className="min-w-0 text-type-caption-1 leading-5 text-sub-text">
-                    {view.doing?.text ??
-                      (steps.length > 1
-                        ? "Working on the next step…"
-                        : "Thinking…")}
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.span
+                        key={view.doing?.text ?? "waiting"}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: reduced ? 0 : 0.18 }}
+                        className="inline-block"
+                      >
+                        {view.doing?.text ??
+                          (steps.length > 1
+                            ? "Working on the next step…"
+                            : "Thinking…")}
+                      </motion.span>
+                    </AnimatePresence>
                   </ShimmerText>
-                </motion.li>
+                </li>
               ) : null}
             </ol>
           </motion.div>
         ) : null}
       </AnimatePresence>
 
-      {changes.map((change, i) => (
+      {changes.slice(0, cardsShown).map((change, i) => (
         <Change
           key={`${i}-${change.label}`}
           change={change}
@@ -525,7 +566,7 @@ function Reply({
         />
       ))}
 
-      {finished && changes.length > 0 ? (
+      {finished && caughtUp && changes.length > 0 ? (
         <div className="flex items-center justify-between gap-2 pl-0.5">
           <span className="text-type-caption-1 text-heading-06">
             {changes.length === 1
@@ -537,7 +578,7 @@ function Reply({
         </div>
       ) : null}
 
-      {finished && view.closing ? (
+      {finished && caughtUp && view.closing ? (
         <StreamText
           text={view.closing}
           delay={0.25}
@@ -545,7 +586,7 @@ function Reply({
         />
       ) : null}
 
-      {finished && view.turn.jobId ? (
+      {finished && caughtUp && view.turn.jobId ? (
         <ReplyActions
           text={plainText(
             [view.plan, ...view.changes.map((c) => c.label), view.closing]
@@ -619,14 +660,10 @@ function StepRow({
   const picture = Boolean(step.image_url);
   return (
     <motion.li
-      initial={{
-        opacity: 0,
-        y: reduced ? 0 : 4,
-        filter: reduced ? "none" : "blur(3px)",
-      }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      transition={arrive}
-      className="relative flex items-start gap-2.5 py-1"
+      initial={reduced ? { opacity: 0 } : { opacity: 0, height: 0 }}
+      animate={reduced ? { opacity: 1 } : { opacity: 1, height: "auto" }}
+      transition={{ ...arrive, duration: 0.24 }}
+      className="relative flex items-start gap-2.5 overflow-hidden py-1"
     >
       {first ? null : <Connector part="above" low={picture} />}
       {last ? null : <Connector part="below" low={picture} />}

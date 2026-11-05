@@ -10,6 +10,7 @@ The reply is kept in the conversation either way.
 """
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from uuid import UUID
 
@@ -111,6 +112,9 @@ def _took(started: float) -> int:
 
 def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[str, Any]:
     org_id, job_id = ctx.job.org_id, ctx.job.id
+    # Said at once, so the thread shows a step before the page and brief have loaded (owner,
+    # 2026-11-05: "Working on it…" sat alone for seconds).
+    _event(ctx, "Reading the page…", "doing", phase="Reading", text="Reading the page…")
     changed_elsewhere = UserFacingError(
         "The page changed before Lander finished, so nothing was saved. Ask again.",
         code="page_changed",
@@ -126,10 +130,22 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
     if build["status"] not in desk.EDITABLE or build["page_version"] != payload.base_version:
         raise changed_elsewhere
 
-    inputs, _ = read_inputs(org_id, payload.build_id, template_html=False)
-    with transaction() as conn:
-        product_photos = images._product_photos(conn, org_id, payload.build_id)
-        own_styles = images.own_styles(conn, payload.build_id)
+    # The brief's inputs and the product's photos load side by side.
+    def photos() -> list[str]:
+        with transaction() as conn:
+            return images._product_photos(conn, org_id, payload.build_id)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        loading_inputs = pool.submit(read_inputs, org_id, payload.build_id, template_html=False)
+        loading_photos = pool.submit(photos)
+        inputs, _ = loading_inputs.result()
+        product_photos = loading_photos.result()
+
+    def own_styles() -> dict[int, str]:
+        """Images' styles from the page's oldest version: only an image reset needs them."""
+        with transaction() as conn:
+            return images.own_styles(conn, payload.build_id)
+
     brief = copy_pass.brief(
         inputs["template"], inputs["brand"], inputs["product"], inputs.get("wizard", {})
     )
@@ -171,7 +187,7 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         facts=comparison.facts_from_report(report),
         looker=look,
         product_photos=product_photos,
-        own_styles=own_styles,
+        own_styles_loader=own_styles,
         imager=make_picture,
     )
     target = payload.target
