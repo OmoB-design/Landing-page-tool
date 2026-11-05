@@ -37,6 +37,12 @@ import {
   uploadedImageSchema,
 } from "@/lib/validators/images";
 import {
+  type QaStarted,
+  type QaState,
+  qaStartedSchema,
+  qaStateSchema,
+} from "@/lib/validators/qa";
+import {
   type IntegrationsState,
   type PublishingState,
   type ShopifyTemplate,
@@ -256,6 +262,54 @@ export function changeBuildDesk(
     body,
     deskStateSchema,
     "Could not save the change.",
+  );
+}
+
+// ── The preview check (worker /builds/{id}/qa, B3.3a, D111) ──────────────────
+
+/** The page's preview check: screenshots, share image and link preview, and whether one runs. */
+export function getQa(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<QaState> {
+  return callWorker(
+    "GET",
+    `/builds/${encodeURIComponent(buildId)}/qa?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    qaStateSchema,
+    "Couldn't load the preview check.",
+  );
+}
+
+/** Fix for phone (B3.3b): Claude's phone-only CSS for the page (a job; about 5 to 10 cents). */
+export function startPhoneFix(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<QaStarted> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/phone-fix`,
+    accessToken,
+    { org_id: orgId },
+    qaStartedSchema,
+    "Couldn't start Fix for phone.",
+  );
+}
+
+/** Starts a new preview check of the page (a job; free). */
+export function startQa(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<QaStarted> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/qa`,
+    accessToken,
+    { org_id: orgId },
+    qaStartedSchema,
+    "Couldn't start the preview check.",
   );
 }
 

@@ -23,9 +23,10 @@ import httpx
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict
 
-from app import publishing, vault
+from app import publishing, qa, vault
 from app.db import transaction
 from app.engines.export import export_page
+from app.engines.share import with_share_image
 from app.jobs.context import JobContext
 from app.jobs.errors import UserFacingError
 from app.pipeline.runtime import BUCKET, build_prefix
@@ -159,6 +160,8 @@ def _publish(ctx: JobContext, payload: PublishVercelPayload, org_id: UUID) -> di
         raise UserFacingError("Vercel isn't connected any more. Connect it in Settings.")
 
     html = storage.download(BUCKET, build["working_html_path"]).decode("utf-8")
+    with transaction() as conn:  # the share image from the preview check (B3.3a)
+        html = with_share_image(html, qa.share_url(conn, build["id"]))
     exported, stats = export_page(html, resolver(org_id))
     html_path = (
         f"{build_prefix(str(org_id), str(build['id']))}/published/{payload.publication_id}.html"

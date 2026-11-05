@@ -364,7 +364,10 @@ function UserBubble({
                 type="button"
                 aria-label="Restore page to here"
                 onClick={onRestore}
-                className="absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full bg-surface-primary text-icon-system opacity-0 shadow-light ring-thin ring-stroke transition-opacity duration-150 outline-none group-hover/request:opacity-100 hover:text-body focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+                // Dissolves in as the request is hovered (owner, 2026-11-05: as Claude's chat):
+                // fading up to 75 % while it settles from 92 % and unblurs, on the strong ease;
+                // solid when pointed at or focused. Reduced motion: the fade only.
+                className="absolute -top-2 -right-2 flex size-6 scale-90 items-center justify-center rounded-full bg-surface-primary text-icon-system opacity-0 shadow-light ring-thin ring-stroke blur-xs transition duration-200 ease-out outline-none group-hover/request:scale-100 group-hover/request:opacity-75 group-hover/request:blur-none hover:text-body hover:opacity-100! focus-visible:scale-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:blur-none motion-reduce:scale-100 motion-reduce:blur-none"
               >
                 <RestoreIcon aria-hidden className="size-3" />
               </button>

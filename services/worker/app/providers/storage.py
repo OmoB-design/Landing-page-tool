@@ -134,6 +134,32 @@ def signed_url(bucket: str, path: str, expires: int = 3600) -> str:
     return f"{_base()}{signed}"
 
 
+SIGN_BATCH = 100
+
+
+def signed_urls(bucket: str, paths: list[str], expires: int = 3600) -> dict[str, str]:
+    """Links for many private objects in one request per hundred (a conversation's pictures:
+    signing them one by one took 17 s for Lander's ALL-1 thread, owner 2026-11-05). Returns each
+    path's link; a path storage couldn't sign is left out."""
+    out: dict[str, str] = {}
+    unique = list(dict.fromkeys(p for p in paths if p))
+    for start in range(0, len(unique), SIGN_BATCH):
+        chunk = unique[start : start + SIGN_BATCH]
+        response = _send(
+            "POST",
+            f"{_base()}/object/sign/{bucket}",
+            "signing",
+            headers=_headers(),
+            json={"expiresIn": expires, "paths": chunk},
+        )
+        body = response.json()
+        for item in body if isinstance(body, list) else []:
+            signed = item.get("signedURL") or item.get("signedUrl")
+            if isinstance(signed, str) and item.get("path") and not item.get("error"):
+                out[str(item["path"])] = f"{_base()}{signed}"
+    return out
+
+
 def public_url(bucket: str, path: str) -> str:
     """Only for public buckets (`assets`)."""
     return f"{_base()}/object/public/{bucket}/{path}"

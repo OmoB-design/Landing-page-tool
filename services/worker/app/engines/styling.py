@@ -266,6 +266,31 @@ def apply(
     return serialize(soup), applied, refused
 
 
+def apply_phone(
+    html: str, target: Target, styles: dict[str, str]
+) -> tuple[str, dict[str, str], list[str]]:
+    """Sets `styles` on the target on phones only (narrower than 768 px, B3.3b): a rule in the
+    page's phone styles by a class the element is given, so desktop never changes. Same allow-list
+    as `apply`; returns the page, what was set and what was refused."""
+    from app.engines import mobile
+
+    soup = parse(html)
+    node = _node(soup, target)
+    applied: dict[str, str] = {}
+    refused: list[str] = []
+    for raw_prop, raw_value in styles.items():
+        prop, value = raw_prop.strip().lower(), " ".join(str(raw_value).split())
+        why = _check(prop, value)
+        if why:
+            refused.append(why)
+        else:
+            applied[prop] = value
+    if not applied:
+        raise StyleError("Nothing set: " + "; ".join(refused))
+    mobile.set_phone_styles(soup, mobile.phone_class(soup, node), applied)
+    return serialize(soup), applied, refused
+
+
 def selector_for(html: str, target: Target) -> tuple[str, str]:
     """The page with a marker on what to picture, and the marker's selector: for a line, the box
     `up` levels above it (the same box style_element would set); for a section, the section."""

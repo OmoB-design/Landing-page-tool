@@ -346,10 +346,8 @@ export function CopyChanges({
   if (changes.length === 0) return null;
   return (
     <div className="pt-2.5">
-      <CollapsibleSection
-        title={`Copy changes (${changes.length})`}
-        defaultOpen
-      >
+      {/* Closed until asked for (owner, 2026-11-05): the list can be long. */}
+      <CollapsibleSection title={`Copy changes (${changes.length})`}>
         <ol className="flex flex-col gap-1">
           {changes.map((change, index) => (
             <li

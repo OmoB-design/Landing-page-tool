@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 from bs4 import BeautifulSoup, Comment, Tag
 
+from app.engines import mobile
 from app.engines.html import ensure_head, parse, serialize, set_text, text_nodes
 from app.engines.images import PLACEHOLDER
 
@@ -202,7 +203,9 @@ def finalize_common(html: str, inputs: FinalizeInputs) -> tuple[str, dict[str, o
         )
     if not soup.find("meta", attrs={"charset": True}):
         head.insert(0, soup.new_tag("meta", attrs={"charset": "utf-8"}))
-    return serialize(soup), stats
+    # 10. Phone rules (B3.3b, D112): phone-only CSS so nothing runs off the screen.
+    stats["phone_rules"] = True
+    return mobile.with_phone_rules(serialize(soup)), stats
 
 
 def fill_names(html: str, *, brand_name: str, product_name: str) -> str:

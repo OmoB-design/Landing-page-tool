@@ -13,6 +13,7 @@ import structlog
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, ConfigDict
 
+from app import qa
 from app.db import transaction
 from app.jobs.context import JobContext
 from app.jobs.errors import UserFacingError
@@ -79,6 +80,7 @@ def run(ctx: JobContext) -> dict[str, Any]:
 
     report = final["report"]
     _clean_up(build_id, final.get("rev_paths", []))
+    qa.after_build(org_id, build_id, ctx.job.created_by)  # the preview check (B3.3a)
     return {
         "build_id": str(build_id),
         "status": "needs_review",

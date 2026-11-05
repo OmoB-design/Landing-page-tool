@@ -16,7 +16,9 @@ from app import (
     desk,
     image_ai,
     images,
+    mobile,
     publishing,
+    qa,
     templates,
     trash,
 )
@@ -69,6 +71,7 @@ from app.models.publishing import (
     UnpublishRequest,
     VercelConnectRequest,
 )
+from app.models.qa import QaStart, QaStarted, QaState
 from app.models.template import LayoutAction, TemplateEditorState, TemplateInstructions
 from app.models.trash import TrashKind, TrashRequest, TrashState
 from app.publish import shopify_page
@@ -314,6 +317,32 @@ def redraft_build(build_id: UUID, body: RedraftRequest, user: CurrentUser) -> De
 
 
 # ── The image studio (BUILD_SPEC §11.2, B3.2a, D109) ───────────────────────────
+
+
+@app.get("/builds/{build_id}/qa")
+def preview_check(build_id: UUID, org_id: UUID, user: CurrentUser) -> QaState:
+    """The page's preview check (B3.3a): screenshots at desktop and phone widths, its share image
+    and link preview, the version they show, and whether a check is under way."""
+    require_org_member(user, org_id)
+    found: QaState = _desk_call(qa.status, org_id, build_id)
+    return found
+
+
+@app.post("/builds/{build_id}/qa")
+def preview_check_start(build_id: UUID, body: QaStart, user: CurrentUser) -> QaStarted:
+    """Refresh: a new preview check of the page as it is now (a job; free)."""
+    require_org_member(user, body.org_id)
+    started: QaStarted = _desk_call(qa.start, body.org_id, build_id, user.id)
+    return started
+
+
+@app.post("/builds/{build_id}/phone-fix")
+def phone_fix_start(build_id: UUID, body: QaStart, user: CurrentUser) -> QaStarted:
+    """Fix for phone (B3.3b): Claude's phone-only CSS from the page at 390 px (a job; about 5 to
+    10 cents); the page stays editable and the fixes land as one undoable change."""
+    require_org_member(user, body.org_id)
+    started: QaStarted = _desk_call(mobile.start, body.org_id, build_id, user.id)
+    return started
 
 
 @app.get("/builds/{build_id}/images/{number}")

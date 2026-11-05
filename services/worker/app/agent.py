@@ -74,7 +74,9 @@ colours and borders, one element at a time. Before styling, inspect_element to f
 box and see the CSS on it; style that box with the fewest properties that do it, using the \
 page's colour variables (like var(--lp-accent)) for colours; then look at the section to check \
 it, and fix it if it doesn't look right. A style applies at every width, so look at phone width \
-too when it matters.
+too when it matters. To change how something looks on phones only (stack a row, shrink a heading, \
+widen a button) without touching desktop, use style_element with phone_only: true, then look at \
+it with view phone.
 - inspect_element lists the elements inside each box (child 1, child 2…, with the line each holds \
 or "no line"): a badge, an icon or a picture with no line of its own is reached by its child path \
 from the box ("line 6, up 1, child 2"), and inspecting that child lists what's inside it ("2.1"). \
@@ -260,7 +262,8 @@ TOOLS: list[dict[str, Any]] = [
             "its sides, width, style, colour), border-radius, box-shadow, opacity, object-fit, "
             "object-position, aspect-ratio. Plain values "
             "only (px, rem, %, fit-content, var(--lp-…), hex); 'unset' takes your earlier value "
-            "off. It applies at every width. Give a short label in plain words for the user, "
+            "off. It applies at every width, or with phone_only only on phones (narrower than "
+            "768 px), leaving desktop as it is. Give a short label in plain words for the user, "
             "like 'Fitted the Verified box to its text'."
         ),
         "input_schema": {
@@ -275,6 +278,7 @@ TOOLS: list[dict[str, Any]] = [
                     "additionalProperties": {"type": "string"},
                 },
                 "label": {"type": "string", "maxLength": 80},
+                "phone_only": {"type": "boolean"},
             },
             "required": ["styles", "label"],
             "additionalProperties": False,
@@ -743,9 +747,13 @@ class Work:
         if not isinstance(styles, dict) or not styles:
             raise styling.StyleError('Give the properties to set, like {"padding": "4px 10px"}.')
         label = " ".join(str(args.get("label") or "").split())[:80] or "Restyled an element"
-        self.html, applied, refused = styling.apply(
+        phone = bool(args.get("phone_only"))
+        set_styles = styling.apply_phone if phone else styling.apply
+        self.html, applied, refused = set_styles(
             self.html, target, {str(k): str(v) for k, v in styles.items()}
         )
+        if phone and not label.lower().endswith("on phones"):
+            label = f"{label} (on phones)"
         change = {
             "kind": "style",
             "label": label,
@@ -1013,16 +1021,17 @@ def thread(org_id: UUID, build_id: UUID, thread_id: UUID | None = None) -> Agent
             """,
             {"b": build_id, "t": thread_id},
         ).fetchall()
+    links = all_links(rows)
     return AgentThread(
         thread_id=thread_id,
         messages=[
             AgentMessage(
                 id=row["id"],
                 role=row["role"],
-                content=with_links(row["content"])
+                content=with_links(row["content"], links)
                 if row["role"] != "user"
                 else {
-                    **with_links(row["content"]),
+                    **with_links(row["content"], links),
                     "restorable": _page_then(row, snapshots, build) is not None,
                 },
                 job_id=row["job_id"],
@@ -1265,18 +1274,43 @@ def link(path: str | None) -> str | None:
         return None
 
 
-def with_links(content: dict[str, Any]) -> dict[str, Any]:
+def picture_paths(content: dict[str, Any]) -> list[str]:
+    """The pictures a message refers to: the user's attachments and what Lander looked at."""
+    paths = [str(p) for p in content.get("images") or [] if p]
+    paths += [str(s["image"]) for s in content.get("steps") or [] if s.get("image")]
+    return paths
+
+
+def with_links(content: dict[str, Any], links: dict[str, str] | None = None) -> dict[str, Any]:
     """A message's content with links for its pictures: the user's attachments
-    (`image_urls`) and what Lander looked at (each step's `image_url`)."""
+    (`image_urls`) and what Lander looked at (each step's `image_url`). `links` are signed
+    already (a whole conversation's in one request); without them each is signed here."""
+
+    def url(path: Any) -> str | None:
+        if links is not None:
+            return links.get(str(path)) if path else None
+        return link(path)
+
     out = dict(content)
     if content.get("images"):
-        out["image_urls"] = [link(p) for p in content["images"]]
+        out["image_urls"] = [url(p) for p in content["images"]]
     if content.get("steps"):
         out["steps"] = [
-            {**s, "image_url": link(s.get("image"))} if s.get("image") else s
+            {**s, "image_url": url(s.get("image"))} if s.get("image") else s
             for s in content["steps"]
         ]
     return out
+
+
+def all_links(rows: list[Any]) -> dict[str, str]:
+    """Signed links for every picture in these messages, in one request per hundred."""
+    paths = [p for row in rows for p in picture_paths(row["content"] or {})]
+    if not paths:
+        return {}
+    try:
+        return storage.signed_urls(desk.BUCKET, paths)
+    except storage.StorageError:
+        return {}
 
 
 def image_blocks(paths: list[str]) -> list[dict[str, Any]]:

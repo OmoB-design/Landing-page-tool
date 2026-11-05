@@ -7,8 +7,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app import qa
 from app.db import transaction
 from app.engines.export import export_page
+from app.engines.share import with_share_image
 from app.jobs.context import JobContext
 from app.jobs.errors import UserFacingError
 from app.pipeline.runtime import BUCKET, build_prefix
@@ -39,6 +41,8 @@ def run(ctx: JobContext) -> dict[str, Any]:
     if build is None or not build["working_html_path"]:
         raise UserFacingError("That page isn't built yet.", code="not_built")
     html = storage.download(BUCKET, build["working_html_path"]).decode("utf-8")
+    with transaction() as conn:  # the share image from the preview check (B3.3a)
+        html = with_share_image(html, qa.share_url(conn, payload.build_id))
     exported, stats = export_page(html, resolver(org_id))
     ctx.progress(f"Inlined {stats['inlined']} files", data={"step": 1, "total": TOTAL})
     path = f"{build_prefix(str(org_id), str(build['id']))}/export/index.html"

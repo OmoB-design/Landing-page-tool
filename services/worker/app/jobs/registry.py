@@ -14,11 +14,13 @@ from app.jobs.kinds import (
     build,
     export,
     image_ai,
+    mobile_optimize,
     noop_demo,
     product_briefing,
     product_pull,
     publish_shopify,
     publish_vercel,
+    qa,
     redraft,
     template_analyze,
     template_clone,
@@ -133,6 +135,24 @@ KINDS: dict[str, JobKind] = {
             payload_model=image_ai.ImagePayload,
             max_attempts=1,
             dedupe=image_ai.dedupe_key,
+        ),
+        # Fix for phone (B3.3b, D112): Claude's phone-only CSS; one at a time per page.
+        JobKind(
+            name="mobile_optimize",
+            title="Fix for phone",
+            handler=mobile_optimize.run,
+            payload_model=mobile_optimize.PhonePayload,
+            max_attempts=1,
+            dedupe=mobile_optimize.dedupe_key,
+        ),
+        # The preview check (B3.3a, D111): queued when a build finishes and from Refresh.
+        JobKind(
+            name="qa",
+            title="Preview check",
+            handler=qa.run,
+            payload_model=qa.QaPayload,
+            max_attempts=2,
+            dedupe=qa.dedupe_key,
         ),
         # Started by POST /builds/{id}/publish, which checks the gate and records the publication.
         JobKind(

@@ -24,6 +24,7 @@ import {
 import { ExportButton } from "@/components/features/builds/export-button";
 import { InksCard } from "@/components/features/builds/inks-card";
 import { PanelStack } from "@/components/features/builds/panel-section";
+import { PreviewCheck } from "@/components/features/builds/preview-check";
 import { PublishProvider } from "@/components/features/builds/publish-context";
 import {
   LiveButton,
@@ -204,6 +205,7 @@ async function Build({
               overview={
                 <PanelStack>
                   {overview}
+                  <PreviewCheck />
                   {publish ? <Publications /> : null}
                   <InksCard />
                   <DeskChoices wizard={build.wizard} />

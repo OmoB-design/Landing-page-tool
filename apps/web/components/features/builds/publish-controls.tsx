@@ -35,7 +35,7 @@ import type { Publication } from "@/lib/validators/publishing";
 import { ShopifyConnectForm, ShopifyFullWidthSteps } from "../settings/shopify";
 
 import { useDesk } from "./desk-context";
-import { PanelSection } from "./panel-section";
+import { CollapsibleSection } from "./panel-section";
 import { usePublish } from "./publish-context";
 
 const OVERRIDE_LABELS: Record<string, string> = {
@@ -775,11 +775,8 @@ export function Publications() {
   const hydrated = useHydrated();
   if (publishing.publications.length === 0) return null;
   return (
-    <PanelSection
-      title="Published"
-      count={publishing.publications.length}
-      divided
-    >
+    // Collapsed until asked for (owner, 2026-11-05), like Copy changes.
+    <CollapsibleSection title={`Published (${publishing.publications.length})`}>
       <ol className="flex flex-col gap-1">
         {publishing.publications.map((p) => (
           <PublicationRow
@@ -790,7 +787,7 @@ export function Publications() {
           />
         ))}
       </ol>
-    </PanelSection>
+    </CollapsibleSection>
   );
 }
 

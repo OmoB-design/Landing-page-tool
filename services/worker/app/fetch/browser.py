@@ -230,3 +230,141 @@ def screenshot_part(
     out = io.BytesIO()
     image.save(out, format="JPEG", quality=80, optimize=True)
     return out.getvalue()
+
+
+# ── QA screenshots and the share image (BUILD_SPEC §11.1, B3.3a, D111) ───────────────────────
+
+QA_DESKTOP = 1280
+QA_PHONE = 390
+QA_MAX_HEIGHT = 12_000  # CSS px: a very long page is cut here
+SHARE_SIZE = (1200, 630)
+
+
+class QaShots(BaseModel):
+    """A page's full-length screenshots at desktop and phone widths (JPEG, the phone one at 2x),
+    their heights in CSS px, and its share image (the top of the page, 1200 x 630, JPEG)."""
+
+    desktop: bytes
+    desktop_height: int
+    phone: bytes
+    phone_height: int
+    share: bytes
+    # The phone check's measurements at 390 px (engines/mobile.py PHONE_CHECK_JS; B3.3b).
+    phone_measured: dict[str, Any] = Field(default_factory=dict)
+
+
+def _jpeg(png: bytes, quality: int) -> bytes:
+    from PIL import Image
+
+    image = Image.open(io.BytesIO(png)).convert("RGB")
+    out = io.BytesIO()
+    image.save(out, format="JPEG", quality=quality, optimize=True, progressive=True)
+    return out.getvalue()
+
+
+def _render(browser: Any, html: str, width: int, height: int, scale: float) -> Page:
+    context = browser.new_context(
+        user_agent=USER_AGENT,
+        viewport={"width": width, "height": height},
+        device_scale_factor=scale,
+    )
+    page: Page = context.new_page()
+    page.route("**/*", _guard)
+    with suppress(PlaywrightTimeoutError):
+        page.set_content(html, wait_until="load", timeout=20_000)
+    page.wait_for_timeout(600)  # web fonts and scripted layout
+    return page
+
+
+def _measure(page: Page) -> dict[str, Any]:
+    from app.engines.mobile import PHONE_CHECK_JS
+
+    try:
+        found = page.evaluate(PHONE_CHECK_JS)
+    except Exception as exc:  # a page that breaks the measuring: no check rather than no shots
+        log.warning("phone check failed", error=str(exc))
+        return {}
+    return found if isinstance(found, dict) else {}
+
+
+def _full(
+    browser: Any, html: str, width: int, scale: float, *, measure: bool = False
+) -> tuple[bytes, int, dict[str, Any]]:
+    page = _render(browser, html, width, 900, scale)
+    try:
+        # Scroll through once so lazy images load, then back to the top.
+        total = int(page.evaluate("() => document.documentElement.scrollHeight"))
+        for y in range(0, min(total, QA_MAX_HEIGHT), 800):
+            page.evaluate(f"() => window.scrollTo(0, {y})")
+            page.wait_for_timeout(60)
+        page.evaluate("() => window.scrollTo(0, 0)")
+        page.wait_for_timeout(400)
+        total = int(page.evaluate("() => document.documentElement.scrollHeight"))
+        height = max(1, min(total, QA_MAX_HEIGHT))
+        clip: FloatRect = {"x": 0, "y": 0, "width": width, "height": height}
+        measured = _measure(page) if measure else {}
+        shot = page.screenshot(full_page=True, clip=clip, animations="disabled")
+        return _jpeg(shot, 78), height, measured
+    finally:
+        with suppress(Exception):
+            page.unroute_all(behavior="ignoreErrors")
+        page.context.close()
+
+
+def _share(browser: Any, html: str) -> bytes:
+    width, height = SHARE_SIZE
+    page = _render(browser, html, width, height, 1)
+    try:
+        clip: FloatRect = {"x": 0, "y": 0, "width": width, "height": height}
+        return _jpeg(page.screenshot(clip=clip, animations="disabled"), 88)
+    finally:
+        with suppress(Exception):
+            page.unroute_all(behavior="ignoreErrors")
+        page.context.close()
+
+
+def qa_shots(html: str) -> QaShots:
+    """Our own page, rendered in one browser: full length at 1280 px and at 390 px (2x, crisp on
+    a retina screen), at most 12,000 px tall, and its share image. Its images and fonts still load
+    through the SSRF guard."""
+    with _ONE_BROWSER, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        try:
+            desktop, desktop_height, _ = _full(browser, html, QA_DESKTOP, 1)
+            phone, phone_height, measured = _full(browser, html, QA_PHONE, 2, measure=True)
+            share = _share(browser, html)
+        finally:
+            browser.close()
+    return QaShots(
+        desktop=desktop,
+        desktop_height=desktop_height,
+        phone=phone,
+        phone_height=phone_height,
+        share=share,
+        phone_measured=measured,
+    )
+
+
+PHONE_SLICE = 1400
+PHONE_SLICES = 6
+
+
+def phone_look(html: str) -> tuple[list[bytes], dict[str, Any]]:
+    """Our page at 390 px for Fix for phone (B3.3b): full length in slices of 1,400 px (at most
+    six, so Claude can see them), and the phone check's measurements."""
+    from PIL import Image
+
+    with _ONE_BROWSER, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        try:
+            shot, _height, measured = _full(browser, html, QA_PHONE, 1, measure=True)
+        finally:
+            browser.close()
+    image = Image.open(io.BytesIO(shot)).convert("RGB")
+    slices: list[bytes] = []
+    for top in range(0, min(image.height, PHONE_SLICE * PHONE_SLICES), PHONE_SLICE):
+        part = image.crop((0, top, image.width, min(image.height, top + PHONE_SLICE)))
+        out = io.BytesIO()
+        part.save(out, format="JPEG", quality=80, optimize=True)
+        slices.append(out.getvalue())
+    return slices, measured
