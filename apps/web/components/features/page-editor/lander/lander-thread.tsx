@@ -586,7 +586,8 @@ function Connector({
 /**
  * One step Lander took: a dot on the line (red when it couldn't), its label and what it touched
  * under it. A step with a picture (what Lander looked at) is drawn as the overview's reminders: the
- * label in a Foreground-01 chip on a Dashboard-grey card, the picture under it (owner, 2026-11-05).
+ * label in a Foreground-01 chip on a Dashboard-grey card with a thin stroke and a light shadow, the
+ * picture under it (owner, 2026-11-05).
  */
 function StepRow({
   step,
@@ -628,7 +629,7 @@ function StepRow({
         <span className="sr-only">{step.ok ? "Done" : "Couldn’t"}</span>
       </span>
       {picture && step.image_url ? (
-        <span className="flex min-w-0 flex-1 flex-col gap-1.5 rounded-md bg-dashboard p-1.5">
+        <span className="flex min-w-0 flex-1 flex-col gap-1.5 rounded-md bg-dashboard p-1.5 shadow-light ring-thin ring-stroke">
           <span className="rounded-sm bg-foreground-01 px-1.5 py-1 text-type-caption-1 leading-5 font-medium text-heading-02">
             {step.label}
           </span>
