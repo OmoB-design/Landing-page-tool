@@ -11,6 +11,7 @@ import {
 
 import { WorkingDots } from "@/components/app/working-dots";
 import { Button } from "@/components/ui/button";
+import { ShimmerText } from "@/components/ui/shimmer-loader";
 import {
   AlertIcon,
   BrushIcon,
@@ -24,18 +25,20 @@ import {
   RewriteIcon,
   SharpenIcon,
   ShortenIcon,
-  StepFailedIcon,
   StopIcon,
   WarmIcon,
 } from "@/components/ui/icons";
-import { Spinner } from "@/components/ui/spinner";
 import {
   type LanderSuggestion,
   type LanderTarget,
   plural,
   statusLabel,
 } from "@/lib/pages/lander";
-import type { AgentChange, AgentFeedback } from "@/lib/validators/agent";
+import type {
+  AgentChange,
+  AgentFeedback,
+  AgentStep,
+} from "@/lib/validators/agent";
 import { cn } from "@/lib/utils";
 
 import { useLanderMotion } from "../lander-motion";
@@ -178,8 +181,14 @@ export function LanderThread({
       <div
         ref={scroller}
         className="lander-thread-fade relative min-h-0 flex-1 overflow-y-auto"
-        // The composer's height, for the fade (measured, not styling).
-        style={{ "--lander-dock": `${dockHeight}px` } as CSSProperties}
+        // The composer's height, for the fade; and room under anything scrolled into view (a
+        // feedback form), so it rests above the composer and the fade (measured, not styling).
+        style={
+          {
+            "--lander-dock": `${dockHeight}px`,
+            scrollPaddingBottom: dockHeight + FADE,
+          } as CSSProperties
+        }
       >
         <div
           ref={content}
@@ -351,14 +360,21 @@ function Reply({
   onRetry: () => void;
   onRate: (feedback: AgentFeedback | null) => void;
 }) {
-  const { arrive, reduced } = useLanderMotion();
+  const { reduced } = useLanderMotion();
   const { state, steps, turn, changes } = view;
   const live = state === "starting" || state === "working";
   const seconds = useSeconds(turn.startedAt, live);
   const [unfolded, setUnfolded] = useState<boolean | null>(null);
   // The steps show while it works and fold away once it's done (the status line unfolds them).
   const showSteps = unfolded ?? live;
-  const label = statusLabel(state, steps, seconds, view.queued, view.took);
+  const label = statusLabel(
+    state,
+    steps,
+    seconds,
+    view.queued,
+    view.took,
+    view.doing,
+  );
   const finished = state === "done" || state === "stopped";
 
   return (
@@ -404,8 +420,8 @@ function Reply({
       ) : null}
 
       <AnimatePresence initial={false}>
-        {showSteps && (steps.length > 0 || live) ? (
-          <motion.ol
+        {showSteps && steps.length > 0 ? (
+          <motion.div
             key="steps"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -414,88 +430,42 @@ function Reply({
               duration: reduced ? 0.15 : 0.3,
               ease: [0.2, 0.8, 0, 1],
             }}
-            className="flex flex-col overflow-hidden"
+            className="overflow-hidden"
           >
-            {steps.map((step, i) => (
-              <motion.li
-                key={`${i}-${step.label}`}
-                initial={{
-                  opacity: 0,
-                  y: reduced ? 0 : 4,
-                  filter: reduced ? "none" : "blur(3px)",
-                }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                transition={arrive}
-                className="relative flex items-start gap-2 py-1 pl-0.5"
-              >
-                {i < steps.length - 1 || live ? (
-                  <span
-                    aria-hidden
-                    className="absolute top-6 bottom-0 left-2 w-px bg-stroke"
-                  />
-                ) : null}
-                <span className="flex size-4 shrink-0 items-center justify-center pt-0.5">
-                  {step.ok ? (
-                    <CheckIcon
-                      aria-hidden
-                      className="size-3.5 text-heading-06"
-                    />
-                  ) : (
-                    <StepFailedIcon
-                      aria-hidden
-                      className="size-3.5 text-text-danger"
-                    />
-                  )}
-                </span>
-                <span className="flex min-w-0 flex-col gap-1.5">
-                  <span
-                    className={cn(
-                      "text-type-caption-1 leading-5",
-                      step.ok ? "text-heading-05" : "text-sub-text",
-                    )}
-                  >
-                    {step.label}
+            <ol
+              aria-label="Steps"
+              className="flex flex-col rounded-item px-2.5 py-1.5 ring-thin ring-stroke ring-inset"
+            >
+              {steps.map((step, i) => (
+                <StepRow
+                  key={`${i}-${step.label}`}
+                  step={step}
+                  first={i === 0}
+                  last={i === steps.length - 1 && !live}
+                />
+              ))}
+              {live ? (
+                <motion.li
+                  key="doing"
+                  layout="position"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="relative flex items-start gap-2.5 py-1"
+                >
+                  <Connector part="above" />
+                  <span className="relative flex h-5 w-3 shrink-0 items-center justify-center bg-surface-primary text-heading-06">
+                    <WorkingDots />
                   </span>
-                  {step.image_url ? (
-                    <a
-                      href={step.image_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Open what Lander saw: ${step.label}`}
-                      className="block w-48 overflow-hidden rounded-md ring-thin ring-stroke outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element -- a signed storage link */}
-                      <img
-                        src={step.image_url}
-                        alt=""
-                        className="max-h-32 w-full object-cover object-top"
-                      />
-                    </a>
-                  ) : null}
-                </span>
-              </motion.li>
-            ))}
-            {live ? (
-              <motion.li
-                key="thinking"
-                layout="position"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-start gap-2 py-1 pl-0.5"
-              >
-                <span className="flex size-4 shrink-0 items-center justify-center pt-0.5">
-                  <Spinner className="size-3" label="Working" />
-                </span>
-                <span className="text-type-caption-1 leading-5 text-sub-text">
-                  {view.queued
-                    ? "Waiting for a worker…"
-                    : steps.length > 1
-                      ? "Working on the next step…"
-                      : "Thinking…"}
-                </span>
-              </motion.li>
-            ) : null}
-          </motion.ol>
+                  <ShimmerText className="min-w-0 text-type-caption-1 leading-5 text-sub-text">
+                    {view.doing?.text ??
+                      (steps.length > 1
+                        ? "Working on the next step…"
+                        : "Thinking…")}
+                  </ShimmerText>
+                </motion.li>
+              ) : null}
+            </ol>
+          </motion.div>
         ) : null}
       </AnimatePresence>
 
@@ -553,6 +523,116 @@ function Reply({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The thin line joining the steps' dots (the reference video's): a row draws it from its top to its
+ * dot ("above") and from its dot to its foot ("below"), so rows of any height join up. A picture
+ * step's dot sits lower, level with its label in the frame.
+ */
+function Connector({
+  part,
+  low = false,
+}: {
+  part: "above" | "below";
+  low?: boolean;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "absolute left-1.5 w-px -translate-x-1/2 bg-stroke",
+        part === "above"
+          ? cn("top-0", low ? "h-6" : "h-3.5")
+          : cn("bottom-0", low ? "top-6" : "top-3.5"),
+      )}
+    />
+  );
+}
+
+/**
+ * One step Lander took: a dot on the line (red when it couldn't), its label and what it touched
+ * under it. A step with a picture (what Lander looked at) is drawn as the overview's reminders: the
+ * label in a Foreground-02 chip on a Foreground-01 card, the picture under it (owner, 2026-11-05).
+ */
+function StepRow({
+  step,
+  first,
+  last,
+}: {
+  step: AgentStep;
+  first: boolean;
+  last: boolean;
+}) {
+  const { arrive, reduced } = useLanderMotion();
+  const picture = Boolean(step.image_url);
+  return (
+    <motion.li
+      initial={{
+        opacity: 0,
+        y: reduced ? 0 : 4,
+        filter: reduced ? "none" : "blur(3px)",
+      }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={arrive}
+      className="relative flex items-start gap-2.5 py-1"
+    >
+      {first ? null : <Connector part="above" low={picture} />}
+      {last ? null : <Connector part="below" low={picture} />}
+      <span
+        className={cn(
+          "relative flex h-5 w-3 shrink-0 items-center justify-center",
+          picture && "mt-2.5",
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "size-1.5 rounded-full ring-2 ring-surface-primary",
+            step.ok ? "bg-heading-06" : "bg-text-danger",
+          )}
+        />
+        <span className="sr-only">{step.ok ? "Done" : "Couldn’t"}</span>
+      </span>
+      {picture && step.image_url ? (
+        <span className="flex min-w-0 flex-1 flex-col gap-1.5 rounded-md bg-foreground-01 p-1.5">
+          <span className="rounded-sm bg-foreground-02 px-1.5 py-1 text-type-caption-1 leading-5 font-medium text-heading-02">
+            {step.label}
+          </span>
+          <a
+            href={step.image_url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Open what Lander saw: ${step.label}`}
+            className="block overflow-hidden rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- a signed storage link */}
+            <img
+              src={step.image_url}
+              alt=""
+              className="max-h-40 w-full object-cover object-top"
+            />
+          </a>
+        </span>
+      ) : (
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span
+            className={cn(
+              "text-type-caption-1 leading-5",
+              step.ok ? "text-heading-05" : "text-sub-text",
+            )}
+          >
+            {step.label}
+          </span>
+          {step.detail ? (
+            <span className="truncate text-type-caption-2 text-heading-06">
+              {step.detail}
+            </span>
+          ) : null}
+        </span>
+      )}
+    </motion.li>
   );
 }
 

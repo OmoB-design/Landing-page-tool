@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 
 import {
   CheckIcon,
@@ -43,6 +43,9 @@ export function ReplyActions({
   const [reasons, setReasons] = useState<FeedbackReason[]>([]);
   const [note, setNote] = useState("");
   const [thanked, setThanked] = useState(false);
+  // Opened at the foot of the thread, the form scrolls into view above the composer and its fade
+  // (the thread's scroll padding) once it has unfolded (owner, 2026-11-05: it looked cut off).
+  const form = useRef<HTMLFormElement>(null);
   const rating = feedback?.rating ?? null;
 
   const copy = () =>
@@ -145,7 +148,20 @@ export function ReplyActions({
         {asking ? (
           <motion.form
             key="why"
+            ref={form}
             onSubmit={send}
+            onAnimationComplete={(definition) => {
+              const opened =
+                typeof definition === "object" &&
+                definition !== null &&
+                "height" in definition &&
+                definition.height === "auto";
+              if (opened && typeof form.current?.scrollIntoView === "function")
+                form.current.scrollIntoView({
+                  block: "nearest",
+                  behavior: "smooth",
+                });
+            }}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -170,7 +186,8 @@ export function ReplyActions({
                           : [...all, reason.id],
                       )
                     }
-                    className="h-6 rounded-full px-2.5 text-type-caption-1 text-heading-02 ring-thin ring-stroke transition-colors duration-150 outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-foreground-02 aria-pressed:ring-stroke-strong"
+                    // Rings drawn inside: the unfolding form clips anything outside its box.
+                    className="h-6 rounded-full px-2.5 text-type-caption-1 text-heading-02 ring-thin ring-stroke transition-colors duration-150 outline-none ring-inset hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-foreground-02 aria-pressed:ring-stroke-strong"
                   >
                     {reason.label}
                   </button>
@@ -187,12 +204,12 @@ export function ReplyActions({
                 maxLength={500}
                 placeholder="Anything else? (optional)"
                 onChange={(event) => setNote(event.target.value)}
-                className="h-7 min-w-0 flex-1 rounded-md bg-transparent px-2 text-type-caption-1 text-heading-01 ring-thin ring-stroke outline-none placeholder:text-caption-1 focus:ring-stroke-input-active"
+                className="h-7 min-w-0 flex-1 rounded-md bg-transparent px-2 text-type-caption-1 text-heading-01 ring-thin ring-stroke outline-none ring-inset placeholder:text-caption-1 focus:ring-stroke-input-active"
               />
               <button
                 type="submit"
                 aria-label="Send feedback"
-                className="h-7 rounded-md bg-heading-01 px-2.5 text-type-caption-1 font-medium text-surface-primary transition-colors duration-150 outline-none hover:bg-heading-02 focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-7 rounded-md bg-heading-01 px-2.5 text-type-caption-1 font-medium text-surface-primary transition-colors duration-150 outline-none ring-inset hover:bg-heading-02 focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Send
               </button>

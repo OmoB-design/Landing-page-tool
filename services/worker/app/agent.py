@@ -74,6 +74,14 @@ box and see the CSS on it; style that box with the fewest properties that do it,
 page's colour variables (like var(--lp-accent)) for colours; then look at the section to check \
 it, and fix it if it doesn't look right. A style applies at every width, so look at phone width \
 too when it matters.
+- inspect_element lists the elements inside each box (child 1, child 2…, with the line each holds \
+or "no line"): a badge, an icon or a picture with no line of its own is reached by its child path \
+from the box ("line 6, up 1, child 2"), and inspecting that child lists what's inside it ("2.1"). \
+Never say you can't reach an element before inspecting inside the boxes around it.
+- A picture's empty space is part of the picture: to make one hug (a badge image), crop it with \
+width or height, object-fit: cover and object-position (left center keeps its left side); a \
+pill or rounded badge then gets a border-radius so its cut end is as round as the other; look to \
+check nothing important was cut off.
 - Set everything one element needs in one style_element call (its background and its text \
 colour together). When several elements share a colour (all the buttons) and read_page says \
 which colour they use, change it once with recolor_page; style them one by one only when they \
@@ -207,13 +215,17 @@ TOOLS: list[dict[str, Any]] = [
             "Describes the element a line sits in and the boxes around it, up to its section "
             "(or a whole section by key): each as 'line N, up K' with its tag, classes, a little "
             "of its text and the CSS that styles it (spacing, size, layout, type, colours, "
-            "borders). Use it to find the box to style: the frame around a badge is usually "
-            "'up 1' or 'up 2' from its line."
+            "borders), and under each box the elements inside it as 'child 1', 'child 2'… with "
+            "the line each holds, or 'no line' (a badge, an icon, a picture). Use it to find the "
+            "box to style: the frame around a badge is usually 'up 1' or 'up 2' from its line. "
+            "Give up and child to look inside one of those elements ('2', then '2.1')."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "line": {"type": "integer", "minimum": 1},
+                "up": {"type": "integer", "minimum": 0, "maximum": 4},
+                "child": {"type": "string", "pattern": "^[1-9][0-9]?([.][1-9][0-9]?){0,3}$"},
                 "section": {"type": "string"},
             },
             "additionalProperties": False,
@@ -223,12 +235,14 @@ TOOLS: list[dict[str, Any]] = [
         "name": "style_element",
         "description": (
             "Sets CSS on one element: the box 'up' levels above a line's element (0 is the "
-            "line's own element), or a whole section by key. Allowed: padding, margin, width, "
+            "line's own element), or a whole section by key; with child, an element inside that "
+            "box by its path from inspect_element ('2', '2.1'). Allowed: padding, margin, width, "
             "min/max-width, height, min/max-height, display, flex-direction, flex-wrap, "
             "align-items, justify-content, align-self, justify-self, gap, text-align, font-size, "
             "font-weight, font-style, line-height, letter-spacing, text-transform, "
             "text-decoration, white-space, color, background-color, background, border (and "
-            "its sides, width, style, colour), border-radius, box-shadow, opacity. Plain values "
+            "its sides, width, style, colour), border-radius, box-shadow, opacity, object-fit, "
+            "object-position, aspect-ratio. Plain values "
             "only (px, rem, %, fit-content, var(--lp-…), hex); 'unset' takes your earlier value "
             "off. It applies at every width. Give a short label in plain words for the user, "
             "like 'Fitted the Verified box to its text'."
@@ -238,6 +252,7 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "line": {"type": "integer", "minimum": 1},
                 "up": {"type": "integer", "minimum": 0, "maximum": 4},
+                "child": {"type": "string", "pattern": "^[1-9][0-9]?([.][1-9][0-9]?){0,3}$"},
                 "section": {"type": "string"},
                 "styles": {
                     "type": "object",
@@ -254,7 +269,8 @@ TOOLS: list[dict[str, Any]] = [
         "description": (
             "Renders the page as it is now, with your changes, and shows you a picture at "
             "desktop (1280 px) or phone (390 px) width: of the box 'up' levels above a line "
-            "(default 2, like style_element's), or of a whole section by key. Look after "
+            "(default 2, like style_element's), an element inside it by child path, or a whole "
+            "section by key. Look after "
             "styling to check it, and when the user asks whether something worked or how it "
             "looks."
         ),
@@ -263,6 +279,7 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {
                 "line": {"type": "integer", "minimum": 1},
                 "up": {"type": "integer", "minimum": 0, "maximum": 4},
+                "child": {"type": "string", "pattern": "^[1-9][0-9]?([.][1-9][0-9]?){0,3}$"},
                 "section": {"type": "string"},
                 "view": {"type": "string", "enum": ["desktop", "phone"]},
             },
@@ -345,9 +362,14 @@ class Step:
     change: dict[str, Any] | None = None
     # A picture Lander looked at (its path in the builds bucket), shown under the step.
     image: str | None = None
+    # What the step touched, under its label ("width fit-content · padding 10px").
+    detail: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        return {"label": self.label, "ok": self.ok, "change": self.change, "image": self.image}
+        return {
+            "label": self.label, "ok": self.ok, "change": self.change, "image": self.image,
+            "detail": self.detail,
+        }  # fmt: skip
 
 
 # Renders the page and pictures one part of it: (html, selector, width) → (JPEG, stored path).
@@ -501,7 +523,11 @@ class Work:
         reply = f"Rewrote lines {', '.join(str(d['number']) for d in done)}."
         if refused:
             reply += " Not changed: " + "; ".join(refused)
-        return reply, False, Step(label, True, change)
+        first = done[0]["after"]
+        detail = f"“{first if len(first) <= 70 else first[:67] + '…'}”" + (
+            f" and {plural(len(done) - 1, 'more line')}" if len(done) > 1 else ""
+        )
+        return reply, False, Step(label, True, change, detail=detail)
 
     def _section(self, name: str, args: dict[str, Any]) -> tuple[str, bool, Step]:
         layout = self.layout()
@@ -556,17 +582,22 @@ class Work:
             label = "Recoloured the page"
         change = {"kind": "colors", "label": label, "before": before, "after": target}
         self.changes.append(change)
-        return "Colours now:\n" + "\n".join(lines), False, Step(label, True, change)
+        detail = " · ".join(
+            f"{role} {before.get(role) if before else '?'} → {target[role]}" for role in changed
+        )
+        return "Colours now:\n" + "\n".join(lines), False, Step(label, True, change, detail=detail)
 
     def _target(self, args: dict[str, Any]) -> styling.Target:
         line = args.get("line")
         section = args.get("section")
         if section:
-            return styling.Target(section=str(section))
+            child = str(args["child"]) if args.get("child") else None
+            return styling.Target(section=str(section), child=child)
         if line is None:
             raise styling.StyleError("Say which line (and how many boxes up) or which section.")
         up = max(0, min(int(args.get("up") or 0), styling.MAX_UP))
-        return styling.Target(line=int(line), up=up)
+        child = str(args["child"]) if args.get("child") else None
+        return styling.Target(line=int(line), up=up, child=child)
 
     def _section_label(self, target: styling.Target) -> str:
         labels = {s.key: s.label for s in self.layout()}
@@ -579,17 +610,54 @@ class Work:
     def _inspect(self, args: dict[str, Any]) -> tuple[str, bool, Step]:
         target = self._target(args)
         text = styling.describe(self.html, target)
-        where = f"line {target.line}" if target.line is not None else self._section_label(target)
-        return (
-            text,
-            False,
-            Step(
-                f"Inspected {where} in {self._section_label(target)}"
-                if target.line is not None
-                else f"Inspected {where}",
-                True,
-            ),
-        )
+        return text, False, Step(f"Inspected {self._where(target)}", True)
+
+    def _where(self, target: styling.Target) -> str:
+        """Where a styling target is, for the user: "the box around line 6 in Hero"."""
+        section = self._section_label(target)
+        if target.section is not None:
+            return f"an element in {section}" if target.child else section
+        box = f"line {target.line}" if target.up == 0 else f"the box around line {target.line}"
+        inside = f"an element inside {box}" if target.child else box
+        return f"{inside} in {section}"
+
+    def doing(self, name: str, args: dict[str, Any]) -> tuple[str, str]:
+        """What a tool call is about to do, for the thread while it runs: the phase for the
+        status line ("Styling") and the step in words ("Styling the box around line 6 in
+        Hero…")."""
+        try:
+            labels = {s.key: s.label for s in self.layout()}
+            if name == "read_page":
+                return "Reading", "Reading the page…"
+            if name == "edit_lines":
+                numbers = {int(e["number"]) for e in args.get("edits") or [] if isinstance(e, dict)}
+                keys = {p.section for p in paragraphs.paragraphs(self.html) if p.number in numbers}
+                key = next(iter(keys)) if len(keys) == 1 else None
+                where = f" in {labels.get(key, key)}" if key else ""
+                return "Writing", f"Rewriting {plural(max(1, len(numbers)), 'line')}{where}…"
+            if name in ("move_section", "duplicate_section", "remove_section"):
+                verb = {"move_section": "Moving", "duplicate_section": "Copying"}.get(
+                    name, "Removing"
+                )
+                return "Rearranging", f"{verb} {labels.get(str(args.get('key')), 'a section')}…"
+            if name == "recolor_page":
+                return "Recolouring", "Recolouring the page…"
+            if name == "inspect_element":
+                return "Looking closer", f"Inspecting {self._where(self._target(args))}…"
+            if name == "style_element":
+                return "Styling", f"Styling {self._where(self._target(args))}…"
+            if name == "look":
+                view = "phone" if args.get("view") == "phone" else "desktop"
+                where = self._where(self._target({"up": 2, **args}))
+                return "Checking", f"Looking at {where} ({view})…"
+            if name in ("replace_image", "adjust_image"):
+                verb = "Swapping" if name == "replace_image" else "Adjusting"
+                return "Working on images", f"{verb} image {int(args['number'])}…"
+            if name == "check_claims":
+                return "Checking", "Checking the wording…"
+        except Exception:  # a call Claude got wrong: run() says why
+            pass
+        return "Working", "Working on it…"
 
     def _style(self, args: dict[str, Any]) -> tuple[str, bool, Step]:
         target = self._target(args)
@@ -610,13 +678,14 @@ class Work:
         reply = "Set " + "; ".join(f"{k}: {v}" for k, v in applied.items()) + "."
         if refused:
             reply += " Not set: " + "; ".join(refused)
-        return reply + " Look at it to check.", False, Step(label, True, change)
+        detail = " · ".join(f"{k} {v}" for k, v in applied.items())
+        return reply + " Look at it to check.", False, Step(label, True, change, detail=detail)
 
     def _look(self, args: dict[str, Any]) -> tuple[str | list[dict[str, Any]], bool, Step]:
         view = str(args.get("view") or "desktop")
         width = VIEWS.get(view, VIEWS["desktop"])
         target = self._target({"up": 2, **args})
-        where = self._section_label(target)
+        where = self._where(target) if target.child else self._section_label(target)
         if self.looker is None:
             return "Looking isn't available here.", True, Step(f"Couldn't look at {where}", False)
         marked, selector = styling.selector_for(self.html, target)
@@ -690,7 +759,8 @@ class Work:
             "detail": ", ".join(parts),
         }
         self.changes.append(change)
-        return f"{label}: {', '.join(parts)}.", False, Step(label, True, change)
+        detail = ", ".join(parts)
+        return f"{label}: {detail}.", False, Step(label, True, change, detail=detail)
 
     def _check_claims(self, args: dict[str, Any]) -> tuple[str, bool, Step]:
         text = _clean(str(args["text"]))[:2000]
@@ -707,7 +777,9 @@ class Work:
             for f in findings
         ]
         label = f"Checked the wording: {plural(len(findings), 'flag')}"
-        return "Flagged:\n" + "\n".join(lines), False, Step(label, True)
+        first = findings[0]
+        detail = f"“{first.get('text', '')}”: {first.get('reason', '')}"[:120]
+        return "Flagged:\n" + "\n".join(lines), False, Step(label, True, detail=detail)
 
     def reason(self) -> str:
         """The undo step's name: "Lander: rewrote 3 lines in Hero" (and how many more)."""

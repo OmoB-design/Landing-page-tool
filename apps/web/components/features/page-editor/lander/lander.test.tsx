@@ -71,6 +71,7 @@ const done: TurnView = {
   versionAfter: 5,
   took: 6,
   feedback: null,
+  doing: null,
 };
 
 describe("Lander (B3.1b, B3.1c)", () => {

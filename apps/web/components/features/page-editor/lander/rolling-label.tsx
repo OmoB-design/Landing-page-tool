@@ -21,7 +21,7 @@ export function RollingLabel({
 }) {
   return (
     <span className={cn("relative inline-flex min-w-0", className)}>
-      <ShimmerText active={working}>
+      <ShimmerText active={working} mode="mask">
         <MorphText className="whitespace-nowrap">{label}</MorphText>
       </ShimmerText>
     </span>

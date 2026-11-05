@@ -15,6 +15,7 @@ import {
 } from "@/lib/pages/lander";
 import {
   type AgentChange,
+  type AgentDoing,
   type AgentFeedback,
   type AgentStep,
   type AgentThreadSummary,
@@ -44,6 +45,8 @@ export type TurnView = {
   took: number | null;
   /** The rating given to the reply (B3.1e). */
   feedback: AgentFeedback | null;
+  /** What it's doing now, while it runs ("Styling the box around line 6 in Hero…"). */
+  doing: AgentDoing | null;
 };
 
 function tookOf(job: JobDetail): number | null {
@@ -70,6 +73,7 @@ function viewOf(
     versionAfter: null,
     took: null,
     feedback: turn.feedback,
+    doing: null,
   };
   if (turn.refused) return { ...base, state: "failed", error: turn.refused };
   if (settled) {
@@ -120,6 +124,7 @@ function viewOf(
   return {
     ...base,
     queued: live.status === "queued",
+    doing: live.status === "queued" ? null : sofar.doing,
     plan: sofar.plan ?? null,
     steps: sofar.steps,
     changes: sofar.changes,

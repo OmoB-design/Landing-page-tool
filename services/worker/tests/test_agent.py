@@ -203,6 +203,34 @@ def test_lander_inspects_styles_and_looks_at_a_box() -> None:
     assert failed and step.label == "Couldn't look at Hero"
 
 
+def test_lander_says_what_it_is_doing_before_each_tool() -> None:
+    w = work()
+    assert w.doing("read_page", {}) == ("Reading", "Reading the page…")
+    hero = number(w, "Glow in 7 days")
+    assert w.doing("edit_lines", {"edits": [{"number": hero, "text": "x"}]}) == (
+        "Writing",
+        "Rewriting 1 line in Hero…",
+    )
+    assert w.doing("move_section", {"key": "faq", "position": 1}) == (
+        "Rearranging",
+        "Moving Questions…",
+    )
+    b = agent.Work(html=BYLINE, rules={}, colors=None)
+    assert b.doing("style_element", {"line": 2, "up": 1, "styles": {}, "label": "x"}) == (
+        "Styling",
+        "Styling the box around line 2 in Hero…",
+    )
+    assert b.doing("look", {"line": 2, "child": "2", "view": "phone"})[1] == (
+        "Looking at an element inside the box around line 2 in Hero (phone)…"
+    )
+    assert w.doing("style_element", {"styles": {}}) == ("Working", "Working on it…")
+    _, failed, step = b.run(
+        "style_element",
+        {"line": 2, "up": 1, "child": "2", "styles": {"width": "fit-content"}, "label": "Fit"},
+    )
+    assert not failed and step.detail == "width fit-content"
+
+
 def test_edited_lines_are_renumbered_after_sections_move() -> None:
     w = work()
     w.run("edit_lines", {"edits": [{"number": number(w, "Is it gentle?"), "text": "Gentle?"}]})

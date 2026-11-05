@@ -4,6 +4,7 @@ CSS that styles it, and setting a safe set of properties on it."""
 import pytest
 
 from app.engines import styling
+from app.engines.html import parse
 from app.engines.styling import StyleError, Target
 
 PAGE = (
@@ -78,3 +79,42 @@ def test_looking_marks_the_box_around_a_line_or_a_section() -> None:
         in html.split('data-lp-section="faq"')[0][-60:]
         + html.split('data-lp-section="faq"')[1][:20]
     )
+
+
+PILL = (
+    "<html><head><style>.badge-img { width: 92px; height: auto }</style></head><body>"
+    '<section data-lp-section="hero"><h1>Glow in a week</h1>'
+    '<div class="byline"><div class="name">Clara Bennett</div>'
+    '<img class="badge-img" src="https://cdn.example.test/verified.png" alt=""></div>'
+    "<p>Sneaker fan</p></section></body></html>"
+)
+
+
+def test_elements_without_a_line_are_listed_and_reached_by_their_path() -> None:
+    """The owner's ALL-1 ask: the Verified pill is a picture with no line of its own."""
+    text = styling.describe(PILL, Target(line=2, up=1))
+    assert "     child 1: <div.name> “Clara Bennett” (line 2)" in text
+    assert "     child 2: <img.badge-img> “picture: no alt” (no line) · width: 92px" in text
+
+    inside = styling.describe(PILL, Target(line=2, up=1, child="2"))
+    assert inside.startswith("child 2: <img.badge-img>")
+
+    html, applied, _ = styling.apply(
+        PILL,
+        Target(line=2, up=1, child="2"),
+        {
+            "width": "74px",
+            "height": "22px",
+            "object-fit": "cover",
+            "object-position": "left center",
+        },
+    )
+    assert applied["object-position"] == "left center"
+    assert 'style="width: 74px; height: 22px; object-fit: cover' in html
+    marked, selector = styling.selector_for(PILL, Target(line=2, up=1, child="2"))
+    looked = parse(marked).select_one(selector)
+    assert looked is not None and looked.name == "img"
+
+    for path in ("3", "2.1", "0", "x"):
+        with pytest.raises(StyleError):
+            styling.apply(PILL, Target(line=2, up=1, child=path), {"width": "10px"})

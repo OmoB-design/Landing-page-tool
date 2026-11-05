@@ -77,6 +77,8 @@ export const agentStepSchema = z.object({
   change: agentChangeSchema.nullable().optional(),
   /** What Lander looked at (B3.1d): a signed link to the picture, for an hour. */
   image_url: z.string().nullable().optional(),
+  /** What the step touched, under its label ("width fit-content · padding 10px"). */
+  detail: z.string().nullable().optional(),
 });
 export type AgentStep = z.infer<typeof agentStepSchema>;
 
@@ -170,13 +172,21 @@ export const agentRequestSchema = z.object({
 });
 export type AgentRequestInput = z.infer<typeof agentRequestSchema>;
 
-/** A live job event from Lander (`data.agent`): its plan, a step, or its closing line. */
+/** A live job event from Lander (`data.agent`): its plan, what it's about to do (the phase for
+ * the status line and the step in words), a step done, or its closing line. */
 export const agentEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("plan"), text: z.string() }),
   z.object({ type: z.literal("closing"), text: z.string() }),
+  z.object({
+    type: z.literal("doing"),
+    phase: z.string(),
+    text: z.string(),
+  }),
   agentStepSchema.extend({ type: z.literal("step") }),
 ]);
 export type AgentEvent = z.infer<typeof agentEventSchema>;
+/** What a running request is doing now: "Styling" / "Styling the box around line 6 in Hero…". */
+export type AgentDoing = { phase: string; text: string };
 
 /** One of the page's conversations, for Recents (worker AgentThreadSummary, B3.1e). */
 export const agentThreadsSchema = z.object({

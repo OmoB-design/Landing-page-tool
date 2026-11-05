@@ -11,7 +11,9 @@ import type { CSSProperties, ReactNode } from "react";
  * From AffectUI (https://www.affectui.com, MIT – see THIRD_PARTY_NOTICES.md). Colours, radius and
  * font follow our design tokens via app/globals.css (DECISIONS.md D48). LP change: ShimmerText's
  * `active` (B3.1d) turns the sweep off without remounting its children, so a morphing label inside
- * keeps animating as work finishes.
+ * keeps animating as work finishes. LP change: `mode="mask"` (2026-11-05) sweeps a mask over the
+ * text instead of painting through it: a morphing label (torph) moves each letter on its own layer,
+ * which `background-clip: text` doesn't reach, so its words came out invisible.
  */
 
 export type SkeletonProps = {
@@ -34,6 +36,9 @@ export type ShimmerTextProps = {
   className?: string;
   /** Whether the highlight runs (LP change): off, the children show as they are. */
   active?: boolean;
+  /** How the highlight is drawn (LP change): "clip" paints it through the letters; "mask" dims
+   * the text outside a moving band, for children that animate their own letters. */
+  mode?: "clip" | "mask";
 };
 
 const len = (v: number | string | undefined) =>
@@ -76,12 +81,16 @@ export function ShimmerText({
   duration = 2,
   className,
   active = true,
+  mode = "clip",
 }: ShimmerTextProps) {
   return (
     <>
       <Style />
       <span
-        className={[active ? "ui-shm-text" : null, className]
+        className={[
+          active ? (mode === "mask" ? "ui-shm-mask" : "ui-shm-text") : null,
+          className,
+        ]
           .filter(Boolean)
           .join(" ")}
         style={{ "--ui-shm-text-dur": `${duration}s` } as CSSProperties}
@@ -155,9 +164,27 @@ const css = /* css */ `
   to { background-position: 0% 0; }
 }
 
+/* Text, mask mode (LP change): the text keeps its own colour and a band of full opacity runs
+   through it, the rest dimmed; reaches letters that move on their own layers. */
+.ui-shm-mask {
+  display: inline-block;
+  -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.5) 0%, rgb(0 0 0 / 0.5) 40%, #000 50%, rgb(0 0 0 / 0.5) 60%, rgb(0 0 0 / 0.5) 100%);
+  mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.5) 0%, rgb(0 0 0 / 0.5) 40%, #000 50%, rgb(0 0 0 / 0.5) 60%, rgb(0 0 0 / 0.5) 100%);
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  -webkit-mask-position: 100% 0;
+  mask-position: 100% 0;
+  animation: ui-shm-mask var(--ui-shm-text-dur, 2s) linear infinite;
+}
+@keyframes ui-shm-mask {
+  from { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
+  to { -webkit-mask-position: 0% 0; mask-position: 0% 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ui-shm { animation: none; background-image: none; }
   .ui-shm-text { animation: none; background-image: none; -webkit-text-fill-color: currentColor; }
+  .ui-shm-mask { animation: none; -webkit-mask-image: none; mask-image: none; }
 }
 
 /* Dark mode: follows a .dark class or data-theme="dark" on any ancestor, e.g. <html> */

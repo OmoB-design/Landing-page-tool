@@ -1,10 +1,10 @@
 "use client";
 
+import { WorkingDots } from "@/components/app/working-dots";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
 
 import { MicIcon, SendIcon, StopIcon } from "@/components/ui/icons";
-import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
   TooltipContent,
@@ -145,11 +145,7 @@ export function SendButton({
     >
       <AnimatePresence initial={false} mode="popLayout">
         <motion.span key={busy ? "busy" : "send"} className="flex" {...SWAP}>
-          {busy ? (
-            <Spinner className="size-3.5" label="Working" />
-          ) : (
-            <SendIcon aria-hidden className="size-4" />
-          )}
+          {busy ? <WorkingDots /> : <SendIcon aria-hidden className="size-4" />}
         </motion.span>
       </AnimatePresence>
     </button>
@@ -187,7 +183,7 @@ export function StopButton({
               {...SWAP}
             >
               {stopping ? (
-                <Spinner className="size-3.5" label="Stopping" />
+                <WorkingDots label="Stopping" />
               ) : (
                 <StopIcon aria-hidden className="size-3 fill-current" />
               )}

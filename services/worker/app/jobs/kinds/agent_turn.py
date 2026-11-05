@@ -200,6 +200,8 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
             stopped = True
             break
         ctx.check_stopping()
+        # What Lander is doing, for the thread's status line and running step (owner, 2026-11-05).
+        _event(ctx, "Thinking…", "doing", phase="Thinking", text="Thinking…")
         try:
             with node_context("agent"):
                 result = anthropic.generate(
@@ -230,6 +232,8 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
             if agent.stop_requested(org_id, job_id):
                 stopped = True
                 break
+            phase, doing = work.doing(str(call["name"]), dict(call.get("input") or {}))
+            _event(ctx, doing, "doing", phase=phase, text=doing)
             out, failed, step = work.run(str(call["name"]), dict(call.get("input") or {}))
             outputs.append(
                 {
@@ -262,6 +266,13 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
     version: int | None = None
     reason: str | None = None
     if work.changes:
+        _event(
+            ctx,
+            "Saving the page…",
+            "doing",
+            phase="Saving",
+            text="Saving the page and checking the claims…",
+        )
         work.settle_numbers()
         reason = work.reason()
         try:

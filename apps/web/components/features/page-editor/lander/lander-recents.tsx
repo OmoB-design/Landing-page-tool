@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkingDots } from "@/components/app/working-dots";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useState } from "react";
 
@@ -9,7 +10,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
   TooltipContent,
@@ -73,7 +73,7 @@ export function LanderRecents({
         </p>
         {threads === null && !failed ? (
           <div className="flex items-center gap-2 px-2 py-2 text-sub-text">
-            <Spinner className="size-3" label="Loading" />
+            <WorkingDots label="Loading" />
             Loading…
           </div>
         ) : failed ? (

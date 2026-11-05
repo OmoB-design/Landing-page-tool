@@ -13,6 +13,7 @@ import {
   type AgentReply,
   type AgentStep,
   agentEventSchema,
+  type AgentDoing,
 } from "@/lib/validators/agent";
 import type { DeskParagraph, DeskSection } from "@/lib/validators/desk";
 
@@ -50,29 +51,35 @@ export function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
-/** What a running request's job has said so far: its plan, the steps, the changes, the close. */
+/** What a running request's job has said so far: its plan, the steps, the changes, the close,
+ * and what it's doing now (its newest "doing" event, once the job sends them). */
 export function replyFromEvents(
   events: { data?: Record<string, unknown> | null }[],
-): Pick<AgentReply, "plan" | "steps" | "changes" | "closing"> {
+): Pick<AgentReply, "plan" | "steps" | "changes" | "closing"> & {
+  doing: AgentDoing | null;
+} {
   const steps: AgentStep[] = [];
   let plan: string | null = null;
   let closing: string | null = null;
+  let doing: AgentDoing | null = null;
   for (const event of events) {
     const parsed = agentEventSchema.safeParse(event.data?.agent);
     if (!parsed.success) continue;
     const e = parsed.data;
     if (e.type === "plan") plan = e.text;
     else if (e.type === "closing") closing = e.text;
+    else if (e.type === "doing") doing = { phase: e.phase, text: e.text };
     else
       steps.push({
         label: e.label,
         ok: e.ok,
         change: e.change ?? null,
         image_url: e.image_url ?? null,
+        detail: e.detail ?? null,
       });
   }
   const changes = steps.flatMap((s) => (s.change ? [s.change] : []));
-  return { plan, steps, changes, closing };
+  return { plan, steps, changes, closing, doing };
 }
 
 /** The status line over a reply. */
@@ -82,6 +89,7 @@ export function statusLabel(
   seconds: number,
   queued = false,
   took: number | null = null,
+  doing: AgentDoing | null = null,
 ): string {
   const time = took ? ` · ${took}s` : "";
   if (state === "failed") return `Couldn’t finish${time}`;
@@ -89,9 +97,14 @@ export function statusLabel(
     return `Stopped after ${plural(steps.length, "step")}${time}`;
   if (state === "done")
     return `Completed ${plural(steps.length, "step")}${time}`;
-  return queued
-    ? `Waiting for a worker… ${seconds}s`
-    : `Working on it… ${seconds}s`;
+  if (queued) return `Waiting for a worker… ${seconds}s`;
+  // The phase Lander is in, as Claude's chat names it (owner, 2026-11-05): "Thinking… 5s" while it
+  // decides, then "Styling…", "Writing…", "Checking…" while it works.
+  if (doing)
+    return doing.phase === "Thinking"
+      ? `Thinking… ${seconds}s`
+      : `${doing.phase}…`;
+  return `Working on it… ${seconds}s`;
 }
 
 /** Every line a request's changes rewrote, by number on the page it saved. */
