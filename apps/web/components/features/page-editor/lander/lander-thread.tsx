@@ -12,6 +12,7 @@ import {
 import { WorkingDots } from "@/components/app/working-dots";
 import { Button } from "@/components/ui/button";
 import { ShimmerText } from "@/components/ui/shimmer-loader";
+import { Spinner } from "@/components/ui/spinner";
 import {
   AlertIcon,
   BrushIcon,
@@ -453,8 +454,10 @@ function Reply({
                   className="relative flex items-start gap-2.5 py-1"
                 >
                   <Connector part="above" />
+                  {/* The running step keeps a spinner (owner, 2026-11-05); the status line above
+                      has the dotmatrix loader. */}
                   <span className="relative flex h-5 w-3 shrink-0 items-center justify-center bg-surface-primary text-heading-06">
-                    <WorkingDots />
+                    <Spinner className="size-3" label="Working" />
                   </span>
                   <ShimmerText className="min-w-0 text-type-caption-1 leading-5 text-sub-text">
                     {view.doing?.text ??
@@ -554,7 +557,7 @@ function Connector({
 /**
  * One step Lander took: a dot on the line (red when it couldn't), its label and what it touched
  * under it. A step with a picture (what Lander looked at) is drawn as the overview's reminders: the
- * label in a Foreground-02 chip on a Foreground-01 card, the picture under it (owner, 2026-11-05).
+ * label in a Dashboard chip on a Foreground-01 card, the picture under it (owner, 2026-11-05).
  */
 function StepRow({
   step,
@@ -597,7 +600,7 @@ function StepRow({
       </span>
       {picture && step.image_url ? (
         <span className="flex min-w-0 flex-1 flex-col gap-1.5 rounded-md bg-foreground-01 p-1.5">
-          <span className="rounded-sm bg-foreground-02 px-1.5 py-1 text-type-caption-1 leading-5 font-medium text-heading-02">
+          <span className="rounded-sm bg-dashboard px-1.5 py-1 text-type-caption-1 leading-5 font-medium text-heading-02">
             {step.label}
           </span>
           <a
