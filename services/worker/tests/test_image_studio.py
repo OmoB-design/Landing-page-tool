@@ -361,3 +361,138 @@ def test_lander_swaps_an_image_and_it_joins_the_history(
         ("product", True),
         ("original", False),
     ]
+
+
+# ── AI pictures (B3.2b, D110), in mock mode ───────────────────────────────────
+
+
+def test_ai_pictures_are_asked_for_plainly_and_sized_to_the_image() -> None:
+    from app import image_ai
+
+    assert image_ai.prompt_for("generate", "A bath at dusk.", False).startswith(
+        "A bath at dusk. A natural, photographic picture"
+    )
+    assert "reference photos" in image_ai.prompt_for("edit", "Put the bottle on the edge", True)
+    square = image_edits.set_shape(PAGE, 3, ratio="1:1")
+    assert image_ai.size_for(square, 3) == (1024, 1024)
+    wide = image_edits.set_shape(PAGE, 3, ratio="16:9")
+    assert image_ai.size_for(wide, 3) == (1024, 576)
+
+
+def run_image_job() -> dict[str, Any]:
+    from app.jobs import queue
+    from app.jobs.registry import KINDS
+    from app.jobs.runner import Runner
+    from tests.conftest import job_row
+
+    runner = Runner(get_settings(), kinds=KINDS, worker_id=f"test-{uuid.uuid4().hex[:6]}")
+    claimed = queue.claim(runner.worker_id, 5, ["image_generate", "image_edit"])
+    assert claimed is not None
+    runner.execute(claimed)
+    return job_row(claimed.id)
+
+
+def make_picture(
+    client: TestClient, user: DbUser, build: dict[str, Any], number: int, **body: Any
+) -> Any:
+    return client.post(
+        f"/builds/{build['id']}/images/{number}/ai",
+        json={"org_id": build["org_id"], **body},
+        headers=bearer(user),
+    )
+
+
+@needs_db
+def test_a_new_picture_is_a_job_that_lands_as_one_undoable_change(
+    client: TestClient, user: DbUser, pictured: dict[str, Any]
+) -> None:
+    shown = studio(client, user, pictured, 3).json()
+    assert shown["ai"] == {"mock": True, "price": "0.15"} and shown["making"] is None
+    version = desk(client, user, pictured)["build"]["page_version"]
+    started = make_picture(client, user, pictured, 3, mode="generate", prompt="A warm bath at dusk")
+    assert started.status_code == 200, started.text
+    assert started.json()["mode"] == "generate"
+    assert studio(client, user, pictured, 3).json()["making"]["job_id"] == started.json()["job_id"]
+    again = make_picture(client, user, pictured, 3, mode="generate", prompt="Another")
+    assert again.status_code == 422 and "already being made" in again.json()["detail"]
+
+    job = run_image_job()
+    assert job["status"] == "succeeded", job["error"]
+    assert job["result"]["mock"] is True and job["result"]["page_version"] == version + 1
+    state = desk(client, user, pictured)
+    assert state["snapshots"][0]["reason"].startswith("Made a new picture with AI in ")
+    src = img(page_of(pictured), 3)["src"]
+    assert src == job["result"]["src"] and "/storage/v1/object/public/assets/" in src
+    versions = studio(client, user, pictured, 3).json()["versions"]
+    assert [(v["source"], v["current"]) for v in versions] == [
+        ("generated", True),
+        ("original", False),
+    ]
+    with transaction() as conn:
+        row = conn.execute(
+            "select prompt from image_versions where build_id = %(b)s and source = 'generated'",
+            {"b": pictured["id"]},
+        ).fetchone()
+        flagged = conn.execute(
+            "select mock_images from builds where id = %(b)s", {"b": pictured["id"]}
+        ).fetchone()
+    assert row is not None and row["prompt"] == "A warm bath at dusk"
+    assert flagged is not None and flagged["mock_images"] is True  # the publish gate's
+
+
+@needs_db
+def test_an_edit_takes_product_photos_and_refuses_what_it_cant_do(
+    client: TestClient, user: DbUser, pictured: dict[str, Any]
+) -> None:
+    logo = make_picture(client, user, pictured, 1, mode="generate", prompt="A new logo")
+    assert logo.status_code == 422 and "logo" in logo.json()["detail"]
+    unknown = make_picture(
+        client, user, pictured, 2, mode="edit", prompt="On marble", product_photos=[9]
+    )
+    assert unknown.status_code == 422 and "no product photo 9" in unknown.json()["detail"]
+    edited = make_picture(
+        client, user, pictured, 2, mode="edit", prompt="On a marble counter", product_photos=[1, 2]
+    )
+    assert edited.status_code == 200, edited.text
+    with transaction() as conn:
+        queued = conn.execute(
+            "select kind, payload from jobs where id = %(j)s", {"j": edited.json()["job_id"]}
+        ).fetchone()
+    assert queued is not None and queued["kind"] == "image_edit"
+    assert queued["payload"]["references"] == PHOTOS
+    job = run_image_job()
+    assert job["status"] == "succeeded", job["error"]
+    assert desk(client, user, pictured)["snapshots"][0]["reason"].startswith(
+        "Edited a picture with AI in "
+    )
+    # Another picture for the same image is a different placeholder, so the page changes again.
+    again = make_picture(client, user, pictured, 2, mode="edit", prompt="On a marble counter")
+    assert again.status_code == 200, again.text
+    second = run_image_job()
+    assert second["status"] == "succeeded", second["error"]
+    assert second["result"]["src"] != job["result"]["src"]
+
+
+@needs_db
+def test_lander_makes_a_picture_when_asked(
+    client: TestClient, user: DbUser, pictured: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    script = Script(
+        [
+            {"type": "text", "text": "I'll make one new picture for the FAQ ($0.15 once live)."},
+            call("generate_image", number=3, prompt="A calm bathroom shelf", products=[1]),
+        ],
+        [{"type": "text", "text": "Done: the FAQ has a new picture."}],
+    )
+    monkeypatch.setattr(anthropic, "generate", script)
+    version = desk(client, user, pictured)["build"]["page_version"]
+    started = ask(client, user, pictured, version, "Make a new picture for the FAQ")
+    assert started.status_code == 200, started.text
+    job = run_agent()
+    assert job["status"] == "succeeded", job["error"]
+    change = job["result"]["changes"][0]
+    assert change["kind"] == "image" and change["source"] == "generated" and change["mock"]
+    assert change["label"].startswith("Made a new picture for image 3 in ")
+    assert change["label"].endswith("(a placeholder)")
+    versions = studio(client, user, pictured, 3).json()["versions"]
+    assert versions[0]["source"] == "generated" and versions[0]["current"]

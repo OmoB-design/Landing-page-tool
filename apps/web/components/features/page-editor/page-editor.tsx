@@ -10,18 +10,27 @@ import {
 } from "react";
 
 import { Mover } from "@/components/app/mover";
+import { toast } from "@/components/app/toaster";
+import { apiFetch } from "@/lib/api/client";
+import { isActive } from "@/lib/jobs/progress";
 import {
   type LanderSuggestion,
   type LanderTarget,
   changedLineNumbers,
   suggestions as suggestionsFor,
 } from "@/lib/pages/lander";
+import { useJob } from "@/lib/queries/jobs";
 import { addedKey, selectionAfterRemove } from "@/lib/templates/editor";
+import {
+  type ImageAiInput,
+  type ImageJob,
+  imageJobSchema,
+} from "@/lib/validators/images";
 import type { SectionAction } from "@/lib/validators/desk";
 
 import { useDesk } from "../builds/desk-context";
 import { EditorTopBar } from "./editor-top-bar";
-import { ImagePanel } from "./image-panel";
+import { ImagePanel, type Making } from "./image-panel";
 import type { UndoState } from "./lander/change-card";
 import { FloatingComposer } from "./lander/floating-composer";
 import { LanderComposer } from "./lander/lander-composer";
@@ -32,6 +41,28 @@ import { type TurnView, useLander } from "./lander/use-lander";
 import { LanderMotionProvider, useLanderMotion } from "./lander-motion";
 import { type FlashRequest, PageCanvas, type Viewport } from "./page-canvas";
 import { SectionPanel } from "./section-panel";
+
+/**
+ * The drawer's drill-in (the image studio over the section list) and back: `custom` is 1 going in,
+ * -1 coming back. The panel on top slides the full width; the one beneath drifts a quarter and dims.
+ * Hardware-accelerated transform strings (emil-design-eng).
+ */
+const DRILL = {
+  enter: (direction: number) =>
+    direction > 0
+      ? { transform: "translateX(100%)", opacity: 1, zIndex: 2 }
+      : { transform: "translateX(-25%)", opacity: 0.4, zIndex: 1 },
+  center: { transform: "translateX(0%)", opacity: 1 },
+  exit: (direction: number) =>
+    direction > 0
+      ? { transform: "translateX(-25%)", opacity: 0.4, zIndex: 1 }
+      : { transform: "translateX(100%)", opacity: 1, zIndex: 2 },
+};
+const FADE = {
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
+};
 
 /** The canvas gap between the page and Lander's panel (the frame's 6 px). */
 const GAP = 6;
@@ -129,7 +160,8 @@ function Editor({
   setLanderOpen: (open: boolean | ((open: boolean) => boolean)) => void;
 }) {
   const motionConfig = useLanderMotion();
-  const { desk, undo, redo, editSections, pending, restoreTo } = useDesk();
+  const { desk, undo, redo, editSections, pending, restoreTo, reload } =
+    useDesk();
 
   // The selected section: drives the canvas's outline and what Lander's requests are about.
   const layout = desk.layout;
@@ -333,6 +365,71 @@ function Editor({
     return () => window.removeEventListener("keydown", onKey);
   }, [onRedo, onUndo, setLanderOpen]);
 
+  // An AI picture being made (B3.2b, D110): one at a time in the editor, followed by its job;
+  // the page stays editable, and when it's done the page catches up with a toast and Undo.
+  const [making, setMaking] = useState<
+    (Making & { number: number; jobId: string }) | null
+  >(null);
+  const makingJob = useJob(making?.jobId ?? null);
+  const finishedJob = useRef<string | null>(null);
+  useEffect(() => {
+    const job = makingJob.data;
+    if (!making || !job || job.id !== making.jobId) return;
+    if (isActive(job.status) || finishedJob.current === job.id) return;
+    finishedJob.current = job.id;
+    if (job.status === "succeeded") {
+      const mock = Boolean((job.result as { mock?: unknown } | null)?.mock);
+      toast.success(
+        mock
+          ? "A placeholder picture is on the page (mock mode)"
+          : "The new picture is on the page",
+        { action: { label: "Undo", onClick: () => onUndo() } },
+      );
+      void reload().then(() => setMaking(null));
+    } else {
+      toast.error(job.error?.message ?? "The picture couldn’t be made.");
+      void Promise.resolve().then(() => setMaking(null));
+    }
+  }, [makingJob.data, making, reload, onUndo]);
+  const makePicture = useCallback(
+    async (number: number, input: ImageAiInput) => {
+      await settle();
+      try {
+        const job = await apiFetch(
+          `/api/builds/${build.id}/images/${number}/ai`,
+          imageJobSchema,
+          { method: "POST", body: JSON.stringify(input) },
+        );
+        setMaking({
+          number,
+          jobId: job.job_id,
+          mode: job.mode,
+          startedAt: Date.now(),
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Couldn’t start the picture.",
+        );
+      }
+    },
+    [build.id, settle],
+  );
+  const adoptPicture = useCallback(
+    (number: number, job: ImageJob) =>
+      setMaking(
+        (current) =>
+          current ?? {
+            number,
+            jobId: job.job_id,
+            mode: job.mode,
+            startedAt: Date.now(),
+          },
+      ),
+    [],
+  );
+
   const first = lander.views[0]?.turn;
   const title = first
     ? first.request ||
@@ -372,27 +469,50 @@ function Editor({
             <div className="absolute inset-0 overflow-hidden divider-r-thin">
               {/* The list keeps its width while the drawer slides, so nothing reflows inside it. */}
               <div
-                className="h-full overflow-y-auto"
+                className="relative h-full overflow-hidden"
                 style={{ width: sectionsWidth }}
               >
-                {image !== null ? (
-                  <ImagePanel
-                    buildId={build.id}
-                    number={image}
-                    busy={busy}
-                    onBack={backToSections}
-                  />
-                ) : (
-                  <SectionPanel
-                    layout={layout}
-                    paragraphs={desk.paragraphs}
-                    selected={selected}
-                    busy={busy}
-                    onSelect={select}
-                    onEdit={(action) => void edit(action)}
-                    onImprove={improve}
-                  />
-                )}
+                {/* Opening an image drills in, iOS-style: the studio slides over from the right
+                    while the list drifts left and dims; Back reverses it (emil-design-eng:
+                    transform and opacity only, a strong drawer ease, fades only with reduced
+                    motion). Switching between images stays in place. */}
+                <AnimatePresence
+                  initial={false}
+                  custom={image !== null ? 1 : -1}
+                >
+                  <motion.div
+                    key={image !== null ? "image" : "sections"}
+                    custom={image !== null ? 1 : -1}
+                    variants={motionConfig.reduced ? FADE : DRILL}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
+                    className="absolute inset-0 overflow-y-auto bg-surface-primary"
+                  >
+                    {image !== null ? (
+                      <ImagePanel
+                        buildId={build.id}
+                        number={image}
+                        busy={busy}
+                        onBack={backToSections}
+                        making={making?.number === image ? making : null}
+                        onMake={makePicture}
+                        onAdopt={adoptPicture}
+                      />
+                    ) : (
+                      <SectionPanel
+                        layout={layout}
+                        paragraphs={desk.paragraphs}
+                        selected={selected}
+                        busy={busy}
+                        onSelect={select}
+                        onEdit={(action) => void edit(action)}
+                        onImprove={improve}
+                      />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
             {drawerOpen ? (
@@ -428,6 +548,7 @@ function Editor({
               flash={flash}
               image={image}
               onImage={setImage}
+              busyImage={making?.number ?? null}
             />
             <div
               className="pointer-events-none absolute inset-x-4 z-20 flex justify-center"

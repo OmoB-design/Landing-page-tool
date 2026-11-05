@@ -31,6 +31,8 @@ LIMIT_GROUPS: dict[str, tuple[tuple[str, ...], str]] = {
     "exports": (("export",), "exports"),
     "clones": (("template_clone",), "page clones"),
     "analyses": (("template_analyze",), "page analyses"),
+    # B3.2b: $0.15 each once live, so a workspace makes at most 30 an hour ($4.50).
+    "images": (("image_generate", "image_edit"), "AI pictures"),
 }
 
 

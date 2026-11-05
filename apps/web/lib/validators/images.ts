@@ -49,6 +49,15 @@ export const imageStudioSchema = z.object({
   ),
   product_photos: z.array(choice),
   page_images: z.array(choice),
+  /** Making pictures with AI (B3.2b): free placeholders in mock mode, else the price of one. */
+  ai: z
+    .object({ mock: z.boolean(), price: z.string().nullable() })
+    .catch({ mock: true, price: null }),
+  /** A picture already being made for this image. */
+  making: z
+    .object({ job_id: z.string(), mode: z.enum(["generate", "edit"]) })
+    .nullable()
+    .catch(null),
 });
 export type ImageStudio = z.infer<typeof imageStudioSchema>;
 export type ImageVersion = ImageStudio["versions"][number];
@@ -96,3 +105,30 @@ export const uploadedImageSchema = z.object({
   url: z.string(),
 });
 export type UploadedImage = z.infer<typeof uploadedImageSchema>;
+
+/** The longest description for an AI picture (worker PROMPT_MAX), and how many product photos
+ * can go with it as references. */
+export const PROMPT_MAX = 600;
+export const REFERENCES_MAX = 3;
+
+/** POST /api/builds/[id]/images/[number]/ai: a new picture for the image, or the one it shows
+ * edited, with up to three product photos (their numbers, from 1). */
+export const imageAiSchema = z.object({
+  mode: z.enum(["generate", "edit"]),
+  prompt: z
+    .string()
+    .trim()
+    .min(3, "Say what the picture should show.")
+    .max(PROMPT_MAX),
+  product_photos: z
+    .array(z.number().int().min(1))
+    .max(REFERENCES_MAX)
+    .default([]),
+});
+export type ImageAiInput = z.infer<typeof imageAiSchema>;
+
+export const imageJobSchema = z.object({
+  job_id: z.string(),
+  mode: z.enum(["generate", "edit"]),
+});
+export type ImageJob = z.infer<typeof imageJobSchema>;

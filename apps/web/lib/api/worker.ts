@@ -28,7 +28,10 @@ import {
 } from "@/lib/validators/agent";
 import {
   type ImageAction,
+  type ImageAiInput,
+  type ImageJob,
   type ImageStudio,
+  imageJobSchema,
   type UploadedImage,
   imageStudioSchema,
   uploadedImageSchema,
@@ -289,6 +292,23 @@ export function changeImage(
     body,
     deskStateSchema,
     "Couldn't change the image.",
+  );
+}
+
+/** Starts an AI picture for an image (a job; it goes on the page when it's ready). */
+export function startImageAi(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+  number: number,
+  body: ImageAiInput,
+): Promise<ImageJob> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/images/${number}/ai`,
+    accessToken,
+    { ...body, org_id: orgId },
+    imageJobSchema,
+    "Couldn't start the picture.",
   );
 }
 

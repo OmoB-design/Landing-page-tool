@@ -13,6 +13,7 @@ from app.jobs.kinds import (
     brand_autofetch,
     build,
     export,
+    image_ai,
     noop_demo,
     product_briefing,
     product_pull,
@@ -114,6 +115,24 @@ KINDS: dict[str, JobKind] = {
             payload_model=agent_turn.AgentPayload,
             max_attempts=1,
             dedupe=agent_turn.dedupe_key,
+        ),
+        # The image studio's AI pictures (B3.2b, D110): one at a time per image; the page stays
+        # editable while they're made.
+        JobKind(
+            name="image_generate",
+            title="New picture",
+            handler=image_ai.run_generate,
+            payload_model=image_ai.ImagePayload,
+            max_attempts=1,
+            dedupe=image_ai.dedupe_key,
+        ),
+        JobKind(
+            name="image_edit",
+            title="Picture edit",
+            handler=image_ai.run_edit,
+            payload_model=image_ai.ImagePayload,
+            max_attempts=1,
+            dedupe=image_ai.dedupe_key,
         ),
         # Started by POST /builds/{id}/publish, which checks the gate and records the publication.
         JobKind(

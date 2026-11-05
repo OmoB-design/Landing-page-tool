@@ -83,14 +83,15 @@ const DESK_BRIDGE = `(function () {
  * change rewrote and scrolls to them (`lp-flash`).
  * B3.2a: a numbered image (`data-lp-img`) outlines on hover and clicking it opens it in the image
  * studio (`lp-image`), even under an overlay; the editor outlines the one it has open
- * (`lp-image-select`). The brand's logo says where to change it instead (`lp-logo`).
+ * (`lp-image-select`). The brand's logo says where to change it instead (`lp-logo`). An image whose
+ * AI picture is being made breathes (`lp-image-busy`, B3.2b).
  * Both bridges fill the template's reading meter as the page scrolls (its own script is off).
  * Talks to the editor only through postMessage; the frame has an opaque origin.
  */
 const WRITE_BRIDGE = `(function () {
   var colour = "Highlight", locked = {}, paused = false, busy = [], flash = [], flashTimer = 0;
   var section = null, hoverSection = null, hoverBlock = null, editing = null, saved = "";
-  var image = null, hoverImage = null;
+  var image = null, hoverImage = null, imageBusy = null;
   var style = document.createElement("style");
   (document.head || document.documentElement).appendChild(style);
   function send(data) { parent.postMessage(data, "*"); }
@@ -147,6 +148,10 @@ const WRITE_BRIDGE = `(function () {
       css += imgSel(hoverImage) + ":not([data-lp-logo]){outline:1.5px dashed " + colour + " !important;outline-offset:-2px !important}";
     if (image)
       css += imgSel(image) + "{outline:2px solid " + colour + " !important;outline-offset:-2px !important}";
+    if (imageBusy)
+      css += imgSel(imageBusy) + "{animation:lp-img-busy 1.6s ease-in-out infinite}" +
+        "@keyframes lp-img-busy{0%,100%{opacity:1}50%{opacity:.45}}" +
+        "@media (prefers-reduced-motion:reduce){" + imgSel(imageBusy) + "{animation:none;opacity:.6}}";
     if (busy.length)
       css += busy.map(blockSel).join(",") + "{animation:lp-busy 1.6s ease-in-out infinite}" +
         "@keyframes lp-busy{0%,100%{opacity:1}50%{opacity:.42}}" +
@@ -277,6 +282,7 @@ const WRITE_BRIDGE = `(function () {
           scrollTo({ top: r.top + scrollY - innerHeight * 0.32, behavior: "smooth" });
       }
     }
+    if (d.type === "lp-image-busy") imageBusy = typeof d.number === "number" ? String(d.number) : null;
     if (d.type === "lp-image-select") {
       image = typeof d.number === "number" ? String(d.number) : null;
       var pic = image && document.querySelector(imgSel(image));

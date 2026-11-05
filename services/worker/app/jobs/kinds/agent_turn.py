@@ -15,9 +15,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import agent, desk, images
+from app import agent, desk, image_ai, images
 from app.db import transaction
-from app.engines import comparison, paragraphs
+from app.engines import comparison, image_edits, paragraphs
 from app.fetch import browser
 from app.jobs.context import JobContext
 from app.jobs.errors import JobInterrupted, UserFacingError
@@ -149,6 +149,20 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
             return picture, None
         return picture, path
 
+    def make_picture(
+        mode: str, number: int, prompt: str, refs: list[str], html: str
+    ) -> tuple[str, UUID | None, bool]:
+        """A picture for Lander (B3.2b): fal, or a free placeholder in mock mode; stored as one of
+        the workspace's assets."""
+        shown = next(i for i in image_edits.page_images(html) if i.number == number)
+        width, height = image_ai.size_for(html, number)
+        with node_context("image_studio"):
+            data, mime, mock = image_ai.make(
+                "edit" if mode == "edit" else "generate", prompt, shown.src, refs, width, height
+            )
+        asset = storage.store_asset(org_id, data, mime)
+        return asset.url, asset.id, mock
+
     work = agent.Work(
         html=html,
         rules=rules_by_key,
@@ -158,6 +172,7 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         looker=look,
         product_photos=product_photos,
         own_styles=own_styles,
+        imager=make_picture,
     )
     target = payload.target
     lines = len(paragraphs.paragraphs(html))
@@ -296,7 +311,13 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
                     images.record(
                         conn, payload.build_id, change["number"], before=change["before"],
                         src=change["src"], source=change["source"],
+                        asset_id=change.get("asset_id"), prompt=change.get("prompt"),
                     )  # fmt: skip
+            if any(c.get("mock") for c in work.changes if c["kind"] == "image"):
+                # A placeholder is on the page: the publish gate says so.
+                conn.execute(
+                    "update builds set mock_images = true where id = %(b)s", {"b": payload.build_id}
+                )
         saved = agent.Step("Saved the page and checked the claims", True)
         reply["steps"].append(saved.as_dict())
         _event(ctx, saved.label, "step", **saved.as_dict())

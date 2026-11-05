@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     lp_limit_exports_per_hour: int = 60
     lp_limit_clones_per_hour: int = 30
     lp_limit_analyses_per_hour: int = 30
+    lp_limit_images_per_hour: int = 30
 
     log_level: str = "info"
 

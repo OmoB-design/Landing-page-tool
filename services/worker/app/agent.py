@@ -89,8 +89,13 @@ which colour they use, change it once with recolor_page; style them one by one o
 don't share one.
 - You can swap an image for one of the product's photos or another image already on the page, \
 and change an image's shape, fit, focus and alt text (read_page lists the images and photos by \
-number). You can't generate new images or edit what's in a picture yet, or write new sections from \
-nothing: say so in a sentence and offer what you can do.
+number).
+- You can make a new picture for an image (generate_image) or change what's in the one it shows \
+(edit_image), with up to three product photos as references so the product looks like the real \
+one. Only when the user asks for new or changed pictures, at most three per request: each costs \
+$0.15 once pictures are live (a free grey placeholder in mock mode), so say in your plan how many \
+you'll make. Describe the picture plainly (subject, setting, light, framing); no words in \
+pictures. You can't write new sections from nothing: say so and offer what you can do.
 - If the user asks whether a change worked or how something looks, look at it (and read the page \
 for words and colours) and say what it shows now; if it didn't take, say so and fix it.
 - Pictures the user attaches are for reference (a look to match, something to point at). You \
@@ -337,6 +342,53 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "generate_image",
+        "description": (
+            "Makes a new picture for an image (its number in read_page) from your description, "
+            "at the image's shape, and puts it on the page. With products (product photo numbers, "
+            "up to 3), the product in the picture looks like the real one. $0.15 a picture once "
+            "pictures are live (a free placeholder in mock mode): only when the user asks for a "
+            "new picture, at most 3 per request. Look at the section after to check."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "number": {"type": "integer", "minimum": 1},
+                "prompt": {"type": "string", "minLength": 3, "maxLength": 600},
+                "products": {
+                    "type": "array",
+                    "items": {"type": "integer", "minimum": 1},
+                    "maxItems": 3,
+                },
+            },
+            "required": ["number", "prompt"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "edit_image",
+        "description": (
+            "Changes what's in the picture an image shows, following your words (say what to "
+            "change; the rest stays), optionally with product photos as references (up to 3) so "
+            "the product looks like the real one. $0.15 a picture once pictures are live (a free "
+            "placeholder in mock mode): only when the user asks, at most 3 per request."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "number": {"type": "integer", "minimum": 1},
+                "prompt": {"type": "string", "minLength": 3, "maxLength": 600},
+                "products": {
+                    "type": "array",
+                    "items": {"type": "integer", "minimum": 1},
+                    "maxItems": 3,
+                },
+            },
+            "required": ["number", "prompt"],
+            "additionalProperties": False,
+        },
+    },
+    {
         "name": "check_claims",
         "description": (
             "Checks wording against the claims rules (health claims, guarantees, superlatives, "
@@ -385,6 +437,8 @@ class Step:
 
 # Renders the page and pictures one part of it: (html, selector, width) → (JPEG, stored path).
 Looker = Callable[[str, str, int], tuple[bytes, str | None]]
+Imager = Callable[[str, int, str, list[str], str], tuple[str, UUID | None, bool]]
+MAX_PICTURES = 3
 VIEWS = {"desktop": 1280, "phone": 390}
 
 
@@ -404,6 +458,10 @@ class Work:
     # Each image's style before the image studio changed it, from the page's oldest kept version
     # (for "original" on an image changed before the studio kept it).
     own_styles: dict[int, str] = field(default_factory=dict)
+    # Makes a picture (B3.2b): (mode, image number, prompt, reference photos, page) → (address,
+    # asset id, whether it's a mock placeholder). None where pictures can't be made.
+    imager: Imager | None = None
+    pictures_made: int = 0
 
     def layout(self) -> list[DeskSection]:
         return desk._layout(self.rules, self.html)
@@ -462,6 +520,8 @@ class Work:
                 return self._replace_image(args)
             if name == "adjust_image":
                 return self._adjust_image(args)
+            if name in ("generate_image", "edit_image"):
+                return self._ai_image("generate" if name == "generate_image" else "edit", args)
             if name == "read_page":
                 return self.outline(), False, Step("Read the page", True)
             if name == "edit_lines":
@@ -667,6 +727,10 @@ class Work:
             if name in ("replace_image", "adjust_image"):
                 verb = "Swapping" if name == "replace_image" else "Adjusting"
                 return "Working on images", f"{verb} image {int(args['number'])}…"
+            if name == "generate_image":
+                return "Making pictures", f"Making a new picture for image {int(args['number'])}…"
+            if name == "edit_image":
+                return "Making pictures", f"Editing the picture in image {int(args['number'])}…"
             if name == "check_claims":
                 return "Checking", "Checking the wording…"
         except Exception:  # a call Claude got wrong: run() says why
@@ -777,6 +841,37 @@ class Work:
         self.changes.append(change)
         detail = ", ".join(parts)
         return f"{label}: {detail}.", False, Step(label, True, change, detail=detail)
+
+    def _ai_image(self, mode: str, args: dict[str, Any]) -> tuple[str, bool, Step]:
+        number = int(args["number"])
+        where = self._image_where(number)
+        if self.imager is None:
+            raise image_edits.ImageEditError("Making pictures isn't available here.")
+        if self.pictures_made >= MAX_PICTURES:
+            raise image_edits.ImageEditError(
+                f"That's {MAX_PICTURES} pictures for this request: the user can ask for more."
+            )
+        prompt = " ".join(str(args.get("prompt") or "").split())[:600]
+        if len(prompt) < 3:
+            raise image_edits.ImageEditError("Say what the picture should show.")
+        refs: list[str] = []
+        for index in args.get("products") or []:
+            if not 1 <= int(index) <= len(self.product_photos):
+                raise image_edits.ImageEditError(f"There's no product photo {index}.")
+            refs.append(self.product_photos[int(index) - 1])
+        src, asset_id, mock = self.imager(mode, number, prompt, refs[:3], self.html)
+        self.html, before = image_edits.set_src(self.html, number, src)
+        self.pictures_made += 1
+        what = "Made a new picture" if mode == "generate" else "Edited the picture"
+        label = f"{what} for image {number} in {where}" + (" (a placeholder)" if mock else "")
+        change = {
+            "kind": "image", "label": label, "number": number, "before": before, "src": src,
+            "source": "generated" if mode == "generate" else "edited", "prompt": prompt,
+            "asset_id": str(asset_id) if asset_id else None, "mock": mock,
+        }  # fmt: skip
+        self.changes.append(change)
+        detail = f"“{prompt if len(prompt) <= 70 else prompt[:67] + '…'}”"
+        return f"{label}. Look at it to check.", False, Step(label, True, change, detail=detail)
 
     def _check_claims(self, args: dict[str, Any]) -> tuple[str, bool, Step]:
         text = _clean(str(args["text"]))[:2000]

@@ -14,6 +14,7 @@ from app import (
     builds,
     clones,
     desk,
+    image_ai,
     images,
     publishing,
     templates,
@@ -49,6 +50,8 @@ from app.models.desk import (
 )
 from app.models.images import (
     ImageAdjust,
+    ImageAIRequest,
+    ImageJob,
     ImageReplace,
     ImageRestore,
     ImageStudio,
@@ -327,6 +330,17 @@ def image_upload(build_id: UUID, body: ImageUpload, user: CurrentUser) -> Upload
     require_org_member(user, body.org_id)
     stored: UploadedImage = _desk_call(images.upload, body.org_id, build_id, body)
     return stored
+
+
+@app.post("/builds/{build_id}/images/{number}/ai")
+def image_ai_start(
+    build_id: UUID, number: int, body: ImageAIRequest, user: CurrentUser
+) -> ImageJob:
+    """A new picture for the image, or the one it shows edited, with AI (B3.2b): a job; the page
+    stays editable while it's made and the picture goes on as one undoable change."""
+    require_org_member(user, body.org_id)
+    started: ImageJob = _desk_call(image_ai.start, body.org_id, build_id, user.id, number, body)
+    return started
 
 
 @app.post("/builds/{build_id}/images/{number}/replace")

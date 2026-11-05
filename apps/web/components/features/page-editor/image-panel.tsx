@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
-import { type DragEvent, useRef, useState } from "react";
+import { type DragEvent, useEffect, useRef, useState } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   ImageOffIcon,
   UploadIcon,
 } from "@/components/ui/icons";
+import { SparkleFigmaIcon } from "@/components/ui/lp-icons";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError, apiFetch } from "@/lib/api/client";
 import {
@@ -25,8 +26,12 @@ import {
   ALT_MAX,
   type ImageChoice,
   type ImageFit,
+  type ImageAiInput,
   type ImageFocus,
+  type ImageJob,
   type ImageRatio,
+  PROMPT_MAX,
+  REFERENCES_MAX,
   type ImageStudio,
   imageStudioSchema,
   uploadedImageSchema,
@@ -58,17 +63,29 @@ const FOCUS_LABELS: [ImageFocus, string][] = [
  * shape, fit and focus, and its alt text; and bring back one of its last five versions. Every
  * change is one undoable step on the page.
  */
+/** A picture being made for an image (B3.2b): how, and since when (for the seconds). */
+export type Making = { mode: ImageJob["mode"]; startedAt: number };
+
 export function ImagePanel({
   buildId,
   number,
   busy,
   onBack,
+  making,
+  onMake,
+  onAdopt,
 }: {
   buildId: string;
   number: number;
   /** A change is saving or Lander is working: changes wait. */
   busy: string | null;
   onBack: () => void;
+  /** The picture being made for this image, if any. */
+  making: Making | null;
+  /** Starts an AI picture for the image. */
+  onMake: (number: number, input: ImageAiInput) => Promise<void>;
+  /** A picture the worker is already making for it (opened after a reload): follow it. */
+  onAdopt: (number: number, job: ImageJob) => void;
 }) {
   const { desk, changeImage } = useDesk();
   const version = desk.build.page_version;
@@ -81,6 +98,11 @@ export function ImagePanel({
     retry: false,
   });
   const data = studio.data;
+  // A picture the worker is already making for this image (the page was reloaded): follow it.
+  const running = data?.making ?? null;
+  useEffect(() => {
+    if (running && !making) onAdopt(number, running);
+  }, [running, making, number, onAdopt]);
 
   return (
     <div className="flex flex-col gap-2 p-4">
@@ -137,6 +159,8 @@ export function ImagePanel({
           data={data}
           busy={busy}
           onChange={changeImage}
+          making={making}
+          onMake={(input) => onMake(number, input)}
         />
       )}
     </div>
@@ -148,11 +172,15 @@ function Studio({
   data,
   busy,
   onChange,
+  making,
+  onMake,
 }: {
   buildId: string;
   data: ImageStudio;
   busy: string | null;
   onChange: ReturnType<typeof useDesk>["changeImage"];
+  making: Making | null;
+  onMake: (input: ImageAiInput) => Promise<void>;
 }) {
   const { image } = data;
   const [uploading, setUploading] = useState(false);
@@ -284,6 +312,15 @@ function Studio({
         </div>
       </Group>
 
+      <MakeWithAi
+        image={data.image}
+        photos={data.product_photos}
+        ai={data.ai}
+        making={making}
+        disabled={waiting}
+        onMake={onMake}
+      />
+
       <Group
         title="Crop and fit"
         action={
@@ -380,6 +417,174 @@ function Studio({
         </Group>
       ) : null}
     </div>
+  );
+}
+
+/** Whole seconds since `from`, ticking while it's set. */
+function useSeconds(from: number | null): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (from === null) return;
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(id);
+  }, [from]);
+  return from === null ? 0 : Math.max(0, Math.floor((now - from) / 1000));
+}
+
+/**
+ * Make with AI (B3.2b, D110): a new picture from a description, or the one shown edited, with up
+ * to three product photos so the product stays true. The price is on the button ($0.15 a picture
+ * once live; a free grey placeholder in mock mode). While it's made the page stays editable; the
+ * picture lands as one undoable change and a new version.
+ */
+function MakeWithAi({
+  image,
+  photos,
+  ai,
+  making,
+  disabled,
+  onMake,
+}: {
+  image: ImageStudio["image"];
+  photos: ImageChoice[];
+  ai: ImageStudio["ai"];
+  making: Making | null;
+  disabled: boolean;
+  onMake: (input: ImageAiInput) => Promise<void>;
+}) {
+  const [mode, setMode] = useState<ImageJob["mode"]>("generate");
+  // A new picture starts from what the image is of (its alt text); an edit starts empty.
+  const [prompts, setPrompts] = useState({ generate: image.alt, edit: "" });
+  const [picked, setPicked] = useState<number[]>([]);
+  const [sending, setSending] = useState(false);
+  const seconds = useSeconds(making?.startedAt ?? null);
+  const prompt = prompts[mode];
+  const price = ai.mock ? "free placeholder" : ai.price ? `$${ai.price}` : null;
+  const locked = disabled || sending || making !== null;
+  const make = async () => {
+    setSending(true);
+    try {
+      await onMake({ mode, prompt: prompt.trim(), product_photos: picked });
+    } finally {
+      setSending(false);
+    }
+  };
+  const toggle = (n: number) =>
+    setPicked((all) =>
+      all.includes(n) ? all.filter((one) => one !== n) : [...all, n],
+    );
+  return (
+    <Group title="Make with AI">
+      <Options
+        label="Make"
+        options={[
+          ["generate", "New picture"],
+          ["edit", "Edit this one"],
+        ]}
+        value={mode}
+        disabled={locked}
+        onPick={setMode}
+      />
+      <label htmlFor="image-ai-prompt" className="sr-only">
+        {mode === "generate"
+          ? "Describe the new picture"
+          : "Say what to change in the picture"}
+      </label>
+      <textarea
+        id="image-ai-prompt"
+        rows={3}
+        value={prompt}
+        maxLength={PROMPT_MAX}
+        disabled={locked}
+        placeholder={
+          mode === "generate"
+            ? "Describe the picture: what’s in it, the setting, the light."
+            : "Say what to change, like “put the bottle on a marble counter”."
+        }
+        onChange={(event) =>
+          setPrompts((all) => ({ ...all, [mode]: event.target.value }))
+        }
+        className="resize-none rounded-md bg-surface-primary px-2.5 py-2 text-type-caption-1 text-heading-01 ring-thin ring-stroke outline-none ring-inset placeholder:text-caption-1 focus-visible:ring-stroke-input-active disabled:opacity-60"
+      />
+      {photos.length ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-type-caption-2 text-heading-06">
+            Keep the product true to (up to {REFERENCES_MAX})
+          </span>
+          <ul className="flex flex-wrap gap-1.5">
+            {photos.map((photo, i) => {
+              const n = i + 1;
+              const on = picked.includes(n);
+              return (
+                <li key={photo.src}>
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    aria-label={`Use ${photo.label} as a reference`}
+                    disabled={
+                      locked || (!on && picked.length >= REFERENCES_MAX)
+                    }
+                    onClick={() => toggle(n)}
+                    className={cn(
+                      "relative flex size-10 items-center justify-center overflow-hidden rounded-md bg-foreground-02 ring-thin ring-stroke outline-none ring-inset focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+                      on && "ring-2 ring-stroke-input-active",
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- a product photo */}
+                    <img
+                      src={photo.src}
+                      alt=""
+                      loading="lazy"
+                      className="size-full object-cover"
+                    />
+                    {on ? (
+                      <span className="absolute top-0.5 right-0.5 flex size-3.5 items-center justify-center rounded-full bg-stroke-input-active text-surface-primary">
+                        <CheckIcon aria-hidden className="size-2.5" />
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+      {making ? (
+        <p
+          role="status"
+          className="flex h-8 items-center gap-2 text-type-caption-1 text-sub-text"
+        >
+          <Spinner className="size-3.5" label="Making" />
+          {making.mode === "generate"
+            ? "Making a new picture…"
+            : "Editing the picture…"}{" "}
+          <span className="tabular-nums">{seconds}s</span>
+        </p>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start"
+          disabled={locked || prompt.trim().length < 3}
+          onClick={() => void make()}
+        >
+          {sending ? (
+            <Spinner className="size-3.5" />
+          ) : (
+            <SparkleFigmaIcon aria-hidden className="size-3.5" />
+          )}
+          {mode === "generate" ? "Make a new picture" : "Edit the picture"}
+          {price ? (
+            <span className="font-normal text-sub-text">· {price}</span>
+          ) : null}
+        </Button>
+      )}
+      <p className="text-type-caption-2 text-heading-06">
+        {ai.mock
+          ? "Mock mode: each picture is a grey placeholder, free. Real pictures need a fal key."
+          : "The page stays editable while it’s made. Undo takes the picture back."}
+      </p>
+    </Group>
   );
 }
 

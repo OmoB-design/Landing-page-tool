@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ImageStudio } from "@/lib/validators/images";
 
-import { ImagePanel } from "./image-panel";
+import { ImagePanel, type Making } from "./image-panel";
 
 const changeImage = vi.fn(async () => true);
 vi.mock("../builds/desk-context", () => ({
@@ -54,16 +54,28 @@ const STUDIO: ImageStudio = {
     { src: `${CDN}/front.jpg`, label: "Product photo 1" },
     { src: `${CDN}/bath.jpg`, label: "Product photo 2" },
   ],
+  ai: { mock: true, price: "0.15" },
+  making: null,
   page_images: [
     { src: `${CDN}/hero.jpg`, label: "Product photo in Hero", number: 2 },
   ],
 };
 
-function renderPanel() {
+const onMake = vi.fn(async () => {});
+
+function renderPanel(making: Making | null = null) {
   const client = new QueryClient();
   return render(
     <QueryClientProvider client={client}>
-      <ImagePanel buildId="b1" number={3} busy={null} onBack={vi.fn()} />
+      <ImagePanel
+        buildId="b1"
+        number={3}
+        busy={null}
+        onBack={vi.fn()}
+        making={making}
+        onMake={onMake}
+        onAdopt={vi.fn()}
+      />
     </QueryClientProvider>,
   );
 }
@@ -130,6 +142,42 @@ describe("image studio (B3.2a)", () => {
     expect(changeImage).toHaveBeenLastCalledWith(3, "restore", {
       version_id: "0b9f8a4e-2d3c-4b1a-8e7f-6a5b4c3d2e10",
     });
+  });
+
+  it("makes a picture with AI from a description and product photos", async () => {
+    renderPanel();
+    await screen.findByText(/Scene in Questions/);
+    const prompt = screen.getByLabelText("Describe the new picture");
+    fireEvent.change(prompt, { target: { value: "A warm bath at dusk" } });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Use Product photo 1 as a reference",
+      }),
+    );
+    const make = screen.getByRole("button", { name: /Make a new picture/ });
+    expect(make.textContent).toContain("free placeholder"); // mock mode
+    fireEvent.click(make);
+    expect(onMake).toHaveBeenLastCalledWith(3, {
+      mode: "generate",
+      prompt: "A warm bath at dusk",
+      product_photos: [1],
+    });
+    const edit = screen.getByRole("button", { name: "Edit this one" });
+    await waitFor(() =>
+      expect((edit as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(edit);
+    expect(
+      screen.getByLabelText("Say what to change in the picture"),
+    ).toBeTruthy();
+  });
+
+  it("shows the picture being made", async () => {
+    renderPanel({ mode: "edit", startedAt: Date.now() });
+    expect(await screen.findByText("Editing the picture…")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /Edit the picture/ }),
+    ).toBeNull();
   });
 
   it("says so when the image has left the page", async () => {

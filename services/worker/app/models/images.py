@@ -43,11 +43,29 @@ class ImageChoice(BaseModel):
     number: int | None = None
 
 
+class ImageAI(BaseModel):
+    """Making pictures with AI (B3.2b): whether it makes free placeholders (mock mode) and what a
+    picture costs once it's live."""
+
+    mock: bool
+    price: str | None
+
+
+class ImageJob(BaseModel):
+    """A picture being made for the image: its job (follow it on /jobs/{id})."""
+
+    job_id: UUID
+    mode: Literal["generate", "edit"]
+
+
 class ImageStudio(BaseModel):
     image: StudioImage
     versions: list[ImageVersion]
     product_photos: list[ImageChoice]
     page_images: list[ImageChoice]
+    ai: ImageAI
+    # A picture already being made for this image, if any.
+    making: ImageJob | None = None
 
 
 class ImageChange(BaseModel):
@@ -85,3 +103,19 @@ class ImageUpload(BaseModel):
 class UploadedImage(BaseModel):
     asset_id: UUID
     url: str
+
+
+PROMPT_MAX = 600
+MAX_REFERENCES = 3
+
+
+class ImageAIRequest(BaseModel):
+    """Make a new picture for the image (generate) or change the one it shows (edit), with up to
+    three of the product's photos as references (their numbers, from 1)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    mode: Literal["generate", "edit"]
+    prompt: str = Field(min_length=3, max_length=PROMPT_MAX)
+    product_photos: list[int] = Field(default_factory=list, max_length=MAX_REFERENCES)

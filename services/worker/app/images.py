@@ -15,7 +15,7 @@ from uuid import UUID
 
 from PIL import Image
 
-from app import desk
+from app import desk, image_ai
 from app.config import get_settings
 from app.db import transaction
 from app.engines import image_edits
@@ -103,6 +103,7 @@ def studio(org_id: UUID, build_id: UUID, number: int) -> ImageStudio:
         photos = _product_photos(conn, org_id, build_id)
         versions = _versions(conn, build_id, number)
         built = own_styles(conn, build_id).get(number)
+        busy = image_ai.making(conn, build_id, number)
     image = _image(html, number)
     # Changed by the studio: it kept the image's own style, or (changed before it kept one) the
     # page's oldest version styled it differently.
@@ -154,6 +155,8 @@ def studio(org_id: UUID, build_id: UUID, number: int) -> ImageStudio:
             ImageChoice(src=url, label=f"Product photo {i}") for i, url in enumerate(photos, 1)
         ],
         page_images=page_images,
+        ai=image_ai.ai_state(),
+        making=busy,
     )
 
 

@@ -76,6 +76,7 @@ export function PageCanvas({
   flash,
   image,
   onImage,
+  busyImage,
 }: {
   buildId: string;
   /** The build's last update as the editor opened (a rebuild), so the frame's address names one
@@ -100,6 +101,8 @@ export function PageCanvas({
   image: number | null;
   /** An image was clicked on the page (null: somewhere else was). */
   onImage: (number: number | null) => void;
+  /** An image whose AI picture is being made: it breathes on the page (B3.2b). */
+  busyImage: number | null;
 }) {
   const { desk, saveTyping, frameVersion } = useDesk();
   const version = desk.build.page_version;
@@ -166,9 +169,9 @@ export function PageCanvas({
   // typing waits for a redraft, and where you were.
   const locked = lockedBlocks(desk.paragraphs);
   const paused = desk.redraft !== null;
-  const setup = useRef({ locked, paused, busyLines, flash, image });
+  const setup = useRef({ locked, paused, busyLines, flash, image, busyImage });
   useEffect(() => {
-    setup.current = { locked, paused, busyLines, flash, image };
+    setup.current = { locked, paused, busyLines, flash, image, busyImage };
   });
   const post = useCallback(
     (message: Record<string, unknown>, to?: Window | null) => {
@@ -221,6 +224,7 @@ export function PageCanvas({
       post({ type: "lp-section-select", key: selected, scroll: false }, to);
       post({ type: "lp-busy", blocks: now.busyLines }, to);
       post({ type: "lp-image-select", number: now.image, scroll: false }, to);
+      post({ type: "lp-image-busy", number: now.busyImage }, to);
       if (
         now.flash &&
         flashed.current !== now.flash.nonce &&
@@ -351,6 +355,9 @@ export function PageCanvas({
   useEffect(() => {
     post({ type: "lp-image-select", number: image, scroll: true });
   }, [post, image]);
+  useEffect(() => {
+    post({ type: "lp-image-busy", number: busyImage });
+  }, [post, busyImage]);
   const busyKey = busyLines.join(",");
   useEffect(() => {
     post({

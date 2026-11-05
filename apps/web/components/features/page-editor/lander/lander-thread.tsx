@@ -14,6 +14,11 @@ import { Button } from "@/components/ui/button";
 import { ShimmerText } from "@/components/ui/shimmer-loader";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   AlertIcon,
   BrushIcon,
   CheckIcon,
@@ -48,7 +53,7 @@ import { ChangeCard, UndoControl, type UndoState } from "./change-card";
 import { ReplyActions } from "./reply-actions";
 import { LanderMark } from "./lander-mark";
 import { RollingLabel } from "./rolling-label";
-import { StreamText } from "./stream-text";
+import { StreamText, plainText } from "./stream-text";
 import type { TurnView } from "./use-lander";
 
 const SUGGESTION_ICONS = {
@@ -346,24 +351,30 @@ function UserBubble({
           ))}
         </ul>
       ) : null}
-      <p className="max-w-4/5 rounded-item bg-foreground-02 px-3 py-2 text-type-body-small text-heading-01">
-        {request || `Give ${target ? target.label : "the page"} fresh words`}
-      </p>
-      <span className="flex items-center gap-2 pr-1">
+      <div className="relative max-w-4/5">
+        <p className="rounded-item bg-foreground-02 px-3 py-2 text-type-body-small whitespace-pre-line text-heading-01">
+          {request || `Give ${target ? target.label : "the page"} fresh words`}
+        </p>
         {onRestore ? (
-          // Quiet until the request is hovered or focused, as the reply's actions are.
-          <button
-            type="button"
-            onClick={onRestore}
-            className="flex h-5 items-center gap-1 rounded-xsm text-type-caption-2 text-sub-text opacity-0 transition-opacity duration-150 outline-none group-hover/request:opacity-100 hover:text-body focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <RestoreIcon aria-hidden className="size-3" />
-            Restore page to here
-          </button>
+          // A round button on the bubble's top-right corner, as Antigravity's agent chat has it;
+          // quiet until the request is hovered or focused.
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label="Restore page to here"
+                onClick={onRestore}
+                className="absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full bg-surface-primary text-icon-system opacity-0 shadow-light ring-thin ring-stroke transition-opacity duration-150 outline-none group-hover/request:opacity-100 hover:text-body focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <RestoreIcon aria-hidden className="size-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Restore page to here</TooltipContent>
+          </Tooltip>
         ) : null}
-        <span className="text-type-caption-2 text-heading-06">
-          {target ? target.label : "Whole page"}
-        </span>
+      </div>
+      <span className="pr-1 text-type-caption-2 text-heading-06">
+        {target ? target.label : "Whole page"}
       </span>
     </motion.div>
   );
@@ -533,9 +544,11 @@ function Reply({
 
       {finished && view.turn.jobId ? (
         <ReplyActions
-          text={[view.plan, ...view.changes.map((c) => c.label), view.closing]
-            .filter(Boolean)
-            .join("\n\n")}
+          text={plainText(
+            [view.plan, ...view.changes.map((c) => c.label), view.closing]
+              .filter(Boolean)
+              .join("\n\n"),
+          )}
           feedback={view.feedback}
           onRate={onRate}
         />

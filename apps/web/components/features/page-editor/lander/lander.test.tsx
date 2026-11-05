@@ -11,6 +11,7 @@ import { FloatingComposer } from "./floating-composer";
 import { LanderComposer } from "./lander-composer";
 import { LanderRecents } from "./lander-recents";
 import { LanderThread } from "./lander-thread";
+import { StreamText, formatted, plainText } from "./stream-text";
 import { ReplyActions } from "./reply-actions";
 import type { TurnView } from "./use-lander";
 
@@ -351,5 +352,28 @@ describe("Lander (B3.1b, B3.1c)", () => {
     ).toBe("true");
     fireEvent.click(other);
     expect(onOpen).toHaveBeenCalledWith("t1");
+  });
+});
+
+describe("Lander's text (owner, 2026-11-05)", () => {
+  it("keeps paragraphs and line breaks, and marks bold, code and bullets", () => {
+    const paragraphs = formatted(
+      "I fitted the **byline frame**.\n\nThe pill is an `img`:\n- cropped\n- rounded",
+    );
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0]?.[0]).toEqual([
+      { text: "I fitted the ", mark: "plain" },
+      { text: "byline frame", mark: "bold" },
+      { text: ".", mark: "plain" },
+    ]);
+    expect(paragraphs[1]).toHaveLength(3);
+    expect(paragraphs[1]?.[0]?.[1]).toEqual({ text: "img", mark: "code" });
+    expect(paragraphs[1]?.[1]?.[0]?.text).toBe("• cropped");
+    expect(plainText("Done **now**.\n\nNext `x`.")).toBe(
+      "Done now.\n\nNext x.",
+    );
+    wrap(<StreamText text={"One.\n\nTwo **bold**."} />);
+    expect(screen.getAllByText("bold").length).toBeGreaterThan(0);
+    expect(document.querySelectorAll("p[aria-hidden]").length).toBe(2);
   });
 });
