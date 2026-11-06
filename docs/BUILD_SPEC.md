@@ -665,6 +665,7 @@ Turns a build into native theme sections where every text node and image is an i
 9. Result: `{version, page_id, sections, url, admin_url, editor_url, note, structure_mode}` recorded in `publications`.
 - Shopify caps theme file keys at 50 characters: shorten long slugs to 15 characters + 6-character hash.
 - Limits: 24 sections per template, 600 blocks per section (excess stays static, reported as `static_overflow`), section names ≤ 25 characters.
+- *B4.1 (D120):* the editor map is worked out from our markers (no AI): `templates.editor_map` v1 (sections by `data-lp-section` key with names, role rules, parts kept whole), brought up to date with the template's sections when read; `engines/editor_map.plan` is the dry run on any page (sections, text blocks from the editor's lines with role and Shopify setting, image blocks with role, what stays static, limits), `report` sums it up for the template editor's Shopify editing card; `app.cli.editor_map` checks and saves every template's map. *Proposed for B4.2 (D121):* theme files go up through the store's free Theme Access password with Shopify CLI instead of an exemption.
 
 ---
 

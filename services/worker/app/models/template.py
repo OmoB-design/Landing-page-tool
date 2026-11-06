@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.editor_map import MapOverrides, MapReport
+
 SectionRole = Literal[
     "hero", "problem", "mechanism", "benefits", "ingredients", "social_proof", "testimonials",
     "comparison", "offer", "guarantee", "faq", "cta", "footer_cta", "other",
@@ -73,6 +75,9 @@ class TemplateManifest(BaseModel):
     sections: list[SectionSpec] = Field(min_length=1)
     # "retired" hides a template from the gallery; builds that used it keep working.
     status: Literal["active", "retired"] = "active"
+    # Rules for its Shopify editor map set by hand (B4.1, D120): section names, roles, parts kept
+    # whole. The rest is worked out from the page's markers.
+    editor_map: MapOverrides | None = None
 
 
 # ── Section editor (BUILD_SPEC §8.3, B1.1b) ───────────────────────────────────
@@ -215,3 +220,5 @@ class TemplateEditorState(BaseModel):
     look: TemplateLook
     words: int
     read_minutes: int
+    # What would become editable in Shopify (B4.1, D120): the "Shopify editing" card.
+    shopify: MapReport | None = None

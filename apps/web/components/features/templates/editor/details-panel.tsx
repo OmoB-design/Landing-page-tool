@@ -23,6 +23,7 @@ import {
 } from "@/lib/validators/template";
 
 import { QUIET } from "./analysis-bar";
+import { ShopifyCard } from "./shopify-card";
 
 const PLATFORMS: Record<string, string> = {
   shopify: "Shopify",
@@ -35,7 +36,8 @@ const PLATFORMS: Record<string, string> = {
 };
 
 /** The Details tab: name and description, where the template came from (and, for a clone, its
- * analysis), and its saved versions (the newest 12) with Restore. */
+ * analysis), what Shopify editing would cover (B4.1), and its saved versions (the newest 12) with
+ * Restore. */
 export function DetailsPanel({
   state,
   pending,
@@ -179,6 +181,8 @@ export function DetailsPanel({
           </div>
         ))}
       </dl>
+
+      {state.shopify ? <ShopifyCard map={state.shopify} /> : null}
 
       <section className="flex flex-col gap-3">
         <h2 className="flex items-center gap-2 text-type-body-small font-medium">

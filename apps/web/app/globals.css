@@ -270,6 +270,10 @@
   --color-stroke-input-active: var(--grey-850);
   --color-stroke-input-negative: var(--red-700);
   /* Button */
+  /* The review desk's Edit page (owner, 2026-11-06): black in light, white in dark. */
+  --color-button-ink: var(--grey-900);
+  --color-button-ink-hover: var(--grey-800);
+  --color-button-ink-text: var(--base-white);
   /* The blue button in both themes (Figma: Button Primary States). Its two soft drop shadows show
      in dark only (owner, 2026-10-12), so their colours are clear in light. */
   --color-button-primary: var(--button-blue-fill);
@@ -588,6 +592,9 @@
     inset 0 0 4px 0 rgb(62 62 62 / 0.25), 0 4px 4px 0 rgb(0 0 0 / 0.25);
   --template-shot-line: var(--color-stroke);
   --template-shot-shadow: 0 4.92px 10.1px 0 rgb(6 6 6 / 0.15);
+  --color-button-ink: var(--base-white);
+  --color-button-ink-hover: var(--grey-50);
+  --color-button-ink-text: var(--grey-900);
   --color-button-primary-drop-soft: rgb(186 186 186 / 0.25);
   --color-button-primary-drop-deep: rgb(0 0 0 / 0.15);
   --color-tint-green: var(--green-950);
@@ -790,10 +797,6 @@
   /* "Work with Buddy"'s hint (owner, 2026-11-06: about 15 % stronger than Caption-1): Caption-1
      moved 15 % toward the text colour, worked out where it's used so it follows the bar's own
      light or dark look (.theme-light / .theme-dark). */
-  /* A white button in both themes (owner, 2026-11-06: the review desk's Edit page). */
-  --color-button-white: var(--base-white);
-  --color-button-white-hover: var(--grey-50);
-  --color-button-white-text: var(--grey-900);
   --color-bar-hint: color-mix(
     in srgb,
     var(--color-caption-1) 85%,

@@ -54,6 +54,35 @@ export const templateAnalysisSchema = z.object({
 });
 export type TemplateAnalysis = z.infer<typeof templateAnalysisSchema>;
 
+/** A template's Shopify editor map, summed up (B4.1, D120). */
+export const shopifyMapSchema = z.object({
+  sections: z.array(
+    z.object({
+      key: z.string(),
+      name: z.string(),
+      texts: z.number(),
+      images: z.number(),
+      media: z.number().default(0),
+      /** Parts outside the marked sections, gathered into a section of their own. */
+      loose: z.boolean().default(false),
+    }),
+  ),
+  texts: z.number(),
+  images: z.number(),
+  media: z.number().default(0),
+  /** Texts and pictures that can't be edited in Shopify (they still show on the page). */
+  static: z.number(),
+  unclear: z.number(),
+  issues: z.array(
+    z.object({
+      level: z.enum(["error", "warning", "info"]),
+      message: z.string(),
+    }),
+  ),
+  ready: z.boolean(),
+});
+export type ShopifyMap = z.infer<typeof shopifyMapSchema>;
+
 export const templateEditorSchema = z.object({
   template: z.object({
     id: z.string(),
@@ -102,6 +131,8 @@ export const templateEditorSchema = z.object({
   }),
   words: z.number(),
   read_minutes: z.number(),
+  /** What would become editable in Shopify (B4.1, D120): the "Shopify editing" card. */
+  shopify: shopifyMapSchema.nullish().catch(null),
 });
 export type TemplateEditorState = z.infer<typeof templateEditorSchema>;
 

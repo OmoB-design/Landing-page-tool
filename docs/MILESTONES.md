@@ -131,7 +131,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 
 ## M4 — Editable Shopify publish
 
-- B4.1 Editor map tooling (backfill, validation).
+- B4.1 Editor map tooling (backfill, validation). *Done 2026-11-06 (D120): the map from our markers (no AI), the dry run and its check, maps for every template saved, the template editor's Shopify editing card. B4.2 to write theme files through the store's Theme Access password (D121, proposed; no paid Shopify app).*
 - B4.2 Emit files, size guards, two-batch upload, versioned draft pages.
 - B4.3 Parity simulator with retry and coarse fallback.
 

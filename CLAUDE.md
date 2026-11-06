@@ -214,6 +214,9 @@ uv run playwright install chromium                 # once per machine (brand fet
 uv run python -m app.cli.seed_library [slug] [--no-thumbnails]
                                                    # load templates/library/* into storage + DB, upload assets/ to the
                                                    # public library-assets bucket, render thumbnails (= pnpm seed:library)
+uv run python -m app.cli.editor_map [slug|id ...] [--write]
+                                                   # Shopify editor maps (B4.1, D120): the dry run per template (sections,
+                                                   # editable texts and pictures, issues); --write saves each map
 uv run python -m app.cli.import_template <url> <slug> --type <type> --name "<name>"
                                                    # import a live site as a draft library template (template-onboarding skill)
 uv run python -m app.cli.smoke_build --email <you> --brand <name> [--product <name|handle>] [--template <slug>]

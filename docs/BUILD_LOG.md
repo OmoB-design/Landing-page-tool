@@ -1179,3 +1179,26 @@ as new entries.
 - **Owner actions requested:** add `LP_SHARE_SECRET` to the Railway worker API service (copy the value from `services/worker/.env`); keep Vercel on Standard Protection.
 - **Owner confirmed:** no
 - **Next:** M4 (B4.1 editor map tooling), or the deferred items (ad readiness O11, fal image tests).
+
+### B4.1 — The Shopify editor map
+- **Status:** complete (owner: "go", 2026-11-06; not yet committed)
+- **Date:** 2026-11-06
+- **Summary:** Each template now has a **Shopify editor map**, the plan M4 will publish from. It says how the page divides into Shopify sections (one per marked section, named from its label in 25 characters or fewer) and which texts and pictures become blocks people can edit in Shopify's theme editor, each with a role ("Headline", "Price", "Button", "Product picture"…). It's worked out from the markers our templates already carry, with **no AI**. A **dry run** works on any page (template or build) and checks it against Shopify's limits: 24 sections, 600 blocks a section, names, file name lengths. It also reports what stays as it is (outside every section, inside forms or embedded media) and a page with no sections at all. Maps are saved for every template (library and workspaces; 6 of 7 ready, the 7th a never-analysed test clone). New ones get theirs when seeded, copied or analysed. The template editor's **Details** tab shows **Shopify editing**: the totals, any issues, and each section's editable texts and pictures. The B4.2 route without the paid Shopify app (Shopify's free Theme Access password with Shopify CLI) is recorded as D121, proposed.
+- **Key files:** worker `app/engines/editor_map.py` (new: derive, effective, plan, report, file names), `app/models/editor_map.py` (new), `app/cli/editor_map.py` (new), `app/templates.py` (the card's report; the map copied with a library template), `app/models/template.py` (`TemplateManifest.editor_map`, `TemplateEditorState.shopify`), `app/cli/seed_library.py`, `app/jobs/kinds/template_analyze.py`, `tests/test_editor_map.py` (new, 13), `tests/test_template_editor.py`; web `components/features/templates/editor/shopify-card.tsx` (new) and its test (2), `details-panel.tsx`, `lib/validators/template.ts`; docs D120, D121 (proposed), BUILD_SPEC §12.6, MILESTONES, DESIGN, CLAUDE.md §5, the template-onboarding skill (`data-lp-static`, `editor_map` in template.json).
+- **Schema changes:** none (`templates.editor_map` already existed). **New dependencies:** none.
+- **Decisions:** D120; D121 proposed for B4.2.
+- **Deviations from the plan:** a line inside another line (a bold phrase that the line numbering counts on its own, in a div with words of its own) is taken into it as one rich block. Leaving it static would have frozen the listicle's main copy.
+- **Verification:** `pnpm typecheck` (tsc, mypy 199 files), `pnpm lint` (eslint, token checks, Prettier, ruff), vitest 254 passed (52 files); worker editor map, template editor, analysis and import tests 45 passed (13 + 32). `python -m app.cli.editor_map --write` over the database: library advertorial-fixture 10 sections, 43 texts, 6 pictures; wear-test 14, 114, 18; listicle 16, 63, 18 (8 parts outside sections); top5-ranking 10, 94, 5; the owner's cardio clone 8, 135, 18. The card was checked in the browser on the owner's cardio template, in light and dark.
+- **Owner actions requested:** none now. At B4.2: install Shopify's free Theme Access app on the test store and create one password.
+- **Follow-up (owner, same day: "what if I want them edited in Shopify?"):** everything on a page is now editable in Shopify:
+  - parts outside the marked sections get Shopify sections of their own (named "Page top" or "After <section>", marked **Added** on the card);
+  - words in forms are blocks;
+  - videos and embeds are media blocks whose address can be changed;
+  - a section with more than 600 blocks becomes several Shopify sections.
+  - Only dropdown options, canvases and parts a template marks `data-lp-static` stay fixed. The card says how many "can't be edited in Shopify", and that they still show on the page and are changed in LP.
+  - Saved maps keep only rules set by hand; the built-in ones apply when a map is used, and the maps were saved again.
+  - Now: the owner's cardio template 10 sections, 137 texts, 18 pictures; library wear-test 15, 114, 19; listicle 17, 68, 21. None of them has anything that can't be edited.
+  - Tests: editor map 14, the card 2, the template editor's state test.
+- **Owner confirmed:** no
+- **Follow-up (owner, same day):** the review desk header shows **Edit page black in light mode** (white in dark; new `button-ink` tokens, the white-only button tokens gone), and the order is now the status and Approve first, a rule, Edit page, Live and Publish, a rule, **Client link with Export**.
+- **Next:** B4.2, emit the theme files and publish an editable draft through Theme Access.

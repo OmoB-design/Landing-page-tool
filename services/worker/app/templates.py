@@ -10,8 +10,10 @@ from uuid import UUID
 from psycopg.types.json import Jsonb
 
 from app.db import transaction
+from app.engines import editor_map
 from app.engines.sections import DUPLICATE_KEY, apply_layout, duplicate_section, section_order
 from app.engines.template_outline import checks, look, outline, read_minutes
+from app.models.editor_map import MapReport
 from app.models.template import (
     DuplicateAction,
     EditorAnalysis,
@@ -97,9 +99,10 @@ def use_library_template(org_id: UUID, template_id: UUID, user_id: UUID | None) 
             """
             insert into templates (id, org_id, origin, status, slug, name, description, type,
                                    parent_template_id, html_path, instructions, source_palette,
-                                   version, created_by)
+                                   editor_map, version, created_by)
             values (%(id)s, %(o)s, 'owned', 'active', %(slug)s, %(name)s, %(description)s,
-                    %(type)s, %(parent)s, %(path)s, %(instructions)s, %(palette)s, 1, %(user)s)
+                    %(type)s, %(parent)s, %(path)s, %(instructions)s, %(palette)s, %(map)s, 1,
+                    %(user)s)
             returning id, slug, name, type, version
             """,
             {
@@ -108,6 +111,8 @@ def use_library_template(org_id: UUID, template_id: UUID, user_id: UUID | None) 
                 "type": library["type"], "parent": library["id"], "path": html_path,
                 "instructions": Jsonb(library["instructions"]),
                 "palette": Jsonb(library["source_palette"]), "user": user_id,
+                # Its Shopify editor map comes along (B4.1, D120).
+                "map": Jsonb(library["editor_map"]) if library["editor_map"] else None,
             },
         ).fetchone()  # fmt: skip
         assert row is not None
@@ -141,6 +146,7 @@ def _load(conn: Any, org_id: UUID, template_id: UUID, *, lock: bool = False) -> 
         select t.id, t.org_id, t.name, t.description, t.type, t.version, t.html_path,
                t.instructions, t.updated_at, p.name as parent_name, t.origin, t.source_url,
                t.source_host, t.source_name, t.platform, t.verdict, t.blueprint, t.reviewed_at,
+               t.slug, t.editor_map,
                coalesce(nullif(pr.display_name, ''), u.raw_user_meta_data ->> 'full_name',
                         u.email) as reviewed_by_name
         from templates t
@@ -258,7 +264,14 @@ def _state(
         look=look(html),
         words=words,
         read_minutes=read_minutes(words),
+        shopify=_shopify(template, rows, html),
     )
+
+
+def _shopify(template: dict[str, Any], rows: list[dict[str, Any]], html: str) -> MapReport:
+    """What would become editable in Shopify (B4.1, D120), for the editor's card."""
+    current = editor_map.effective(template["editor_map"], rows)
+    return editor_map.report(editor_map.plan(html, current, template=True), template["slug"])
 
 
 def editor_state(org_id: UUID, template_id: UUID) -> TemplateEditorState:

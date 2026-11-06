@@ -151,24 +151,12 @@ async function Build({
             : undefined
         }
         actions={
-          // Figma Review desk: Edit page (white, owner 2026-11-06), a rule, the status then
-          // Approve, a rule, Export, a rule (then Jobs and Notifications), 10 px apart.
+          // Figma Review desk, as the owner ordered it (2026-11-06): the status then Approve, a rule,
+          // Edit page (black in light), Live and Publish, a rule, Client link with Export, a rule
+          // (then Jobs and Notifications), 10 px apart.
           <div className="flex items-center gap-2.5">
             {desk ? (
               <>
-                {/* B3.1a: the page editor, full screen. */}
-                <Button
-                  asChild
-                  variant="outline"
-                  size="compact"
-                  className="bg-button-white px-3 text-button-white-text hover:bg-button-white-hover aria-expanded:bg-button-white-hover"
-                >
-                  <Link href={`/pages/${build.id}/editor`}>
-                    <RenameIcon aria-hidden className="size-3.5" />
-                    Edit page
-                  </Link>
-                </Button>
-                <HeaderDivider />
                 <StatusActions
                   fixCount={
                     build.report
@@ -178,7 +166,19 @@ async function Build({
                       : 0
                   }
                 />
-                <ClientLink />
+                <HeaderDivider />
+                {/* B3.1a: the page editor, full screen. */}
+                <Button
+                  asChild
+                  variant="outline"
+                  size="compact"
+                  className="bg-button-ink px-3 text-button-ink-text ring-0 hover:bg-button-ink-hover aria-expanded:bg-button-ink-hover"
+                >
+                  <Link href={`/pages/${build.id}/editor`}>
+                    <RenameIcon aria-hidden className="size-3.5" />
+                    Edit page
+                  </Link>
+                </Button>
                 {publish ? (
                   <>
                     <LiveButton />
@@ -187,6 +187,7 @@ async function Build({
                   </>
                 ) : null}
                 <HeaderDivider />
+                <ClientLink />
               </>
             ) : null}
             <ExportButton

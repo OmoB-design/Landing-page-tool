@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from app import templates
 from app.db import transaction
 from app.engines import analysis
+from app.engines import editor_map as engine_map
 from app.engines.colors import parse_color, to_hex
 from app.jobs.context import JobContext
 from app.jobs.errors import UserFacingError
@@ -234,15 +235,11 @@ def run(ctx: JobContext) -> dict[str, Any]:
         notes=f"Drafted by analysis ({blueprint.ai}, {blueprint.model}) on "
         f"{blueprint.analysed_at:%Y-%m-%d}. Review before building.",
     )
-    editor_map = {
-        "version": 1,
-        "ai": blueprint.ai,
-        "model": blueprint.model,
-        "sections": [
-            {"match": f'[data-lp-section="{r["key"]}"]', "name": r["label"]} for r in rows
-        ],
-        "roles": [{"match": f'[data-lp-section="{r["key"]}"]', "role": r["role"]} for r in rows],
-    }
+    # Its Shopify editor map (B4.1, D120), from the sections it marked.
+    editor_map = engine_map.derive(
+        [{"key": r["key"], "role": r["role"], "label": r["label"]} for r in rows],
+        source="analysis",
+    ).model_dump()
     ctx.progress(
         f"Marked {len(rows)} sections"
         + (f" ({stats['wrapped']} grouped)" if stats["wrapped"] else ""),

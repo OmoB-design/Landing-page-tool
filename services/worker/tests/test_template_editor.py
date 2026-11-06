@@ -160,6 +160,15 @@ def test_editor_state_describes_the_template(org_copy: tuple[uuid.UUID, uuid.UUI
     assert not state.can_undo and not state.can_redo
     assert state.words > 0 and state.read_minutes >= 1
     assert state.look.colours and state.sections[2].title
+    # What would become editable in Shopify (B4.1, D120); the map came along with the copy.
+    assert state.shopify is not None and state.shopify.ready
+    assert [s.key for s in state.shopify.sections if not s.loose] == keys(state)
+    assert state.shopify.texts > 0
+    with transaction() as conn:
+        row = conn.execute(
+            "select editor_map from templates where id = %(t)s", {"t": template_id}
+        ).fetchone()
+    assert row is not None and row["editor_map"]["version"] == 1
 
 
 @needs_db

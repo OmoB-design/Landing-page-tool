@@ -16,6 +16,7 @@ from pathlib import Path
 from psycopg.types.json import Jsonb
 
 from app.db import transaction
+from app.engines import editor_map
 from app.engines.html import parse
 from app.engines.sections import top_level_sections
 from app.models.template import TemplateInstructions, TemplateManifest
@@ -127,6 +128,12 @@ def seed(folder: Path, *, thumbnails: bool = True) -> str:
         "instructions": Jsonb(instructions.model_dump()),
         "source_palette": Jsonb(manifest.source_palette.model_dump(exclude_none=True)),
         "status": manifest.status,
+        # What becomes editable in Shopify (B4.1, D120), from its sections and any rules by hand.
+        "editor_map": Jsonb(
+            editor_map.derive(
+                [sec.model_dump() for sec in manifest.sections], manifest.editor_map
+            ).model_dump()
+        ),
     }
     with transaction() as conn:
         row = conn.execute(
@@ -137,10 +144,11 @@ def seed(folder: Path, *, thumbnails: bool = True) -> str:
             row = conn.execute(
                 """
                 insert into templates (org_id, origin, slug, name, type, description, html_path,
-                                       thumb_path, instructions, source_palette, status)
+                                       thumb_path, instructions, source_palette, status,
+                                       editor_map)
                 values (null, 'owned', %(slug)s, %(name)s, %(type)s, %(description)s,
                         %(html_path)s, %(thumb_path)s, %(instructions)s, %(source_palette)s,
-                        %(status)s)
+                        %(status)s, %(editor_map)s)
                 returning id, version
                 """,
                 fields,
@@ -153,7 +161,7 @@ def seed(folder: Path, *, thumbnails: bool = True) -> str:
                   description = %(description)s, html_path = %(html_path)s,
                   thumb_path = %(thumb_path)s, instructions = %(instructions)s,
                   source_palette = %(source_palette)s, status = %(status)s,
-                  version = version + %(bump)s
+                  editor_map = %(editor_map)s, version = version + %(bump)s
                 where id = %(id)s
                 returning id, version
                 """,
