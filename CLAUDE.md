@@ -124,6 +124,7 @@ lp-platform/
 │       │   ├── (editor)/templates/[templateId]/ ← full-screen section editor (no workspace shell)
 │       │   ├── (studio)/pages/[buildId]/editor/ ← full-screen page editor with Lander (B3.1a, B3.1b; canvas only)
 │       │   ├── preview/[buildId]/route.ts ← serves built HTML into a sandboxed iframe
+│       │   ├── review/[token]/        ← the client review link (B3.6): no sign-in; html/route.ts serves the approved page sandboxed
 │       │   └── api/                   ← thin route handlers that call the worker API
 │       ├── components/
 │       │   ├── ui/                    ← shadcn primitives (replaced from Figma later)
@@ -241,9 +242,12 @@ pnpm gen:types                   # regenerate apps/web/types/database.ts from th
 # Optional Docker stack (not needed): pnpm db:local:start | db:local:stop | db:local:reset.
 
 # Vercel: the website (D75). It starts jobs on the Railway worker through WORKER_API_URL (D77).
-# Repo root is linked to the project lp-platform (omob-design's projects). Viewing needs a Vercel login, or a
-# 23-hour share link. Git: origin = github.com/OmoB-design/Landing-page-tool (private). A push to main deploys
-# Production (lp-platform-omob-designs-projects.vercel.app); other branches deploy previews. Push only on the owner's go.
+# Repo root is linked to the project lp-platform (omob-design's projects). Deployment Protection is Standard: the
+# production domain https://lp-platform-tan.vercel.app is public (the app's own sign-in guards it; client review
+# links use it), while previews and generated addresses (lp-platform-omob-designs-projects.vercel.app) need a Vercel
+# login or a 23-hour share link. Git: origin = github.com/OmoB-design/Landing-page-tool (private). A push to main
+# deploys Production; other branches deploy previews. Push only on the owner's go. (SSH to GitHub can time out on
+# some networks: `git -c credential.helper='!gh auth git-credential' push https://github.com/OmoB-design/Landing-page-tool.git main`.)
 vercel deploy --target preview   # preview build on Vercel's servers; prints the URL. Always pass --target preview:
                                  # the CLI made the first deploy Production. Never production without the owner's go
 

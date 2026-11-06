@@ -7,6 +7,7 @@ import { TruncatedTitle } from "@/components/app/truncated-title";
 import { Button } from "@/components/ui/button";
 import { MorphText } from "@/components/ui/text-morph";
 import { SectionsCloseIcon, SectionsOpenIcon } from "@/components/ui/icons";
+import { ViewportSwitch } from "@/components/app/viewport-switch";
 import {
   BackArrowFigmaIcon,
   RedoFigmaIcon,
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-import { DESKTOP_WIDTH, type Viewport, ViewportSwitch } from "./page-canvas";
+import { DESKTOP_WIDTH, type Viewport } from "./page-canvas";
 
 /**
  * The page editor's top bar (B3.1b, D105; as the template editor's): back to the review desk, the

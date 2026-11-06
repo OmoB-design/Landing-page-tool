@@ -53,6 +53,12 @@ import {
   qaStateSchema,
 } from "@/lib/validators/qa";
 import {
+  type ReviewInfo,
+  type ShareState,
+  reviewInfoSchema,
+  shareStateSchema,
+} from "@/lib/validators/share";
+import {
   type IntegrationsState,
   type PublishingState,
   type ShopifyTemplate,
@@ -327,6 +333,97 @@ export function changeBuildDesk(
     deskStateSchema,
     "Could not save the change.",
   );
+}
+
+// ── The client review link (worker /builds/{id}/share, /review/{token}; B3.6, D119) ──
+
+function sharePath(orgId: string, buildId: string, withOrg: boolean): string {
+  const path = `/builds/${encodeURIComponent(buildId)}/share`;
+  return withOrg ? `${path}?org_id=${encodeURIComponent(orgId)}` : path;
+}
+
+/** The page's client link and what it shows. */
+export function getShare(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<ShareState> {
+  return callWorker(
+    "GET",
+    sharePath(orgId, buildId, true),
+    accessToken,
+    undefined,
+    shareStateSchema,
+    "Couldn't load the client link.",
+  );
+}
+
+/** Makes the page's client link (or gives the live one). */
+export function makeShare(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<ShareState> {
+  return callWorker(
+    "POST",
+    sharePath(orgId, buildId, false),
+    accessToken,
+    { org_id: orgId },
+    shareStateSchema,
+    "Couldn't make the client link.",
+  );
+}
+
+/** Turns the page's client link off at once. */
+export function turnOffShare(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<ShareState> {
+  return callWorker(
+    "DELETE",
+    sharePath(orgId, buildId, true),
+    accessToken,
+    undefined,
+    shareStateSchema,
+    "Couldn't turn the link off.",
+  );
+}
+
+/** The client's page needs no sign-in: these carry only the link's token. Null when the link
+ * isn't available (not one, expired or turned off). */
+async function fromReviewLink(
+  token: string,
+  suffix: string,
+): Promise<Response | null> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `${workerUrl}/review/${encodeURIComponent(token)}${suffix}`,
+      { cache: "no-store", signal: AbortSignal.timeout(10_000) },
+    );
+  } catch {
+    throw new WorkerError(UNREACHABLE, 503);
+  }
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    const json: unknown = await response.json().catch(() => null);
+    throw new WorkerError(
+      detailMessage(json) ?? "Couldn't open the page.",
+      response.status,
+    );
+  }
+  return response;
+}
+
+export async function getReviewInfo(token: string): Promise<ReviewInfo | null> {
+  const response = await fromReviewLink(token, "");
+  return response ? reviewInfoSchema.parse(await response.json()) : null;
+}
+
+export async function getReviewHtml(token: string): Promise<string | null> {
+  const response = await fromReviewLink(token, "/html");
+  return response ? response.text() : null;
 }
 
 // ── The preview check (worker /builds/{id}/qa, B3.3a, D111) ──────────────────

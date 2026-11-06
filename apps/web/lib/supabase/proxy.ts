@@ -4,7 +4,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { publicEnv } from "@/lib/env";
 import type { Database } from "@/types/database";
 
-const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth"];
+// "/review": the client review link (B3.6, D119), opened by clients without an account; the link's
+// token is what lets them in, checked by the worker.
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth", "/review"];
 // Review pages that hold no data and render no account (D101): open in development only, so the
 // Stageshow filming tool, which can't sign in, can reach them. They don't exist in production.
 const DEV_PUBLIC_PATHS =

@@ -217,7 +217,4 @@ def finished(user: DbUser) -> Iterator[dict[str, Any]]:
             },
         )  # fmt: skip
     yield {"id": str(build_id), "org_id": str(user.org_id)}
-    storage.remove(
-        "builds",
-        [path] + [f"{user.org_id}/{build_id}/pages/v{n}.html" for n in range(2, 30)],
-    )
+    storage.remove_folder("builds", f"{user.org_id}/{build_id}")  # its pages and approved copies

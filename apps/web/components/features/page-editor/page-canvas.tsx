@@ -4,8 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toast } from "@/components/app/toaster";
-import { Button } from "@/components/ui/button";
-import { MonitorIcon, PhoneIcon } from "@/components/ui/icons";
+import type { Viewport } from "@/components/app/viewport-switch";
 import { TYPING_PAUSE_MS, textToSave } from "@/lib/pages/editor";
 import { cn } from "@/lib/utils";
 import type { FormatRange, TextFormat } from "@/lib/validators/desk";
@@ -20,7 +19,7 @@ import {
 } from "./format-toolbar";
 import { BUDDY_POINTER } from "./lander/lander-mark";
 
-export type Viewport = "desktop" | "phone";
+export type { Viewport } from "@/components/app/viewport-switch";
 
 /**
  * Show on page (B3.1b): lines to flash, once per `nonce`, scrolling the first into view, on the
@@ -665,44 +664,5 @@ export function PageCanvas({
         </div>
       </div>
     </section>
-  );
-}
-
-/** Desktop / Phone (as the template editor's preview, Figma 739:16891), now in the top bar. */
-export function ViewportSwitch({
-  value,
-  onChange,
-}: {
-  value: Viewport;
-  onChange: (viewport: Viewport) => void;
-}) {
-  return (
-    <div
-      role="group"
-      aria-label="Page width"
-      className="flex items-center rounded-md bg-foreground-03 p-0.5 ring-hair ring-stroke ring-inset dark:bg-foreground-01 dark:ring-0"
-    >
-      {(
-        [
-          ["desktop", "Desktop", MonitorIcon],
-          ["phone", "Phone", PhoneIcon],
-        ] as const
-      ).map(([id, label, ViewIcon]) => (
-        <Button
-          key={id}
-          variant="ghost"
-          size="sm"
-          aria-pressed={value === id}
-          onClick={() => onChange(id)}
-          className="group/view h-6.5 gap-1 rounded-sm px-1.5 text-type-caption-1 font-medium text-heading-02 hover:bg-transparent hover:text-body aria-pressed:bg-surface-primary dark:text-sub-text dark:aria-pressed:bg-letter-paper dark:aria-pressed:text-body dark:aria-pressed:shadow-sm"
-        >
-          <ViewIcon
-            aria-hidden
-            className="size-3.5 text-icon-system group-aria-pressed/view:text-stroke-input-active"
-          />
-          <span className="sr-only xl:not-sr-only">{label}</span>
-        </Button>
-      ))}
-    </div>
   );
 }

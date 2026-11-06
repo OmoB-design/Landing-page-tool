@@ -4,7 +4,7 @@
 -- Run with: pnpm test:db  (runs on the linked cloud project; everything rolls back at the end)
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(36);
 
 -- Two sign-ups. The on_auth_user_created trigger runs exactly as for a real sign-up.
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -57,6 +57,8 @@ from builds b where b.key = 'LUM-1';
 -- B3.5b: a batch's folder colour, written by the worker.
 insert into build_batches (org_id, folder_color)
 select b.org_id, 'blue' from builds b where b.key = 'LUM-1';
+insert into share_links (org_id, build_id)
+select b.org_id, b.id from builds b where b.key = 'LUM-1';
 
 create temp table ids on commit drop as
 select (select org_id from org_members
@@ -96,6 +98,13 @@ select throws_ok(
      select ada_org, ada_build, 3, 'https://x.test', 'pulled', 'Brand C' from ids $$,
   '42501', null, 'members cannot write competitors (the worker pulls them)');
 select is((select count(*)::int from build_batches), 1, 'Ada sees her batch''s folder colour');
+select is((select count(*)::int from share_links), 1, 'Ada sees her page''s client link');
+select throws_ok(
+  $$ insert into share_links (org_id, build_id) select ada_org, ada_build from ids $$,
+  '42501', null, 'members cannot make a client link directly (the worker does)');
+select is_empty(
+  $$ update share_links set revoked_at = null, expires_at = now() + interval '1 year' returning id $$,
+  'members cannot change a client link directly (the worker does)');
 select is_empty(
   $$ update build_batches set folder_color = 'red' returning id $$,
   'members cannot change a folder''s colour directly (the worker does)');
@@ -110,6 +119,7 @@ select is((select string_agg(name, ',') from orgs), 'bob', 'Bob sees only his ow
 select is((select count(*)::int from brands), 0, 'Bob cannot see Ada''s brand');
 select is((select count(*)::int from build_competitors), 0, 'Bob cannot see Ada''s competitors');
 select is((select count(*)::int from build_batches), 0, 'Bob cannot see Ada''s batches');
+select is((select count(*)::int from share_links), 0, 'Bob cannot see Ada''s client links');
 select is((select count(*)::int from storage.objects where bucket_id = 'templates'), 0,
           'Bob cannot see Ada''s template files');
 select throws_ok(

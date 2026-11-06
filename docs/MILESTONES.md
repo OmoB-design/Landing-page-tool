@@ -127,7 +127,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 - B3.3 Mobile optimise + QA screenshots + OG image. *Split (owner, 2026-11-05, D111):* **B3.3a** the preview check (screenshots at desktop and phone widths after every build and on Refresh) and the share image (the top of the page, written into exports and publishes), done 2026-11-05; **B3.3b** automatic phone rules and an automatic phone check in every build, with Fix for phone (Claude) on the review desk and in Lander, done 2026-11-05 (D112).
 - B3.4 Edit agent chat. *Moved up as B3.1b (owner, 2026-11-04).*
 - B3.5 Batch build (all templates for one product). *Done 2026-11-06 (D115): the wizard's "Build with every template", all-or-nothing starts within the hourly cap, and the batch screen.*
-- B3.6 Client review link (BUILD_SPEC §11.4, D55).
+- B3.6 Client review link (BUILD_SPEC §11.4, D55). *Done 2026-11-06 (D119): Approve keeps the approved copy; the review desk's Client link (one link per page that follows re-approvals, 30 days, opens counted, Turn off); `/review/<token>` without sign-in, Desktop / Phone, scripts off.*
 
 ## M4 — Editable Shopify publish
 

@@ -20,6 +20,7 @@ from app import (
     mobile,
     publishing,
     qa,
+    share,
     templates,
     trash,
 )
@@ -81,6 +82,7 @@ from app.models.publishing import (
     VercelConnectRequest,
 )
 from app.models.qa import QaStart, QaStarted, QaState
+from app.models.share import ReviewInfo, ShareRequest, ShareState
 from app.models.template import LayoutAction, TemplateEditorState, TemplateInstructions
 from app.models.trash import TrashKind, TrashRequest, TrashState
 from app.publish import shopify_page
@@ -314,6 +316,69 @@ def build_proof(build_id: UUID, org_id: UUID, user: CurrentUser) -> Response:
         html,
         media_type="text/html; charset=utf-8",
         headers={"X-Page-Version": str(version), "Cache-Control": "no-store"},
+    )
+
+
+# ── The client review link (B3.6, D119) ─────────────────────────────────────────
+
+GONE = "This link isn't available any more."
+
+
+def _share_call(fn: Any, *args: Any) -> Any:
+    try:
+        return fn(*args)
+    except share.ShareNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That page isn't available.") from exc
+    except share.ShareUnavailableError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Client links aren't set up yet: the worker needs LP_SHARE_SECRET.",
+        ) from exc
+    except share.ShareRefusedError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+
+
+@app.get("/builds/{build_id}/share")
+def get_share(build_id: UUID, org_id: UUID, user: CurrentUser) -> ShareState:
+    """The page's client link and what it shows (the review desk's Client link)."""
+    require_org_member(user, org_id)
+    state: ShareState = _share_call(share.share_state, org_id, build_id)
+    return state
+
+
+@app.post("/builds/{build_id}/share")
+def make_share(build_id: UUID, body: ShareRequest, user: CurrentUser) -> ShareState:
+    """Makes the page's client link (or gives the live one); needs an approved version."""
+    require_org_member(user, body.org_id)
+    state: ShareState = _share_call(share.make_link, body.org_id, build_id, user.id)
+    return state
+
+
+@app.delete("/builds/{build_id}/share")
+def turn_off_share(build_id: UUID, org_id: UUID, user: CurrentUser) -> ShareState:
+    """Turns the page's client link off at once."""
+    require_org_member(user, org_id)
+    state: ShareState = _share_call(share.turn_off, org_id, build_id)
+    return state
+
+
+@app.get("/review/{token}")
+def review_info(token: str) -> ReviewInfo:
+    """The client's page (no sign-in): the approved page's title and date."""
+    found: ReviewInfo | None = _share_call(share.review_info, token)
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, GONE)
+    return found
+
+
+@app.get("/review/{token}/html")
+def review_html(token: str) -> Response:
+    """The approved page itself, for the client's view (no sign-in). Counts a visit."""
+    page: str | None = _share_call(share.review_html, token)
+    if page is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, GONE)
+    return Response(
+        page, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store"}
     )
 
 

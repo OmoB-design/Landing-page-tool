@@ -470,6 +470,9 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          approved_copy_at: string | null
+          approved_copy_path: string | null
+          approved_copy_version: number | null
           batch_id: string | null
           brand_id: string
           cost_usd: number
@@ -500,6 +503,9 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          approved_copy_at?: string | null
+          approved_copy_path?: string | null
+          approved_copy_version?: number | null
           batch_id?: string | null
           brand_id: string
           cost_usd?: number
@@ -530,6 +536,9 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          approved_copy_at?: string | null
+          approved_copy_path?: string | null
+          approved_copy_version?: number | null
           batch_id?: string | null
           brand_id?: string
           cost_usd?: number
@@ -1353,6 +1362,57 @@ export type Database = {
           },
           {
             foreignKeyName: "publications_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_links: {
+        Row: {
+          build_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          last_viewed_at: string | null
+          org_id: string
+          revoked_at: string | null
+          views: number
+        }
+        Insert: {
+          build_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          last_viewed_at?: string | null
+          org_id: string
+          revoked_at?: string | null
+          views?: number
+        }
+        Update: {
+          build_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          last_viewed_at?: string | null
+          org_id?: string
+          revoked_at?: string | null
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_links_build_id_fkey"
+            columns: ["build_id"]
+            isOneToOne: false
+            referencedRelation: "builds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_links_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"

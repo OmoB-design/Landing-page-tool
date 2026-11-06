@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     lp_fal_edit_model: str = "fal-ai/nano-banana-pro/edit"
     lp_mock_llm: bool = True
     lp_mock_images: bool = True
+    # The client review link (B3.6, D119): tokens are made from a link's id with this secret, so
+    # none is stored. Without it, client links can't be made or opened.
+    lp_share_secret: str = ""
     lp_provider_lock_minutes: float = 10.0
     # One Lander request's budget (B3.1f, D114): it stops at whichever comes first.
     lp_agent_max_rounds: int = 30

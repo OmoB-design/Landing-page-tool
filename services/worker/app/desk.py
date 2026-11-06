@@ -22,6 +22,7 @@ from uuid import UUID
 from psycopg import errors
 from psycopg.types.json import Jsonb
 
+from app import share
 from app.db import transaction
 from app.engines import comparison, formatting, fragments, paragraphs, proof
 from app.engines import recolor as recolor_engine
@@ -576,6 +577,9 @@ def set_status(
             """,
             {"s": status, "u": user_id, "b": build_id, "o": org_id},
         )
+        if status == "approved":
+            # What the client link shows from now on (B3.6, D119), until the next Approve.
+            share.stamp(conn, build)
     return desk_state(org_id, build_id)
 
 

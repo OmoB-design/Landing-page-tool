@@ -16,6 +16,7 @@ import {
   BuildStepsCard,
 } from "@/components/features/builds/build-steps";
 import { BuildWorkspace } from "@/components/features/builds/build-workspace";
+import { ClientLink } from "@/components/features/builds/client-link";
 import { DeskProvider } from "@/components/features/builds/desk-context";
 import {
   DeskChoices,
@@ -177,6 +178,7 @@ async function Build({
                       : 0
                   }
                 />
+                <ClientLink />
                 {publish ? (
                   <>
                     <LiveButton />

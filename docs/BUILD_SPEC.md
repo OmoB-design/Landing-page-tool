@@ -597,6 +597,7 @@ Claude (`LP_MODEL_AGENT`) in a tool-use loop of up to 8 turns *(ref)*, each turn
 - The link (`/review/<token>`) shows that approved version read-only, desktop and mobile, with no sign-in. The token is unguessable and stored hashed.
 - Links are revocable, expire after 30 days by default, and record view counts. Editing the page after approval does not change what the link shows until it is approved again.
 - Schema (at M3): a `share_links` table (`org_id, build_id, snapshot_id, token_hash, expires_at, revoked_at, created_by, views`).
+- *Built as B3.6 (D119):* Approve keeps an approved copy on the build (`approved_copy_path/_version/_at`); one live `share_links` row per page (`org_id, build_id, created_by, expires_at, revoked_at, views, last_viewed_at`) whose link shows the newest approved copy, so re-approving moves the same link on; no stored token (the link's id signed with the worker's `LP_SHARE_SECRET`); the review desk's Client link (make and copy, Copy, version, expiry, opens, Turn off); `/review/<token>` with Desktop / Phone, scripts off, no branding, noindex. Worker `GET/POST/DELETE /builds/{id}/share`, public `GET /review/{token}` and `/review/{token}/html`.
 
 ---
 
