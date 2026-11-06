@@ -128,7 +128,7 @@ type ListRowProps = {
   level?: 0 | 1;
   /** Nested child rows. */
   children?: ReactNode;
-  /** The pointer came onto the row or left it (a batch folder's animation, B3.5b). */
+  /** A mouse came onto the row or left it (a batch folder's animation, B3.5b). */
   onHoverChange?: (hovered: boolean) => void;
 };
 
@@ -149,8 +149,17 @@ export function ListRow({
   return (
     <li>
       <div
-        onPointerEnter={onHoverChange ? () => onHoverChange(true) : undefined}
-        onPointerLeave={onHoverChange ? () => onHoverChange(false) : undefined}
+        // A mouse only: touch fires hover on tap.
+        onPointerEnter={
+          onHoverChange
+            ? (event) => event.pointerType === "mouse" && onHoverChange(true)
+            : undefined
+        }
+        onPointerLeave={
+          onHoverChange
+            ? (event) => event.pointerType === "mouse" && onHoverChange(false)
+            : undefined
+        }
         className="group/row flex h-12 items-center gap-3 pr-4 divider-b-thin hover:bg-foreground-01"
       >
         <Link

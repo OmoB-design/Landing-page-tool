@@ -18,8 +18,9 @@ export type SelectFieldOption = { value: string; label: string };
  * A dropdown in the Input Field's look (Figma: Input Field, Type=Trailing Dropdown): the label in
  * 13 px medium Heading-03, 6 px above a 42 px box (10 px corners, 1 px Surface/Stroke, Shadow/Light)
  * with the value 14 px in, Caption 1 until one is chosen, and the chevron at the end of its 70 px
- * end, which fills the field's height. It opens the workspace menu's list (the top of the sidebar): Surface-Primary, 2 px in,
- * 6 px corners, Shadow/Float, 4 px-padded items with a 14 px tick on the chosen one. While open,
+ * end, which fills the field's height (no fill or shadow of its own, so the box's one stroke and shadow run unbroken
+ * round it; owner, 2026-11-06). It opens the list the other field dropdowns use: Surface-Modal, 2 px in, 6 px corners,
+ * Shadow/Float and the hairline edge, 4 px-padded items with a 14 px tick on the chosen one. While open,
  * the box turns Spot-500-Blue with the Focus halo, as a focused field does.
  */
 export function SelectField({
@@ -81,7 +82,7 @@ export function SelectField({
             >
               <span className="truncate">{current?.label ?? placeholder}</span>
             </span>
-            <span className="flex w-17.5 shrink-0 items-center justify-end rounded-r-lg bg-surface-primary px-3.5 shadow-light group-disabled:bg-transparent group-disabled:shadow-none">
+            <span className="flex w-17.5 shrink-0 items-center justify-end px-3.5">
               <ChevronDownFigmaIcon className="size-3.5 text-icon-explainer transition-transform duration-150 ease-out group-aria-expanded:rotate-180 motion-reduce:transition-none" />
             </span>
           </button>
@@ -93,7 +94,7 @@ export function SelectField({
             if (byPointer.current) event.preventDefault();
             byPointer.current = false;
           }}
-          className="flex max-h-72 flex-col gap-0.5 rounded-sm bg-surface-primary p-0.5 text-heading-02 shadow-float edge-hairline"
+          className="flex max-h-72 flex-col gap-0.5 overflow-y-auto rounded-sm bg-surface-modal p-0.5 text-heading-02 shadow-float edge-hairline"
         >
           <DropdownMenuRadioGroup
             value={value ?? ""}

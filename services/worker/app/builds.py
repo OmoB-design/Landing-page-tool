@@ -14,7 +14,7 @@ from app.engines import targeting
 from app.jobs import queue
 from app.jobs.models import Job
 from app.jobs.registry import KINDS
-from app.models.build import BatchPage, BatchState, BuildWizard
+from app.models.build import BatchPage, BatchState, BuildWizard, FolderColor
 from app.models.template import RANKING_TYPE
 
 
@@ -170,6 +170,11 @@ def create_batch(
         room = queue.remaining(conn, org_id, KINDS["build"].name)
         if room is not None and len(templates) > room:
             raise BatchTooBigError(room)
+        # Its folder in the Pages list (B3.5b), red until the team picks another colour.
+        conn.execute(
+            "insert into build_batches (id, org_id, created_by) values (%(id)s, %(o)s, %(by)s)",
+            {"id": batch_id, "o": org_id, "by": created_by},
+        )
         made = []
         for template in templates:
             made.append(
@@ -234,6 +239,10 @@ def batch_state(org_id: UUID, batch_id: UUID) -> BatchState:
             """,
             {"o": org_id, "kind": KINDS["build"].name},
         ).fetchall()
+        folder = conn.execute(
+            "select folder_color from build_batches where id = %(b)s and org_id = %(o)s",
+            {"b": batch_id, "o": org_id},
+        ).fetchone()
     line = {row["id"]: index + 1 for index, row in enumerate(waiting)}
     pages = [
         BatchPage(
@@ -261,7 +270,37 @@ def batch_state(org_id: UUID, batch_id: UUID) -> BatchState:
     return BatchState(
         batch_id=batch_id, brand=rows[0]["brand"], product=rows[0]["product"],
         created_at=rows[0]["created_at"], pages=pages,
+        folder_color=folder["folder_color"] if folder else "red",
     )  # fmt: skip
+
+
+def set_folder_color(org_id: UUID, batch_id: UUID, color: FolderColor) -> FolderColor:
+    """Colours a batch's folder for the whole workspace (B3.5b). A batch started before folders
+    had colours (or by an older worker) gets its row now."""
+    with transaction() as conn:
+        found = conn.execute(
+            """
+            select 1 from builds
+            where org_id = %(o)s and batch_id = %(b)s and deleted_at is null limit 1
+            """,
+            {"o": org_id, "b": batch_id},
+        ).fetchone()
+        if found is None:
+            raise BuildNotFoundError
+        row = conn.execute(
+            """
+            insert into build_batches (id, org_id, folder_color)
+            values (%(b)s, %(o)s, %(c)s)
+            on conflict (id) do update set folder_color = excluded.folder_color
+              where build_batches.org_id = excluded.org_id
+            returning folder_color
+            """,
+            {"b": batch_id, "o": org_id, "c": color},
+        ).fetchone()
+    if row is None:  # the id belongs to another workspace's batch
+        raise BuildNotFoundError
+    color_set: FolderColor = row["folder_color"]
+    return color_set
 
 
 def retry_build(

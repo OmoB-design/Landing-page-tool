@@ -1,3 +1,4 @@
+import type { FolderColor } from "@/lib/validators/build";
 import type { Database } from "@/types/database";
 
 import {
@@ -32,6 +33,8 @@ export type PageListItem = {
   product?: string;
   brand?: string;
   templateId?: string;
+  /** Its batch's folder colour, the team's pick (B3.5b); red until then. */
+  folderColor?: FolderColor;
   /** Set on the folder row that stands for a batch's pages. */
   folder?: BatchFolder;
 };
@@ -44,6 +47,7 @@ export type BatchFolder = {
   pages: PageListItem[];
   ready: number;
   active: number;
+  color: FolderColor;
 };
 
 const READY_STATUSES = new Set(["needs_review", "approved", "published"]);
@@ -102,6 +106,7 @@ export function foldBatches(pages: PageListItem[]): PageListItem[] {
         batchId: page.batchId,
         product: first.product ?? "Batch",
         brand: first.brand ?? "",
+        color: first.folderColor ?? "red",
         pages: members,
         ready: members.filter((m) => READY_STATUSES.has(m.status)).length,
         active: members.filter(

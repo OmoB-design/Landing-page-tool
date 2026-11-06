@@ -290,6 +290,38 @@ export type Database = {
           },
         ]
       }
+      build_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          folder_color: string
+          id: string
+          org_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          folder_color?: string
+          id?: string
+          org_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          folder_color?: string
+          id?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "build_batches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       build_competitors: {
         Row: {
           build_id: string

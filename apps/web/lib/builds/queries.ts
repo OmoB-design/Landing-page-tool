@@ -2,7 +2,11 @@ import { cache } from "react";
 
 import type { PageListItem } from "@/lib/pages/list";
 import { createClient } from "@/lib/supabase/server";
-import { buildReportSchema } from "@/lib/validators/build";
+import {
+  type FolderColor,
+  buildReportSchema,
+  folderColorSchema,
+} from "@/lib/validators/build";
 
 /** One build of the org with its latest pipeline job, or null (also for other orgs' builds). */
 export const getBuild = cache(async (orgId: string, buildId: string) => {
@@ -57,6 +61,24 @@ export async function getOrgPages(
     .order("created_at", { ascending: false })
     .limit(500);
   if (error) throw new Error(`Could not load pages: ${error.message}`);
+  // Each batch's folder colour (B3.5b); a batch without a row yet shows red.
+  const batchIds = [
+    ...new Set(data.flatMap((b) => (b.batch_id ? [b.batch_id] : []))),
+  ];
+  const colours = new Map<string, FolderColor>();
+  if (batchIds.length > 0) {
+    const { data: batches, error: batchError } = await supabase
+      .from("build_batches")
+      .select("id, folder_color")
+      .eq("org_id", orgId)
+      .in("id", batchIds);
+    if (batchError)
+      throw new Error(`Could not load pages: ${batchError.message}`);
+    for (const batch of batches) {
+      const colour = folderColorSchema.safeParse(batch.folder_color);
+      if (colour.success) colours.set(batch.id, colour.data);
+    }
+  }
   return data.map((build) => ({
     id: build.id,
     key: build.key,
@@ -73,6 +95,7 @@ export async function getOrgPages(
     updatedAt: new Date(build.updated_at),
     parentId: build.parent_build_id,
     batchId: build.batch_id,
+    folderColor: build.batch_id ? colours.get(build.batch_id) : undefined,
     templateId: build.template_id,
     product: build.product?.name ?? undefined,
     brand: build.brand?.name ?? undefined,

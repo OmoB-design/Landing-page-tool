@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   type ReactNode,
@@ -12,7 +12,6 @@ import { createPortal } from "react-dom";
 
 import { PAGE_ASIDE } from "@/components/app/page-aside";
 import { ListRow } from "@/components/app/grouped-list";
-import { PageBody } from "@/components/app/page-body";
 import { PageHeader } from "@/components/app/page-header";
 import {
   CostLabel,
@@ -22,8 +21,10 @@ import {
   ScoreChip,
 } from "@/components/app/row-meta";
 import { toast } from "@/components/app/toaster";
+import { StatusGlyph } from "@/components/app/status-glyph";
 import { TypeGlyph } from "@/components/app/type-glyph";
 import { Button } from "@/components/ui/button";
+import { FolderColorPicker, FolderTile } from "@/components/ui/folder-icon";
 import { CloseIcon } from "@/components/ui/icons";
 import { BuildSpinnerIcon } from "@/components/ui/lp-icons";
 import { Spinner } from "@/components/ui/spinner";
@@ -33,6 +34,9 @@ import { RESIDUE_MIN_SCORE } from "@/lib/pages/list";
 import { cn } from "@/lib/utils";
 import {
   type BatchPage,
+  type BatchState,
+  type FolderColor,
+  batchFolderSchema,
   batchStateSchema,
   buildCreatedSchema,
 } from "@/lib/validators/build";
@@ -75,6 +79,10 @@ function useElapsed(from: string | null, live: boolean): string | null {
  * changed, who started it, and the row menu). While pages build, a side panel beside the page
  * panel (as the page editor's Buddy panel) holds each page's build steps; it opens by itself while
  * anything is building, closes with ×, and Progress in the header opens it again.
+ * Laid out as the Pages page (owner, 2026-11-06): its 1100 px column 48 px under the header, the
+ * product as the serif title where Pages has its own, over the brand and how many are ready; then,
+ * centred, the batch's folder on its black tile with circles to pick its colour for the whole team;
+ * then the list on a hairline.
  */
 export function BatchView({
   batchId,
@@ -124,28 +132,39 @@ export function BatchView({
           ) : null
         }
       />
-      <PageBody width="lg" className="gap-3 px-0 py-0">
+      <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-2 px-6 py-12">
         {batch.isError ? (
-          <p className="px-6 py-6 text-type-caption-1 text-text-danger">
+          <p className="text-type-caption-1 text-text-danger">
             {batch.error instanceof Error
               ? batch.error.message
               : "Couldn’t load the batch."}
           </p>
         ) : !data ? (
-          <BatchRowsSkeleton />
+          <BatchTopSkeleton />
         ) : (
-          <ul aria-label="Pages in this batch" className="flex flex-col">
-            {pages.map((page) => (
-              <BatchRow
-                key={page.id}
-                page={page}
-                creator={page.created_by === me.id ? me.name : "A teammate"}
-                onRetried={() => void batch.refetch()}
-              />
-            ))}
-          </ul>
+          <>
+            <BatchTop batch={data} ready={ready} />
+            <div className="flex h-9 items-center gap-1.5 divider-b-thin">
+              <span className="text-type-body-small font-medium text-heading-01">
+                Pages
+              </span>
+              <span className="rounded-xsm bg-foreground-02 px-1 text-type-caption-2 text-heading-05 tabular-nums">
+                {pages.length}
+              </span>
+            </div>
+            <ul aria-label="Pages in this batch" className="mt-3 flex flex-col">
+              {pages.map((page) => (
+                <BatchRow
+                  key={page.id}
+                  page={page}
+                  creator={page.created_by === me.id ? me.name : "A teammate"}
+                  onRetried={() => void batch.refetch()}
+                />
+              ))}
+            </ul>
+          </>
         )}
-      </PageBody>
+      </div>
       <BatchSheet
         open={Boolean(data) && sheetOpen}
         pages={pages}
@@ -153,6 +172,96 @@ export function BatchView({
         onClose={() => setChosen(false)}
       />
     </>
+  );
+}
+
+/**
+ * The top of the batch page: the product as the serif title over the brand and how many pages are
+ * ready; then, centred, the folder on its tile (hovered, it straightens and its frames rise) and
+ * the colour circles under it, which colour it at once and save it for the whole workspace (back to
+ * the old colour, with a toast, if that fails).
+ */
+function BatchTop({ batch, ready }: { batch: BatchState; ready: number }) {
+  const queryClient = useQueryClient();
+  const [hovered, setHovered] = useState(false);
+  const key = ["batch", batch.batch_id];
+  const colour = useMutation({
+    mutationFn: (folder_color: FolderColor) =>
+      apiFetch(`/api/builds/batch/${batch.batch_id}`, batchFolderSchema, {
+        method: "PATCH",
+        body: JSON.stringify({ folder_color }),
+      }),
+    onMutate: async (folder_color) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const before = queryClient.getQueryData<BatchState>(key);
+      queryClient.setQueryData<BatchState>(key, (old) =>
+        old ? { ...old, folder_color } : old,
+      );
+      return { before };
+    },
+    onError: (error, _colour, context) => {
+      if (context?.before) queryClient.setQueryData(key, context.before);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Couldn’t change the folder’s colour.",
+      );
+    },
+  });
+  const stills = batch.pages
+    .slice(0, 3)
+    .map((p) => `/thumbs/template/${p.template_id}`);
+  const total = batch.pages.length;
+  return (
+    <>
+      {/* The title where the Pages page has its own (owner, 2026-11-06). */}
+      <div className="flex flex-col gap-1.5 pr-1 pb-6">
+        <h1 className="font-serif text-type-title font-medium text-button-secondary-text">
+          {batch.product}
+        </h1>
+        <p className="text-type-body-small leading-5 font-medium text-sub-text tabular-nums">
+          {batch.brand} · {total} page{total === 1 ? "" : "s"},{" "}
+          <MorphText>{`${ready} ready`}</MorphText>
+        </p>
+      </div>
+      <div className="flex flex-col items-center gap-4 pb-8">
+        <span
+          // A mouse only: touch fires hover on tap.
+          onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(true)}
+          onPointerLeave={(e) => e.pointerType === "mouse" && setHovered(false)}
+        >
+          <FolderTile
+            tone={batch.folder_color}
+            stills={stills}
+            hovered={hovered}
+          />
+        </span>
+        <FolderColorPicker
+          value={batch.folder_color}
+          onValueChange={(tone) => colour.mutate(tone)}
+        />
+      </div>
+    </>
+  );
+}
+
+/** The top and the rows while the batch loads: the title and its line, the tile, the circles. */
+function BatchTopSkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5 pb-6">
+        <span className="h-8 w-72 animate-pulse rounded-sm bg-foreground-02" />
+        <span className="h-4 w-48 animate-pulse rounded-sm bg-foreground-02" />
+      </div>
+      <div className="flex flex-col items-center gap-4 pb-8">
+        <span className="h-33 w-32.25 animate-pulse rounded-panel bg-foreground-02" />
+        <span className="h-5 w-29 animate-pulse rounded-full bg-foreground-02" />
+      </div>
+      <div className="h-9 divider-b-thin" />
+      <div className="mt-3">
+        <BatchRowsSkeleton />
+      </div>
+    </div>
   );
 }
 
@@ -177,9 +286,9 @@ export function BatchViewSkeleton() {
   return (
     <>
       <PageHeader title="Batch" crumb={{ label: "Pages", href: "/pages" }} />
-      <PageBody width="lg" className="px-0 py-0">
-        <BatchRowsSkeleton />
-      </PageBody>
+      <div className="mx-auto box-content flex w-full max-w-pages flex-col gap-2 px-6 py-12">
+        <BatchTopSkeleton />
+      </div>
     </>
   );
 }
@@ -281,19 +390,18 @@ function BatchRow({
   );
 }
 
-const PILL: Record<string, string> = {
-  queued: "bg-foreground-02 text-heading-05",
-  building: "bg-foreground-02 text-heading-02",
-  needs_review: "bg-highlight-blue-50 text-highlight-blue-500",
-  approved: "bg-highlight-purple-50 text-highlight-purple-500",
-  published: "bg-highlight-green-50 text-highlight-green-500",
-  failed: "bg-highlight-red-50 text-highlight-red-500",
-};
+const GLYPH = {
+  needs_review: "needs_review",
+  approved: "approved",
+  published: "published",
+  failed: "failed",
+} as const;
 
 /**
- * A page's status as a pill (owner, 2026-11-06): its colour follows the Pages status glyphs, and
- * its words morph as the build moves on (torph): "Waiting · 2nd in line", "Building · 3 of 8",
- * "Ready to review", "Approved", "Published", "Failed".
+ * A page's status as a neutral pill (owner, 2026-11-06: no coloured chip), drawn as the row's
+ * Owned badge: the Pages list's status icon at 12 px carries the colour (a spinner while it builds,
+ * a dot while it waits), and its words morph as the build moves on (torph): "Waiting · 2nd in
+ * line", "Building · 3 of 8", "Ready to review", "Approved", "Published", "Failed".
  */
 function StatusPill({
   page,
@@ -320,18 +428,22 @@ function StatusPill({
               : page.status === "failed"
                 ? "Failed"
                 : page.status;
+  const glyph =
+    page.status in GLYPH ? GLYPH[page.status as keyof typeof GLYPH] : null;
   return (
     <span
       title={page.status === "failed" ? (page.error ?? undefined) : undefined}
       className={cn(
-        "flex h-5.5 items-center gap-1 rounded-full px-2 text-type-caption-2 font-medium whitespace-nowrap transition-colors duration-300 ease-out",
-        PILL[page.status] ?? PILL.queued,
+        "flex shrink-0 items-center gap-1 rounded-sm px-1.5 text-type-caption-1 whitespace-nowrap text-heading-03 ring-thin ring-stroke",
+        page.status === "queued" && "text-sub-text",
       )}
     >
       {page.status === "building" ? (
-        <BuildSpinnerIcon className="size-3 animate-step-spin motion-reduce:animate-step-spin-slow" />
+        <BuildSpinnerIcon className="size-3 animate-step-spin text-icon-nav-active motion-reduce:animate-step-spin-slow" />
       ) : page.status === "queued" ? (
         <span aria-hidden className="size-1.5 rounded-full bg-meta-dot" />
+      ) : glyph ? (
+        <StatusGlyph status={glyph} className="size-3" iconClassName="size-3" />
       ) : null}
       <MorphText>{label}</MorphText>
     </span>

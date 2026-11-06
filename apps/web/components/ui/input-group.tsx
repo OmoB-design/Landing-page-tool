@@ -95,7 +95,9 @@ export type InputGroupOption = {
 /**
  * A dropdown inside the field (Leading Dropdown, Country, Trailing Dropdown): the value 14 px in
  * with the chevron 8 px from it (6 px around a flag). At the start it ends in a Surface/Stroke
- * line; at the end it sits on Shadow/Light. The value reads Caption 1 while the field is empty.
+ * line; at the end it has no fill or shadow of its own, so the box's stroke runs unbroken round it
+ * (Figma draws Shadow/Light there; it painted over the blue focus line; owner, 2026-11-06). The value
+ * reads Caption 1 while the field is empty.
  */
 function InputGroupSelect({
   side,
@@ -129,7 +131,7 @@ function InputGroupSelect({
             withIcon ? "gap-1.5" : "gap-2",
             side === "start"
               ? "rounded-l-lg border-r border-stroke group-has-[input:disabled]/input-group:border-stroke-strong"
-              : "rounded-r-lg bg-surface-primary shadow-light group-has-[input:disabled]/input-group:bg-transparent group-has-[input:disabled]/input-group:shadow-none",
+              : "rounded-r-lg",
             className,
           )}
         >

@@ -194,3 +194,35 @@ def test_batches_stay_in_their_workspace(
         [build_inputs["template_id"]],
     )
     assert stranger.status_code == 404
+
+
+@needs_db
+def test_a_batch_folder_has_a_colour_the_team_picks(
+    client: TestClient, user: DbUser, other_org: uuid.UUID, build_inputs: dict[str, Any]
+) -> None:
+    made = batch(client, user, build_inputs, [build_inputs["template_id"]]).json()
+    url = f"/builds/batch/{made['batch_id']}"
+    org = {"org_id": build_inputs["org_id"]}
+    state = client.get(url, params=org, headers=bearer(user)).json()
+    assert state["folder_color"] == "red"  # until it's picked
+    picked = client.patch(url, json={**org, "folder_color": "blue"}, headers=bearer(user))
+    assert picked.status_code == 200, picked.text
+    assert picked.json() == {"folder_color": "blue"}
+    assert client.get(url, params=org, headers=bearer(user)).json()["folder_color"] == "blue"
+    # A batch started before folders had colours (no row yet) gets one when it's picked.
+    with transaction() as conn:
+        conn.execute("delete from build_batches where id = %(b)s", {"b": made["batch_id"]})
+    assert client.get(url, params=org, headers=bearer(user)).json()["folder_color"] == "red"
+    again = client.patch(url, json={**org, "folder_color": "purple"}, headers=bearer(user))
+    assert again.json() == {"folder_color": "purple"}
+    # Only the four colours; not another workspace's batch; not an unknown one.
+    odd = client.patch(url, json={**org, "folder_color": "green"}, headers=bearer(user))
+    assert odd.status_code == 422
+    elsewhere = client.patch(
+        url, json={"org_id": str(other_org), "folder_color": "black"}, headers=bearer(user)
+    )
+    assert elsewhere.status_code == 403
+    unknown = client.patch(
+        f"/builds/batch/{uuid.uuid4()}", json={**org, "folder_color": "black"}, headers=bearer(user)
+    )
+    assert unknown.status_code == 404

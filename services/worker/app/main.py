@@ -38,7 +38,13 @@ from app.models.agent import (
     AgentThreads,
 )
 from app.models.analytics import AnalyticsRange, AnalyticsState
-from app.models.build import BatchRequest, BatchState, BuildRequest
+from app.models.build import (
+    BatchFolder,
+    BatchFolderRequest,
+    BatchRequest,
+    BatchState,
+    BuildRequest,
+)
 from app.models.clone import CloneRequest, CloneTermsRequest, CloneTermsState
 from app.models.desk import (
     CopyEditRequest,
@@ -236,6 +242,17 @@ def get_batch(batch_id: UUID, org_id: UUID, user: CurrentUser) -> BatchState:
         return builds.batch_state(org_id, batch_id)
     except builds.BuildNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That batch isn't available.") from exc
+
+
+@app.patch("/builds/batch/{batch_id}")
+def set_batch_folder(batch_id: UUID, body: BatchFolderRequest, user: CurrentUser) -> BatchFolder:
+    """The colour of a batch's folder in the Pages list (B3.5b), for everyone in the workspace."""
+    require_org_member(user, body.org_id)
+    try:
+        color = builds.set_folder_color(body.org_id, batch_id, body.folder_color)
+    except builds.BuildNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That batch isn't available.") from exc
+    return BatchFolder(folder_color=color)
 
 
 class RetryBuildRequest(BaseModel):

@@ -338,7 +338,7 @@ Payload (zod-validated): `{template_id, brand_id, product_id, author_type, ai_im
 - `image_prefs`: `{ai, styles, audience}` for the image planner;
 - a `targeting` record stored on the build.
 
-**Batch:** "Build with all my templates" creates one build job per template for one product (M3). *Built as B3.5 (D115):* the Template step's "Build with every template" switch (tick boxes, all ticked), `POST /builds/batch` (all the builds or none, within the hourly cap; `builds.batch_id`), and the batch screen at `/pages/batch/<id>`.
+**Batch:** "Build with all my templates" creates one build job per template for one product (M3). *Built as B3.5 (D115):* the Template step's "Build with every template" switch (tick boxes, all ticked), `POST /builds/batch` (all the builds or none, within the hourly cap; `builds.batch_id`), and the batch screen at `/pages/batch/<id>`. *B3.5b:* the batch is one folder row in the Pages list; its folder's colour is picked on the batch screen for the whole workspace (`build_batches.folder_color`: blue, black, red or purple, red by default; `PATCH /builds/batch/{id}`).
 
 Author type with "doctor/expert": the copy must not claim real credentials. The author persona is a fictional byline only if the template has a byline; add a compliance note and never generate credentials like "MD" next to an invented name unless the owner explicitly enables it per brand. Flag this in the Build Report at the build that implements it.
 

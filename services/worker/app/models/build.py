@@ -8,6 +8,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 AuthorType = Literal["writer", "expert", "customer", "influencer"]
+# A batch's folder in the Pages list (B3.5b, owner 2026-11-06); red until its team picks another.
+FolderColor = Literal["blue", "black", "red", "purple"]
 
 
 class Emphasis(BaseModel):
@@ -114,3 +116,17 @@ class BatchState(BaseModel):
     product: str
     created_at: datetime
     pages: list[BatchPage]
+    folder_color: FolderColor = "red"
+
+
+class BatchFolderRequest(BaseModel):
+    """PATCH /builds/batch/{id} (B3.5b): the colour of the batch's folder, for the whole team."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    folder_color: FolderColor
+
+
+class BatchFolder(BaseModel):
+    folder_color: FolderColor

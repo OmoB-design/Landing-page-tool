@@ -31,6 +31,10 @@ export const batchCreatedSchema = z.object({
 export type BatchCreated = z.infer<typeof batchCreatedSchema>;
 
 /** A batch's pages and how each is getting on (worker GET /builds/batch/{id}). */
+/** A batch's folder colours (B3.5b, owner 2026-11-06), as FolderTile draws them. */
+export const folderColorSchema = z.enum(["blue", "black", "red", "purple"]);
+export type FolderColor = z.infer<typeof folderColorSchema>;
+
 export const batchStateSchema = z.object({
   batch_id: z.string(),
   brand: z.string(),
@@ -61,8 +65,13 @@ export const batchStateSchema = z.object({
       finished_at: z.string().nullable().catch(null),
     }),
   ),
+  /** Its folder's colour in the Pages list (B3.5b), the team's pick; red until then. */
+  folder_color: folderColorSchema.catch("red"),
 });
 export type BatchState = z.infer<typeof batchStateSchema>;
+
+/** PATCH /api/builds/batch/[batchId]: the batch's folder colour. */
+export const batchFolderSchema = z.object({ folder_color: folderColorSchema });
 export type BatchPage = BatchState["pages"][number];
 
 const counts = z.record(z.string(), z.number()).catch({});

@@ -94,6 +94,7 @@ const STATE: BatchState = {
       residue_score: 91,
     },
   ],
+  folder_color: "red",
 };
 
 beforeEach(() => {
@@ -102,9 +103,11 @@ beforeEach(() => {
   document.body.appendChild(slot);
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: string) =>
+    vi.fn(async (url: string, init?: RequestInit) =>
       String(url).includes("/api/builds/batch/")
-        ? new Response(JSON.stringify(STATE), { status: 200 })
+        ? init?.method === "PATCH"
+          ? new Response(String(init.body), { status: 200 })
+          : new Response(JSON.stringify(STATE), { status: 200 })
         : new Response(JSON.stringify({ error: "nope" }), { status: 404 }),
     ),
   );
@@ -149,5 +152,50 @@ describe("batch page (B3.5b)", () => {
     expect(
       await screen.findByRole("complementary", { name: "Builds" }),
     ).toBeTruthy();
+  });
+
+  it("puts the folder on top with circles that colour it for the team", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <BatchView batchId="b1" me={{ id: "me", name: "Ada" }} />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+    // The product as the page's title over the brand and how many are ready.
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Calm Serum" }),
+    ).toBeTruthy();
+    expect(screen.getByText(/Lume · 4 pages/)).toBeTruthy();
+    const picker = screen.getByRole("radiogroup", { name: "Folder colour" });
+    const circles = within(picker).getAllByRole("radio");
+    expect(circles.map((c) => c.getAttribute("aria-label"))).toEqual([
+      "Blue",
+      "Black",
+      "Red",
+      "Purple",
+    ]);
+    expect(
+      within(picker)
+        .getByRole("radio", { name: "Red" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    fireEvent.click(within(picker).getByRole("radio", { name: "Blue" }));
+    const fetchMock = vi.mocked(fetch);
+    await vi.waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([url, init]) =>
+            String(url) === "/api/builds/batch/b1" &&
+            init?.method === "PATCH" &&
+            init.body === JSON.stringify({ folder_color: "blue" }),
+        ),
+      ).toBe(true),
+    );
+    expect(
+      within(picker)
+        .getByRole("radio", { name: "Blue" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
   });
 });

@@ -14,8 +14,9 @@ import type { BatchFolder, PageListItem } from "@/lib/pages/list";
 
 /**
  * A batch's pages as one row of the Pages list (B3.5b, owner 2026-11-06: "all grouped templates
- * should be inside the folder"): the owner's portfolio folder with the batch's first three
- * template thumbnails peeking out (it straightens and they drop in as the row is hovered) and how
+ * should be inside the folder"): the owner's portfolio folder (no tile here; owner, 2026-11-06)
+ * in the colour the team picked, a frame per page peeking out (up to three: the pages' template
+ * thumbnails; it straightens and they rise as the row is hovered) and how
  * many pages, the product and brand, then how far along they are, the batch's total cost, its
  * newest change and who started it. It opens the batch's page.
  */
@@ -56,10 +57,10 @@ export function FolderRow({
       leading={
         <span className="flex w-23.75 shrink-0 items-center gap-1.5">
           <FolderIcon
-            tone="red"
+            tone={folder.color}
             stills={stills}
             hovered={hovered}
-            scale={0.5}
+            width={22.5}
           />
           <span className="text-type-body-small font-medium text-heading-01 tabular-nums">
             {total} pages

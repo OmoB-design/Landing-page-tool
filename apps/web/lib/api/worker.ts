@@ -4,7 +4,9 @@ import {
   type BatchCreated,
   type BatchState,
   type BuildCreated,
+  type FolderColor,
   batchCreatedSchema,
+  batchFolderSchema,
   batchStateSchema,
   buildCreatedSchema,
 } from "@/lib/validators/build";
@@ -106,7 +108,7 @@ function detailMessage(body: unknown): string | undefined {
 }
 
 async function callWorker<T>(
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   accessToken: string,
   body: unknown,
@@ -227,6 +229,23 @@ export function getBatch(
     undefined,
     batchStateSchema,
     "Couldn't load the batch.",
+  );
+}
+
+/** Colours a batch's folder for the whole workspace (B3.5b). */
+export function setBatchFolder(
+  accessToken: string,
+  orgId: string,
+  batchId: string,
+  folderColor: FolderColor,
+): Promise<{ folder_color: FolderColor }> {
+  return callWorker(
+    "PATCH",
+    `/builds/batch/${encodeURIComponent(batchId)}`,
+    accessToken,
+    { org_id: orgId, folder_color: folderColor },
+    batchFolderSchema,
+    "Couldn't change the folder's colour.",
   );
 }
 
