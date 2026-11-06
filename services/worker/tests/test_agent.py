@@ -68,13 +68,14 @@ def test_lander_edits_lines_by_the_desks_rules() -> None:
         },
     )
     assert not failed and step.ok
-    assert step.label == "Rewrote 1 line in Hero"
-    assert "filled from the brand or product" in out and "plain text only" in out
+    # Words filled from data change when asked (owner, 2026-11-06: the writer's name, a price).
+    assert step.label == "Rewrote 2 lines"
+    assert "plain text only" in out
     assert "already reads that way" in out
-    assert step.change and step.change["lines"] == [
-        {"number": 1, "before": "Glow in 7 days", "after": "Calmer skin in a week"}
-    ]
-    assert "Calmer skin in a week" in w.html and "$29" in w.html
+    assert step.change and step.change["lines"][0] == {
+        "number": 1, "before": "Glow in 7 days", "after": "Calmer skin in a week"
+    }  # fmt: skip
+    assert "Calmer skin in a week" in w.html and "$19" in w.html
     # Nothing it may change: a failed step, and the page as it was.
     out, failed, step = work().run("edit_lines", {"edits": [{"number": 99, "text": "Hi"}]})
     assert failed and not step.ok and "no line 99" in out
@@ -180,12 +181,12 @@ def test_lander_inspects_styles_and_looks_at_a_box() -> None:
         {
             "line": 3,
             "up": 1,
-            "styles": {"width": "fit-content", "padding": "4px 10px", "position": "fixed"},
+            "styles": {"width": "fit-content", "padding": "4px 10px", "content": "'x'"},
             "label": "Fitted the Verified box to its text",
         },
     )
     assert not failed and step.label == "Fitted the Verified box to its text"
-    assert "Set width: fit-content; padding: 4px 10px." in str(out) and "position" in str(out)
+    assert "Set width: fit-content; padding: 4px 10px." in str(out) and "content" in str(out)
     assert step.change == {
         "kind": "style",
         "label": "Fitted the Verified box to its text",

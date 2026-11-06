@@ -37,6 +37,7 @@ import type { DeskParagraph, DeskSnapshot } from "@/lib/validators/desk";
 
 import { type DeskTab, useDesk } from "./desk-context";
 import { CollapsibleSection, PanelSection } from "./panel-section";
+import { LanderMark } from "../page-editor/lander/lander-mark";
 import {
   RedraftIconButton,
   RedraftPopover,
@@ -185,7 +186,8 @@ export function CopyPanel() {
               disabled={busy || whole.lines === 0}
               className="rounded-lg"
             >
-              <SparkleFigmaIcon className="size-3 text-icon-system" />
+              {/* Buddy (owner, 2026-11-06): redrafting is his work too. */}
+              <LanderMark size="xs" />
             </Button>
           </RedraftPopover>
         </div>
@@ -291,7 +293,9 @@ function CopySection({
  * the row becomes the field. */
 function ParagraphRow({ paragraph }: { paragraph: DeskParagraph }) {
   const { editing, setEditing, show, focus, redrafting } = useDesk();
-  const open = editing === paragraph.number && !paragraph.locked && !redrafting;
+  // Lines with words filled from data (the writer's name, a price) are editable too (owner,
+  // 2026-11-06); the lock icon still says where the words came from.
+  const open = editing === paragraph.number && !redrafting;
   const rewriting = redrafting
     ? inRedraft(redrafting.redraft, paragraph)
     : false;
@@ -304,13 +308,13 @@ function ParagraphRow({ paragraph }: { paragraph: DeskParagraph }) {
           type="button"
           onClick={() => {
             show({ block: paragraph.number });
-            setEditing(paragraph.locked ? null : paragraph.number);
+            setEditing(paragraph.number);
           }}
           disabled={redrafting !== null}
           aria-busy={rewriting || undefined}
           title={
             paragraph.locked
-              ? "Filled from the brand or product: change it there"
+              ? "Filled from the brand or product: changing it here changes this page"
               : undefined
           }
           className={cn(
@@ -437,9 +441,10 @@ function ParagraphEditor({ paragraph }: { paragraph: DeskParagraph }) {
       {paragraph.locked_parts.length > 0 ? (
         <p className="px-0.5 text-type-caption-2 font-medium text-heading-05">
           {paragraph.locked_parts.map((part) => `“${part}”`).join(", ")}{" "}
-          {paragraph.locked_parts.length === 1 ? "is" : "are"} filled from the
-          brand or product and{" "}
-          {paragraph.locked_parts.length === 1 ? "stays" : "stay"} as it is.
+          {paragraph.locked_parts.length === 1 ? "comes" : "come"} from the
+          brand or product. Changing{" "}
+          {paragraph.locked_parts.length === 1 ? "it" : "them"} here changes
+          this page only.
         </p>
       ) : null}
       <div className="flex items-center gap-1.5">

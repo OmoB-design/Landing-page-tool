@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import type { Icon } from "@/components/ui/icons";
+import { BackIcon, type Icon } from "@/components/ui/icons";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,9 @@ type PageHeaderProps = {
   actions?: ReactNode;
   /** A parent page before the title, as "Parent / title" (Figma Brands Details: "Brands / BREZ"). */
   crumb?: { label: string; href: string };
+  /** A back arrow before the title, to the page this one came from (owner, 2026-11-06: a batch's
+   * page back to its batch); `label` names it for screen readers and in a tooltip. */
+  back?: { label: string; href: string };
 };
 
 /** The page panel's header (DESIGN.md §2; Figma: Home): 49 px with its border, 16 px in counting the panel's border; a mark if
@@ -35,6 +38,7 @@ export function PageHeader({
   tabs,
   actions,
   crumb,
+  back,
 }: PageHeaderProps) {
   return (
     <header className="sticky top-0 z-20 flex h-header shrink-0 items-center gap-3 bg-surface-primary px-3.75 edge-b">
@@ -44,6 +48,16 @@ export function PageHeader({
           action="open"
           className="lg:hidden lg:sidebar-collapsed:inline-flex"
         />
+        {back ? (
+          <Link
+            href={back.href}
+            aria-label={back.label}
+            title={back.label}
+            className="-ml-1 flex size-7 shrink-0 items-center justify-center rounded-sm text-icon-system outline-none hover:bg-foreground-02 hover:text-body focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <BackIcon aria-hidden className="size-4" />
+          </Link>
+        ) : null}
         <div
           className={cn(
             "flex min-w-0 items-center",

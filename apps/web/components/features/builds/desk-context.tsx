@@ -27,8 +27,11 @@ import {
   type DeskPalette,
   type DeskRedraft,
   type DeskState,
+  type FormatRange,
+  type FormattedLine,
   type RedraftScope,
   type SectionAction,
+  type TextFormat,
   deskStateSchema,
 } from "@/lib/validators/desk";
 
@@ -112,6 +115,13 @@ type DeskContextValue = {
   stopAgent: () => Promise<void>;
   /** Recolours the page to these colours (undoable). */
   recolor: (colors: DeskPalette) => Promise<boolean>;
+  /** Formats the selected text (B3.1g, D118): one undoable change, saved like typing (the canvas
+   * already shows it, so the page isn't loaded again). Resolves to the lines as saved, to swap in,
+   * or null when it was refused. */
+  format: (
+    ranges: FormatRange[],
+    format: TextFormat,
+  ) => Promise<FormattedLine[] | null>;
   /** Restore page to here: the page as it was when a request to Lander was sent (undoable). */
   restoreTo: (messageId: string) => Promise<boolean>;
   /** Replaces, crops or restores image `number` (the image studio, B3.2a; undoable). */
@@ -231,12 +241,16 @@ export function DeskProvider({
   // Typing saves follow each other faster than renders: each change uses the version the last
   // typing save returned, when that's newer than the desk this render has.
   const typedVersion = useRef(desk.build.page_version);
+  // The last change saved in place (typing, formatting) still on its way: every other change
+  // waits for it, so Undo straight after a format undoes that format.
+  const settling = useRef<Promise<unknown> | null>(null);
   const run = useCallback(
     async (
       action: DeskAction | "image",
       body: Record<string, unknown>,
       path?: string,
     ) => {
+      if (settling.current) await settling.current;
       const payload = {
         base_version: Math.max(typedVersion.current, desk.build.page_version),
         ...body,
@@ -260,30 +274,25 @@ export function DeskProvider({
     latestRun.current = run;
   }, [run]);
 
-  const saveTyping = useCallback(
-    async (block: number, original: string, text: string) => {
-      const base = Math.max(typedVersion.current, desk.build.page_version);
-      const body = {
-        base_version: base,
-        edits: [{ block, original, text }],
-        typing: true,
-      };
-      if (onChange) {
-        onChange("copy", body);
-        return null;
-      }
+  // Changes the canvas already shows (typing, formatting): saved without refreshing the route or
+  // loading the page again; each carries the version the last one returned.
+  const save = useCallback(
+    async (
+      action: "copy" | "format",
+      payload: Record<string, unknown>,
+      failure: string,
+    ): Promise<DeskState | null> => {
       try {
         const next = await apiFetch(
-          `/api/builds/${buildId}/desk/copy`,
+          `/api/builds/${buildId}/desk/${action}`,
           deskStateSchema,
-          { method: "POST", body: JSON.stringify(body) },
+          { method: "POST", body: JSON.stringify(payload) },
         );
         typedVersion.current = next.build.page_version;
         setLocal(next);
         return next;
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Couldn’t save the line.";
+        const message = error instanceof Error ? error.message : failure;
         if (error instanceof ApiError && error.status === 409) {
           toast.error(message, {
             action: {
@@ -300,7 +309,50 @@ export function DeskProvider({
         return null;
       }
     },
-    [buildId, desk.build.page_version, onChange, router],
+    [buildId, router],
+  );
+  const saveInPlace = useCallback(
+    (
+      action: "copy" | "format",
+      body: Record<string, unknown>,
+      failure: string,
+    ): Promise<DeskState | null> => {
+      const payload = {
+        base_version: Math.max(typedVersion.current, desk.build.page_version),
+        ...body,
+      };
+      if (onChange) {
+        onChange(action, payload);
+        return Promise.resolve(null);
+      }
+      const saving = save(action, payload, failure);
+      settling.current = saving;
+      void saving.finally(() => {
+        if (settling.current === saving) settling.current = null;
+      });
+      return saving;
+    },
+    [desk.build.page_version, onChange, save],
+  );
+  const saveTyping = useCallback(
+    (block: number, original: string, text: string) =>
+      saveInPlace(
+        "copy",
+        { edits: [{ block, original, text }], typing: true },
+        "Couldn’t save the line.",
+      ),
+    [saveInPlace],
+  );
+  const format = useCallback(
+    async (ranges: FormatRange[], change: TextFormat) => {
+      const next = await saveInPlace(
+        "format",
+        { ranges, format: change },
+        "Couldn’t format the text.",
+      );
+      return next ? (next.lines ?? []) : null;
+    },
+    [saveInPlace],
   );
 
   const redraftInput = useRef<RedraftInput | null>(null);
@@ -507,9 +559,8 @@ export function DeskProvider({
       open: (target, options) => {
         const block = blockOf(target);
         if (!block) return;
-        const paragraph = desk.paragraphs.find((p) => p.number === block);
         setTab("copy");
-        setEditing(paragraph?.locked ? null : block);
+        setEditing(block);
         setFocus((previous) => ({
           block,
           nonce: (previous?.nonce ?? 0) + 1,
@@ -527,6 +578,7 @@ export function DeskProvider({
       undo: () => void run("undo", {}),
       redo: () => void run("redo", {}),
       editSections: (action) => run("sections", { action }),
+      format,
       saveTyping,
       frameVersion,
       restore: (seq) => void run("restore", { seq }),
@@ -597,6 +649,7 @@ export function DeskProvider({
       startAgent,
       stopAgent,
       saveTyping,
+      format,
       frameVersion,
       showDesk,
       onChange,

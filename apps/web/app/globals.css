@@ -476,7 +476,7 @@
   /* Figma Build, Stepper: the eight-dash loader turns smoothly (a transform at a constant speed,
      drawn by the compositor), its trail fading behind the brightest dash (owner: a smooth, buttery
      turn rather than a dash at a time); slower under reduced motion. */
-  --animate-step-spin: spin 0.8s linear infinite;
+  --animate-step-spin: spin 0.65s linear infinite; /* was 0.8 s: a faster turn feels faster */
   --animate-step-spin-slow: spin 2.4s linear infinite;
 
   /* Shadows (Figma effect styles Shadow/Pop, Control, Edge, Panel; Quality's values). */
@@ -790,6 +790,10 @@
   /* "Work with Buddy"'s hint (owner, 2026-11-06: about 15 % stronger than Caption-1): Caption-1
      moved 15 % toward the text colour, worked out where it's used so it follows the bar's own
      light or dark look (.theme-light / .theme-dark). */
+  /* A white button in both themes (owner, 2026-11-06: the review desk's Edit page). */
+  --color-button-white: var(--base-white);
+  --color-button-white-hover: var(--grey-50);
+  --color-button-white-text: var(--grey-900);
   --color-bar-hint: color-mix(
     in srgb,
     var(--color-caption-1) 85%,
@@ -1308,9 +1312,10 @@
 @utility spinner {
   border: 2px solid;
   border-radius: 50%;
+  /* Faster spins read as a faster app (Emil, 2026-11-06): 0.6 s and 1.2 s (were 0.8 and 1.6). */
   animation:
-    spinner-arc 0.8s linear infinite alternate,
-    spinner-turn 1.6s linear infinite;
+    spinner-arc 0.6s linear infinite alternate,
+    spinner-turn 1.2s linear infinite;
 }
 @utility spinner-thin {
   border-width: 1.5px;
@@ -1759,7 +1764,7 @@
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0;
-  transition: opacity 400ms var(--ease-out);
+  transition: opacity 250ms var(--ease-out);
 }
 .lander-aura[data-working]::before {
   opacity: 1;

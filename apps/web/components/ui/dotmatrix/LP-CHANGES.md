@@ -11,3 +11,4 @@ LP changes:
   colours it from the text colour (`currentColor`).
 
 No license file came with the registry item; check its terms before shipping it beyond the team.
+- 2026-11-06 (owner, Emil's speed tips): the collapse eases out (`var(--ease-out)`), not in.

@@ -20,10 +20,12 @@ from app.engines import paragraphs
 from app.engines.html import parse, serialize
 
 MAX_UP = 4
-MAX_VALUE = 80
+MAX_VALUE = 200
 
-# What Lander may set: spacing, size, layout of a box's content, type, colour and borders. No
-# positioning, transforms, animation or content.
+# What Buddy may set (owner, 2026-11-06: "I should be able to do any edit through Buddy"): spacing,
+# size, layout, position, type, colour, backgrounds (colours and gradients), borders, effects and
+# transforms, with `!important` to win over a template's own forced rules. Never `content`, and
+# never a url() (no outside pictures or fonts) or anything that could leave the style attribute.
 ALLOWED = {
     *(f"padding{s}" for s in ("", "-top", "-right", "-bottom", "-left", "-inline", "-block")),
     *(f"margin{s}" for s in ("", "-top", "-right", "-bottom", "-left", "-inline", "-block")),
@@ -36,11 +38,43 @@ ALLOWED = {
     "border", "border-top", "border-right", "border-bottom", "border-left", "border-width",
     "border-style", "border-color", "border-radius", "box-shadow", "opacity",
     "object-fit", "object-position", "aspect-ratio",
+    "position", "top", "right", "bottom", "left", "inset", "z-index",
+    "transform", "transform-origin", "translate", "rotate", "scale",
+    "overflow", "overflow-x", "overflow-y", "visibility", "clip-path",
+    "flex", "flex-grow", "flex-shrink", "flex-basis", "order", "place-items", "place-content",
+    "place-self", "align-content", "grid-template-columns", "grid-template-rows", "grid-column",
+    "grid-row", "grid-area", "grid-auto-flow", "columns", "column-count",
+    "font-family", "font-variant", "text-shadow", "text-decoration-color",
+    "text-decoration-thickness", "text-underline-offset", "text-indent", "text-wrap",
+    "word-break", "overflow-wrap", "word-spacing", "vertical-align", "list-style",
+    "list-style-type", "list-style-position",
+    "background-image", "background-size", "background-position", "background-repeat",
+    "background-clip", "background-blend-mode", "mix-blend-mode",
+    "border-top-left-radius", "border-top-right-radius", "border-bottom-left-radius",
+    "border-bottom-right-radius", "border-top-color", "border-right-color",
+    "border-bottom-color", "border-left-color", "border-top-width", "border-bottom-width",
+    "border-left-width", "border-right-width", "border-collapse", "border-spacing",
+    "table-layout", "outline", "outline-color", "outline-offset", "outline-width",
+    "filter", "backdrop-filter", "cursor", "accent-color", "fill", "stroke",
+    "box-sizing", "float", "clear", "pointer-events",
 }  # fmt: skip
-DISPLAY = {"block", "inline-block", "inline", "flex", "inline-flex", "grid", "inline-grid", "none"}
-FUNCTIONS = {"var", "calc", "rgb", "rgba", "hsl", "hsla", "min", "max", "clamp"}
-_VALUE = re.compile(r"^[#\w\s.,%()\-/+*]+$")
-_FORBIDDEN = re.compile(r"url\(|expression|image|@|\\|<|>|;|\{|\}|!", re.I)
+DISPLAY = {
+    "block", "inline-block", "inline", "flex", "inline-flex", "grid", "inline-grid", "none",
+    "contents", "table", "table-cell", "table-row", "list-item", "flow-root",
+}  # fmt: skip
+FUNCTIONS = {
+    "var", "calc", "rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch",
+    "color-mix", "min", "max", "clamp", "minmax", "repeat", "fit-content",
+    "linear-gradient", "radial-gradient", "conic-gradient", "repeating-linear-gradient",
+    "repeating-radial-gradient", "translate", "translatex", "translatey", "rotate", "scale",
+    "scalex", "scaley", "skew", "skewx", "skewy", "blur", "brightness", "contrast",
+    "drop-shadow", "grayscale", "saturate", "sepia", "invert", "hue-rotate", "inset",
+    "circle", "ellipse", "polygon", "cubic-bezier",
+}  # fmt: skip
+_VALUE = re.compile(r"^[#\w\s.,%()\-/+*\"']+$")
+_FORBIDDEN = re.compile(r"url\(|expression|image-set|@|\\|<|>|;|\{|\}|!|javascript:", re.I)
+# A value may end with !important, to win over the template's own forced rules.
+_IMPORTANT = re.compile(r"\s*!\s*important\s*$", re.I)
 _FUNCTION = re.compile(r"([a-zA-Z-]+)\(")
 _KEY = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 # A section key that means the page's body, unless a template has a section by that key.
@@ -62,7 +96,7 @@ class Target:
 
 
 MAX_INSIDE = 8
-_CHILD = re.compile(r"^[1-9]\d?(\.[1-9]\d?){0,3}$")
+_CHILD = re.compile(r"^[1-9]\d?(\.[1-9]\d?){0,7}$")
 _SKIP = {"script", "style", "noscript", "template", "br"}
 
 
@@ -231,6 +265,9 @@ def _check(prop: str, value: str) -> str | None:
         return f"{prop} isn't one of the properties Buddy can set"
     if value == "unset":
         return None
+    value = _IMPORTANT.sub("", value)
+    if not value:
+        return f"{prop}: a value is needed before !important"
     if len(value) > MAX_VALUE or _FORBIDDEN.search(value) or not _VALUE.match(value):
         return f"{prop}: “{value}” isn't a plain CSS value"
     if any(f.lower() not in FUNCTIONS for f in _FUNCTION.findall(value)):

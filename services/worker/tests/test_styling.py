@@ -40,9 +40,10 @@ def test_it_sets_allowed_properties_inline_and_refuses_the_rest() -> None:
             "width": "fit-content",
             "padding": "4px 10px",
             "background-color": "var(--lp-accent)",
-            "position": "fixed",
             "background": "url(https://x.test/a.png)",
-            "display": "contents",
+            "content": "'x'",
+            "color": "red; x: y",
+            "display": "run-in",
         },
     )
     assert applied == {
@@ -50,7 +51,7 @@ def test_it_sets_allowed_properties_inline_and_refuses_the_rest() -> None:
         "padding": "4px 10px",
         "background-color": "var(--lp-accent)",
     }
-    assert len(refused) == 3
+    assert len(refused) == 4  # no url(), no content, nothing past the value, no odd display
     assert (
         '<div class="badge" style="width: fit-content; padding: 4px 10px; '
         'background-color: var(--lp-accent)">' in html
@@ -66,7 +67,29 @@ def test_it_says_when_there_is_nothing_to_style() -> None:
     with pytest.raises(StyleError, match="no section nope"):
         styling.apply(PAGE, Target(section="nope"), {"padding": "4px"})
     with pytest.raises(StyleError, match="Nothing set"):
-        styling.apply(PAGE, Target(line=1), {"position": "absolute", "color": "red; x: y"})
+        styling.apply(PAGE, Target(line=1), {"content": "'x'", "color": "red; x: y"})
+    with pytest.raises(StyleError, match="isn't a path"):
+        styling.apply(PAGE, Target(line=1, child="1.1.1.1.1.1.1.1.1"), {"color": "red"})
+
+
+def test_buddy_can_do_any_edit_with_important_and_deep_paths() -> None:
+    """The owner's comparison table (2026-11-06): the page forced its header colour, and Buddy's
+    black didn't show; now it can win with !important, position things and reach deep elements."""
+    html, applied, refused = styling.apply(
+        PAGE,
+        Target(line=3, up=1),
+        {
+            "color": "#000000 !important",
+            "position": "relative",
+            "z-index": "2",
+            "transform": "translateY(-2px) rotate(1deg)",
+            "background-image": "linear-gradient(90deg, #111 0%, #333 100%)",
+            "font-family": "'Inter', sans-serif",
+        },
+    )
+    assert refused == [] and applied["color"] == "#000000 !important"
+    assert "color: #000000 !important" in html and "position: relative" in html
+    assert styling._CHILD.match("1.2.2.1.1")
 
 
 def test_looking_marks_the_box_around_a_line_or_a_section() -> None:
@@ -145,7 +168,7 @@ def test_it_styles_every_element_alike_in_one_go() -> None:
     assert [n.get_text() for n in styling.alike(soup, heading)] == ["Light", "Soft", "Warm"]
 
     html, applied, refused, count = styling.apply_alike(
-        LIST, Target(line=1), {"color": "#111111", "position": "fixed"}
+        LIST, Target(line=1), {"color": "#111111", "content": "'x'"}
     )
     assert count == 3 and applied == {"color": "#111111"} and refused
     out = parse(html)

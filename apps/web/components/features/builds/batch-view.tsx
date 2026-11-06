@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 
 import { PAGE_ASIDE } from "@/components/app/page-aside";
 import { ListRow } from "@/components/app/grouped-list";
@@ -185,20 +186,26 @@ function BatchTop({ batch, ready }: { batch: BatchState; ready: number }) {
   const queryClient = useQueryClient();
   const [hovered, setHovered] = useState(false);
   const key = ["batch", batch.batch_id];
+  const router = useRouter();
   const colour = useMutation({
     mutationFn: (folder_color: FolderColor) =>
       apiFetch(`/api/builds/batch/${batch.batch_id}`, batchFolderSchema, {
         method: "PATCH",
         body: JSON.stringify({ folder_color }),
       }),
-    onMutate: async (folder_color) => {
-      await queryClient.cancelQueries({ queryKey: key });
+    // The folder takes the colour at once (nothing awaited first); a refresh in flight is
+    // dropped, not put back, so it can't undo the pick.
+    onMutate: (folder_color) => {
+      void queryClient.cancelQueries({ queryKey: key }, { revert: false });
       const before = queryClient.getQueryData<BatchState>(key);
       queryClient.setQueryData<BatchState>(key, (old) =>
         old ? { ...old, folder_color } : old,
       );
       return { before };
     },
+    // The Pages list is a server page the browser keeps for Back: drop it so the folder there
+    // shows the new colour straight away.
+    onSuccess: () => router.refresh(),
     onError: (error, _colour, context) => {
       if (context?.before) queryClient.setQueryData(key, context.before);
       toast.error(
@@ -455,7 +462,7 @@ function StatusPill({
  * white panel 6 px right of the page panel, which narrows to make room, 356 px; its 48 px header
  * says how many are ready over a ×; then each page's build steps (the build page's Build steps
  * card, titled with the template), building first, then waiting, failed and ready. It opens by
- * widening (0.5 s on the editor's settle) as the panel fades in, and closes faster.
+ * widening (0.36 s on the editor's settle) as the panel fades in, and closes faster (0.24 s).
  */
 function BatchSheet({
   open,
@@ -496,20 +503,24 @@ function BatchSheet({
             width: `calc(var(--spacing-lander-panel) + ${SHEET_GAP}px)`,
             transition: reduced
               ? { duration: 0 }
-              : { duration: 0.5, ease: [0.2, 0.8, 0, 1] },
+              : { duration: 0.36, ease: [0.2, 0.8, 0, 1] },
           }}
           exit={{
             width: 0,
             transition: reduced
               ? { duration: 0 }
-              : { duration: 0.35, ease: [0.2, 0.8, 0, 1] },
+              : { duration: 0.24, ease: [0.2, 0.8, 0, 1] },
           }}
         >
           <motion.aside
             aria-label="Builds"
             className="absolute inset-y-0 right-0 flex w-lander-panel flex-col overflow-hidden rounded-panel bg-surface-primary edge"
             initial={{ opacity: 0, scale: reduced ? 1 : 0.98 }}
-            animate={{ opacity: 1, scale: 1, transition: { duration: 0.35 } }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              transition: { duration: 0.2, ease: [0.23, 1, 0.32, 1] },
+            }}
             exit={{ opacity: 0, transition: { duration: 0.15 } }}
             style={{ transformOrigin: "right center" }}
           >

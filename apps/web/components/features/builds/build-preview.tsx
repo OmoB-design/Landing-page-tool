@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -17,8 +18,19 @@ import { useJob } from "@/lib/queries/jobs";
 import { cn } from "@/lib/utils";
 import { buildCreatedSchema } from "@/lib/validators/build";
 
-import { BuildingIllustration } from "./building-illustration";
 import { useDeskOptional } from "./desk-context";
+
+// The build illustration shows only while a page builds: its code loads then, not with every
+// visit to a page (owner, 2026-11-06: the speed pass). Meanwhile the same grey well holds its place.
+const BuildingIllustration = dynamic(
+  () => import("./building-illustration").then((m) => m.BuildingIllustration),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="relative flex min-h-0 flex-1 flex-col bg-foreground-02" />
+    ),
+  },
+);
 
 type Viewport = "desktop" | "phone";
 

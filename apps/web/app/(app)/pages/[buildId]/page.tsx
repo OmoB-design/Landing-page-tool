@@ -141,9 +141,17 @@ async function Build({
       <PageHeader
         icon={PagesIcon}
         title={`${build.key} · ${build.title}`}
+        back={
+          build.batch_id
+            ? {
+                label: "Back to the batch",
+                href: `/pages/batch/${build.batch_id}`,
+              }
+            : undefined
+        }
         actions={
-          // Figma Review desk: Approve and the status, a rule, Export, a rule (then Jobs and
-          // Notifications), 10 px apart.
+          // Figma Review desk: Edit page (white, owner 2026-11-06), a rule, the status then
+          // Approve, a rule, Export, a rule (then Jobs and Notifications), 10 px apart.
           <div className="flex items-center gap-2.5">
             {desk ? (
               <>
@@ -152,13 +160,14 @@ async function Build({
                   asChild
                   variant="outline"
                   size="compact"
-                  className="px-3"
+                  className="bg-button-white px-3 text-button-white-text hover:bg-button-white-hover aria-expanded:bg-button-white-hover"
                 >
                   <Link href={`/pages/${build.id}/editor`}>
                     <RenameIcon aria-hidden className="size-3.5" />
                     Edit page
                   </Link>
                 </Button>
+                <HeaderDivider />
                 <StatusActions
                   fixCount={
                     build.report

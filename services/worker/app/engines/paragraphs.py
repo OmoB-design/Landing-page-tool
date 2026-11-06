@@ -152,8 +152,10 @@ def numbers(html: str) -> dict[str, int]:
     return {fid: entry.number for entry in _index(parse(html)) for fid, _ in entry.fragments}
 
 
-def rewrite(html: str, number: int, original: str, new: str) -> str:
-    """The page with paragraph `number` changed from `original` (as the desk showed it) to `new`."""
+def rewrite(html: str, number: int, original: str, new: str, *, allow_locked: bool = False) -> str:
+    """The page with paragraph `number` changed from `original` (as the desk showed it) to `new`.
+    Words filled from data are refused unless `allow_locked` (a person's edit, or Buddy's on their
+    behalf); they keep their marker either way, so the build's own rewrites still leave them."""
     soup = parse(html)
     entry = next((e for e in _index(soup) if e.number == number), None)
     if entry is None:
@@ -166,7 +168,7 @@ def rewrite(html: str, number: int, original: str, new: str) -> str:
         raise ParagraphEditError("A line needs words (to remove one, wait for the editor).")
     if text == shown:
         raise ParagraphEditError("Nothing changed.")
-    locked = [_locked(node, ()) for node in entry.nodes]
+    locked = [not allow_locked and _locked(node, ()) for node in entry.nodes]
 
     def refuse(index: int) -> None:
         raise ParagraphEditError(

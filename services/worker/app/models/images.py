@@ -58,6 +58,62 @@ class ImageJob(BaseModel):
     mode: Literal["generate", "edit"]
 
 
+# A picture's verdict from the product check (B3.2c): fix, ok, no_product; fixed or failed once a
+# match ran; unreadable (couldn't be downloaded) or placeholder (a free mock picture, not checked).
+CheckVerdict = Literal["fix", "ok", "no_product", "fixed", "failed", "unreadable", "placeholder"]
+
+
+class ProductCheckItem(BaseModel):
+    number: int
+    src: str
+    verdict: CheckVerdict
+    # The product photo to recreate it with (from 1), for a fix.
+    photo: int | None = None
+    note: str = ""
+
+
+class ProductCheck(BaseModel):
+    """The product check (B3.2c, D116): which pictures show a product that isn't the real one.
+    Kept in the build's report (`images.product_fix`); out of date once the pictures change."""
+
+    checked_at: datetime
+    fingerprint: str
+    items: list[ProductCheckItem] = Field(default_factory=list)
+    skipped: dict[str, int] = Field(default_factory=dict)
+    photos: int = 0
+    # Why nothing could be checked: no_product_photos, photos_unreadable.
+    reason: str | None = None
+    # The check's model answered in mock mode (no real look at the pictures).
+    mock: bool = False
+    # Pictures the check wanted fixed past the 10 a run fixes.
+    over: int = 0
+
+    def count(self, verdict: str) -> int:
+        return sum(1 for i in self.items if i.verdict == verdict)
+
+
+class ProductMatch(BaseModel):
+    """Match product everywhere, for the image studio: what the last check found and whether a
+    check or a match is running now."""
+
+    # unavailable (no product photos), checking, ready, fixing.
+    status: Literal["unavailable", "checking", "ready", "fixing"]
+    reason: str | None = None
+    job_id: UUID | None = None
+    checked: int = 0
+    to_fix: int = 0
+    ok: int = 0
+    fixed: int = 0
+    # A match fixes at most 10 pictures; what one would cost once pictures are live.
+    max_fixes: int = 10
+    price: str | None = None
+    mock: bool = True
+
+
+class MatchStarted(BaseModel):
+    job_id: UUID
+
+
 class ImageStudio(BaseModel):
     image: StudioImage
     versions: list[ImageVersion]
@@ -66,6 +122,8 @@ class ImageStudio(BaseModel):
     ai: ImageAI
     # A picture already being made for this image, if any.
     making: ImageJob | None = None
+    # Match product everywhere (B3.2c): the page's product check.
+    match: ProductMatch | None = None
 
 
 class ImageChange(BaseModel):

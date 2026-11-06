@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import {
   useCallback,
@@ -25,6 +26,7 @@ import {
   type ImageAiInput,
   type ImageJob,
   imageJobSchema,
+  matchStartedSchema,
 } from "@/lib/validators/images";
 import type { SectionAction } from "@/lib/validators/desk";
 
@@ -395,6 +397,61 @@ function Editor({
       void Promise.resolve().then(() => setMaking(null));
     }
   }, [makingJob.data, making, reload, onUndo]);
+  // Match product everywhere (B3.2c, D116): followed by its job whoever started it (the image
+  // studio, or Buddy's match_product, seen on the desk); when it's done the page catches up with
+  // a toast and Undo.
+  const queryClient = useQueryClient();
+  const [startedMatch, setStartedMatch] = useState<string | null>(null);
+  const [doneMatch, setDoneMatch] = useState<string | null>(null);
+  const matchId = startedMatch ?? desk.matching ?? null;
+  const following = matchId !== null && matchId !== doneMatch ? matchId : null;
+  const matchJob = useJob(following);
+  useEffect(() => {
+    const job = matchJob.data;
+    if (!following || !job || job.id !== following || isActive(job.status)) {
+      return;
+    }
+    const result = (job.result ?? {}) as { fixed?: unknown; mock?: unknown };
+    const fixed = typeof result.fixed === "number" ? result.fixed : 0;
+    void Promise.resolve().then(() => setDoneMatch(job.id));
+    if (job.status === "succeeded" && fixed > 0) {
+      toast.success(
+        `Matched the product in ${fixed} picture${fixed === 1 ? "" : "s"}` +
+          (result.mock ? " (placeholders, mock mode)" : ""),
+        { action: { label: "Undo", onClick: () => onUndo() } },
+      );
+      void reload().then(() => setStartedMatch(null));
+    } else if (job.status === "succeeded") {
+      toast.success("Every picture already shows the product");
+      void Promise.resolve().then(() => setStartedMatch(null));
+    } else {
+      toast.error(job.error?.message ?? "The product couldn’t be matched.");
+      void Promise.resolve().then(() => setStartedMatch(null));
+    }
+    void queryClient.invalidateQueries({
+      queryKey: ["image-studio", build.id],
+    });
+  }, [matchJob.data, following, reload, onUndo, queryClient, build.id]);
+  const matching = following
+    ? { message: matchJob.data?.events.at(-1)?.message ?? null }
+    : null;
+  const startMatch = useCallback(async () => {
+    await settle();
+    try {
+      const job = await apiFetch(
+        `/api/builds/${build.id}/images/match`,
+        matchStartedSchema,
+        { method: "POST" },
+      );
+      setStartedMatch(job.job_id);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Couldn’t start matching the product.",
+      );
+    }
+  }, [build.id, settle]);
   const makePicture = useCallback(
     async (number: number, input: ImageAiInput) => {
       await settle();
@@ -492,7 +549,7 @@ function Editor({
                     animate="center"
                     exit="exit"
                     transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
-                    className="absolute inset-0 overflow-y-auto bg-surface-primary"
+                    className="absolute inset-0 overflow-x-hidden overflow-y-auto bg-surface-primary"
                   >
                     {image !== null ? (
                       <ImagePanel
@@ -503,6 +560,8 @@ function Editor({
                         making={making?.number === image ? making : null}
                         onMake={makePicture}
                         onAdopt={adoptPicture}
+                        matching={matching}
+                        onMatch={startMatch}
                       />
                     ) : (
                       <SectionPanel

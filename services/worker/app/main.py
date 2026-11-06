@@ -14,6 +14,7 @@ from app import (
     builds,
     clones,
     desk,
+    fidelity,
     image_ai,
     images,
     mobile,
@@ -50,6 +51,7 @@ from app.models.desk import (
     CopyEditRequest,
     DeskChange,
     DeskState,
+    FormatRequest,
     RecolorRequest,
     RedraftRequest,
     SectionRequest,
@@ -64,6 +66,7 @@ from app.models.images import (
     ImageRestore,
     ImageStudio,
     ImageUpload,
+    MatchStarted,
     UploadedImage,
 )
 from app.models.publishing import (
@@ -325,6 +328,18 @@ def edit_build_copy(build_id: UUID, body: CopyEditRequest, user: CurrentUser) ->
     return state
 
 
+@app.post("/builds/{build_id}/format")
+def format_build_text(build_id: UUID, body: FormatRequest, user: CurrentUser) -> DeskState:
+    """Formats the selected text (B3.1g, D118): bold, italic, underline, strikethrough, a link,
+    colour, highlight, size or clear, on exactly the characters selected; one undoable change."""
+    require_org_member(user, body.org_id)
+    state: DeskState = _desk_call(
+        desk.format_text, body.org_id, build_id, user.id, body.base_version, body.ranges,
+        body.format,
+    )  # fmt: skip
+    return state
+
+
 @app.post("/builds/{build_id}/status")
 def set_build_status(build_id: UUID, body: StatusRequest, user: CurrentUser) -> DeskState:
     """Approve, or send an approved page back to review."""
@@ -425,7 +440,9 @@ def image_studio(build_id: UUID, number: int, org_id: UUID, user: CurrentUser) -
     """One image of the page: its details, its last five versions and what it can become."""
     require_org_member(user, org_id)
     found: ImageStudio = _desk_call(images.studio, org_id, build_id, number)
-    return found
+    # Match product everywhere (B3.2c): the page's product check, run again when out of date.
+    match = _desk_call(fidelity.studio_match, org_id, build_id, user.id)
+    return found.model_copy(update={"match": match})
 
 
 @app.post("/builds/{build_id}/images/upload")
@@ -444,6 +461,16 @@ def image_ai_start(
     stays editable while it's made and the picture goes on as one undoable change."""
     require_org_member(user, body.org_id)
     started: ImageJob = _desk_call(image_ai.start, body.org_id, build_id, user.id, number, body)
+    return started
+
+
+@app.post("/builds/{build_id}/images/match")
+def image_match_start(build_id: UUID, body: QaStart, user: CurrentUser) -> MatchStarted:
+    """Match product everywhere (B3.2c, D116): the pictures the product check found are recreated
+    with the real product (a job; up to 10 pictures, $0.15 each once live) and placed as one
+    undoable change."""
+    require_org_member(user, body.org_id)
+    started: MatchStarted = _desk_call(fidelity.start, body.org_id, build_id, user.id)
     return started
 
 

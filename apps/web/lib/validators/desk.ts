@@ -101,9 +101,17 @@ export const deskStateSchema = z.object({
   /** Redo (B3.1a): the newest undone change, kept until the next new change. */
   can_redo: z.boolean().catch(false),
   redo_reason: z.string().nullish().catch(null),
+  /** Match product everywhere running on the page (B3.2c): its job, whoever started it. */
+  matching: z.string().nullish().catch(null),
+  /** Only a formatting change fills this (B3.1g): the lines it formatted, marked as the editor's
+   * page shows them, to swap in where they are instead of loading the page again. */
+  lines: z
+    .array(z.object({ block: z.number().int(), html: z.string() }))
+    .optional(),
 });
 
 export type DeskState = z.infer<typeof deskStateSchema>;
+export type FormattedLine = NonNullable<DeskState["lines"]>[number];
 export type DeskFragment = DeskState["fragments"][number];
 export type DeskParagraph = DeskState["paragraphs"][number];
 export type DeskSnapshot = DeskState["snapshots"][number];
@@ -113,6 +121,30 @@ export type DeskRedraft = NonNullable<DeskState["redraft"]>;
 export type RedraftScope = (typeof REDRAFT_SCOPES)[number];
 
 const base = z.object({ base_version: z.number().int().min(1) });
+
+/** Part of a selection (B3.1g): a line and where the selection starts and ends in its text. */
+export const formatRangeSchema = z.object({
+  block: z.number().int().min(1),
+  start: z.number().int().min(0),
+  end: z.number().int().min(1),
+});
+export type FormatRange = z.infer<typeof formatRangeSchema>;
+
+/** One formatting change (D118); "" (or size 0) takes that formatting off. */
+export const textFormatSchema = z
+  .object({
+    bold: z.boolean(),
+    italic: z.boolean(),
+    underline: z.boolean(),
+    strike: z.boolean(),
+    link: z.string().max(2000),
+    color: z.string().max(60),
+    highlight: z.string().max(60),
+    size: z.number().int().min(0).max(200),
+    clear: z.boolean(),
+  })
+  .partial();
+export type TextFormat = z.infer<typeof textFormatSchema>;
 
 /** The desk's changes, as the browser sends them (the route adds the org). */
 export const deskActionSchemas = {
@@ -145,6 +177,11 @@ export const deskActionSchemas = {
       .optional(),
   }),
   recolor: base.extend({ colors: deskPaletteSchema }),
+  /** Text formatting on the selected characters (B3.1g, D118), in one line or across several. */
+  format: base.extend({
+    ranges: z.array(formatRangeSchema).min(1).max(300),
+    format: textFormatSchema,
+  }),
   /** The page editor's section changes (B3.1a): move, copy or remove, by the template's rules. */
   sections: base.extend({
     action: z.discriminatedUnion("type", [

@@ -17,7 +17,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import agent, desk, image_ai, images
+from app import agent, desk, fidelity, image_ai, images
 from app.config import get_settings
 from app.db import transaction
 from app.engines import comparison, image_edits, paragraphs
@@ -184,6 +184,22 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         asset = storage.store_asset(org_id, data, mime)
         return asset.url, asset.id, mock
 
+    def start_match() -> str:
+        """Match product everywhere (B3.2c): its job waits for this request to save, then checks
+        the pictures and places the fixes as one change."""
+        try:
+            fidelity.start(org_id, payload.build_id, ctx.job.created_by)
+        except desk.DeskEditError as exc:
+            return f"Couldn't start it: {exc}"
+        price = (
+            "free placeholders in mock mode" if get_settings().lp_mock_images else "$0.15 a picture"
+        )
+        return (
+            "Started. It checks every picture against the product photos, recreates the ones "
+            f"that show a different product (up to 10, {price}) and puts them on the page as one "
+            "change after this request is saved. Tell the user that, briefly."
+        )
+
     work = agent.Work(
         html=html,
         rules=rules_by_key,
@@ -194,6 +210,7 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         product_photos=product_photos,
         own_styles_loader=own_styles,
         imager=make_picture,
+        matcher=start_match,
     )
     target = payload.target
     lines = len(paragraphs.paragraphs(html))

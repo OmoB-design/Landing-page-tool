@@ -1,10 +1,10 @@
 "use client";
 
-import "dialkit/styles.css";
-
-import { DialRoot, useDialKit } from "dialkit";
+import type { ResolvedValues } from "dialkit";
 import { type Transition, useReducedMotion } from "motion/react";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
+
+import { Dial, DialPanel } from "@/components/ui/dial";
 
 type Range = [number, number, number, number];
 type Ease = [number, number, number, number];
@@ -18,18 +18,16 @@ type Spring = {
   mass?: number;
 };
 
-/** Sidekick's curve for the page squeezing and the panel arriving: fast, then a long settle. */
-const SETTLE: Ease = [0.2, 0.8, 0, 1];
-/** The bar sinking out of the page: it gathers speed as it goes. */
-const SINK: Ease = [0.55, 0, 1, 0.45];
-/** Thread pieces arriving (AffectUI's Thinking Loader curve). */
-const ARRIVE: Ease = [0.22, 1, 0.36, 1];
+/** Every move of Buddy's on the app's ease-out curve (`--ease-out` in globals.css; owner,
+ * 2026-11-06, after Emil's speed tips): it moves at once and slows as it lands, so a click is
+ * answered straight away. */
+const EASE_OUT: Ease = [0.23, 1, 0.32, 1];
 
 /**
- * The page editor's motion (B3.1b, D105), from Shopify Sidekick as measured on 2026-11-04
- * (docs/reference/sidekick-study.md): the bar sinks (0.32 s), the page squeezes (0.5 s) as Lander's
- * panel scales, fades and un-blurs in (1.6 s on a long settle); closing is quicker, and the bar
- * rises back on a small spring. In development a DialKit panel tunes every value live (Copy in its
+ * The page editor's motion (B3.1b, D105), first measured from Shopify Sidekick on 2026-11-04
+ * (docs/reference/sidekick-study.md) and made quicker on 2026-11-06 (owner, Emil's speed tips):
+ * the bar sinks (0.22 s), the page squeezes (0.32 s) as Buddy's panel scales, fades and un-blurs
+ * in (0.36 s; Sidekick's was 1.6 s); closing is quicker, and the bar rises back on a small spring. In development a DialKit panel tunes every value live (Copy in its
  * menu gives the owner's tuning to paste back); production keeps these defaults.
  */
 const DIAL = {
@@ -41,30 +39,30 @@ const DIAL = {
     fromBottom: [32, 0, 96, 1] as Range,
     /** Opening the editor: the bar rises into place after this long (owner, 2026-11-05). */
     enterDelay: [0.35, 0, 1.5, 0.05] as Range,
-    sink: { type: "easing", duration: 0.32, ease: SINK } as Easing,
+    sink: { type: "easing", duration: 0.22, ease: EASE_OUT } as Easing,
     distance: [84, 20, 160, 1] as Range,
-    rise: { type: "spring", visualDuration: 0.55, bounce: 0.18 } as Spring,
+    rise: { type: "spring", visualDuration: 0.4, bounce: 0.15 } as Spring,
   },
   page: {
-    squeezeDelay: [0.12, 0, 0.6, 0.01] as Range,
-    squeeze: { type: "easing", duration: 0.5, ease: SETTLE } as Easing,
-    widen: { type: "easing", duration: 0.45, ease: SETTLE } as Easing,
+    squeezeDelay: [0.05, 0, 0.6, 0.01] as Range,
+    squeeze: { type: "easing", duration: 0.32, ease: EASE_OUT } as Easing,
+    widen: { type: "easing", duration: 0.28, ease: EASE_OUT } as Easing,
   },
   panel: {
-    delay: [0.2, 0, 0.8, 0.01] as Range,
-    enter: { type: "easing", duration: 1.6, ease: SETTLE } as Easing,
+    delay: [0.08, 0, 0.8, 0.01] as Range,
+    enter: { type: "easing", duration: 0.36, ease: EASE_OUT } as Easing,
     scaleFrom: [0.975, 0.9, 1, 0.005] as Range,
     blurFrom: [1, 0, 8, 0.25] as Range,
-    exit: { type: "easing", duration: 0.15, ease: [0.4, 0, 1, 1] } as Easing,
+    exit: { type: "easing", duration: 0.15, ease: EASE_OUT } as Easing,
   },
   thread: {
     wordStagger: [0.022, 0, 0.1, 0.002] as Range,
     // The owner's tuning (2026-11-06).
     wordBlur: [4, 0, 10, 0.5] as Range,
-    arrive: { type: "easing", duration: 0.34, ease: ARRIVE } as Easing,
+    arrive: { type: "easing", duration: 0.28, ease: EASE_OUT } as Easing,
   },
   sections: {
-    toggle: { type: "easing", duration: 0.26, ease: SETTLE } as Easing,
+    toggle: { type: "easing", duration: 0.2, ease: EASE_OUT } as Easing,
   },
 };
 
@@ -132,7 +130,7 @@ export type LanderMotion = {
 };
 
 function resolve(
-  dial: ReturnType<typeof useDialKit<typeof DIAL>>,
+  dial: ResolvedValues<typeof DIAL>,
   reduced: boolean,
 ): LanderMotion {
   const slow = dial.slowMotion;
@@ -196,20 +194,42 @@ export function LanderMotionProvider({
   children: ReactNode;
 }) {
   const reduced = useReducedMotion() ?? false;
-  const dial = useDialKit("Lander motion", DIAL, {
-    id: "lander-motion-v1",
-    persist: true,
-    onAction: (action) => {
-      if (action === "replay") onReplay();
-    },
-  });
+  const options = useMemo(
+    () => ({
+      id: "lander-motion-v1",
+      persist: true,
+      onAction: (action: string) => {
+        if (action === "replay") onReplay();
+      },
+    }),
+    [onReplay],
+  );
+  // The dials in development; their defaults in production (components/ui/dial.tsx).
+  return (
+    <Dial name="Lander motion" config={DIAL} options={options}>
+      {(dial) => (
+        <ProvideMotion dial={dial} reduced={reduced}>
+          {children}
+        </ProvideMotion>
+      )}
+    </Dial>
+  );
+}
+
+function ProvideMotion({
+  dial,
+  reduced,
+  children,
+}: {
+  dial: ResolvedValues<typeof DIAL>;
+  reduced: boolean;
+  children: ReactNode;
+}) {
   const value = useMemo(() => resolve(dial, reduced), [dial, reduced]);
   return (
     <MotionContext value={value}>
       {children}
-      {process.env.NODE_ENV === "development" ? (
-        <DialRoot position="bottom-left" defaultOpen={false} />
-      ) : null}
+      <DialPanel position="bottom-left" defaultOpen={false} />
     </MotionContext>
   );
 }

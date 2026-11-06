@@ -56,6 +56,7 @@ const STUDIO: ImageStudio = {
   ],
   ai: { mock: true, price: "0.15" },
   making: null,
+  match: null,
   page_images: [
     { src: `${CDN}/hero.jpg`, label: "Product photo in Hero", number: 2 },
   ],
@@ -63,7 +64,12 @@ const STUDIO: ImageStudio = {
 
 const onMake = vi.fn(async () => {});
 
-function renderPanel(making: Making | null = null) {
+const onMatch = vi.fn(async () => {});
+
+function renderPanel(
+  making: Making | null = null,
+  matching: { message: string | null } | null = null,
+) {
   const client = new QueryClient();
   return render(
     <QueryClientProvider client={client}>
@@ -75,6 +81,8 @@ function renderPanel(making: Making | null = null) {
         making={making}
         onMake={onMake}
         onAdopt={vi.fn()}
+        matching={matching}
+        onMatch={onMatch}
       />
     </QueryClientProvider>,
   );
@@ -199,5 +207,77 @@ describe("image studio (B3.2a)", () => {
         screen.getByText("This image isn’t on the page any more."),
       ).toBeTruthy(),
     );
+  });
+});
+
+describe("match product everywhere (B3.2c)", () => {
+  const match = {
+    status: "ready" as const,
+    reason: null,
+    job_id: null,
+    checked: 6,
+    to_fix: 2,
+    ok: 4,
+    fixed: 0,
+    max_fixes: 10,
+    price: "0.15",
+    mock: false,
+  };
+  const studioWith = (m: object) =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ ...STUDIO, match: m }), {
+            status: 200,
+          }),
+      ),
+    );
+
+  it("says what the check found and matches in one click, with the price", async () => {
+    studioWith(match);
+    renderPanel();
+    expect(
+      await screen.findByText(
+        /2 of 6 pictures on the page show a product that isn’t the real one/,
+      ),
+    ).toBeTruthy();
+    const button = screen.getByRole("button", { name: /Match product/ });
+    expect(button.textContent).toContain("$0.30");
+    fireEvent.click(button);
+    await waitFor(() => expect(onMatch).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows the check running, the match running, and nothing to fix", async () => {
+    studioWith({ ...match, status: "checking", to_fix: 0 });
+    renderPanel();
+    expect(
+      await screen.findByText("Checking the pictures against the product…"),
+    ).toBeTruthy();
+    cleanup();
+    studioWith(match);
+    renderPanel(null, { message: "Matching the product: picture 1 of 2" });
+    expect(
+      await screen.findByText("Matching the product: picture 1 of 2"),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Match product/ })).toBeNull();
+    cleanup();
+    studioWith({ ...match, to_fix: 0, fixed: 2, mock: true });
+    renderPanel();
+    expect(
+      await screen.findByText(
+        "The product looks right in the 6 pictures checked. 2 pictures matched.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("asks for product photos when there are none", async () => {
+    studioWith({
+      ...match,
+      status: "unavailable",
+      reason: "no_product_photos",
+    });
+    renderPanel();
+    expect(await screen.findByText(/Add photos to the product/)).toBeTruthy();
   });
 });

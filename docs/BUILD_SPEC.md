@@ -520,6 +520,8 @@ Scene images are text-to-image inventions that show a generic product. This pass
 
 Typical cost *(ref)*: ~$0.02 for the check plus ~$0.15 per fix.
 
+*Built as B3.2c (D116):* the check runs at the end of every build and again from the image studio when the page's pictures have changed (kept in `report.images.product_fix` with a fingerprint); the fixes run in builds only when pictures are live and the wizard chose AI pictures, and otherwise from the studio's **Match product** (one click, one undoable change) or Buddy's `match_product`. Job `product_fidelity`; `POST /builds/{id}/images/match`.
+
 ### 10.6 Build report
 
 `builds.report` (jsonb):
@@ -574,8 +576,10 @@ Layout: preview iframe (desktop/mobile toggle) on the left, a right panel with t
 - Desktop view (1440 px scaled) or mobile view (390 px).
 - **Section rail:** sections from `data-lp-section` (or a no-AI sectioniser for clones without tags): move, remove, duplicate, style, "Improve with AI".
 - **Canvas:** text edits save immediately (debounced). Option/Alt-click opens a popover: text colour, background, size, and "Improve element" AI action.
+  *B3.1g (D118):* selecting text shows a formatting toolbar (bold, italic, underline, strikethrough, link, text colour, highlight, Word's text sizes with Grow/Shrink, clear formatting) that applies to exactly the selected characters across lines and sections as one desk change (`POST /builds/{id}/format`, ranges over the numbered lines' text; marked `data-lp-fmt` spans or `strong`/`em`/`u`/`s`/`a`); ⌘B/⌘I/⌘U/⌘⇧>/⌘⇧<. *Same day:* it shows at once on the page and is saved in the background like typing; the answer carries the formatted lines (`lines`), swapped in without loading the page. Buddy's `format_text` quotes a line's text.
 - **Image studio** (click an image): version history + restore; reuse an image from another slot; insert a product photo; "Match product everywhere" (product fidelity job); AI edit with up to 3 product references; generate new; upload; size, crop ratio, alt text.
   *Built as B3.2a (D109):* the studio opens in the editor's left drawer; replace with a product photo, another image on the page or an upload; shape (crop ratio), fit and focus as the image's inline style; alt text; the newest five versions per image in `image_versions` (with `src`), restorable; each change one desk change. Size is the shape and fit (no free resize). Generate, AI edit and "Match product everywhere" are B3.2b.
+  *B3.2c (D116):* **Match product everywhere** in the studio: what the automatic check found ("2 of 6 pictures show a product that isn't the real one") and Match product with its price; the editor follows the match whoever started it and the page catches up with a toast and Undo.
   *B3.2b (D110):* Make with AI: a new picture from a description or the shown one edited, with up to 3 product photos as references; a job per picture (`image_generate` / `image_edit`, one per image at a time), the page editable meanwhile, the picture landing as one desk change and a version; mock placeholders until `FAL_KEY` and `LP_MOCK_IMAGES=0`. "Match product everywhere" is B3.2c.
 - **Mobile optimise** *(ref)*: rule-based pass (viewport meta, image max-width, font clamping, fixes stylesheet) then an AI pass: 390 px screenshots → Claude proposes CSS → sanitise → inject inside `@media (max-width: 767px)`; two rounds (fix, verify).
   *Built as B3.3b (D112):* the phone rules in every build (finalize); the phone check measured in every preview check (no font clamping: text under 14 px is a finding, not a blanket rule); Fix for phone on the review desk (`mobile_optimize`, the vision model, two rounds when needed, one undoable change, the check run again); Lander's phone-only styling.

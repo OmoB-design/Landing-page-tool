@@ -1,13 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { DeskParagraph, DeskSection } from "@/lib/validators/desk";
+import type { DeskSection } from "@/lib/validators/desk";
 
-import {
-  canMoveSection,
-  keepsGroups,
-  lockedBlocks,
-  textToSave,
-} from "./editor";
+import { canMoveSection, keepsGroups, textToSave } from "./editor";
 
 const layout: DeskSection[] = [
   { key: "hero", label: "Hero", removable: false, duplicable: true, group: 0 },
@@ -39,13 +34,5 @@ describe("page editor rules (B3.1a)", () => {
     expect(textToSave("Only $29", "$19")).toBe("$19"); // a price alone is a line (as the worker says)
     expect(textToSave("Only $29", "Now $19")).toBe("Now $19");
     expect(textToSave("Hi", "Ça va")).toBe("Ça va");
-  });
-
-  it("knows which lines are filled from data", () => {
-    const paragraph = (number: number, locked: boolean) =>
-      ({ number, locked }) as DeskParagraph;
-    expect(lockedBlocks([paragraph(1, false), paragraph(2, true)])).toEqual([
-      2,
-    ]);
   });
 });

@@ -23,7 +23,15 @@ from psycopg.types.json import Jsonb
 
 from app import desk
 from app.db import transaction
-from app.engines import comparison, compliance, image_edits, paragraphs, recolor, styling
+from app.engines import (
+    comparison,
+    compliance,
+    formatting,
+    image_edits,
+    paragraphs,
+    recolor,
+    styling,
+)
 from app.engines import copy_rules as rules
 from app.jobs import queue
 from app.models.agent import (
@@ -59,8 +67,15 @@ is unclear.
 How to work:
 - Begin with one short sentence saying what you'll do, then use the tools.
 - Do what the request asks, no more. Keep the page's structure and everything else as it is.
-- Lines marked (data) are filled from the brand or product: you can't edit them. If the request \
-needs them changed, say they're changed on the brand or product.
+- Lines marked (data) hold words filled from the brand or product (the product's name, the \
+brand, prices, the writer's name). Change them when the user asks, as any other line; otherwise \
+leave those words as they are.
+- To format words inside a line (bold, italic, underline, strikethrough, a link, a text colour, \
+a highlight, a size, or clearing them), use format_text with the exact words; use style_element \
+for a whole element's look.
+- You can do any edit the user asks on this page: words, styles at any depth (with !important \
+when the page's own rules win over yours), positions, sizes, layout, colours, sections and \
+pictures. If one way doesn't take, inspect again and try another before saying you can't.
 - Write in the brand's voice and follow the copy rules below. Keep each line's job: a heading \
 stays a heading, a button a short action, a question a question. Keep lengths close to the \
 original unless asked to shorten or lengthen.
@@ -105,6 +120,11 @@ one. Only when the user asks for new or changed pictures, at most three per requ
 $0.15 once pictures are live (a free grey placeholder in mock mode), so say in your plan how many \
 you'll make. Describe the picture plainly (subject, setting, light, framing); no words in \
 pictures. You can't write new sections from nothing: say so and offer what you can do.
+- When the user wants the product in the pictures to look like the real one everywhere ("match \
+the product", "the bottle in the photos is wrong"), use match_product once: it checks every \
+picture against the product photos and recreates up to ten with the real product ($0.15 each once \
+pictures are live), as one change that lands on the page shortly after your reply. Don't also \
+edit those pictures yourself.
 - If the user asks whether a change worked or how something looks, look at it (and read the page \
 for words and colours) and say what it shows now; if it didn't take, say so and fix it.
 - Pictures the user attaches are for reference (a look to match, something to point at). You \
@@ -155,7 +175,8 @@ TOOLS: list[dict[str, Any]] = [
         "description": (
             "The page as it is now: its sections in order (key, name, and whether each can be "
             "moved, copied or removed), its four colours, and every line with its number. Lines "
-            "marked (data) are filled from the brand or product and can't be edited."
+            "marked (data) hold words filled from the brand or product: change them only when "
+            "the user asks."
         ),
         "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
@@ -163,8 +184,8 @@ TOOLS: list[dict[str, Any]] = [
         "name": "edit_lines",
         "description": (
             "Rewrites lines of the page by number. Give each line's complete new text (plain "
-            "text: bold words, links and parts filled from data are kept in place). Lines "
-            "marked (data) can't be edited. Returns what changed and any line that couldn't."
+            "text: bold words and links are kept in place). Lines marked (data) can be edited "
+            "when the user asks for it. Returns what changed and any line that couldn't."
         ),
         "input_schema": {
             "type": "object",
@@ -276,16 +297,15 @@ TOOLS: list[dict[str, Any]] = [
             "Sets CSS on one element: the box 'up' levels above a line's element (0 is the "
             "line's own element), a whole section by key, or the page itself with section "
             "'page' (its own background, behind and between the sections); with child, an "
-            "element inside that box by its path from inspect_element ('2', '2.1'). Allowed: "
-            "padding, margin, width, "
-            "min/max-width, height, min/max-height, display, flex-direction, flex-wrap, "
-            "align-items, justify-content, align-self, justify-self, gap, text-align, font-size, "
-            "font-weight, font-style, line-height, letter-spacing, text-transform, "
-            "text-decoration, white-space, color, background-color, background, border (and "
-            "its sides, width, style, colour), border-radius, box-shadow, opacity, object-fit, "
-            "object-position, aspect-ratio. Plain values "
-            "only (px, rem, %, fit-content, var(--lp-…), hex); 'unset' takes your earlier value "
-            "off. It applies at every width, or with phone_only only on phones (narrower than "
+            "element inside that box by its path from inspect_element ('2', '2.1', '1.2.2.1', up "
+            "to 8 deep). Almost any CSS property: spacing, size, display and flex or grid "
+            "layout, position (top, left, z-index…), transform, overflow, type (font-family, "
+            "size, weight, style, spacing, decoration, shadow), colour, background (colours and "
+            "gradients), borders and radii, box-shadow, opacity, filter, object-fit. Values: "
+            "px, rem, %, var(--lp-…), hex, rgb(), gradients, calc(); end a value with !important "
+            "when the page's own rule wins over yours (the result still shows the old look). No "
+            "url() and no content. 'unset' takes your earlier value off. It applies at every "
+            "width, or with phone_only only on phones (narrower than "
             "768 px), leaving desktop as it is. With all_like, it sets the same CSS on every "
             "element on the page like that one (the same tag and classes, or the same tag in a "
             "parent like its parent): all the item numbers, every section's box, every button; "
@@ -418,6 +438,50 @@ TOOLS: list[dict[str, Any]] = [
             "required": ["number", "prompt"],
             "additionalProperties": False,
         },
+    },
+    {
+        "name": "format_text",
+        "description": (
+            "Formats words inside one line, as an editor's toolbar does: give the line number, the "
+            "exact words as they read on that line (and which time they appear, if more than "
+            "once), and any of: bold, italic, underline, strike (true to add, false to take off), "
+            "link (a web address; '' takes it off), color and highlight (hex or var(--lp-…); "
+            "'none' takes it off), size in px (Word's sizes: 8, 9, 10, 11, 12, 14, 16, 18, 20, "
+            "22, 24, 26, 28, 36, 48, 72; 0 takes it off), or clear (takes all of those off but "
+            "links). Several at once are fine. Give a short label in plain words, like "
+            "'Made “free shipping” bold and red'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "line": {"type": "integer", "minimum": 1},
+                "text": {"type": "string", "minLength": 1, "maxLength": 2000},
+                "occurrence": {"type": "integer", "minimum": 1},
+                "bold": {"type": "boolean"},
+                "italic": {"type": "boolean"},
+                "underline": {"type": "boolean"},
+                "strike": {"type": "boolean"},
+                "link": {"type": "string", "maxLength": 2000},
+                "color": {"type": "string", "maxLength": 60},
+                "highlight": {"type": "string", "maxLength": 60},
+                "size": {"type": "integer", "minimum": 0, "maximum": 200},
+                "clear": {"type": "boolean"},
+                "label": {"type": "string", "maxLength": 120},
+            },
+            "required": ["line", "text"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "match_product",
+        "description": (
+            "Starts Match product everywhere: every picture on the page is checked against the "
+            "product photos and the ones showing a different or generic product (up to 10) are "
+            "recreated with the real product, as one undoable change that lands after this "
+            "request is saved. $0.15 a picture once pictures are live (free placeholders in mock "
+            "mode). Only when the user asks for the product to match in the pictures; once."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     {
         "name": "check_claims",
@@ -564,6 +628,9 @@ class Work:
     # asset id, whether it's a mock placeholder). None where pictures can't be made.
     imager: Imager | None = None
     pictures_made: int = 0
+    # Starts Match product everywhere (B3.2c): returns what to tell Claude. None where it can't.
+    matcher: Callable[[], str] | None = None
+    matched: bool = False
 
     def layout(self) -> list[DeskSection]:
         return desk._layout(self.rules, self.html)
@@ -624,6 +691,10 @@ class Work:
                 return self._adjust_image(args)
             if name in ("generate_image", "edit_image"):
                 return self._ai_image("generate" if name == "generate_image" else "edit", args)
+            if name == "match_product":
+                return self._match_product()
+            if name == "format_text":
+                return self._format_text(args)
             if name == "read_page":
                 return self.outline(), False, Step("Read the page", True)
             if name == "edit_lines":
@@ -657,9 +728,6 @@ class Work:
             line = by_number.get(number)
             if line is None:
                 refused.append(f"{number}: there's no line {number}")
-                continue
-            if line.locked:
-                refused.append(f"{number}: filled from the brand or product")
                 continue
             if len(text) > MAX_LINE_CHARS:
                 refused.append(f"{number}: longer than {MAX_LINE_CHARS} characters")
@@ -834,6 +902,10 @@ class Work:
                 return "Making pictures", f"Making a new picture for image {int(args['number'])}…"
             if name == "edit_image":
                 return "Making pictures", f"Editing the picture in image {int(args['number'])}…"
+            if name == "match_product":
+                return "Matching the product", "Starting to match the product in the pictures…"
+            if name == "format_text":
+                return "Formatting", f"Formatting words in line {int(args['line'])}…"
             if name == "check_claims":
                 return "Checking", "Checking the wording…"
         except Exception:  # a call Claude got wrong: run() says why
@@ -999,6 +1071,82 @@ class Work:
         self.changes.append(change)
         detail = f"“{prompt if len(prompt) <= 70 else prompt[:67] + '…'}”"
         return f"{label}. Look at it to check.", False, Step(label, True, change, detail=detail)
+
+    def _format_text(self, args: dict[str, Any]) -> tuple[str, bool, Step]:
+        """Formats exact words inside a line (B3.1g, D118), as the editor's toolbar does."""
+        number = int(args["line"])
+        line = next((p for p in paragraphs.paragraphs(self.html) if p.number == number), None)
+        if line is None:
+            raise ValueError(f"There's no line {number}.")
+        words = " ".join(str(args.get("text") or "").split())
+        if not words:
+            raise ValueError("Say which words to format.")
+        occurrence = max(1, int(args.get("occurrence") or 1))
+        start = -1
+        for _ in range(occurrence):
+            start = line.text.find(words, start + 1)
+            if start < 0:
+                times = f" {occurrence} times" if occurrence > 1 else ""
+                raise ValueError(f"“{words}” isn't in line {number}{times}: read the page again.")
+        span = formatting.Range(number, start, start + len(words))
+        changes: list[formatting.Format] = []
+        summary: dict[str, str] = {}
+        if args.get("clear"):
+            changes.append(formatting.Format(clear=True))
+            summary["clear"] = "all"
+        toggles = {"bold", "italic", "underline", "strike"} & set(args)
+        for key in sorted(toggles):
+            on = bool(args[key])
+            changes.append(
+                formatting.Format(
+                    bold=on if key == "bold" else None,
+                    italic=on if key == "italic" else None,
+                    underline=on if key == "underline" else None,
+                    strike=on if key == "strike" else None,
+                )
+            )
+            summary[key] = "on" if on else "off"
+        if "link" in args:
+            changes.append(formatting.Format(link=str(args["link"]).strip()))
+            summary["link"] = str(args["link"]).strip() or "off"
+        for key in ("color", "highlight"):
+            if key in args:
+                value = str(args[key]).strip()
+                value = "" if value.lower() in ("", "none") else value
+                changes.append(
+                    formatting.Format(color=value)
+                    if key == "color"
+                    else formatting.Format(highlight=value)
+                )
+                summary[key] = value or "off"
+        if "size" in args:
+            changes.append(formatting.Format(size=int(args["size"])))
+            summary["size"] = f"{int(args['size'])}px" if int(args["size"]) else "off"
+        if not changes:
+            raise ValueError("Say how to format it: bold, italic, a colour, a size…")
+        html = self.html
+        for change in changes:
+            html = formatting.apply(html, [span], change).html
+        self.html = html
+        labels = {s.key: s.label for s in self.layout()}
+        where = labels.get(line.section or "", line.section or "the page")
+        short = words if len(words) <= 40 else words[:39] + "…"
+        label = " ".join(str(args.get("label") or "").split())[:120] or f"Formatted “{short}”"
+        record = {"kind": "style", "label": label, "section": where, "styles": summary}
+        self.changes.append(record)
+        detail = " · ".join(f"{k} {v}" for k, v in summary.items())
+        return f"{label}. Look at it to check.", False, Step(label, True, record, detail=detail)
+
+    def _match_product(self) -> tuple[str, bool, Step]:
+        if self.matcher is None:
+            raise image_edits.ImageEditError("Matching the product isn't available here.")
+        if self.matched:
+            return "Already started for this request.", False, Step("Already matching", True)
+        told = self.matcher()
+        self.matched = True
+        label = "Started matching the product in the pictures"
+        detail = "It lands on the page as one change, with Undo"
+        return told, False, Step(label, True, detail=detail)
 
     def _check_claims(self, args: dict[str, Any]) -> tuple[str, bool, Step]:
         text = _clean(str(args["text"]))[:2000]

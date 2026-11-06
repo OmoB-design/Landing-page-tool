@@ -16,9 +16,12 @@ import { cn } from "@/lib/utils";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+// Fonts only a few screens use load when they're needed, not on every first visit (owner,
+// 2026-11-06: the speed pass): the code font, the published modal's titles and web addresses.
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
+  preload: false,
 });
 // Letter marks on workspaces, people and brands (Figma side nav).
 const geist = Geist({
@@ -31,12 +34,14 @@ const interTight = Inter_Tight({
   subsets: ["latin"],
   weight: ["500"],
   variable: "--font-inter-tight",
+  preload: false,
 });
 // Web addresses (Figma: Geist Mono; the published modal).
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   weight: ["400"],
   variable: "--font-geist-mono",
+  preload: false,
 });
 // Page greetings and big titles (D67).
 const crimsonPro = Crimson_Pro({

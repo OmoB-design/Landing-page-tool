@@ -122,6 +122,190 @@ const WRITE_BRIDGE = `(function () {
     return out.replace(/ +$/, "");
   }
   function key(el) { return el ? el.getAttribute("data-lp-section") : null; }
+  // Text formatting (B3.1g, D118): a selection, in one line or across several, goes up as the
+  // lines it touches and where it starts and ends in each line's text as read (whitespace
+  // collapsed, as textOf), with where it is on the page and the formatting it has now.
+  var dragging = false, selTimer = 0, lastSel = "";
+  function own(n, block) { return closest(n.parentElement, "data-lp-block") === block; }
+  function upTo(block, node, offset) {
+    var r = document.createRange();
+    try { r.setStart(block, 0); r.setEnd(node, offset); } catch (err) { return 0; }
+    var walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT), count = 0, started = false, space = false, n;
+    while ((n = walk.nextNode())) {
+      if (!own(n, block) || !r.intersectsNode(n)) continue;
+      var s = n.nodeValue, end = n === node ? offset : s.length;
+      for (var i = 0; i < end; i++) {
+        if (/\\s/.test(s[i])) { if (started && !space) count++; space = true; }
+        else { count++; started = true; space = false; }
+      }
+      if (n === node) break;
+    }
+    return count;
+  }
+  // The DOM point before character "index" of the block's text as read, or ("after") the point
+  // just after character index - 1, so a selection's end stays inside the last character it covers.
+  function pointAt(block, index, after) {
+    var walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT), count = 0, started = false, space = false, n, last = null;
+    if (after && index > 0) index -= 1;
+    while ((n = walk.nextNode())) {
+      if (!own(n, block)) continue;
+      last = n;
+      var s = n.nodeValue;
+      for (var i = 0; i < s.length; i++) {
+        var white = /\\s/.test(s[i]);
+        if (count >= index && !(white && (!started || space))) return { node: n, offset: after ? i + 1 : i };
+        if (white) { if (started && !space) count++; space = true; }
+        else { count++; started = true; space = false; }
+      }
+    }
+    return last ? { node: last, offset: last.nodeValue.length } : { node: block, offset: 0 };
+  }
+  function hex(value) {
+    var c = rgbOf(value);
+    if (!c || c.a === 0) return null;
+    return "#" + [c.r, c.g, c.b].map(function (v) { return ("0" + Math.round(v).toString(16)).slice(-2); }).join("");
+  }
+  function decorated(el, block, line) {
+    for (var a = el; a; a = a.parentElement) {
+      if ((getComputedStyle(a).textDecorationLine || "").indexOf(line) >= 0) return true;
+      if (a === block) break;
+    }
+    return false;
+  }
+  function formatsOf(range, blocks) {
+    var on = { bold: true, italic: true, underline: true, strike: true }, first = null, seen = 0;
+    for (var b = 0; b < blocks.length && seen < 200; b++) {
+      var walk = document.createTreeWalker(blocks[b], NodeFilter.SHOW_TEXT), n;
+      while ((n = walk.nextNode()) && seen < 200) {
+        if (!own(n, blocks[b]) || !range.intersectsNode(n) || !/\\S/.test(n.nodeValue)) continue;
+        // A node the selection only touches (it ends at the node's start, or starts at its end).
+        if ((n === range.endContainer && range.endOffset === 0) ||
+            (n === range.startContainer && range.startOffset >= n.nodeValue.length)) continue;
+        var el = n.parentElement, cs = getComputedStyle(el);
+        seen++;
+        if (!first) first = { el: el, block: blocks[b] };
+        if ((parseInt(cs.fontWeight, 10) || 400) < 600) on.bold = false;
+        if (cs.fontStyle !== "italic") on.italic = false;
+        if (!decorated(el, blocks[b], "underline")) on.underline = false;
+        if (!decorated(el, blocks[b], "line-through")) on.strike = false;
+      }
+    }
+    if (!first) return { bold: false, italic: false, underline: false, strike: false, link: null, color: null, highlight: null, size: null };
+    var link = closest(first.el, "href"), mark = closest(first.el, "data-lp-fmt"), highlight = null;
+    for (var m = first.el; m && m !== first.block; m = m.parentElement)
+      if (m.hasAttribute("data-lp-fmt") && m.style.backgroundColor) { highlight = hex(m.style.backgroundColor); break; }
+    var style = getComputedStyle(first.el);
+    return {
+      bold: on.bold, italic: on.italic, underline: on.underline, strike: on.strike,
+      link: link && link.tagName === "A" ? link.getAttribute("href") : null,
+      color: hex(style.color), highlight: mark ? highlight : null,
+      size: Math.round(parseFloat(style.fontSize) || 0) || null
+    };
+  }
+  function rangesOf(range) {
+    var all = document.querySelectorAll("[data-lp-block]"), blocks = [], ranges = [];
+    for (var i = 0; i < all.length; i++) if (range.intersectsNode(all[i])) blocks.push(all[i]);
+    for (var j = 0; j < blocks.length; j++) {
+      var b = blocks[j], length = textOf(b).length;
+      var start = b.contains(range.startContainer) ? upTo(b, range.startContainer, range.startOffset) : 0;
+      var end = b.contains(range.endContainer) ? upTo(b, range.endContainer, range.endOffset) : length;
+      start = Math.min(start, length); end = Math.min(end, length);
+      if (end > start) ranges.push({ block: number(b), start: start, end: end });
+    }
+    return { blocks: blocks, ranges: ranges };
+  }
+  function chosen() {
+    var s = getSelection();
+    return s && s.rangeCount && !s.isCollapsed ? rangesOf(s.getRangeAt(0)).ranges : [];
+  }
+  function report() {
+    var s = getSelection();
+    var none = function () { if (lastSel) { lastSel = ""; send({ type: "lp-selection", ranges: [] }); } };
+    if (!s || !s.rangeCount || s.isCollapsed) return none();
+    var range = s.getRangeAt(0), found = rangesOf(range), blocks = found.blocks, ranges = found.ranges;
+    if (!ranges.length) return none();
+    var box = range.getBoundingClientRect();
+    var id = JSON.stringify(ranges) + "@" + Math.round(box.top) + "," + Math.round(box.left);
+    if (id === lastSel) return;
+    lastSel = id;
+    send({ type: "lp-selection", ranges: ranges, rect: { x: box.left, y: box.top, w: box.width, h: box.height }, formats: formatsOf(range, blocks) });
+  }
+  function selectRanges(list) {
+    if (!Array.isArray(list) || !list.length) return;
+    var first = list[0], last = list[list.length - 1];
+    var a = document.querySelector(blockSel(first.block)), z = document.querySelector(blockSel(last.block));
+    if (!a || !z) return;
+    var from = pointAt(a, first.start, false), to = pointAt(z, last.end, true), r = document.createRange();
+    try { r.setStart(from.node, from.offset); r.setEnd(to.node, to.offset); } catch (err) { return; }
+    var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    lastSel = ""; report();
+  }
+  // Formatting shows at once (owner, 2026-11-06: "like Figma"): the editor sends the change
+  // ("lp-paint") and the selected characters take its look straight away while it's saved; the
+  // lines as saved follow ("lp-lines") and take their place, the selection kept. A refused change
+  // puts the lines back as they were.
+  var before = {};
+  function look(f) {
+    var css = "", lines = [];
+    if (f.bold === true) css += "font-weight:700;"; else if (f.bold === false) css += "font-weight:400;";
+    if (f.italic === true) css += "font-style:italic;"; else if (f.italic === false) css += "font-style:normal;";
+    if (f.underline === true) lines.push("underline");
+    if (f.strike === true) lines.push("line-through");
+    if (lines.length) css += "text-decoration-line:" + lines.join(" ") + ";";
+    if (typeof f.color === "string" && f.color) css += "color:" + f.color + ";";
+    if (typeof f.highlight === "string" && f.highlight) css += "background-color:" + f.highlight + ";";
+    if (typeof f.size === "number" && f.size > 0) css += "font-size:" + f.size + "px;";
+    return css.indexOf(";") >= 0 && css.indexOf("<") < 0 ? css : "";
+  }
+  function paintRange(r, css) {
+    var block = document.querySelector(blockSel(r.block));
+    if (!block || typeof r.start !== "number" || typeof r.end !== "number" || r.end <= r.start) return;
+    if (!(r.block in before)) before[r.block] = block.innerHTML;
+    var a = pointAt(block, r.start, false), z = pointAt(block, r.end, true);
+    var first = a.node, last = z.node;
+    if (first.nodeType !== 3 || last.nodeType !== 3) return;
+    if (z.offset < last.nodeValue.length) last.splitText(z.offset);
+    if (a.offset > 0) {
+      var rest = first.splitText(a.offset);
+      if (last === first) last = rest;
+      first = rest;
+    }
+    var walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT), n, on = false, list = [];
+    while ((n = walk.nextNode())) {
+      if (n === first) on = true;
+      if (on && own(n, block) && n.nodeValue.length) list.push(n);
+      if (n === last) break;
+    }
+    list.forEach(function (node) {
+      var span = document.createElement("span");
+      span.setAttribute("data-lp-paint", "");
+      span.setAttribute("style", css);
+      node.parentNode.insertBefore(span, node);
+      span.appendChild(node);
+    });
+  }
+  function swapLines(lines, revert) {
+    var keep = chosen();
+    lines.forEach(function (l) {
+      var el = l && typeof l.block === "number" && typeof l.html === "string" && document.querySelector(blockSel(l.block));
+      if (!el || el === editing) return;
+      el.innerHTML = l.html;
+      delete before[l.block];
+    });
+    if (revert) Object.keys(before).forEach(function (n) {
+      var el = document.querySelector(blockSel(n));
+      if (el && el !== editing) el.innerHTML = before[n];
+    });
+    before = {};
+    if (keep.length) selectRanges(keep);
+  }
+  document.addEventListener("mousedown", function () { dragging = true; }, true);
+  document.addEventListener("mouseup", function () { dragging = false; setTimeout(report, 0); }, true);
+  document.addEventListener("selectionchange", function () {
+    if (dragging) return;
+    clearTimeout(selTimer);
+    selTimer = setTimeout(report, 120);
+  });
   function picture(e) {
     if (closest(e.target, "data-lp-block")) return null;
     var under = document.elementsFromPoint ? document.elementsFromPoint(e.clientX, e.clientY) : [e.target];
@@ -176,8 +360,6 @@ const WRITE_BRIDGE = `(function () {
     finish(false);
     editing = block;
     saved = block.innerHTML;
-    var inner = block.querySelectorAll("[data-lp-frag-locked]");
-    for (var i = 0; i < inner.length; i++) inner[i].setAttribute("contenteditable", "false");
     try { block.contentEditable = "plaintext-only"; } catch (e) { block.contentEditable = "true"; }
     if (block.contentEditable !== "plaintext-only") block.contentEditable = "true";
     block.focus();
@@ -203,6 +385,8 @@ const WRITE_BRIDGE = `(function () {
     var b = closest(e.target, "data-lp-block");
     if (editing && b === editing) return;
     e.preventDefault();
+    var picked = getSelection();
+    if (picked && !picked.isCollapsed && picked.toString().trim()) { report(); return; }
     var s = key(topSection(e.target));
     if (s && s !== section) { section = s; send({ type: "lp-section", key: s }); }
     var p = picture(e);
@@ -226,6 +410,13 @@ const WRITE_BRIDGE = `(function () {
   });
   document.addEventListener("keydown", function (e) {
     var mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase();
+    var chosen = getSelection();
+    if (mod && chosen && !chosen.isCollapsed) {
+      var f = k === "b" ? "bold" : k === "i" ? "italic" : k === "u" ? "underline"
+        : e.shiftKey && (k === ">" || k === ".") ? "grow"
+        : e.shiftKey && (k === "<" || k === ",") ? "shrink" : null;
+      if (f) { e.preventDefault(); report(); send({ type: "lp-format-key", key: f }); return; }
+    }
     if (editing) {
       if (e.key === "Enter") { e.preventDefault(); finish(false); }
       else if (e.key === "Escape") { e.preventDefault(); finish(true); }
@@ -292,11 +483,57 @@ const WRITE_BRIDGE = `(function () {
     });
   }, { passive: true });
   addEventListener("load", function () { readTone(false); });
+  // Your place (owner, 2026-11-06: the page moved after a change): the first line showing at the
+  // top of the window and how far it is from the top. A page loaded again scrolls that line back
+  // to the same spot, and keeps it there as its pictures load and push things down, until you
+  // scroll yourself or a few seconds pass.
+  function pinned(el) {
+    for (var a = el; a && a !== document.body; a = a.parentElement) {
+      var pos = getComputedStyle(a).position;
+      if (pos === "fixed" || pos === "sticky") return true;
+    }
+    return false;
+  }
+  function spot() {
+    var all = document.querySelectorAll("[data-lp-block]");
+    for (var i = 0; i < all.length; i++) {
+      var r = all[i].getBoundingClientRect();
+      if (r.bottom <= 0 || r.height <= 0 || r.top > innerHeight) continue;
+      if (pinned(all[i])) continue;
+      return { block: number(all[i]), top: r.top, text: textOf(all[i]).slice(0, 60) };
+    }
+    return null;
+  }
+  var place = null, placeTimer = 0;
+  function placeAt() {
+    if (!place) return;
+    var at = place.spot, el = null;
+    if (at && typeof at.block === "number") {
+      el = document.querySelector(blockSel(at.block));
+      if (el && typeof at.text === "string" && textOf(el).slice(0, 60) !== at.text) {
+        el = null;
+        var all = document.querySelectorAll("[data-lp-block]");
+        for (var i = 0; i < all.length && !el; i++) if (textOf(all[i]).slice(0, 60) === at.text) el = all[i];
+      }
+    }
+    if (el && typeof at.top === "number") scrollTo(0, scrollY + el.getBoundingClientRect().top - at.top);
+    else if (typeof place.y === "number") scrollTo(0, place.y);
+  }
+  function stopPlacing() { place = null; clearTimeout(placeTimer); }
+  ["wheel", "touchmove", "keydown", "mousedown"].forEach(function (name) {
+    addEventListener(name, stopPlacing, { passive: true, capture: true });
+  });
+  if (window.ResizeObserver) {
+    var settling = new ResizeObserver(placeAt);
+    settling.observe(document.documentElement);
+    if (document.body) settling.observe(document.body);
+  }
+  addEventListener("load", placeAt);
   var ticking = false;
   addEventListener("scroll", function () {
     if (ticking) return;
     ticking = true;
-    setTimeout(function () { ticking = false; send({ type: "lp-scroll", y: scrollY }); readTone(false); }, 150);
+    setTimeout(function () { ticking = false; send({ type: "lp-scroll", y: scrollY, spot: spot() }); readTone(false); lastSel = ""; report(); }, 150);
   });
   addEventListener("message", function (e) {
     var d = e.data;
@@ -317,9 +554,21 @@ const WRITE_BRIDGE = `(function () {
       }
       paused = Boolean(d.paused);
       if (paused) finish(false);
-      if (typeof d.y === "number") scrollTo(0, d.y);
+      if (typeof d.y === "number" || d.spot) {
+        place = { y: d.y, spot: d.spot };
+        placeAt();
+        clearTimeout(placeTimer);
+        placeTimer = setTimeout(stopPlacing, 4000);
+      }
       send({ type: "lp-placed" });
     }
+    if (d.type === "lp-paint" && Array.isArray(d.ranges) && d.format) {
+      var css = look(d.format);
+      if (css) d.ranges.forEach(function (r) { if (r && typeof r.block === "number") paintRange(r, css); });
+      selectRanges(d.ranges);
+      return;
+    }
+    if (d.type === "lp-lines" && Array.isArray(d.lines)) { swapLines(d.lines, Boolean(d.revert)); return; }
     if (d.type === "lp-busy") busy = numbers(d.blocks);
     if (d.type === "lp-flash") {
       flash = numbers(d.blocks);
@@ -327,6 +576,7 @@ const WRITE_BRIDGE = `(function () {
       flashTimer = setTimeout(function () { flash = []; paint(); }, 2000);
       var first = flash.length && document.querySelector(blockSel(flash[0]));
       if (first && d.scroll) {
+        stopPlacing();
         var r = first.getBoundingClientRect();
         if (r.top < 40 || r.bottom > innerHeight - 90)
           scrollTo({ top: r.top + scrollY - innerHeight * 0.32, behavior: "smooth" });
@@ -337,6 +587,7 @@ const WRITE_BRIDGE = `(function () {
       image = typeof d.number === "number" ? String(d.number) : null;
       var pic = image && document.querySelector(imgSel(image));
       if (pic && d.scroll) {
+        stopPlacing();
         var at = pic.getBoundingClientRect();
         if (at.bottom < 40 || at.top > innerHeight - 90)
           scrollTo({ top: at.top + scrollY - innerHeight * 0.25, behavior: "smooth" });
@@ -346,6 +597,7 @@ const WRITE_BRIDGE = `(function () {
       section = typeof d.key === "string" ? d.key : null;
       var el = section && document.querySelector(sel(section));
       if (el && d.scroll) {
+        stopPlacing();
         var box = el.getBoundingClientRect();
         if (box.top < 0 || box.top > innerHeight * 0.6)
           scrollTo({ top: box.top + scrollY - 24, behavior: d.instant ? "auto" : "smooth" });

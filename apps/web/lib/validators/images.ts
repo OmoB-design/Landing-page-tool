@@ -21,6 +21,24 @@ const choice = z.object({
 });
 export type ImageChoice = z.infer<typeof choice>;
 
+/**
+ * Match product everywhere (B3.2c, D116): what the page's product check found, and whether a
+ * check (automatic, when the pictures changed) or a match is running.
+ */
+export const productMatchSchema = z.object({
+  status: z.enum(["unavailable", "checking", "ready", "fixing"]),
+  reason: z.string().nullable().catch(null),
+  job_id: z.string().nullable().catch(null),
+  checked: z.number().int().catch(0),
+  to_fix: z.number().int().catch(0),
+  ok: z.number().int().catch(0),
+  fixed: z.number().int().catch(0),
+  max_fixes: z.number().int().catch(10),
+  price: z.string().nullable().catch(null),
+  mock: z.boolean().catch(true),
+});
+export type ProductMatch = z.infer<typeof productMatchSchema>;
+
 export const imageStudioSchema = z.object({
   image: z.object({
     number: z.number().int(),
@@ -58,8 +76,13 @@ export const imageStudioSchema = z.object({
     .object({ job_id: z.string(), mode: z.enum(["generate", "edit"]) })
     .nullable()
     .catch(null),
+  /** Match product everywhere (B3.2c, D116): the page's product check. */
+  match: productMatchSchema.nullable().catch(null),
 });
 export type ImageStudio = z.infer<typeof imageStudioSchema>;
+
+/** POST /api/builds/[buildId]/images/match: the match's job (B3.2c). */
+export const matchStartedSchema = z.object({ job_id: z.string() });
 export type ImageVersion = ImageStudio["versions"][number];
 
 const base = z.object({ base_version: z.number().int().min(1) });

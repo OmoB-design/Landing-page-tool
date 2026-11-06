@@ -6,10 +6,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
 import { MonitorIcon, PhoneIcon } from "@/components/ui/icons";
-import { TYPING_PAUSE_MS, lockedBlocks, textToSave } from "@/lib/pages/editor";
+import { TYPING_PAUSE_MS, textToSave } from "@/lib/pages/editor";
 import { cn } from "@/lib/utils";
+import type { FormatRange, TextFormat } from "@/lib/validators/desk";
 
 import { useDesk } from "../builds/desk-context";
+import {
+  type CanvasSelection,
+  type Formats,
+  FormatToolbar,
+  growSize,
+  shrinkSize,
+} from "./format-toolbar";
 import { BUDDY_POINTER } from "./lander/lander-mark";
 
 export type Viewport = "desktop" | "phone";
@@ -61,6 +69,8 @@ function highlight(): string {
  * B3.2a (D109): clicking an image opens it in the image studio (`onImage`); the open one is
  * outlined (`image`), and a click anywhere else on the page closes it.
  */
+const NO_LOCKS: number[] = [];
+
 export function PageCanvas({
   buildId,
   updatedAt,
@@ -111,7 +121,7 @@ export function PageCanvas({
   probe?: React.RefObject<HTMLElement | null>;
   onTone?: (dark: boolean) => void;
 }) {
-  const { desk, saveTyping, frameVersion } = useDesk();
+  const { desk, saveTyping, frameVersion, format } = useDesk();
   const version = desk.build.page_version;
   // The build's last update as the editor opened: every desk change moves it too (a moment later,
   // through the refresh), which would load the same page twice. Rebuilds start from the review
@@ -166,6 +176,9 @@ export function PageCanvas({
     onZoom(zoom);
   }, [onZoom, zoom]);
   const scrollY = useRef(0);
+  // Your place as the line at the top of the window (the page sends it as you scroll), so a page
+  // loaded again after a change scrolls that line back to the same spot.
+  const scrollSpot = useRef<unknown>(null);
   // When the last flash was asked for, and the last one shown (its nonce): a flash waiting for its
   // page shows when that page is ready, within ten seconds.
   const flashAt = useRef(0);
@@ -174,7 +187,9 @@ export function PageCanvas({
 
   // What the frame needs whenever it (re)loads or the desk changes: the locked lines, whether
   // typing waits for a redraft, and where you were.
-  const locked = lockedBlocks(desk.paragraphs);
+  // Nothing is locked for your own typing (owner, 2026-11-06: the writer's name, a price):
+  // words filled from data are editable on the page like any other.
+  const locked: number[] = NO_LOCKS;
   const paused = desk.redraft !== null;
   const setup = useRef({ locked, paused, busyLines, flash, image, busyImage });
   useEffect(() => {
@@ -225,6 +240,20 @@ export function PageCanvas({
     };
   }, []);
 
+  // Text formatting (B3.1g, D118): the selection on the page and the toolbar over it.
+  const [selection, setSelection] = useState<CanvasSelection | null>(null);
+  const selectionRef = useRef<CanvasSelection | null>(null);
+  useEffect(() => {
+    selectionRef.current = selection;
+  }, [selection]);
+  // Formatting saves still on their way, and the lines they came back with: swapped into the page
+  // once the last is back, so a quick run of changes doesn't flicker.
+  const formatting = useRef({
+    pending: 0,
+    lines: new Map<number, string>(),
+    failed: false,
+  });
+
   // Typing: one line at a time, saved in order (each save carries the version the last returned).
   const line = useRef<Line | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -250,6 +279,39 @@ export function PageCanvas({
     });
   }, [onSaving, saveTyping]);
 
+  // Formatting shows at once (owner, 2026-11-06: "like Figma"): the page styles the selection
+  // straight away, the change is saved after any typing before it, and the lines as saved take
+  // the styled ones' place, without loading the page again (so it stays where you are).
+  const applyFormat = useCallback(
+    (change: TextFormat) => {
+      const current = selectionRef.current;
+      if (!current || paused) return;
+      post({ type: "lp-paint", ranges: current.ranges, format: change });
+      flush();
+      const state = formatting.current;
+      state.pending += 1;
+      queue.current = queue.current.then(async () => {
+        const lines = await format(current.ranges, change);
+        if (lines) for (const l of lines) state.lines.set(l.block, l.html);
+        else state.failed = true;
+        state.pending -= 1;
+        if (state.pending > 0) return;
+        post({
+          type: "lp-lines",
+          lines: [...state.lines].map(([block, html]) => ({ block, html })),
+          revert: state.failed,
+        });
+        state.lines.clear();
+        state.failed = false;
+      });
+    },
+    [flush, format, paused, post],
+  );
+  const applyRef = useRef(applyFormat);
+  useEffect(() => {
+    applyRef.current = applyFormat;
+  }, [applyFormat]);
+
   useEffect(() => {
     // A frame that's ready gets the locked lines, the pause, your place, the selection, the busy
     // lines, and a flash still waiting for its page.
@@ -261,6 +323,7 @@ export function PageCanvas({
           locked: now.locked,
           paused: now.paused,
           y: scrollY.current,
+          spot: scrollSpot.current,
         },
         to,
       );
@@ -290,8 +353,10 @@ export function PageCanvas({
         if (next === shownRef.current || from !== incoming) return;
         const type = (event.data as { type?: unknown } | null)?.type;
         if (type === "lp-ready") greet(from, next);
-        else if (type === "lp-placed") show(next);
-        else if (type === "lp-tone")
+        else if (type === "lp-placed") {
+          show(next);
+          setSelection(null); // the new page has no selection yet
+        } else if (type === "lp-tone")
           toneRef.current?.(Boolean((event.data as { dark?: unknown }).dark));
         return;
       }
@@ -312,6 +377,7 @@ export function PageCanvas({
           break;
         case "lp-scroll":
           if (typeof data.y === "number") scrollY.current = data.y;
+          scrollSpot.current = (data as { spot?: unknown }).spot ?? null;
           break;
         case "lp-tone":
           toneRef.current?.(Boolean((data as { dark?: unknown }).dark));
@@ -403,6 +469,60 @@ export function PageCanvas({
           if (data.key === "undo") onUndo();
           else if (data.key === "redo") onRedo();
           break;
+        case "lp-selection": {
+          const found = data as {
+            ranges?: unknown;
+            rect?: { x: number; y: number; w: number; h: number };
+            formats?: Formats;
+          };
+          const frame = frames.current.get(shownRef.current);
+          const box = well.current?.getBoundingClientRect();
+          if (
+            !Array.isArray(found.ranges) ||
+            found.ranges.length === 0 ||
+            !found.rect ||
+            !found.formats ||
+            !frame ||
+            !box
+          ) {
+            setSelection(null);
+            break;
+          }
+          const f = frame.getBoundingClientRect();
+          const scale = f.width / (frame.offsetWidth || f.width);
+          setSelection({
+            ranges: found.ranges as FormatRange[],
+            rect: {
+              x: f.left - box.left + found.rect.x * scale,
+              y: f.top - box.top + found.rect.y * scale,
+              w: found.rect.w * scale,
+              h: found.rect.h * scale,
+            },
+            formats: found.formats,
+            bounds: { width: box.width, height: box.height },
+          });
+          break;
+        }
+        case "lp-format-key": {
+          const current = selectionRef.current;
+          if (!current) break;
+          const formats = current.formats;
+          const size = formats.size ?? 16;
+          const change: TextFormat | null =
+            data.key === "bold"
+              ? { bold: !formats.bold }
+              : data.key === "italic"
+                ? { italic: !formats.italic }
+                : data.key === "underline"
+                  ? { underline: !formats.underline }
+                  : data.key === "grow"
+                    ? { size: growSize(size) }
+                    : data.key === "shrink"
+                      ? { size: shrinkSize(size) }
+                      : null;
+          if (change) applyRef.current(change);
+          break;
+        }
       }
     }
     window.addEventListener("message", onMessage);
@@ -465,6 +585,12 @@ export function PageCanvas({
         ref={well}
         className="relative flex min-h-0 flex-1 justify-center overflow-hidden bg-foreground-02 p-3 ring-thin ring-stroke ring-inset dark:bg-surface-modal"
       >
+        <FormatToolbar
+          selection={selection}
+          palette={desk.colors.page}
+          busy={paused}
+          onFormat={applyFormat}
+        />
         <AnimatePresence>
           {updating ? (
             <motion.span

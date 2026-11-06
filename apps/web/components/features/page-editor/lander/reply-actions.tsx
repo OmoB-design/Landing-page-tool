@@ -165,7 +165,7 @@ export function ReplyActions({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.2, 0.8, 0, 1] }}
+            transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
             className="flex flex-col gap-2 overflow-hidden"
           >
             <p className="text-type-caption-1 text-sub-text">

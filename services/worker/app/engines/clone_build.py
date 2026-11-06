@@ -368,7 +368,7 @@ def _size(tag: Tag) -> tuple[int, int]:
     return width, height
 
 
-def _matches(img: Tag, soup: BeautifulSoup, needles: list[str]) -> bool:
+def matches_rule(img: Tag, soup: BeautifulSoup, needles: list[str]) -> bool:
     """A keep or generic rule: a src substring, or a CSS selector."""
     src = str(img.get("src") or "")
     for needle in needles:
@@ -423,11 +423,13 @@ def mark_images(
         if src and any(s and (s == src or s in src) for s in logo_srcs):
             img["data-lp-logo"] = ""
             counts["logo"] += 1
-        elif _matches(img, soup, keep):
+        elif matches_rule(img, soup, keep):
             img["data-lp-keep"] = ""
             counts["keep"] += 1
-        elif _matches(img, soup, generic):
+        elif matches_rule(img, soup, generic):
+            # A generic product scene: product matching leaves it generic (B3.2c).
             img["data-lp-scene"] = ""
+            img["data-lp-generic"] = ""
             counts["scene"] += 1
         elif (
             src.lower().split("?")[0].endswith(".svg")

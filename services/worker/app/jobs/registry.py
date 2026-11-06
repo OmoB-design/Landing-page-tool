@@ -17,6 +17,7 @@ from app.jobs.kinds import (
     mobile_optimize,
     noop_demo,
     product_briefing,
+    product_fidelity,
     product_pull,
     publish_shopify,
     publish_vercel,
@@ -135,6 +136,15 @@ KINDS: dict[str, JobKind] = {
             payload_model=image_ai.ImagePayload,
             max_attempts=1,
             dedupe=image_ai.dedupe_key,
+        ),
+        # Match product everywhere (B3.2c, D116): the product check, and with `fix` the match.
+        JobKind(
+            name="product_fidelity",
+            title="Match product",
+            handler=product_fidelity.run,
+            payload_model=product_fidelity.FidelityPayload,
+            max_attempts=1,
+            dedupe=product_fidelity.dedupe_key,
         ),
         # Fix for phone (B3.3b, D112): Claude's phone-only CSS; one at a time per page.
         JobKind(

@@ -173,7 +173,7 @@
 }
 
 .dmx-collapse {
-  animation: dmx-collapse calc(var(--dmx-cycle) * 0.2 * var(--dmx-speed, 1)) ease-in forwards;
+  animation: dmx-collapse calc(var(--dmx-cycle) * 0.2 * var(--dmx-speed, 1)) var(--ease-out) forwards;
   animation-delay: calc(
     (4 - var(--dmx-manhattan, 0)) * 0.032 * var(--dmx-cycle) * var(--dmx-speed, 1)
   );

@@ -136,7 +136,7 @@ function renderDesk(onChange = vi.fn(), initial: DeskState = DESK) {
 afterEach(cleanup);
 
 describe("DeskPanel", () => {
-  it("lists the page's lines by section, locked ones not editable", () => {
+  it("lists the page's lines by section, lines filled from data editable too", () => {
     renderDesk();
     expect(screen.getByRole("tab", { name: /Copy 2/ })).toBeTruthy();
     expect(screen.getByText("Hero")).toBeTruthy();
@@ -145,10 +145,11 @@ describe("DeskPanel", () => {
     fireEvent.click(faq);
     expect(faq.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByText("Edited")).toBeTruthy();
+    // A line filled from data opens for editing too (owner, 2026-11-06).
     fireEvent.click(screen.getByText("$29"));
     expect(
-      screen.queryByRole("textbox", { name: "Edit this line" }),
-    ).toBeNull();
+      screen.getByRole("textbox", { name: "Edit this line" }),
+    ).toBeTruthy();
   });
 
   it("edits a line and saves it on the version it was opened on", () => {

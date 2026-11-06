@@ -521,7 +521,7 @@ function Reply({
             exit={{ height: 0, opacity: 0 }}
             transition={{
               duration: reduced ? 0.15 : 0.3,
-              ease: [0.2, 0.8, 0, 1],
+              ease: [0.23, 1, 0.32, 1],
             }}
             className="overflow-hidden"
           >

@@ -33,6 +33,7 @@ import {
   PROMPT_MAX,
   REFERENCES_MAX,
   type ImageStudio,
+  type ProductMatch,
   imageStudioSchema,
   uploadedImageSchema,
 } from "@/lib/validators/images";
@@ -74,6 +75,8 @@ export function ImagePanel({
   making,
   onMake,
   onAdopt,
+  matching = null,
+  onMatch,
 }: {
   buildId: string;
   number: number;
@@ -86,6 +89,10 @@ export function ImagePanel({
   onMake: (number: number, input: ImageAiInput) => Promise<void>;
   /** A picture the worker is already making for it (opened after a reload): follow it. */
   onAdopt: (number: number, job: ImageJob) => void;
+  /** Match product everywhere running on the page (B3.2c): what it's doing now. */
+  matching?: { message: string | null } | null;
+  /** Starts Match product everywhere. */
+  onMatch?: () => Promise<void>;
 }) {
   const { desk, changeImage } = useDesk();
   const version = desk.build.page_version;
@@ -96,6 +103,9 @@ export function ImagePanel({
     placeholderData: (previous) =>
       previous?.image.number === number ? previous : undefined,
     retry: false,
+    // The automatic product check (B3.2c) runs as a job: look again until it's done.
+    refetchInterval: (query) =>
+      query.state.data?.match?.status === "checking" ? 2500 : false,
   });
   const data = studio.data;
   // A picture the worker is already making for this image (the page was reloaded): follow it.
@@ -161,6 +171,8 @@ export function ImagePanel({
           onChange={changeImage}
           making={making}
           onMake={(input) => onMake(number, input)}
+          matching={matching}
+          onMatch={onMatch}
         />
       )}
     </div>
@@ -174,6 +186,8 @@ function Studio({
   onChange,
   making,
   onMake,
+  matching,
+  onMatch,
 }: {
   buildId: string;
   data: ImageStudio;
@@ -181,6 +195,8 @@ function Studio({
   onChange: ReturnType<typeof useDesk>["changeImage"];
   making: Making | null;
   onMake: (input: ImageAiInput) => Promise<void>;
+  matching: { message: string | null } | null;
+  onMatch?: () => Promise<void>;
 }) {
   const { image } = data;
   const [uploading, setUploading] = useState(false);
@@ -320,6 +336,15 @@ function Studio({
         disabled={waiting}
         onMake={onMake}
       />
+
+      {data.match && onMatch ? (
+        <MatchProduct
+          match={data.match}
+          matching={matching}
+          disabled={waiting}
+          onMatch={onMatch}
+        />
+      ) : null}
 
       <Group
         title="Crop and fit"
@@ -564,7 +589,7 @@ function MakeWithAi({
         <Button
           variant="outline"
           size="sm"
-          className="self-start"
+          className="h-auto min-h-8 max-w-full self-start py-1.5 text-left whitespace-normal"
           disabled={locked || prompt.trim().length < 3}
           onClick={() => void make()}
         >
@@ -573,10 +598,12 @@ function MakeWithAi({
           ) : (
             <SparkleFigmaIcon aria-hidden className="size-3.5" />
           )}
-          {mode === "generate" ? "Make a new picture" : "Edit the picture"}
-          {price ? (
-            <span className="font-normal text-sub-text">· {price}</span>
-          ) : null}
+          <span>
+            {mode === "generate" ? "Make a new picture" : "Edit the picture"}
+            {price ? (
+              <span className="font-normal text-sub-text"> · {price}</span>
+            ) : null}
+          </span>
         </Button>
       )}
       <p className="text-type-caption-2 text-heading-06">
@@ -584,6 +611,113 @@ function MakeWithAi({
           ? "Mock mode: each picture is a grey placeholder, free. Real pictures need a fal key."
           : "The page stays editable while it’s made. Undo takes the picture back."}
       </p>
+    </Group>
+  );
+}
+
+/**
+ * Match product everywhere (B3.2c, D116): the page's pictures that show a product that isn't the
+ * real one, recreated with the real product. The check is automatic (after every build, and again
+ * here when the pictures have changed); one click fixes what it found (at most 10 pictures,
+ * $0.15 each once live, free placeholders in mock mode), as one undoable change.
+ */
+function MatchProduct({
+  match,
+  matching,
+  disabled,
+  onMatch,
+}: {
+  match: ProductMatch;
+  matching: { message: string | null } | null;
+  disabled: boolean;
+  onMatch: () => Promise<void>;
+}) {
+  const [sending, setSending] = useState(false);
+  const count = Math.min(match.to_fix, match.max_fixes);
+  const each = match.price ? Number(match.price) : null;
+  const price = match.mock
+    ? "free placeholders"
+    : each !== null
+      ? `$${(each * count).toFixed(2)}`
+      : null;
+  const running = matching !== null || match.status === "fixing";
+  const start = async () => {
+    setSending(true);
+    try {
+      await onMatch();
+    } finally {
+      setSending(false);
+    }
+  };
+  const pictures = (n: number) => `${n} picture${n === 1 ? "" : "s"}`;
+  return (
+    <Group title="Match product everywhere">
+      {match.status === "unavailable" ? (
+        <p className="text-type-caption-1 text-sub-text">
+          Add photos to the product, and the pictures on the page can be matched
+          to them.
+        </p>
+      ) : running ? (
+        <p
+          role="status"
+          className="flex min-h-8 items-center gap-2 text-type-caption-1 text-sub-text"
+        >
+          <Spinner className="size-3.5" label="Matching" />
+          {matching?.message ?? "Matching the product…"}
+        </p>
+      ) : match.status === "checking" ? (
+        <p
+          role="status"
+          className="flex min-h-8 items-center gap-2 text-type-caption-1 text-sub-text"
+        >
+          <Spinner className="size-3.5" label="Checking" />
+          Checking the pictures against the product…
+        </p>
+      ) : match.to_fix > 0 ? (
+        <>
+          <p className="text-type-caption-1 text-heading-03">
+            {match.to_fix} of {pictures(match.checked)} on the page{" "}
+            {match.to_fix === 1 ? "shows" : "show"} a product that isn’t the
+            real one.
+            {match.to_fix > match.max_fixes
+              ? ` A match fixes ${match.max_fixes} at a time.`
+              : ""}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-auto min-h-8 max-w-full self-start py-1.5 text-left whitespace-normal"
+            disabled={disabled || sending}
+            onClick={() => void start()}
+          >
+            {sending ? (
+              <Spinner className="size-3.5" />
+            ) : (
+              <SparkleFigmaIcon aria-hidden className="size-3.5" />
+            )}
+            <span>
+              Match product
+              {price ? (
+                <span className="font-normal text-sub-text"> · {price}</span>
+              ) : null}
+            </span>
+          </Button>
+        </>
+      ) : (
+        <p className="text-type-caption-1 text-sub-text">
+          {match.checked
+            ? `The product looks right in the ${pictures(match.checked)} checked.`
+            : "No picture on the page could show the product."}
+          {match.fixed ? ` ${pictures(match.fixed)} matched.` : ""}
+        </p>
+      )}
+      {match.status !== "unavailable" ? (
+        <p className="text-type-caption-2 text-heading-06">
+          {match.mock
+            ? "Mock mode: the matched pictures are grey placeholders, free."
+            : "Undo takes the whole match back; each picture keeps its versions."}
+        </p>
+      ) : null}
     </Group>
   );
 }
@@ -685,12 +819,12 @@ function Options<T extends string>({
   onPick: (value: T) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
       <span className="text-type-caption-1 text-sub-text">{label}</span>
       <div
         role="group"
         aria-label={label}
-        className="flex items-center rounded-md bg-foreground-03 p-0.5 ring-hair ring-stroke ring-inset dark:bg-foreground-01 dark:ring-0"
+        className="flex max-w-full min-w-0 flex-wrap items-center rounded-md bg-foreground-03 p-0.5 ring-hair ring-stroke ring-inset dark:bg-foreground-01 dark:ring-0"
       >
         {options.map(([id, text]) => (
           <button
@@ -699,7 +833,7 @@ function Options<T extends string>({
             aria-pressed={value === id}
             disabled={disabled}
             onClick={() => value !== id && onPick(id)}
-            className="h-6 rounded-sm px-1.5 text-type-caption-1 font-medium text-heading-02 tabular-nums outline-none hover:text-body focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 aria-pressed:bg-surface-primary aria-pressed:text-body aria-pressed:shadow-sm dark:text-sub-text dark:aria-pressed:bg-letter-paper"
+            className="h-6 rounded-sm px-1.5 text-type-caption-1 font-medium whitespace-nowrap text-heading-02 tabular-nums outline-none hover:text-body focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 aria-pressed:bg-surface-primary aria-pressed:text-body aria-pressed:shadow-sm dark:text-sub-text dark:aria-pressed:bg-letter-paper"
           >
             {text}
           </button>

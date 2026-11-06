@@ -43,6 +43,7 @@ import {
   imageJobSchema,
   type UploadedImage,
   imageStudioSchema,
+  matchStartedSchema,
   uploadedImageSchema,
 } from "@/lib/validators/images";
 import {
@@ -426,6 +427,21 @@ export function startImageAi(
     { ...body, org_id: orgId },
     imageJobSchema,
     "Couldn't start the picture.",
+  );
+}
+
+/** Match product everywhere (B3.2c): a job that recreates the pictures the check found. */
+export function startMatch(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<{ job_id: string }> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/images/match`,
+    accessToken,
+    { org_id: orgId },
+    matchStartedSchema,
+    "Couldn't start matching the product.",
   );
 }
 

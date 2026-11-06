@@ -35,6 +35,11 @@ export function StatusActions({ fixCount }: { fixCount: number }) {
   const busy = pending !== null || redrafting !== null;
   return (
     <div className="flex items-center gap-1.5">
+      {/* The status first, then what to do about it (owner, 2026-11-06). A live page shows Live
+          instead (D89); without publishing, the chip says Published. */}
+      {status === "published" && publish?.publishing.live ? null : (
+        <StatusChip status={status} />
+      )}
       {status === "needs_review" ? (
         <ApproveButton
           fixCount={fixCount}
@@ -57,10 +62,6 @@ export function StatusActions({ fixCount }: { fixCount: number }) {
           Back to review
         </Button>
       ) : null}
-      {/* A live page shows Live instead (D89); without publishing, the chip says Published. */}
-      {status === "published" && publish?.publishing.live ? null : (
-        <StatusChip status={status} />
-      )}
     </div>
   );
 }

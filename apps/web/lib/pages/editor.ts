@@ -1,5 +1,5 @@
 /** The page editor's rules (B3.1a, D104), kept apart from the components so they can be tested. */
-import type { DeskParagraph, DeskSection } from "@/lib/validators/desk";
+import type { DeskSection } from "@/lib/validators/desk";
 
 /** Saves after you stop typing for this long (and when you leave the line). */
 export const TYPING_PAUSE_MS = 1000;
@@ -35,9 +35,4 @@ export function textToSave(lastSaved: string, typed: string): string | null {
   const text = collapse(typed);
   if (text === collapse(lastSaved)) return null;
   return WORDS.test(text) ? text : null;
-}
-
-/** The lines filled from data (shown, not typed in), for the canvas. */
-export function lockedBlocks(paragraphs: DeskParagraph[]): number[] {
-  return paragraphs.filter((p) => p.locked).map((p) => p.number);
 }

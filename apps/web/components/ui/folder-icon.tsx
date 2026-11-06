@@ -2,7 +2,14 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
-import type { CSSProperties } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -131,38 +138,94 @@ export function isFolderTone(value: unknown): value is FolderTone {
   return typeof value === "string" && value in TONES;
 }
 
-// Springs (interruptible, they keep their momentum): in a little softer, out quicker.
+// Springs (interruptible, they keep their momentum): in a little softer, out quicker. Each one
+// animates a whole `transform`, so Motion hands it to the browser (WAAPI) and it stays smooth
+// while the page is busy (Emil: shorthand x/y/rotate run on the main thread).
 const TILT_IN = { type: "spring", duration: 0.45, bounce: 0.15 } as const;
 const TILT_OUT = { type: "spring", duration: 0.3, bounce: 0 } as const;
 const RISE_IN = { type: "spring", duration: 0.6, bounce: 0.12 } as const;
 const RISE_OUT = { type: "spring", duration: 0.3, bounce: 0 } as const;
 const STAGGER = 0.04;
 // A new colour sweeps across the folder over the old one (owner: no muddy crossfade; Emil: clip
-// rather than fade for colour changes), on a strong ease-out so it answers the click at once.
-const WIPE = { duration: 0.38, ease: [0.23, 1, 0.32, 1] } as const;
+// rather than fade for colour changes), on a strong ease-out so it answers the click at once. A
+// browser animation of `clip-path`, off the main thread.
+const WIPE_MS = 380;
+const WIPE_EASE = "cubic-bezier(0.23, 1, 0.32, 1)";
 // The sweep's edge in the body's own lengths: from just left of the folder to just past it, so it
 // covers the panel's shadow too.
 const SWEEP = { from: -12, span: 146 };
+const SHOWN_CLIP = "inset(-20% 0px -20% 0px)";
+
+// The four front panels, fetched once so a new colour is ready the moment it's picked (on the
+// live site a panel not seen yet used to arrive mid-sweep).
+let panelsWarm = false;
+function warmPanels() {
+  if (panelsWarm || typeof window === "undefined") return;
+  panelsWarm = true;
+  for (const tone of Object.values(TONES)) {
+    const image = new window.Image();
+    image.decoding = "async";
+    image.src = `/folder/panel-${tone.panel}.svg`;
+  }
+}
 
 /**
- * One colour layer (the back tab or the front panel) that sweeps in over the previous colour
- * from left to right. Both layers follow the same edge in the body's coordinates (`left` is where
- * this layer starts in them, `width` its width), so the sweep reads as one across the folder.
+ * One colour layer (the back tab or the front panel). When it arrives because the colour changed,
+ * it sweeps in from left to right over the previous one; both layers follow one edge in the body's
+ * coordinates (`left` is where this layer starts in them, `width` its width), so the sweep reads as
+ * one across the folder. The previous colour stays underneath until it's covered.
  */
-function colourWipe(left: number, width: number, unit: number) {
-  const start = (SWEEP.from - left) * unit;
-  const right = `max(0px, calc(${+(width * unit).toFixed(3)}px - (${+start.toFixed(3)}px + var(--wipe) * ${+(SWEEP.span * unit).toFixed(3)}px)))`;
-  return {
-    style: { clipPath: `inset(-20% ${right} -20% 0)` },
-    initial: { "--wipe": 0, zIndex: 1 },
-    animate: { "--wipe": 1, zIndex: 1 },
-    // The old colour stays underneath until the new one has covered it.
-    exit: {
-      zIndex: 0,
-      opacity: 0,
-      transition: { delay: WIPE.duration, duration: 0 },
-    },
-  } as const;
+function ColourLayer({
+  sweep,
+  left,
+  width,
+  unit,
+  className,
+  style,
+  children,
+}: {
+  sweep: boolean;
+  left: number;
+  width: number;
+  unit: number;
+  className?: string;
+  style?: CSSProperties;
+  children?: ReactNode;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!sweep || !element || typeof element.animate !== "function") return;
+    const start = (SWEEP.from - left) * unit; // the edge at the start, in this layer's pixels
+    const full = width * unit;
+    const done = Math.min(1, (full - start) / (SWEEP.span * unit)); // the edge reaches the end
+    const animation = element.animate(
+      [
+        {
+          clipPath: `inset(-20% ${(full - start).toFixed(2)}px -20% 0px)`,
+          offset: 0,
+        },
+        { clipPath: SHOWN_CLIP, offset: done },
+        { clipPath: SHOWN_CLIP, offset: 1 },
+      ],
+      { duration: WIPE_MS, easing: WIPE_EASE },
+    );
+    return () => animation.cancel();
+  }, [sweep, left, width, unit]);
+  return (
+    <motion.span
+      ref={ref}
+      className={className}
+      style={{ ...style, zIndex: 1 }}
+      exit={{
+        zIndex: 0,
+        opacity: 0,
+        transition: { delay: WIPE_MS / 1000, duration: 0 },
+      }}
+    >
+      {children}
+    </motion.span>
+  );
 }
 
 /** Lengths in the big drawing's pixels, multiplied out to the folder's size. */
@@ -194,6 +257,15 @@ export function FolderIcon({
   const reduced = useReducedMotion() ?? false;
   const look = TONES[tone];
   const u = width / BODY.width;
+  useEffect(warmPanels, []);
+  // The colour sweeps only when it changes, not when the folder first appears.
+  const [shownTone, setShownTone] = useState(tone);
+  const [changed, setChanged] = useState(false);
+  if (tone !== shownTone) {
+    setShownTone(tone);
+    setChanged(true);
+  }
+  const sweep = changed && !reduced;
   const frames = LAYOUTS[Math.min(Math.max(stills.length, 1), 3)] ?? [];
   const [sx, sy, sb, sc] = look.shadow;
   const panel = `/folder/panel-${look.panel}.svg`;
@@ -203,155 +275,153 @@ export function FolderIcon({
       className={cn("relative block shrink-0", className)}
       style={{ width: px(BOX.width, u), height: px(BOX.height, u), ...style }}
     >
-      <motion.span
-        className="absolute top-1/2 left-1/2 block"
-        style={{ x: "-50%", y: "-50%" }}
-        initial={false}
-        animate={{ rotate: hovered && !reduced ? 0 : TILT }}
-        transition={hovered ? TILT_IN : TILT_OUT}
-      >
-        <span
-          className="relative block"
-          style={{
-            width: px(BODY.width, u),
-            height: px(BODY.height, u),
-            filter: `drop-shadow(${px(sx, u)} ${px(sy, u)} ${px(sb, u)} ${sc})`,
+      <span className="absolute top-1/2 left-1/2 block -translate-x-1/2 -translate-y-1/2">
+        <motion.span
+          className="block"
+          style={{ transform: `rotate(${TILT}deg)` }}
+          initial={false}
+          animate={{
+            transform: `rotate(${hovered && !reduced ? 0 : TILT}deg)`,
           }}
+          transition={hovered ? TILT_IN : TILT_OUT}
         >
-          {/* The back tab; a new colour sweeps in over the old. */}
           <span
-            className="absolute top-0 left-0 isolate block"
-            style={{ width: px(TAB.width, u), height: px(TAB.height, u) }}
-          >
-            <AnimatePresence initial={false}>
-              <motion.span
-                key={tone}
-                {...colourWipe(0, TAB.width, u)}
-                className="absolute inset-0 box-border block"
-                style={{
-                  ...colourWipe(0, TAB.width, u).style,
-                  backgroundImage: look.grad,
-                  border: `${px(look.line, u)} solid ${look.lineColour}`,
-                  borderTopLeftRadius: px(look.tabRadius, u),
-                  borderTopRightRadius: px(look.tabRadius, u),
-                }}
-                transition={reduced ? { duration: 0 } : WIPE}
-              />
-            </AnimatePresence>
-          </span>
-          {frames.map((frame, i) => {
-            const src = stills[frame.still];
-            return (
-              <motion.span
-                key={`${frames.length}-${i}`}
-                className="absolute flex items-center justify-center"
-                style={{
-                  left: px(frame.left, u),
-                  top: px(frame.top, u),
-                  width: px(SLOT.width, u),
-                  height: px(SLOT.height, u),
-                }}
-                initial={false}
-                animate={{ y: hovered && !reduced ? -RISE_BY * u : 0 }}
-                transition={
-                  hovered ? { ...RISE_IN, delay: i * STAGGER } : RISE_OUT
-                }
-              >
-                <span
-                  className="block"
-                  style={{ transform: `rotate(${frame.rotate}deg)` }}
-                >
-                  <span
-                    className="relative box-border block overflow-hidden bg-white"
-                    style={{
-                      width: px(CARD.width, u),
-                      height: px(CARD.height, u),
-                      borderRadius: px(CARD.radius, u),
-                      border: `${px(frame.raised ? 0.384 : 0.64, u)} solid #eaeaea`,
-                      boxShadow: frame.raised
-                        ? `${px(0.64, u)} ${px(2.558, u)} ${px(2.622, u)} 0 rgba(177,176,176,0.15), ${px(-0.64, u)} ${px(2.558, u)} ${px(2.558, u)} 0 rgba(155,155,155,0.2)`
-                        : undefined,
-                    }}
-                  >
-                    {src ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- a page's thumbnail
-                      <img
-                        src={src}
-                        alt=""
-                        decoding="async"
-                        className="absolute inset-0 size-full object-cover object-top"
-                      />
-                    ) : null}
-                    {/* The white highlight along the card's top edge. */}
-                    <span
-                      className="absolute inset-0 block rounded-[inherit]"
-                      style={{
-                        boxShadow: `inset 0 ${px(0.64, u)} ${px(1.279, u)} 0 rgba(255,255,255,0.8)`,
-                      }}
-                    />
-                  </span>
-                </span>
-              </motion.span>
-            );
-          })}
-          {/* The front panel (the portfolio's SVG). */}
-          <span
-            className="absolute left-0 isolate block"
+            className="relative block"
             style={{
-              top: px(FRONT.top, u),
               width: px(BODY.width, u),
-              height: px(FRONT.height, u),
+              height: px(BODY.height, u),
+              filter: `drop-shadow(${px(sx, u)} ${px(sy, u)} ${px(sb, u)} ${sc})`,
             }}
           >
-            <AnimatePresence initial={false}>
-              <motion.span
-                key={tone}
-                {...colourWipe(
-                  -BODY.width * look.panelPad,
-                  BODY.width * (1 + 2 * look.panelPad),
-                  u,
-                )}
-                className="absolute block"
-                style={{
-                  ...colourWipe(
-                    -BODY.width * look.panelPad,
-                    BODY.width * (1 + 2 * look.panelPad),
-                    u,
-                  ).style,
-                  inset: look.panelInset,
-                }}
-                transition={reduced ? { duration: 0 } : WIPE}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- a static vector */}
-                <img
-                  src={panel}
-                  alt=""
-                  className="block size-full max-w-none"
+            {/* The back tab; a new colour sweeps in over the old. */}
+            <span
+              className="absolute top-0 left-0 isolate block"
+              style={{ width: px(TAB.width, u), height: px(TAB.height, u) }}
+            >
+              <AnimatePresence initial={false}>
+                <ColourLayer
+                  key={tone}
+                  sweep={sweep}
+                  left={0}
+                  width={TAB.width}
+                  unit={u}
+                  className="absolute inset-0 box-border block"
+                  style={{
+                    backgroundImage: look.grad,
+                    border: `${px(look.line, u)} solid ${look.lineColour}`,
+                    borderTopLeftRadius: px(look.tabRadius, u),
+                    borderTopRightRadius: px(look.tabRadius, u),
+                  }}
                 />
-              </motion.span>
-            </AnimatePresence>
-            {shimmer && !reduced ? (
-              // The glint, cut to the panel's own shape (its SVG as a mask).
-              <span
-                className="folder-shimmer absolute block"
-                style={{
-                  // Above the colour layers (they stack at 1 for the sweep).
-                  zIndex: 2,
-                  inset: look.panelInset,
-                  backgroundImage:
-                    "linear-gradient(110deg, transparent 38%, rgba(255,255,255,0.5) 50%, transparent 62%)",
-                  backgroundSize: "250% 100%",
-                  backgroundRepeat: "no-repeat",
-                  WebkitMaskImage: `url(${panel})`,
-                  maskImage: `url(${panel})`,
-                  WebkitMaskSize: "100% 100%",
-                  maskSize: "100% 100%",
-                }}
-              />
-            ) : null}
+              </AnimatePresence>
+            </span>
+            {frames.map((frame, i) => {
+              const src = stills[frame.still];
+              return (
+                <motion.span
+                  key={`${frames.length}-${i}`}
+                  className="absolute flex items-center justify-center"
+                  style={{
+                    left: px(frame.left, u),
+                    top: px(frame.top, u),
+                    width: px(SLOT.width, u),
+                    height: px(SLOT.height, u),
+                  }}
+                  initial={false}
+                  animate={{
+                    transform: `translateY(${hovered && !reduced ? -RISE_BY * u : 0}px)`,
+                  }}
+                  transition={
+                    hovered ? { ...RISE_IN, delay: i * STAGGER } : RISE_OUT
+                  }
+                >
+                  <span
+                    className="block"
+                    style={{ transform: `rotate(${frame.rotate}deg)` }}
+                  >
+                    <span
+                      className="relative box-border block overflow-hidden bg-white"
+                      style={{
+                        width: px(CARD.width, u),
+                        height: px(CARD.height, u),
+                        borderRadius: px(CARD.radius, u),
+                        border: `${px(frame.raised ? 0.384 : 0.64, u)} solid #eaeaea`,
+                        boxShadow: frame.raised
+                          ? `${px(0.64, u)} ${px(2.558, u)} ${px(2.622, u)} 0 rgba(177,176,176,0.15), ${px(-0.64, u)} ${px(2.558, u)} ${px(2.558, u)} 0 rgba(155,155,155,0.2)`
+                          : undefined,
+                      }}
+                    >
+                      {src ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- a page's thumbnail
+                        <img
+                          src={src}
+                          alt=""
+                          decoding="async"
+                          className="absolute inset-0 size-full object-cover object-top"
+                        />
+                      ) : null}
+                      {/* The white highlight along the card's top edge. */}
+                      <span
+                        className="absolute inset-0 block rounded-[inherit]"
+                        style={{
+                          boxShadow: `inset 0 ${px(0.64, u)} ${px(1.279, u)} 0 rgba(255,255,255,0.8)`,
+                        }}
+                      />
+                    </span>
+                  </span>
+                </motion.span>
+              );
+            })}
+            {/* The front panel (the portfolio's SVG). */}
+            <span
+              className="absolute left-0 isolate block"
+              style={{
+                top: px(FRONT.top, u),
+                width: px(BODY.width, u),
+                height: px(FRONT.height, u),
+              }}
+            >
+              <AnimatePresence initial={false}>
+                <ColourLayer
+                  key={tone}
+                  sweep={sweep}
+                  left={-BODY.width * look.panelPad}
+                  width={BODY.width * (1 + 2 * look.panelPad)}
+                  unit={u}
+                  className="absolute block"
+                  style={{ inset: look.panelInset }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a static vector */}
+                  <img
+                    src={panel}
+                    alt=""
+                    className="block size-full max-w-none"
+                  />
+                </ColourLayer>
+              </AnimatePresence>
+              {shimmer && !reduced ? (
+                // The glint, cut to the panel's own shape (its SVG as a mask).
+                <span
+                  className="folder-shimmer absolute block"
+                  style={{
+                    // Above the colour layers (they stack at 1 for the sweep).
+                    zIndex: 2,
+                    inset: look.panelInset,
+                    backgroundImage:
+                      "linear-gradient(110deg, transparent 38%, rgba(255,255,255,0.5) 50%, transparent 62%)",
+                    backgroundSize: "250% 100%",
+                    backgroundRepeat: "no-repeat",
+                    WebkitMaskImage: `url(${panel})`,
+                    maskImage: `url(${panel})`,
+                    WebkitMaskSize: "100% 100%",
+                    maskSize: "100% 100%",
+                  }}
+                />
+              ) : null}
+            </span>
           </span>
-        </span>
-      </motion.span>
+        </motion.span>
+      </span>
     </span>
   );
 }

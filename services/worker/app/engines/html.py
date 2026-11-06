@@ -65,6 +65,11 @@ def serialize(soup: BeautifulSoup | Tag) -> str:
     return _SVG_BLOCK.sub(lambda m: restore_svg_case(m.group(0)), str(soup))
 
 
+def serialize_contents(tag: Tag) -> str:
+    """What's inside `tag`, as `serialize` would write it."""
+    return _SVG_BLOCK.sub(lambda m: restore_svg_case(m.group(0)), tag.decode_contents())
+
+
 def text_nodes(root: BeautifulSoup | Tag) -> Iterator[NavigableString]:
     """Visible text nodes in document order (not comments, scripts, styles or SVG)."""
     for node in root.descendants:

@@ -1,11 +1,10 @@
 "use client";
 
-import "dialkit/styles.css";
-
 import { Terminal } from "@lucasmarkes/hairline/react";
-import { DialRoot, useDialKit } from "dialkit";
+import type { ResolvedValues } from "dialkit";
 import type { CSSProperties } from "react";
 
+import { Dial, DialPanel } from "@/components/ui/dial";
 import { type Sweep, HairlineFigure } from "@/components/app/hairline-figure";
 
 type Range = [number, number, number, number];
@@ -71,10 +70,23 @@ export function BuildingIllustration({
   /** How far the build has got (0–1); undefined plays the continuous lap. */
   progress?: number;
 }) {
-  const dial = useDialKit("Build illustration", DIAL, {
-    id: "build-illustration-v2",
-    persist: true,
-  });
+  // The dials in development; their defaults in production (components/ui/dial.tsx).
+  return (
+    <Dial name="Build illustration" config={DIAL} options={DIAL_OPTIONS}>
+      {(dial) => <Illustration dial={dial} progress={progress} />}
+    </Dial>
+  );
+}
+
+const DIAL_OPTIONS = { id: "build-illustration-v2", persist: true };
+
+function Illustration({
+  dial,
+  progress,
+}: {
+  dial: ResolvedValues<typeof DIAL>;
+  progress?: number;
+}) {
   const assemble = dial.figure !== "terminal";
   const box = dial.size * 0.8;
   const figureStyle = {
@@ -115,7 +127,7 @@ export function BuildingIllustration({
       {/* The panel sits in the well's corner: the page's corners hold the header, the sidebar and
           Next's dev badge. Production builds render nothing here. */}
       <div className="absolute top-3 right-3 w-65">
-        <DialRoot mode="inline" />
+        <DialPanel mode="inline" />
       </div>
     </div>
   );

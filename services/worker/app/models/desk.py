@@ -90,6 +90,11 @@ class DeskSection(BaseModel):
     group: int = 0
 
 
+class FormattedLine(BaseModel):
+    block: int
+    html: str
+
+
 class DeskState(BaseModel):
     build: DeskBuild
     # The page's fragments (for the preview's clicks and the claims), each with its paragraph.
@@ -106,6 +111,12 @@ class DeskState(BaseModel):
     # Redo (B3.1a): the newest undone change, kept until the next new change.
     can_redo: bool = False
     redo_reason: str | None = None
+    # Match product everywhere running on the page (B3.2c): its job, so the editor can follow it
+    # whoever started it (the studio or Buddy).
+    matching: UUID | None = None
+    # Only a formatting change fills this (B3.1g): the lines it formatted, marked as the editor's
+    # page shows them, so the editor swaps them in where they are instead of loading the page.
+    lines: list[FormattedLine] = Field(default_factory=list)
 
 
 class DeskChange(BaseModel):
@@ -132,6 +143,39 @@ class CopyEditRequest(DeskChange):
     # Saved by the page editor while typing (B3.1a): saves of one line by one person, a minute
     # apart at most, share one undo step.
     typing: bool = False
+
+
+class FormatRange(BaseModel):
+    """Part of a selection (B3.1g): one line (its paragraph number) and where the selection
+    starts and ends in its text as the desk shows it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    block: int = Field(ge=1)
+    start: int = Field(ge=0, le=100_000)
+    end: int = Field(ge=1, le=100_000)
+
+
+class TextFormat(BaseModel):
+    """One formatting change (B3.1g, D118). A property left out isn't touched; link, color and
+    highlight as "" and size as 0 take that formatting off."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    bold: bool | None = None
+    italic: bool | None = None
+    underline: bool | None = None
+    strike: bool | None = None
+    link: str | None = Field(default=None, max_length=2000)
+    color: str | None = Field(default=None, max_length=60)
+    highlight: str | None = Field(default=None, max_length=60)
+    size: int | None = Field(default=None, ge=0, le=200)
+    clear: bool = False
+
+
+class FormatRequest(DeskChange):
+    ranges: list[FormatRange] = Field(min_length=1, max_length=300)
+    format: TextFormat
 
 
 # The page editor's section changes (B3.1a): the template editor's, without renaming.

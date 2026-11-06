@@ -23,7 +23,7 @@ from psycopg import errors
 from psycopg.types.json import Jsonb
 
 from app.db import transaction
-from app.engines import comparison, fragments, paragraphs, proof
+from app.engines import comparison, formatting, fragments, paragraphs, proof
 from app.engines import recolor as recolor_engine
 from app.engines.html import parse
 from app.engines.sections import (
@@ -45,9 +45,12 @@ from app.models.desk import (
     DeskSection,
     DeskSnapshot,
     DeskState,
+    FormatRange,
+    FormattedLine,
     RecolorColors,
     RedraftRequest,
     SectionAction,
+    TextFormat,
 )
 from app.models.template import DuplicateAction, RemoveAction, ReorderAction
 from app.providers import storage
@@ -298,7 +301,18 @@ def desk_state(org_id: UUID, build_id: UUID) -> DeskState:
         redraft = _redraft(conn, build_id)
         html = _page(build)
         colors = _colors(conn, build, html)
-    return _state(build, snapshots, html, rules, redraft, colors, redos)
+        matching = conn.execute(
+            """
+            select id from jobs
+            where build_id = %(b)s and kind = 'product_fidelity' and status in ('queued', 'running')
+              and coalesce((payload->>'fix')::boolean, false)
+            order by created_at desc limit 1
+            """,
+            {"b": build_id},
+        ).fetchone()
+    state = _state(build, snapshots, html, rules, redraft, colors, redos)
+    # Match product everywhere running (B3.2c): the editor follows it, whoever started it.
+    return state.model_copy(update={"matching": matching["id"] if matching else None})
 
 
 def proof_html(org_id: UUID, build_id: UUID) -> tuple[str, int]:
@@ -451,10 +465,11 @@ def _where(sections: list[str | None]) -> str:
 
 
 def copy_change(html: str, edits: list[CopyEdit]) -> tuple[str, list[str], list[str | None]]:
-    """The page with edited paragraphs written in (bold words, links and locked parts kept), the
-    new texts and the sections they're in. Shared by the desk and Lander (B3.1c). Raises
-    DeskConflictError when a line no longer reads as the edit expects, DeskEditError when it
-    can't take the edit (a line filled from data, one with no words)."""
+    """The page with edited paragraphs written in (bold words and links kept), the new texts and
+    the sections they're in. Shared by the desk and Buddy (B3.1c). Words filled from data (the
+    writer's name, a price) can be changed here, by a person or by Buddy at their request (owner,
+    2026-11-06). Raises DeskConflictError when a line no longer reads as the edit expects,
+    DeskEditError when it can't take the edit (a line with no words)."""
     sections: list[str | None] = []
     written: list[str] = []
     by_number = {p.number: p for p in paragraphs.paragraphs(html)}
@@ -462,12 +477,10 @@ def copy_change(html: str, edits: list[CopyEdit]) -> tuple[str, list[str], list[
         paragraph = by_number.get(edit.block)
         if paragraph is None:
             raise DeskConflictError
-        if paragraph.locked:
-            raise DeskEditError(
-                "That line is filled from the brand or product, so change it there."
-            )
         try:
-            html = paragraphs.rewrite(html, edit.block, edit.original, edit.text)
+            # A person's edit (or Buddy's on their behalf) may change words filled from data, like
+            # the writer's name (owner, 2026-11-06); the build's own rewrites never do.
+            html = paragraphs.rewrite(html, edit.block, edit.original, edit.text, allow_locked=True)
         except paragraphs.ParagraphDriftError as exc:
             raise DeskConflictError from exc
         except paragraphs.ParagraphEditError as exc:
@@ -502,6 +515,38 @@ def edit_copy(
             merge_key=merge,
         )  # fmt: skip
     return _finish(org_id, build_id, stale)
+
+
+def format_text(
+    org_id: UUID,
+    build_id: UUID,
+    user_id: UUID | None,
+    base_version: int,
+    ranges: list[FormatRange],
+    fmt: TextFormat,
+) -> DeskState:
+    """Formats exactly the selected characters (B3.1g, D118), in one line or across several, as
+    one undoable change: "Made 6 words bold in hero"."""
+    with transaction() as conn:
+        build = _load(conn, org_id, build_id, lock=True)
+        _check(conn, build, base_version)
+        change = formatting.Format(**fmt.model_dump())
+        try:
+            result = formatting.apply(
+                _page(build),
+                [formatting.Range(r.block, r.start, r.end) for r in ranges],
+                change,
+            )
+        except formatting.FormatError as exc:
+            raise DeskEditError(str(exc)) from exc
+        stale = _change(
+            conn, build, reason=formatting.reason(change, result), user_id=user_id,
+            html=result.html,
+        )  # fmt: skip
+    state = _finish(org_id, build_id, stale)
+    marked = proof.lines(result.html, {r.block for r in ranges})
+    state.lines = [FormattedLine(block=n, html=h) for n, h in marked.items()]
+    return state
 
 
 def set_status(

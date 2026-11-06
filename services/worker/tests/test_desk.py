@@ -162,13 +162,14 @@ def test_stale_versions_changed_lines_locked_and_empty_lines_are_refused(
         edits=[{"block": target["number"], "original": "Something else", "text": "Yes."}],
     )  # fmt: skip
     assert changed.status_code == 409
-    locked = edit(client, user, finished, current, "Only $29 today", "Only $19 today")
-    assert (
-        locked.status_code == 422 and "filled from the brand or product" in locked.json()["detail"]
-    )
     kept = edit(client, user, finished, current, "Only $29 today", "Only $29 this week")
     assert kept.status_code == 200, kept.text
     current = kept.json()
+    # Words filled from data (a price, the writer's name) can be changed by a person (owner,
+    # 2026-11-06); they keep their marker, so the build's own rewrites still leave them.
+    priced = edit(client, user, finished, current, "Only $29 this week", "Only $19 this week")
+    assert priced.status_code == 200, priced.text
+    current = priced.json()
     assert edit(client, user, finished, current, "Glow in 7 days", " 42 ").status_code == 422
     assert (
         edit(client, user, finished, current, "Glow in 7 days", "Glow in 7 days").status_code == 422
@@ -332,6 +333,10 @@ def test_locked_parts_stay_and_drift_is_refused() -> None:
     assert price is not None and price.get_text() == "$29"
     with pytest.raises(paragraphs.ParagraphEditError, match="filled from the brand or product"):
         paragraphs.rewrite(PARA, 3, "Only $29 today", "Only $19 today")
+    # A person's edit may change them, and the marker stays.
+    edited = paragraphs.rewrite(PARA, 3, "Only $29 today", "Only $19 today", allow_locked=True)
+    changed = parse(edited).select_one("[data-lp-price]")
+    assert changed is not None and changed.get_text() == "$19"
     with pytest.raises(paragraphs.ParagraphDriftError):
         paragraphs.rewrite(PARA, 2, "Something else", "Anything")
     with pytest.raises(paragraphs.ParagraphEditError, match="Nothing changed"):

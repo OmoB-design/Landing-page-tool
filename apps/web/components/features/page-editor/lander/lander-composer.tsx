@@ -125,7 +125,7 @@ export function LanderComposer({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.2, 0.8, 0, 1] }}
+            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
             className="-mb-0.5 flex gap-2 overflow-hidden"
           >
             {images.map((url, i) => (
