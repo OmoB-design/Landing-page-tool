@@ -118,3 +118,52 @@ def test_elements_without_a_line_are_listed_and_reached_by_their_path() -> None:
     for path in ("3", "2.1", "0", "x"):
         with pytest.raises(StyleError):
             styling.apply(PILL, Target(line=2, up=1, child=path), {"width": "10px"})
+
+
+# ── every element alike (B3.1f, D114) ─────────────────────────────────────────
+
+LIST = (
+    "<html><head><style>.num { color: #ccc }</style></head><body>"
+    '<section data-lp-section="items">'
+    '<div class="item"><span class="num">1</span><h3>Light</h3><p>One</p></div>'
+    '<div class="item"><span class="num big">2</span><h3>Soft</h3><p>Two</p></div>'
+    '<div class="item"><span class="num lp-p4">3</span><h3>Warm</h3><p>Three</p></div>'
+    "<aside><h3>Not an item</h3><p>Other</p></aside>"
+    "</section></body></html>"
+)
+
+
+def test_it_styles_every_element_alike_in_one_go() -> None:
+    soup = parse(LIST)
+    first = soup.select_one(".num")
+    assert first is not None
+    # The same tag and classes (the phone-styles class aside): numbers 1 and 3, not "num big".
+    assert [n.get_text() for n in styling.alike(soup, first)] == ["1", "3"]
+    # No classes of its own: the same tag in a parent like its parent (every item's heading).
+    heading = soup.select_one(".item h3")
+    assert heading is not None
+    assert [n.get_text() for n in styling.alike(soup, heading)] == ["Light", "Soft", "Warm"]
+
+    html, applied, refused, count = styling.apply_alike(
+        LIST, Target(line=1), {"color": "#111111", "position": "fixed"}
+    )
+    assert count == 3 and applied == {"color": "#111111"} and refused
+    out = parse(html)
+    assert [h.get("style") for h in out.select(".item h3")] == ["color: #111111"] * 3
+    assert out.select_one("aside h3").get("style") is None  # type: ignore[union-attr]
+
+    # On phones only: each gets the phone rule, desktop untouched.
+    phone, _, _, count = styling.apply_alike(
+        LIST, Target(line=1), {"font-size": "18px"}, phone=True
+    )
+    assert count == 3 and "font-size: 18px !important" in phone
+    assert all(h.get("style") is None for h in parse(phone).select(".item h3"))
+
+
+def test_the_page_itself_is_a_target_unless_a_section_has_that_key() -> None:
+    html, _, _ = styling.apply(PAGE, Target(section="page"), {"background-color": "#0d0d0d"})
+    body = parse(html).body
+    assert body is not None and body.get("style") == "background-color: #0d0d0d"
+    own = PAGE.replace('data-lp-section="faq"', 'data-lp-section="page"')
+    html, _, _ = styling.apply(own, Target(section="page"), {"padding": "4px"})
+    assert 'data-lp-section="page" style="padding: 4px"' in html

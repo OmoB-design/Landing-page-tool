@@ -222,7 +222,7 @@ def apply(
                 qa.enqueue(conn, org_id, build_id, user_id)  # new screenshots of the fixed page
                 break
         if time.monotonic() > deadline:
-            raise desk.DeskEditError("Lander was still working on the page. Try again.")
+            raise desk.DeskEditError("Buddy was still working on the page. Try again.")
         wait(3)
     desk._remove(stale)
     return version

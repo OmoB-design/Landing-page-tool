@@ -1,12 +1,13 @@
 """`agent_turn` (BUILD_SPEC §11.3, B3.1c, D106): one request to Lander, the page editor's agent.
 
-Claude (LP_MODEL_AGENT) works on a copy of the page in a tool-use loop of up to 8 rounds
-(app/agent.py has the tools and the prompt). Each thing it does is a progress event the thread
-shows live: its plan, then a step per tool call (with the lines before and after, so the change
-cards fill in as it goes), then its closing line. The result is saved as one desk change, one
-undo step, and only if the page hasn't changed since the request; nothing is saved if the request
-fails part-way. Stop (the user's) is checked between steps: what Lander did by then is saved.
-The reply is kept in the conversation either way.
+Claude (LP_MODEL_AGENT) works on a copy of the page in a tool-use loop within the request's budget:
+rounds, money and time, whichever runs out first (B3.1f, D114; app/agent.py has the tools, the
+prompt and the budget). Out of budget, it saves what it did and offers Keep going. Each thing it
+does is a progress event the thread shows live: its plan, then a step per tool call (with the lines
+before and after, so the change cards fill in as it goes), then its closing line. The result is
+saved as one desk change, one undo step, and only if the page hasn't changed since the request;
+nothing is saved if the request fails part-way. Stop (the user's) is checked between steps: what
+Lander did by then is saved. The reply is kept in the conversation either way.
 """
 
 import time
@@ -17,6 +18,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from app import agent, desk, image_ai, images
+from app.config import get_settings
 from app.db import transaction
 from app.engines import comparison, image_edits, paragraphs
 from app.fetch import browser
@@ -91,7 +93,7 @@ def run(ctx: JobContext) -> dict[str, Any]:
     except JobInterrupted:
         raise  # the worker is stopping: the job runs again elsewhere (nothing was saved)
     except Exception as exc:
-        message = str(exc) if isinstance(exc, UserFacingError) else "Lander couldn't finish that."
+        message = str(exc) if isinstance(exc, UserFacingError) else "Buddy couldn't finish that."
         agent.save_reply(
             payload.build_id,
             payload.thread_id,
@@ -116,7 +118,7 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
     # 2026-11-05: "Working on it…" sat alone for seconds).
     _event(ctx, "Reading the page…", "doing", phase="Reading", text="Reading the page…")
     changed_elsewhere = UserFacingError(
-        "The page changed before Lander finished, so nothing was saved. Ask again.",
+        "The page changed before Buddy finished, so nothing was saved. Ask again.",
         code="page_changed",
     )
     try:
@@ -231,9 +233,16 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
     system = agent.system_prompt(brief)
     closing: str | None = None
     stopped = False
-    for round_index in range(agent.MAX_ROUNDS):
+    # The request's budget (B3.1f, D114): rounds, money and time, whichever runs out first.
+    budget = agent.Budget.from_settings(get_settings())
+    out_of_budget = False
+    round_index = 0
+    while True:
         if agent.stop_requested(org_id, job_id):
             stopped = True
+            break
+        if not budget.left(round_index):
+            out_of_budget = True
             break
         ctx.check_stopping()
         # What Lander is doing, for the thread's status line and running step (owner, 2026-11-05).
@@ -254,6 +263,8 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
             raise UserFacingError(
                 "Claude declined that request, so nothing changed.", code="refused"
             ) from exc
+        budget.spend(result.cost_usd)
+        round_index += 1
         calls = result.tool_calls()
         text = result.text.strip()
         if calls and text and reply["plan"] is None:
@@ -284,12 +295,17 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
                 _event(ctx, step.label, "step", **step.as_dict(), image_url=agent.link(step.image))
         if stopped:
             break
+        note = budget.note(round_index)
+        if note:
+            outputs.append({"type": "text", "text": note})
         messages.append({"role": "user", "content": outputs})
-    else:
+
+    if out_of_budget:
         closing = (
-            "I stopped after eight rounds of changes. "
-            + ("What I did is saved, and you can undo it." if work.changes else "")
-        ).strip()
+            f"I ran out of this request's budget ({budget.describe()}) before finishing. "
+            + ("What I did is saved, and Undo takes it back. " if work.changes else "")
+            + "Press Keep going and I'll carry on from here."
+        )
 
     if stopped:
         closing = "Stopped. " + (
@@ -357,4 +373,6 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
         "closing": closing,
         "reason": reason,
         "page_version": version,
+        # It ran out of budget: the thread offers Keep going (B3.1f).
+        "more": out_of_budget,
     }

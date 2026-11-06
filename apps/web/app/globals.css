@@ -8,7 +8,7 @@
 @layer stageshow;
 
 /* Dark mode: a `dark` class on <html> (set before paint by the theme script in app/layout.tsx). */
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *, .theme-dark *):not(:is(.theme-light, .theme-light *)));
 /* Collapsed sidebar: `data-sidebar="collapsed"` on <html> (cookie-backed, see components/app/sidebar). */
 @custom-variant sidebar-collapsed (&:is([data-sidebar="collapsed"] *));
 /* Inside the desktop sidebar column (`data-sidebar-desktop`), and inside it while it's the icon
@@ -308,7 +308,6 @@
   --color-lander-aura-3: var(--pink-150);
   /* "Work with Lander" (B3.1b): a Lander-purple ring, so the bar reads over the page in light and
      dark (owner, 2026-11-04). */
-  --color-lander-bar-ring: var(--purple-150);
   /* Scrollbars (owner, 2026-11-04): a soft thumb, a step darker on hover. */
   --color-scrollbar: var(--grey-200);
   --color-scrollbar-hover: var(--grey-300);
@@ -327,6 +326,9 @@
   --color-highlight-blue-500: var(--blue-500);
   /* Typography */
   --color-heading-01: var(--grey-900);
+  /* Buddy (owner, 2026-11-06; from omob.work): a black body with white eyes; in dark, the reverse. */
+  --color-buddy-body: var(--base-black);
+  --color-buddy-eye: var(--base-white);
   --color-heading-02: var(--grey-850);
   --color-heading-03: var(--grey-800);
   --color-heading-04: var(--grey-700);
@@ -481,6 +483,20 @@
   /* Figma Build, Mover: the panel's resize handle (light and dark values on :root / .dark). */
   --shadow-mover: var(--mover-shadow);
   --shadow-pop: 0 4px 16px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
+  /* "Work with Lander" (owner, 2026-11-06: a subtle shadow that softly lifts the bar): layered
+     elevation, each layer further down, softer and drawn in (negative spread) so it sits under
+     the pill rather than glowing round it; stronger in dark (--float-intensity). Focused, it lifts
+     a little more. */
+  --shadow-lander-bar:
+    0 0.5px 1px rgb(10 10 11 / calc(0.04 * var(--float-intensity))),
+    0 2px 4px -1px rgb(10 10 11 / calc(0.04 * var(--float-intensity))),
+    0 6px 12px -3px rgb(10 10 11 / calc(0.05 * var(--float-intensity))),
+    0 14px 28px -6px rgb(10 10 11 / calc(0.06 * var(--float-intensity)));
+  --shadow-lander-bar-lift:
+    0 0.5px 1px rgb(10 10 11 / calc(0.04 * var(--float-intensity))),
+    0 3px 6px -1px rgb(10 10 11 / calc(0.05 * var(--float-intensity))),
+    0 10px 20px -4px rgb(10 10 11 / calc(0.06 * var(--float-intensity))),
+    0 22px 44px -8px rgb(10 10 11 / calc(0.08 * var(--float-intensity)));
   /* Floating menus and popovers (after Nucleo's --shadow-lg): a 0.5 px contact line and soft,
      layered depth; --float-intensity is 1 in light and 2.5 in dark (Nucleo: --shadow-intensity). */
   --shadow-float:
@@ -555,8 +571,10 @@
   --skeleton-motion: skeleton-pulse;
 }
 
-/* Dark mode (Figma: Tokens collection, Dark mode): only the tokens whose value changes. */
-.dark {
+/* Dark mode (Figma: Tokens collection, Dark mode): only the tokens whose value changes. Also a dark
+   island in light mode (.theme-dark), for "Work with Buddy" over a light page (owner, 2026-11-06). */
+.dark,
+.theme-dark {
   --card-edge-shadow: var(--shadow-edge);
   --briefing-item-shadow: transparent;
   --segmented-fill: var(--color-dashboard);
@@ -614,7 +632,6 @@
   --color-lander-aura-1: var(--purple-700);
   --color-lander-aura-2: var(--blue-700);
   --color-lander-aura-3: var(--pink-850);
-  --color-lander-bar-ring: var(--purple-700);
   --color-scrollbar: var(--grey-800);
   --color-scrollbar-hover: var(--grey-700);
   --color-highlight-yellow-50: var(--yellow-700);
@@ -629,6 +646,8 @@
   --color-highlight-blue-150: var(--blue-300);
   /* Typography */
   --color-heading-01: var(--grey-50);
+  --color-buddy-body: var(--base-white);
+  --color-buddy-eye: var(--base-black);
   --color-heading-02: var(--grey-100);
   --color-heading-03: var(--grey-150);
   --color-heading-04: var(--grey-200);
@@ -647,6 +666,98 @@
   --color-icon-nav-active: var(--grey-50);
   --color-icon-explainer: var(--grey-700);
   --color-drawer: var(--grey-850);
+}
+
+/* A light island in dark mode (.theme-light): every token .dark changes takes its light value again,
+   and dark: utilities skip it. For "Work with Buddy" over a dark page (owner, 2026-11-06: the bar
+   contrasts with the page behind it). Keep it in step with .dark: the same names, the light values. */
+.dark .theme-light {
+  color-scheme: light;
+  --card-edge-shadow: 0 0 #0000;
+  --briefing-item-shadow: rgb(182 182 182 / 0.15);
+  --segmented-fill: var(--color-surface-primary);
+  --segmented-line: inset 0 0 0 0.5px var(--color-stroke);
+  --segmented-drop: var(--shadow-light);
+  --mover-fill: var(--color-foreground-03);
+  --mover-shadow:
+    0 0 0 0.5px rgb(61 59 53 / 0.1), 0 1px 1px 0 rgb(0 0 0 / 0.1),
+    0 1px 5px 0 rgb(61 59 53 / 0.05), inset 0 4px 4px 0 rgb(212 212 212 / 0.15),
+    inset 5px 4px 3px 0 rgb(255 255 255 / 0.25),
+    inset 0 0 4px 0 rgb(255 255 255 / 0.5);
+  --template-shot-line: var(--color-illustration-line-strong);
+  --template-shot-shadow: 0 4.92px 5.91px 0 rgb(200 196 196 / 0.15);
+  --color-button-primary-drop-soft: rgb(186 186 186 / 0);
+  --color-button-primary-drop-deep: rgb(0 0 0 / 0);
+  --color-tint-green: var(--color-highlight-green-50);
+  --color-tint-blue: var(--color-highlight-blue-50);
+  --color-tint-red: var(--color-highlight-red-50);
+  --color-tab-indicator: var(--color-overlay);
+  --color-tint-yellow: var(--color-highlight-yellow-50);
+  --color-edge: var(--color-stroke-strong);
+  --color-edge-strong: var(--color-stroke-input-hover);
+  --float-intensity: 1;
+  --skeleton-opacity: 0.2;
+  --skeleton-base: var(--color-foreground-03);
+  --skeleton-fade: 225ms;
+  --color-lift-shadow: rgb(181 181 181 / 0.25);
+  --color-wizard-footer-shadow: rgb(186 179 179 / 0.15);
+  --color-surface-primary: var(--base-white);
+  --color-foreground-01: var(--grey-50);
+  --color-foreground-02: var(--grey-100);
+  --color-foreground-03: var(--grey-150);
+  --color-dashboard: var(--grey-10);
+  --color-surface-modal: var(--base-white);
+  --color-letter-paper: var(--base-white);
+  --color-stroke: var(--grey-100);
+  --color-stroke-strong: var(--grey-150);
+  --color-stroke-input-hover: var(--grey-200);
+  --color-stroke-input-active: var(--grey-850);
+  --color-stroke-input-negative: var(--red-700);
+  --color-button-primary-disabled: var(--grey-100);
+  --color-button-secondary: var(--base-white);
+  --color-button-neutral: var(--grey-100);
+  --color-button-neutral-active: var(--grey-150);
+  --color-button-secondary-text: var(--grey-850);
+  --color-spot-500-indigo: var(--indigo-500);
+  --color-highlight-indigo-50: var(--indigo-50);
+  --color-highlight-green-50: var(--green-50);
+  --color-highlight-purple-50: var(--purple-50);
+  --color-highlight-purple-150: var(--purple-150);
+  --color-lander-aura-1: var(--purple-150);
+  --color-lander-aura-2: var(--blue-150);
+  --color-lander-aura-3: var(--pink-150);
+  --color-scrollbar: var(--grey-200);
+  --color-scrollbar-hover: var(--grey-300);
+  --color-highlight-yellow-50: var(--yellow-50);
+  --color-highlight-yellow-150: var(--amber-50);
+  --color-highlight-yellow-500: var(--amber-500);
+  --color-highlight-red-50: var(--red-50);
+  --color-highlight-red-150: var(--red-150);
+  --color-highlight-red-500: var(--red-500);
+  --color-highlight-pink-50: var(--pink-50);
+  --color-highlight-pink-150: var(--pink-150);
+  --color-highlight-blue-50: var(--blue-100);
+  --color-highlight-blue-150: var(--blue-150);
+  --color-heading-01: var(--grey-900);
+  --color-buddy-body: var(--base-black);
+  --color-buddy-eye: var(--base-white);
+  --color-heading-02: var(--grey-850);
+  --color-heading-03: var(--grey-800);
+  --color-heading-04: var(--grey-700);
+  --color-heading-05: var(--grey-600);
+  --color-heading-06: var(--grey-500);
+  --color-body: var(--grey-850);
+  --color-sub-text: var(--grey-500);
+  --color-caption-1: var(--grey-300);
+  --color-caption-2: var(--grey-300);
+  --color-text-success: var(--green-700);
+  --color-text-warning: var(--yellow-700);
+  --color-text-danger: var(--red-700);
+  --color-text-info: var(--blue-700);
+  --color-text-link: var(--indigo-500);
+  --color-icon-nav-active: var(--grey-850);
+  --color-icon-explainer: var(--grey-300);
+  --color-drawer: var(--grey-150);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1621,6 +1732,65 @@
    composer's height, set from script; a mask, so it needs no colour and works in both themes. */
 /* The composer's field once it scrolls (owner, 2026-11-05): its top 14 px fade instead of a line
    being cut in half at the card's edge. A mask, so it works in both themes. */
+/* "Work with Buddy" hints (owner, 2026-11-06): as each one morphs in, a soft glint passes through
+   the words once: the text stays whole, with a dimmed shoulder either side of a moving band
+   (a mask, so it reaches torph's letters on their own layers). */
+.buddy-hint {
+  display: inline-block;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0%,
+    #000 34%,
+    rgb(0 0 0 / 0.45) 42%,
+    #000 50%,
+    rgb(0 0 0 / 0.45) 58%,
+    #000 66%,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000 0%,
+    #000 34%,
+    rgb(0 0 0 / 0.45) 42%,
+    #000 50%,
+    rgb(0 0 0 / 0.45) 58%,
+    #000 66%,
+    #000 100%
+  );
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  -webkit-mask-position: 100% 0;
+  mask-position: 100% 0;
+  animation-duration: 1.2s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-iteration-count: 1;
+}
+@keyframes buddy-glint-a {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+  to {
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
+  }
+}
+@keyframes buddy-glint-b {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+  to {
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .buddy-hint {
+    animation: none !important;
+  }
+}
+
 .lander-field-fade {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
   mask-image: linear-gradient(to bottom, transparent 0, #000 14px);

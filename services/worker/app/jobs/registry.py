@@ -112,7 +112,7 @@ KINDS: dict[str, JobKind] = {
         # redraft's one-at-a-time key, so a page never has both running.
         JobKind(
             name="agent_turn",
-            title="Lander",
+            title="Buddy",
             handler=agent_turn.run,
             payload_model=agent_turn.AgentPayload,
             max_attempts=1,

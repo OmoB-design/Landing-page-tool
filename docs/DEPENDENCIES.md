@@ -119,6 +119,9 @@ Never expose the secret (service-role) key to the web app.
 | `LP_MODEL_VISION` | `claude-sonnet-5-5` | image plan, product fidelity, mobile AI |
 | `LP_MODEL_ANALYSIS` | `claude-sonnet-5-5` | blueprint, autofetch, enrichment, briefing, angles |
 | `LP_MODEL_AGENT` | `claude-sonnet-5-5` | edit agent |
+| `LP_AGENT_MAX_ROUNDS` | `30` | one Lander request's rounds at most (B3.1f, D114) |
+| `LP_AGENT_MAX_USD` | `1.0` | one Lander request's spend at most, in dollars (D114) |
+| `LP_AGENT_MAX_SECONDS` | `300` | one Lander request's time at most (D114) |
 | `LP_MODEL_FAST` | `claude-haiku-5-5` | persona and small helper calls (D42) |
 | `LP_FAL_T2I_MODEL` | `fal-ai/nano-banana-pro` | text-to-image |
 | `LP_FAL_EDIT_MODEL` | `fal-ai/nano-banana-pro/edit` | edits and compositing |

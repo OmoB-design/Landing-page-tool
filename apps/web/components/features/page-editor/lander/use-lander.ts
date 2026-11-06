@@ -47,6 +47,8 @@ export type TurnView = {
   feedback: AgentFeedback | null;
   /** What it's doing now, while it runs ("Styling the box around line 6 in Hero…"). */
   doing: AgentDoing | null;
+  /** It ran out of the request's budget: Keep going carries on (B3.1f). */
+  more: boolean;
 };
 
 function tookOf(job: JobDetail): number | null {
@@ -74,6 +76,7 @@ function viewOf(
     took: null,
     feedback: turn.feedback,
     doing: null,
+    more: false,
   };
   if (turn.refused) return { ...base, state: "failed", error: turn.refused };
   if (settled) {
@@ -91,6 +94,7 @@ function viewOf(
         reason: reply.reason ?? null,
         versionAfter: reply.page_version ?? settled.pageVersion,
         took: tookOf(job),
+        more: reply.more ?? false,
       };
     }
     const sofar = replyFromEvents(job.events);
@@ -99,7 +103,7 @@ function viewOf(
       state: "failed",
       plan: sofar.plan ?? null,
       steps: sofar.steps,
-      error: job.error?.message ?? "Lander couldn’t finish that.",
+      error: job.error?.message ?? "Buddy couldn’t finish that.",
       took: tookOf(job),
     };
   }
@@ -116,6 +120,7 @@ function viewOf(
       reason: reply.reason ?? null,
       versionAfter: reply.page_version ?? null,
       took: reply.took ?? null,
+      more: reply.more ?? false,
     };
   }
   if (!turn.jobId) return { ...base, state: "starting" };
@@ -183,7 +188,7 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
   const send = useCallback(
     async (request: string, target: LanderTarget, images: string[] = []) => {
       if (working) {
-        toast("Lander is still on the last request.");
+        toast("Buddy is still on the last request.");
         return;
       }
       await settle();
@@ -219,7 +224,7 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
                   messageId: started.message_id,
                   restorable: true,
                 }
-              : { ...t, refused: "Lander couldn’t start that." }
+              : { ...t, refused: "Buddy couldn’t start that." }
             : t,
         ),
       );

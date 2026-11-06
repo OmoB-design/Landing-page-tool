@@ -90,6 +90,7 @@ export function LanderThread({
   onShow,
   onRefine,
   onRetry,
+  onKeepGoing,
   onRate,
   onImage,
   onRestore,
@@ -105,6 +106,8 @@ export function LanderThread({
   onShow: (lines: number[], section: string | null) => void;
   onRefine: (target: LanderTarget, request: string) => void;
   onRetry: (view: TurnView) => void;
+  /** Keep going: the newest request ran out of its budget; carry on in the same conversation. */
+  onKeepGoing?: (view: TurnView) => void;
   /** Rates a reply (by its job), or takes the rating back (B3.1e). */
   onRate: (jobId: string, feedback: AgentFeedback | null) => void;
   /** Opens an image Lander changed in the image studio (B3.2a). */
@@ -216,7 +219,7 @@ export function LanderThread({
             <Empty suggestions={suggestions} onSuggestion={onSuggestion} />
           ) : (
             <ol className="flex flex-col gap-6">
-              {views.map((view) => (
+              {views.map((view, i) => (
                 <li key={view.turn.id} className="flex flex-col gap-3">
                   <UserBubble
                     request={view.turn.request}
@@ -241,6 +244,11 @@ export function LanderThread({
                     onRefine={onRefine}
                     onImage={onImage}
                     onRetry={() => onRetry(view)}
+                    onKeepGoing={
+                      onKeepGoing && view.more && i === views.length - 1
+                        ? () => onKeepGoing(view)
+                        : undefined
+                    }
                     onRate={(feedback) =>
                       view.turn.jobId && onRate(view.turn.jobId, feedback)
                     }
@@ -279,7 +287,7 @@ function Empty({
           What should we change?
         </h2>
         <p className="max-w-64 text-type-caption-1 text-sub-text">
-          Ask Lander to rewrite lines, move sections, restyle a box or recolour
+          Ask Buddy to rewrite lines, move sections, restyle a box or recolour
           the page. Every request can be undone.
         </p>
       </motion.div>
@@ -416,6 +424,7 @@ function Reply({
   onShow,
   onRefine,
   onRetry,
+  onKeepGoing,
   onRate,
   onImage,
 }: {
@@ -427,6 +436,8 @@ function Reply({
   onRefine: (target: LanderTarget, request: string) => void;
   onImage?: (number: number) => void;
   onRetry: () => void;
+  /** Shown on the newest reply that ran out of budget (B3.1f). */
+  onKeepGoing?: () => void;
   onRate: (feedback: AgentFeedback | null) => void;
 }) {
   const { reduced } = useLanderMotion();
@@ -612,6 +623,17 @@ function Reply({
         />
       ) : null}
 
+      {finished && caughtUp && onKeepGoing ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onKeepGoing}
+          className="h-7 self-start px-2.5 text-type-caption-1"
+        >
+          Keep going
+        </Button>
+      ) : null}
+
       {finished && caughtUp && view.turn.jobId ? (
         <ReplyActions
           text={plainText(
@@ -717,7 +739,7 @@ function StepRow({
             href={step.image_url}
             target="_blank"
             rel="noreferrer"
-            aria-label={`Open what Lander saw: ${step.label}`}
+            aria-label={`Open what Buddy saw: ${step.label}`}
             className="block overflow-hidden rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- a signed storage link */}

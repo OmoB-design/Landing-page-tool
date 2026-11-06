@@ -12,8 +12,10 @@ so, the tools can only touch this page, and every edit passes the same locks and
 
 import base64
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -40,7 +42,6 @@ from app.models.desk import CopyEdit, DeskPalette, DeskSection, DeskState
 from app.models.template import DuplicateAction, RemoveAction, ReorderAction
 from app.providers import storage
 
-MAX_ROUNDS = 8  # BUILD_SPEC §11.3: a tool-use loop of up to 8 turns
 MAX_EDITS = 40
 MAX_LINE_CHARS = 600
 HISTORY_TURNS = 6  # earlier requests and replies in the conversation Claude sees
@@ -50,7 +51,7 @@ HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 # ── the prompt ───────────────────────────────────────────────────────────────
 
 INSTRUCTIONS = """\
-You are Lander, the AI collaborator in a landing-page editor. The user is editing one built \
+You are Buddy, the AI collaborator in a landing-page editor. The user is editing one built \
 landing page and asks you for changes. You make them with your tools; everything you change in \
 one request is saved as one step the user can undo, so act rather than ask, unless the request \
 is unclear.
@@ -77,6 +78,12 @@ it, and fix it if it doesn't look right. A style applies at every width, so look
 too when it matters. To change how something looks on phones only (stack a row, shrink a heading, \
 widen a button) without touching desktop, use style_element with phone_only: true, then look at \
 it with view phone.
+- Each request has a budget (about 30 rounds, $1 and 5 minutes), so work in few rounds: put \
+several tool calls in one reply (inspect several boxes at once, style several elements at once), \
+style elements that are alike (all the item numbers, every section's box, every button) in one \
+style_element call with all_like, and look once per section after a batch of changes rather \
+than after each element. For a change across the whole page (a dark version, new spacing), \
+cover the page itself (section 'page') and every section first, then polish.
 - inspect_element lists the elements inside each box (child 1, child 2…, with the line each holds \
 or "no line"): a badge, an icon or a picture with no line of its own is reached by its child path \
 from the box ("line 6, up 1, child 2"), and inspecting that child lists what's inside it ("2.1"). \
@@ -118,17 +125,17 @@ you changed and anything you couldn't do (the user sees each change as a card, s
 them again). For a question or a check: answer it in the first sentence ("Mostly yes: one heading \
 is hard to read."), then only what needs attention as a numbered list of at most four items \
 ("1. ", one per line, each starting with a few **bold** words that name it, then one short \
-sentence and what you'd do), then one offer ("Want me to fix 1 and 2?"). Leave out what's fine and what you checked \
-before, unless asked; if you looked at only part of the page, say so in a few words in the first \
-sentence, not as an item or a paragraph of its own. Stay under about 120 words unless the user \
-asks for detail. A check reply looks like this:
+sentence and what you'd do), then one offer ("Want me to fix 1 and 2?"). Leave out what's fine \
+and what you checked before, unless asked; if you looked at only part of the page, say so in a \
+few words in the first sentence, not as an item or a paragraph of its own. Stay under about 120 \
+words unless the user asks for detail. A number in the user's reply means that item of your last \
+list. No headings; no markdown beyond numbered lists, "- " bullets, **bold** and `code`. A check \
+reply looks like this:
   Mostly yes (I looked at 5 of the 15 sections): nothing runs off the screen, but two things \
 need work.
   1. **Image spacing:** the photos have tall blank bands above and below. I can crop them.
   2. **Pale body text:** the tan text is faint on the cream background. I can darken it.
-  Want me to fix 1 and 2? A number in \
-the user's reply means that item of your last list. No headings; no markdown beyond numbered \
-lists, "- " bullets, **bold** and `code`."""
+  Want me to fix 1 and 2?"""
 
 
 def system_prompt(brief: rules.CopyBrief) -> str:
@@ -267,8 +274,10 @@ TOOLS: list[dict[str, Any]] = [
         "name": "style_element",
         "description": (
             "Sets CSS on one element: the box 'up' levels above a line's element (0 is the "
-            "line's own element), or a whole section by key; with child, an element inside that "
-            "box by its path from inspect_element ('2', '2.1'). Allowed: padding, margin, width, "
+            "line's own element), a whole section by key, or the page itself with section "
+            "'page' (its own background, behind and between the sections); with child, an "
+            "element inside that box by its path from inspect_element ('2', '2.1'). Allowed: "
+            "padding, margin, width, "
             "min/max-width, height, min/max-height, display, flex-direction, flex-wrap, "
             "align-items, justify-content, align-self, justify-self, gap, text-align, font-size, "
             "font-weight, font-style, line-height, letter-spacing, text-transform, "
@@ -277,8 +286,11 @@ TOOLS: list[dict[str, Any]] = [
             "object-position, aspect-ratio. Plain values "
             "only (px, rem, %, fit-content, var(--lp-…), hex); 'unset' takes your earlier value "
             "off. It applies at every width, or with phone_only only on phones (narrower than "
-            "768 px), leaving desktop as it is. Give a short label in plain words for the user, "
-            "like 'Fitted the Verified box to its text'."
+            "768 px), leaving desktop as it is. With all_like, it sets the same CSS on every "
+            "element on the page like that one (the same tag and classes, or the same tag in a "
+            "parent like its parent): all the item numbers, every section's box, every button; "
+            "the result says how many. Give a short label in plain words for the user, like "
+            "'Fitted the Verified box to its text' or 'Darkened the 10 item numbers'."
         ),
         "input_schema": {
             "type": "object",
@@ -293,6 +305,7 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "label": {"type": "string", "maxLength": 80},
                 "phone_only": {"type": "boolean"},
+                "all_like": {"type": "boolean"},
             },
             "required": ["styles", "label"],
             "additionalProperties": False,
@@ -432,6 +445,66 @@ def _clean(text: str) -> str:
 
 def plural(count: int, word: str) -> str:
     return f"{count} {word}{'' if count == 1 else 's'}"
+
+
+@dataclass
+class Budget:
+    """One request's budget (B3.1f, D114; it replaced BUILD_SPEC §11.3's fixed 8 rounds): rounds,
+    money and time, whichever runs out first. Claude is told when a quarter is left, so it
+    finishes the most important changes and closes."""
+
+    max_rounds: int
+    max_usd: Decimal
+    max_seconds: float
+    spent: Decimal = Decimal(0)
+    started: float = field(default_factory=time.monotonic)
+
+    @classmethod
+    def from_settings(cls, settings: Any) -> "Budget":
+        return cls(
+            max_rounds=int(settings.lp_agent_max_rounds),
+            max_usd=Decimal(str(settings.lp_agent_max_usd)),
+            max_seconds=float(settings.lp_agent_max_seconds),
+        )
+
+    def spend(self, cost: Decimal | None) -> None:
+        self.spent += cost or Decimal(0)
+
+    def _elapsed(self) -> float:
+        return time.monotonic() - self.started
+
+    def left(self, rounds_done: int) -> bool:
+        return (
+            rounds_done < self.max_rounds
+            and self.spent < self.max_usd
+            and self._elapsed() < self.max_seconds
+        )
+
+    def note(self, rounds_done: int) -> str | None:
+        """A line for Claude with the tool results once the budget is low; None before."""
+        rounds = self.max_rounds - rounds_done
+        money = max(Decimal(0), self.max_usd - self.spent)
+        seconds = max(0, round(self.max_seconds - self._elapsed()))
+        low = (
+            rounds <= max(2, self.max_rounds // 4)
+            or money <= self.max_usd / 4
+            or seconds <= self.max_seconds / 4
+        )
+        if not low:
+            return None
+        return (
+            f"(This request's budget is nearly used: {plural(rounds, 'round')}, about "
+            f"${money:.2f} and {seconds} seconds left. Make the most important remaining changes "
+            "now, in as few rounds as you can, then close.)"
+        )
+
+    def describe(self) -> str:
+        """What ran out, in plain words."""
+        if self.spent >= self.max_usd:
+            return f"${self.max_usd:.2f}"
+        if self._elapsed() >= self.max_seconds:
+            return f"{round(self.max_seconds / 60)} minutes"
+        return plural(self.max_rounds, "round")
 
 
 @dataclass
@@ -705,7 +778,8 @@ class Work:
     def _section_label(self, target: styling.Target) -> str:
         labels = {s.key: s.label for s in self.layout()}
         if target.section:
-            return labels.get(target.section, target.section)
+            fallback = "the page" if target.section == styling.PAGE else target.section
+            return labels.get(target.section, fallback)
         line = next((p for p in paragraphs.paragraphs(self.html) if p.number == target.line), None)
         key = line.section if line else None
         return labels.get(key or "", key or "the page")
@@ -773,23 +847,32 @@ class Work:
             raise styling.StyleError('Give the properties to set, like {"padding": "4px 10px"}.')
         label = " ".join(str(args.get("label") or "").split())[:80] or "Restyled an element"
         phone = bool(args.get("phone_only"))
-        set_styles = styling.apply_phone if phone else styling.apply
-        self.html, applied, refused = set_styles(
-            self.html, target, {str(k): str(v) for k, v in styles.items()}
-        )
+        clean = {str(k): str(v) for k, v in styles.items()}
+        count = 1
+        if args.get("all_like"):
+            # Every element like this one, in one go (B3.1f, D114).
+            self.html, applied, refused, count = styling.apply_alike(
+                self.html, target, clean, phone=phone
+            )
+        else:
+            set_styles = styling.apply_phone if phone else styling.apply
+            self.html, applied, refused = set_styles(self.html, target, clean)
         if phone and not label.lower().endswith("on phones"):
             label = f"{label} (on phones)"
         change = {
             "kind": "style",
             "label": label,
-            "section": self._section_label(target),
+            "section": None if count > 1 else self._section_label(target),
             "styles": applied,
         }
         self.changes.append(change)
-        reply = "Set " + "; ".join(f"{k}: {v}" for k, v in applied.items()) + "."
+        reply = "Set " + "; ".join(f"{k}: {v}" for k, v in applied.items())
+        reply += f" on {count} elements alike." if count > 1 else "."
         if refused:
             reply += " Not set: " + "; ".join(refused)
         detail = " · ".join(f"{k} {v}" for k, v in applied.items())
+        if count > 1:
+            detail = f"{count} elements · {detail}"
         return reply + " Look at it to check.", False, Step(label, True, change, detail=detail)
 
     def _look(self, args: dict[str, Any]) -> tuple[str | list[dict[str, Any]], bool, Step]:
@@ -941,7 +1024,7 @@ class Work:
         first = self.changes[0]["label"]
         more = len(self.changes) - 1
         text = first[0].lower() + first[1:]
-        return f"Lander: {text}" + (f" and {plural(more, 'more change')}" if more else "")
+        return f"Buddy: {text}" + (f" and {plural(more, 'more change')}" if more else "")
 
     def settle_numbers(self) -> None:
         """Line changes name the lines as they are on the saved page (sections moved after an
@@ -1211,7 +1294,7 @@ def stop(org_id: UUID, build_id: UUID) -> None:
             {"b": build_id, "o": org_id},
         ).fetchone()
     if row is None:
-        raise desk.DeskEditError("Lander isn't working on anything.")
+        raise desk.DeskEditError("Buddy isn't working on anything.")
 
 
 def stop_requested(org_id: UUID, job_id: UUID) -> bool:

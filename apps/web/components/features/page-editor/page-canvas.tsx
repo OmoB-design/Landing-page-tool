@@ -10,6 +10,7 @@ import { TYPING_PAUSE_MS, lockedBlocks, textToSave } from "@/lib/pages/editor";
 import { cn } from "@/lib/utils";
 
 import { useDesk } from "../builds/desk-context";
+import { BUDDY_POINTER } from "./lander/lander-mark";
 
 export type Viewport = "desktop" | "phone";
 
@@ -77,6 +78,8 @@ export function PageCanvas({
   image,
   onImage,
   busyImage,
+  probe,
+  onTone,
 }: {
   buildId: string;
   /** The build's last update as the editor opened (a rebuild), so the frame's address names one
@@ -103,6 +106,10 @@ export function PageCanvas({
   onImage: (number: number | null) => void;
   /** An image whose AI picture is being made: it breathes on the page (B3.2b). */
   busyImage: number | null;
+  /** "Work with Buddy", floating over the page: the page says whether what's behind it is dark
+   * (owner, 2026-11-06), on load and as it scrolls. */
+  probe?: React.RefObject<HTMLElement | null>;
+  onTone?: (dark: boolean) => void;
 }) {
   const { desk, saveTyping, frameVersion } = useDesk();
   const version = desk.build.page_version;
@@ -182,6 +189,42 @@ export function PageCanvas({
     [],
   );
 
+  // Where the bar sits, in the page's own px (the frame is zoomed out to fit).
+  const toneRef = useRef(onTone);
+  useEffect(() => {
+    toneRef.current = onTone;
+  });
+  const probeRef = useRef<(address?: string) => void>(() => {});
+  useEffect(() => {
+    probeRef.current = (address?: string) => {
+      const frame = frames.current.get(address ?? shownRef.current);
+      const bar = probe?.current;
+      if (!frame?.contentWindow || !bar) return;
+      const f = frame.getBoundingClientRect();
+      const b = bar.getBoundingClientRect();
+      if (!f.width || !b.width) return;
+      const scale = frame.offsetWidth / f.width;
+      post(
+        {
+          type: "lp-probe",
+          x: (b.left + b.width / 2 - f.left) * scale,
+          y: (b.top + b.height / 2 - f.top) * scale,
+        },
+        frame.contentWindow,
+      );
+    };
+  });
+  useEffect(() => {
+    const again = () => probeRef.current();
+    window.addEventListener("resize", again);
+    // Once the bar has risen into place after the editor opens.
+    const settled = window.setTimeout(again, 900);
+    return () => {
+      window.removeEventListener("resize", again);
+      window.clearTimeout(settled);
+    };
+  }, []);
+
   // Typing: one line at a time, saved in order (each save carries the version the last returned).
   const line = useRef<Line | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -225,6 +268,7 @@ export function PageCanvas({
       post({ type: "lp-busy", blocks: now.busyLines }, to);
       post({ type: "lp-image-select", number: now.image, scroll: false }, to);
       post({ type: "lp-image-busy", number: now.busyImage }, to);
+      probeRef.current(address);
       if (
         now.flash &&
         flashed.current !== now.flash.nonce &&
@@ -247,6 +291,8 @@ export function PageCanvas({
         const type = (event.data as { type?: unknown } | null)?.type;
         if (type === "lp-ready") greet(from, next);
         else if (type === "lp-placed") show(next);
+        else if (type === "lp-tone")
+          toneRef.current?.(Boolean((event.data as { dark?: unknown }).dark));
         return;
       }
       const data = event.data as {
@@ -267,6 +313,31 @@ export function PageCanvas({
         case "lp-scroll":
           if (typeof data.y === "number") scrollY.current = data.y;
           break;
+        case "lp-tone":
+          toneRef.current?.(Boolean((data as { dark?: unknown }).dark));
+          break;
+        case "lp-pointer": {
+          // The pointer over the page, in the editor's px, for Buddy's eyes (lander-mark.tsx).
+          const frame = frames.current.get(shownRef.current);
+          const point = data as { x?: unknown; y?: unknown };
+          if (
+            !frame ||
+            typeof point.x !== "number" ||
+            typeof point.y !== "number"
+          )
+            break;
+          const f = frame.getBoundingClientRect();
+          const scale = f.width / (frame.offsetWidth || f.width);
+          window.dispatchEvent(
+            new CustomEvent(BUDDY_POINTER, {
+              detail: {
+                x: f.left + point.x * scale,
+                y: f.top + point.y * scale,
+              },
+            }),
+          );
+          break;
+        }
         case "lp-section":
           if (typeof data.key === "string") {
             fromFrame.current = true;

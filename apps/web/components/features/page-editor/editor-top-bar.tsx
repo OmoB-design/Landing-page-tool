@@ -97,7 +97,7 @@ export function EditorTopBar({
       </p>
       <p className="hidden min-w-0 truncate text-type-caption-1 text-sub-text 2xl:block">
         {rewriting
-          ? "Lander is rewriting: typing waits"
+          ? "Buddy is rewriting: typing waits"
           : "Click any line to type in it"}
       </p>
       <div className="ml-auto flex items-center gap-1.5">

@@ -91,7 +91,7 @@ def test_lander_moves_copies_and_removes_sections_by_the_templates_rules() -> No
     assert not failed and [s.key for s in w.layout()] == ["faq", "hero", "hero-2"]
     out, failed, step = w.run("duplicate_section", {"key": "nope"})
     assert failed and "no section nope" in out
-    assert w.reason() == "Lander: moved Questions up and 1 more change"
+    assert w.reason() == "Buddy: moved Questions up and 1 more change"
 
 
 def test_lander_recolours_and_checks_claims() -> None:
@@ -215,6 +215,49 @@ def test_a_part_that_isnt_showing_is_a_step_lander_reads_not_a_crash() -> None:
     assert failed and not step.ok
     assert step.label == "Couldn't look at Hero (phone): it isn't showing"
     assert "isn't showing at phone width (390 px)" in str(out) and "Carry on" in str(out)
+
+
+def test_lander_styles_every_element_alike_in_one_call() -> None:
+    """B3.1f: "darken all the item numbers" is one call and one card, not ten."""
+    page = (
+        '<html><body><section data-lp-section="faq">'
+        + "".join(
+            f'<div class="q"><h3>Question {n}</h3><p>Answer {n}</p></div>' for n in range(1, 6)
+        )
+        + "</section></body></html>"
+    )
+    w = agent.Work(html=page, rules={}, colors=None)
+    out, failed, step = w.run(
+        "style_element",
+        {
+            "line": 1,
+            "styles": {"color": "#111111"},
+            "all_like": True,
+            "label": "Darkened the 5 questions",
+        },
+    )
+    assert not failed and "on 5 elements alike" in str(out)
+    assert step.detail == "5 elements · color #111111"
+    assert w.changes == [
+        {
+            "kind": "style",
+            "label": "Darkened the 5 questions",
+            "section": None,
+            "styles": {"color": "#111111"},
+        }
+    ]
+    assert w.html.count('style="color: #111111"') == 5
+
+
+def test_a_requests_budget_is_rounds_money_and_time() -> None:
+    budget = agent.Budget(max_rounds=8, max_usd=Decimal("1.00"), max_seconds=300)
+    assert budget.left(0) and budget.note(1) is None
+    assert "2 rounds" in (budget.note(6) or "")  # a quarter left: Claude is told
+    budget.spend(Decimal("0.80"))
+    assert "$0.20" in (budget.note(1) or "")
+    budget.spend(Decimal("0.25"))
+    assert not budget.left(1) and budget.describe() == "$1.00"
+    assert agent.Budget(max_rounds=8, max_usd=Decimal(1), max_seconds=300).describe() == "8 rounds"
 
 
 def test_lander_says_what_it_is_doing_before_each_tool() -> None:
@@ -345,11 +388,11 @@ def test_a_request_is_a_job_and_one_undoable_change(
     result = job["result"]
     assert result["state"] == "done" and result["plan"] == "I'll rewrite one line (mock mode)."
     assert [c["label"] for c in result["changes"]] == [f"Rewrote 1 line in {hero}"]
-    assert result["reason"] == f"Lander: rewrote 1 line in {hero}"
+    assert result["reason"] == f"Buddy: rewrote 1 line in {hero}"
 
     state = desk(client, user, finished)
     assert state["build"]["page_version"] == version + 1 and state["redraft"] is None
-    assert state["snapshots"][0]["reason"] == f"Lander: rewrote 1 line in {hero}"
+    assert state["snapshots"][0]["reason"] == f"Buddy: rewrote 1 line in {hero}"
     assert any(p["text"] == "Glow in 7 days (mock)" for p in state["paragraphs"])
 
     # The conversation keeps the request and the reply.
@@ -406,7 +449,7 @@ def test_stop_keeps_what_lander_did_and_follow_ups_see_the_conversation(
     assert result["changes"][1]["lines"][0]["number"] == 1  # renumbered on the saved page
     state = desk(client, user, finished)
     assert state["layout"][0]["key"] == "faq"
-    assert state["snapshots"][0]["reason"] == "Lander: moved Questions up and 1 more change"
+    assert state["snapshots"][0]["reason"] == "Buddy: moved Questions up and 1 more change"
 
     # Claude saw the earlier request and reply before this one, then the page and the request.
     turns = script.calls[0]["messages"]
@@ -415,6 +458,43 @@ def test_stop_keeps_what_lander_did_and_follow_ups_see_the_conversation(
     assert "Request: Put them first" in turns[2]["content"][-1]["text"]
     assert script.calls[0]["tools"] == agent.TOOLS and script.calls[0]["cache"] is True
     assert len(conversation(client, user, finished)["messages"]) == 4
+
+
+@needs_db
+def test_out_of_budget_lander_saves_what_it_did_and_offers_keep_going(
+    client: TestClient, user: DbUser, finished: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    version = desk(client, user, finished)["build"]["page_version"]
+    script = Script(
+        [
+            {"type": "text", "text": "I'll sharpen the questions."},
+            call("edit_lines", edits=[{"number": 1, "text": "Is it kind to skin?"}]),
+        ],
+        [call("read_page")],
+        [{"type": "text", "text": "Never reached."}],
+    )
+    monkeypatch.setattr(anthropic, "generate", script)
+    monkeypatch.setattr(
+        agent.Budget,
+        "from_settings",
+        classmethod(lambda cls, s: cls(max_rounds=2, max_usd=Decimal(1), max_seconds=300)),
+    )
+    assert ask(client, user, finished, version, "Sharpen every question").status_code == 200
+    job = run_agent()
+    assert job["status"] == "succeeded", job["error"]
+    result = job["result"]
+    assert result["more"] is True and result["state"] == "done"
+    assert result["closing"].startswith("I ran out of this request's budget (2 rounds)")
+    assert "Keep going" in result["closing"]
+    assert len(result["changes"]) == 1 and result["changes"][0]["label"].startswith(
+        "Rewrote 1 line"
+    )
+    assert desk(client, user, finished)["build"]["page_version"] == version + 1  # saved
+    # The second round's results told Claude the budget was nearly used.
+    last = script.calls[1]["messages"][-1]["content"]
+    assert any(b.get("type") == "text" and "nearly used" in b["text"] for b in last)
+    reply = conversation(client, user, finished)["messages"][-1]
+    assert reply["content"]["more"] is True
 
 
 PIXEL = (
@@ -538,7 +618,7 @@ def test_a_failed_request_saves_nothing_and_says_so(
     state = desk(client, user, finished)
     assert state["build"]["page_version"] == version and state["redraft"] is None
     reply = conversation(client, user, finished)["messages"][-1]["content"]
-    assert reply["state"] == "failed" and reply["error"] == "Lander couldn't finish that."
+    assert reply["state"] == "failed" and reply["error"] == "Buddy couldn't finish that."
     assert reply["changes"] == [] and reply["plan"] == "I'll shorten it."
 
     # Stop with nothing running says so.

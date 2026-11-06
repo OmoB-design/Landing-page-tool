@@ -136,7 +136,7 @@ export function SendButton({
   return (
     <button
       type="submit"
-      aria-label={busy ? "Lander is working" : label}
+      aria-label={busy ? "Buddy is working" : label}
       disabled={disabled || busy}
       className={cn(
         "flex shrink-0 items-center justify-center rounded-full bg-heading-01 text-surface-primary transition duration-150 ease-out outline-none hover:bg-heading-02 focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:bg-foreground-03 disabled:text-heading-06 disabled:active:scale-100",
@@ -168,7 +168,7 @@ export function StopButton({
       <TooltipTrigger asChild>
         <button
           type="button"
-          aria-label={stopping ? "Stopping" : "Stop Lander"}
+          aria-label={stopping ? "Stopping" : "Stop Buddy"}
           disabled={stopping}
           onClick={onStop}
           className={cn(
@@ -194,7 +194,7 @@ export function StopButton({
       <TooltipContent>
         {stopping
           ? "Stopping after this step"
-          : "Stop: what Lander did so far is kept"}
+          : "Stop: what Buddy did so far is kept"}
       </TooltipContent>
     </Tooltip>
   );

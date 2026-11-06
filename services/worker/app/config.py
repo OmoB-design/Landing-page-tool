@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     lp_mock_llm: bool = True
     lp_mock_images: bool = True
     lp_provider_lock_minutes: float = 10.0
+    # One Lander request's budget (B3.1f, D114): it stops at whichever comes first.
+    lp_agent_max_rounds: int = 30
+    lp_agent_max_usd: float = 1.0
+    lp_agent_max_seconds: float = 300.0
 
     # Page fetching. Private and local addresses are always refused (SSRF guard), except in tests.
     lp_allow_private_fetch: bool = False

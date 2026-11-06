@@ -71,11 +71,12 @@ const done: TurnView = {
   ],
   closing: "Done. I tightened the hero and moved the questions up.",
   error: null,
-  reason: "Lander: rewrote 2 lines in Hero and 1 more change",
+  reason: "Buddy: rewrote 2 lines in Hero and 1 more change",
   versionAfter: 5,
   took: 6,
   feedback: null,
   doing: null,
+  more: false,
 };
 
 describe("Lander (B3.1b, B3.1c)", () => {
@@ -83,14 +84,14 @@ describe("Lander (B3.1b, B3.1c)", () => {
     const onSend = vi.fn();
     const onOpen = vi.fn();
     wrap(<FloatingComposer working={false} onSend={onSend} onOpen={onOpen} />);
-    const field = screen.getByLabelText("Work with Lander");
+    const field = screen.getByLabelText("Work with Buddy");
     fireEvent.submit(field.closest("form") as HTMLFormElement);
     expect(onOpen).toHaveBeenCalledTimes(1); // nothing typed: just opens Lander
     fireEvent.change(field, { target: { value: "Make the hero punchier" } });
-    expect(screen.getByRole("button", { name: "Send to Lander" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send to Buddy" })).toBeTruthy();
     fireEvent.submit(field.closest("form") as HTMLFormElement);
     expect(onSend).toHaveBeenCalledWith("Make the hero punchier");
-    fireEvent.click(screen.getByRole("button", { name: "Open Lander" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Buddy" }));
     expect(onOpen).toHaveBeenCalledTimes(2);
   });
 
@@ -109,9 +110,9 @@ describe("Lander (B3.1b, B3.1c)", () => {
         onSend={onSend}
       />,
     );
-    const box = screen.getByLabelText("Ask Lander");
+    const box = screen.getByLabelText("Ask Buddy");
     expect(box.getAttribute("placeholder")).toBe(
-      "Ask Lander to change the page",
+      "Ask Buddy to change the page",
     );
     fireEvent.change(box, { target: { value: "Warmer" } });
     fireEvent.keyDown(box, { key: "Enter" });
@@ -241,7 +242,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
         onSend={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Stop Lander" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop Buddy" }));
     expect(onStop).toHaveBeenCalled();
   });
 
@@ -275,7 +276,7 @@ describe("Lander (B3.1b, B3.1c)", () => {
         onRefine={onRefine}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Ask Lander to edit/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Ask Buddy to edit/ }));
     const field = screen.getByLabelText("What should change in Hero?");
     fireEvent.change(field, { target: { value: "Even shorter" } });
     fireEvent.submit(field.closest("form") as HTMLFormElement);
@@ -447,5 +448,35 @@ describe("Lander's change stack (owner, 2026-11-05)", () => {
     expect(
       screen.getByRole("button", { name: "Show all 5 changes" }),
     ).toBeTruthy();
+  });
+});
+
+describe("Lander's budget (B3.1f)", () => {
+  it("offers Keep going under the newest reply that ran out of budget", async () => {
+    const onKeepGoing = vi.fn();
+    const ranOut: TurnView = {
+      ...done,
+      closing:
+        "I ran out of this request's budget (30 rounds) before finishing. Press Keep going and I'll carry on from here.",
+      more: true,
+    };
+    wrap(
+      <LanderThread
+        views={[ranOut]}
+        suggestions={[]}
+        undoFor={() => "can-undo"}
+        onSuggestion={vi.fn()}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
+        onShow={vi.fn()}
+        onRefine={vi.fn()}
+        onRetry={vi.fn()}
+        onKeepGoing={onKeepGoing}
+        onRate={vi.fn()}
+        composer={<form aria-label="Composer" />}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Keep going" }));
+    expect(onKeepGoing).toHaveBeenCalledWith(ranOut);
   });
 });

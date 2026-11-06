@@ -435,7 +435,7 @@ export function DeskProvider({
         const message =
           error instanceof Error
             ? error.message
-            : "Lander couldn’t start that.";
+            : "Buddy couldn’t start that.";
         if (error instanceof ApiError && error.status === 409) {
           toast.error(message, {
             action: {
@@ -463,7 +463,7 @@ export function DeskProvider({
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Couldn’t stop Lander.",
+        error instanceof Error ? error.message : "Couldn’t stop Buddy.",
       );
     }
   }, [buildId]);

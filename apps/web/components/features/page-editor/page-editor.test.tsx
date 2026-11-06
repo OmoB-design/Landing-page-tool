@@ -121,7 +121,7 @@ describe("page editor (B3.1a)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     fireEvent.click(screen.getByRole("button", { name: "Move up" }));
     expect(onEdit).toHaveBeenCalledTimes(2);
-    fireEvent.click(screen.getByRole("button", { name: /Improve with AI/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Improve with Buddy/ }));
     expect(onImprove).toHaveBeenCalledWith("hero");
     expect(screen.getByRole("button", { name: "02Questions" })).toBeTruthy();
   });

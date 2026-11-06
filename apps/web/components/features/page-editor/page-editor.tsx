@@ -162,6 +162,10 @@ function Editor({
   const motionConfig = useLanderMotion();
   const { desk, undo, redo, editSections, pending, restoreTo, reload } =
     useDesk();
+  // "Work with Buddy" contrasts with the page behind it (owner, 2026-11-06): white over a dark
+  // page, dark over a light one, whatever the app's own theme; the page says which (PageCanvas).
+  const barSpot = useRef<HTMLDivElement>(null);
+  const [pageDark, setPageDark] = useState<boolean | null>(null);
 
   // The selected section: drives the canvas's outline and what Lander's requests are about.
   const layout = desk.layout;
@@ -238,7 +242,7 @@ function Editor({
   );
 
   const busy = desk.redraft
-    ? "Lander is rewriting the page. Changes wait until it’s done."
+    ? "Buddy is rewriting the page. Changes wait until he’s done."
     : pending
       ? "Saving…"
       : null;
@@ -549,14 +553,17 @@ function Editor({
               image={image}
               onImage={setImage}
               busyImage={making?.number ?? null}
+              probe={barSpot}
+              onTone={setPageDark}
             />
             <div
+              ref={barSpot}
               className="pointer-events-none absolute inset-x-4 z-20 flex justify-center"
               // The bar's place, tunable on the DialKit panel (data, not styling).
               style={{ bottom: motionConfig.barFromBottom }}
             >
               {/* Opening the editor, the bar rises into place from the page's foot (owner,
-                  2026-11-05); afterwards it rises as Lander's panel closes. */}
+                  2026-11-05); afterwards it rises as Buddy's panel closes. */}
               <AnimatePresence>
                 {landerOpen ? null : (
                   <motion.div
@@ -584,6 +591,13 @@ function Editor({
                     }}
                   >
                     <FloatingComposer
+                      tone={
+                        pageDark === null
+                          ? undefined
+                          : pageDark
+                            ? "light"
+                            : "dark"
+                      }
                       working={lander.working}
                       onSend={(text) => send(text)}
                       onOpen={openLander}
@@ -608,7 +622,7 @@ function Editor({
             exit={{ width: 0, transition: motionConfig.pageWiden }}
           >
             <motion.aside
-              aria-label="Lander"
+              aria-label="Buddy"
               className={
                 wide
                   ? "absolute inset-y-0 right-0 z-10"
@@ -662,6 +676,10 @@ function Editor({
                   onShow={showOnPage}
                   onRefine={(to, request) => send(request, to)}
                   onRetry={(view) => send(view.turn.request, view.turn.target)}
+                  // Out of budget (B3.1f): carry on in the same conversation, on the same target.
+                  onKeepGoing={(view) =>
+                    send("Keep going where you stopped.", view.turn.target)
+                  }
                   onRate={(jobId, feedback) =>
                     void lander.rate(jobId, feedback)
                   }

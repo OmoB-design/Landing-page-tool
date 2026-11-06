@@ -247,16 +247,66 @@ const WRITE_BRIDGE = `(function () {
     if (editing && e.target === editing) finish(false);
   });
   document.addEventListener("submit", function (e) { e.preventDefault(); }, true);
+  // The colour behind "Work with Buddy" (owner, 2026-11-06): the editor says where the bar sits
+  // ("lp-probe", in this page's px); this reads the first solid background under that spot
+  // (photos and drawings skipped, then the page's own) and says whether it's dark ("lp-tone"),
+  // again whenever the page scrolls, so the bar can take the other look.
+  var probe = null, tone = null;
+  function rgbOf(value) {
+    if (!value || value.indexOf("(") < 0) return null;
+    var parts = value.slice(value.indexOf("(") + 1, value.indexOf(")")).split(",");
+    if (parts.length < 3) return null;
+    var c = parts.map(function (v) { return parseFloat(v); });
+    var a = parts.length > 3 ? c[3] : 1;
+    return isNaN(c[0]) || isNaN(c[1]) || isNaN(c[2]) ? null : { r: c[0], g: c[1], b: c[2], a: a };
+  }
+  function lin(v) { v = v / 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+  function readTone(force) {
+    if (!probe) return;
+    var x = Math.max(0, Math.min(innerWidth - 1, probe.x));
+    var y = Math.max(0, Math.min(innerHeight - 1, probe.y));
+    var under = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
+    var found = null;
+    for (var i = 0; i < under.length && !found; i++) {
+      var el = under[i];
+      if (/^(IMG|VIDEO|SVG|CANVAS|PICTURE)$/i.test(el.tagName)) continue;
+      var c = rgbOf(getComputedStyle(el).backgroundColor);
+      if (c && c.a > 0.5) found = c;
+    }
+    found = found || rgbOf(getComputedStyle(document.body).backgroundColor);
+    if (!found || found.a <= 0.5) found = rgbOf(getComputedStyle(document.documentElement).backgroundColor);
+    if (!found || found.a <= 0.5) found = { r: 255, g: 255, b: 255, a: 1 };
+    var dark = 0.2126 * lin(found.r) + 0.7152 * lin(found.g) + 0.0722 * lin(found.b) < 0.2;
+    if (force || dark !== tone) { tone = dark; send({ type: "lp-tone", dark: dark }); }
+  }
+  addEventListener("resize", function () { readTone(false); });
+  // Buddy watches the pointer even over the page (owner, 2026-11-06): its moves go up, once a frame.
+  var pointerAt = null;
+  addEventListener("pointermove", function (e) {
+    var waiting = pointerAt !== null;
+    pointerAt = { x: e.clientX, y: e.clientY };
+    if (waiting) return;
+    requestAnimationFrame(function () {
+      if (pointerAt) send({ type: "lp-pointer", x: pointerAt.x, y: pointerAt.y });
+      pointerAt = null;
+    });
+  }, { passive: true });
+  addEventListener("load", function () { readTone(false); });
   var ticking = false;
   addEventListener("scroll", function () {
     if (ticking) return;
     ticking = true;
-    setTimeout(function () { ticking = false; send({ type: "lp-scroll", y: scrollY }); }, 150);
+    setTimeout(function () { ticking = false; send({ type: "lp-scroll", y: scrollY }); readTone(false); }, 150);
   });
   addEventListener("message", function (e) {
     var d = e.data;
     if (e.source !== parent || !d || typeof d.type !== "string") return;
     if (typeof d.colour === "string" && /^[#\\w(),.%\\s-]+$/.test(d.colour)) colour = d.colour;
+    if (d.type === "lp-probe" && typeof d.x === "number" && typeof d.y === "number") {
+      probe = { x: d.x, y: d.y };
+      readTone(true);
+      return;
+    }
     if (d.type === "lp-setup") {
       locked = {};
       (d.locked || []).forEach(function (n) { locked[n] = true; });

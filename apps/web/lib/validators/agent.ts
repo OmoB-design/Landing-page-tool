@@ -93,6 +93,8 @@ export const agentReplySchema = z.object({
   page_version: z.number().int().nullable().optional(),
   error: z.string().nullable().optional(),
   took: z.number().nullable().optional(),
+  /** It ran out of the request's budget: the thread offers Keep going (B3.1f, D114). */
+  more: z.boolean().optional().catch(undefined),
 });
 export type AgentReply = z.infer<typeof agentReplySchema>;
 

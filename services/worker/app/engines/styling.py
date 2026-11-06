@@ -43,6 +43,8 @@ _VALUE = re.compile(r"^[#\w\s.,%()\-/+*]+$")
 _FORBIDDEN = re.compile(r"url\(|expression|image|@|\\|<|>|;|\{|\}|!", re.I)
 _FUNCTION = re.compile(r"([a-zA-Z-]+)\(")
 _KEY = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+# A section key that means the page's body, unless a template has a section by that key.
+PAGE = "page"
 _RULE = re.compile(r"([^{}@]+)\{([^{}]*)\}")
 
 
@@ -112,6 +114,9 @@ def _chain(soup: BeautifulSoup, target: Target) -> list[Tag]:
         if not _KEY.match(target.section):
             raise StyleError(f"There's no section {target.section}.")
         node = soup.select_one(f'[data-lp-section="{target.section}"]')
+        if node is None and target.section == PAGE and isinstance(soup.body, Tag):
+            # The page itself (B3.1f): its own background, behind and between the sections.
+            return [soup.body]
         if not isinstance(node, Tag):
             raise StyleError(f"There's no section {target.section}.")
         return [node]
@@ -223,7 +228,7 @@ def describe(html: str, target: Target) -> str:
 def _check(prop: str, value: str) -> str | None:
     """Why a property or value can't be set, or None when it can."""
     if prop not in ALLOWED:
-        return f"{prop} isn't one of the properties Lander can set"
+        return f"{prop} isn't one of the properties Buddy can set"
     if value == "unset":
         return None
     if len(value) > MAX_VALUE or _FORBIDDEN.search(value) or not _VALUE.match(value):
@@ -289,6 +294,86 @@ def apply_phone(
         raise StyleError("Nothing set: " + "; ".join(refused))
     mobile.set_phone_styles(soup, mobile.phone_class(soup, node), applied)
     return serialize(soup), applied, refused
+
+
+MAX_ALIKE = 200
+
+
+def _signature(node: Tag) -> tuple[str, frozenset[str]]:
+    classes = frozenset(
+        str(c) for c in node.get("class") or [] if not re.fullmatch(r"lp-p\d+", str(c))
+    )
+    return node.name, classes
+
+
+def alike(soup: BeautifulSoup, node: Tag) -> list[Tag]:
+    """Every element on the page like `node` (B3.1f): the same tag and the same classes (the
+    phone-styles class aside), or, for an element with no classes, the same tag inside a parent
+    like its parent (all the item numbers, every section's background box). The node first. At
+    most MAX_ALIKE."""
+    body = soup.body or soup
+    tag, classes = _signature(node)
+    parent = node.parent if isinstance(node.parent, Tag) else None
+    found: list[Tag] = [node]
+    for other in body.find_all(tag):
+        if not isinstance(other, Tag) or other is node:
+            continue
+        if other.find_parent(["script", "style", "noscript", "template", "head"]):
+            continue
+        if classes:
+            same = _signature(other)[1] == classes
+        else:
+            other_parent = other.parent if isinstance(other.parent, Tag) else None
+            same = (
+                not _signature(other)[1]
+                and parent is not None
+                and other_parent is not None
+                and _signature(parent)[1] != frozenset()
+                and _signature(other_parent) == _signature(parent)
+            )
+        if same:
+            found.append(other)
+            if len(found) >= MAX_ALIKE:
+                break
+    return found
+
+
+def apply_alike(
+    html: str, target: Target, styles: dict[str, str], *, phone: bool = False
+) -> tuple[str, dict[str, str], list[str], int]:
+    """Sets `styles` on the target and every element like it (`alike`), inline or, with `phone`,
+    on phones only. Returns the page, what was set, what was refused, and how many elements."""
+    from app.engines import mobile
+
+    soup = parse(html)
+    node = _node(soup, target)
+    applied: dict[str, str] = {}
+    refused: list[str] = []
+    for raw_prop, raw_value in styles.items():
+        prop, value = raw_prop.strip().lower(), " ".join(str(raw_value).split())
+        why = _check(prop, value)
+        if why:
+            refused.append(why)
+        else:
+            applied[prop] = value
+    if not applied:
+        raise StyleError("Nothing set: " + "; ".join(refused))
+    nodes = alike(soup, node)
+    for each in nodes:
+        if phone:
+            mobile.set_phone_styles(soup, mobile.phone_class(soup, each), applied)
+            continue
+        current = _declarations(str(each.get("style") or ""))
+        for prop, value in applied.items():
+            if value == "unset":
+                current.pop(prop, None)
+            else:
+                current[prop] = value
+        if current:
+            each["style"] = "; ".join(f"{k}: {v}" for k, v in current.items())
+        elif each.has_attr("style"):
+            del each["style"]
+    return serialize(soup), applied, refused, len(nodes)
 
 
 def selector_for(html: str, target: Target) -> tuple[str, str]:

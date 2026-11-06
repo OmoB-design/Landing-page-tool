@@ -397,7 +397,7 @@ export function startAgent(
     accessToken,
     { ...body, org_id: orgId },
     agentStartSchema,
-    "Lander couldn't start that.",
+    "Buddy couldn't start that.",
   );
 }
 
@@ -415,7 +415,7 @@ export function getAgentThread(
     accessToken,
     undefined,
     agentThreadSchema,
-    "Couldn't load the conversation with Lander.",
+    "Couldn't load the conversation with Buddy.",
   );
 }
 
@@ -480,7 +480,7 @@ export function stopAgent(
     accessToken,
     { org_id: orgId },
     z.object({ stopping: z.boolean() }),
-    "Couldn't stop Lander.",
+    "Couldn't stop Buddy.",
   );
 }
 

@@ -127,7 +127,7 @@ export function RedraftStatus() {
       <div className="flex min-w-0 flex-col gap-0.5">
         <ShimmerText className="text-heading-02">
           {redrafting.redraft.scope === "agent"
-            ? `Lander is working on ${redraftLabel(redrafting.redraft, desk.sections)}…`
+            ? `Buddy is working on ${redraftLabel(redrafting.redraft, desk.sections)}…`
             : `Redrafting ${redraftLabel(redrafting.redraft, desk.sections)}…`}
         </ShimmerText>
         <span className="text-type-caption-2 text-heading-05">

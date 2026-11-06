@@ -171,7 +171,7 @@ export function ChangeCard({
                   autoFocus
                   value={note}
                   maxLength={REQUEST_MAX}
-                  placeholder={`Ask Lander to edit ${title}`}
+                  placeholder={`Ask Buddy to edit ${title}`}
                   onChange={(event) => setNote(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Escape") {
@@ -210,7 +210,7 @@ export function ChangeCard({
                     aria-hidden
                     className="size-3.5 text-icon-system"
                   />
-                  Ask Lander to edit
+                  Ask Buddy to edit
                 </Button>
               </motion.div>
             )}

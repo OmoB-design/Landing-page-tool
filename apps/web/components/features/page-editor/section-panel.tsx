@@ -13,7 +13,6 @@ import {
   MoveDownFigmaIcon,
   MoveUpFigmaIcon,
   RemoveFigmaIcon,
-  SparkleFigmaIcon,
 } from "@/components/ui/lp-icons";
 import { canMoveSection, keepsGroups } from "@/lib/pages/editor";
 import { moved } from "@/lib/templates/editor";
@@ -23,6 +22,8 @@ import type {
   DeskSection,
   SectionAction,
 } from "@/lib/validators/desk";
+
+import { LanderMark } from "./lander/lander-mark";
 
 const CROSS_CONTAINER =
   "That section can't move there: it sits in a different part of the page.";
@@ -152,8 +153,9 @@ export function SectionPanel({
             disabled={Boolean(busy) || editable === 0}
             onClick={() => onImprove(section.key)}
           >
-            <SparkleFigmaIcon aria-hidden className="size-3.5" />
-            Improve with AI
+            {/* Buddy (owner, 2026-11-06): it opens a request to him on this section. */}
+            <LanderMark size="xs" mouth />
+            Improve with Buddy
           </Button>
         </div>
       ) : (

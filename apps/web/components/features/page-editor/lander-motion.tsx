@@ -36,9 +36,9 @@ const DIAL = {
   replay: { type: "action" as const, label: "Replay (close, then open)" },
   slowMotion: [1, 1, 8, 0.5] as Range,
   bar: {
-    /** Where "Work with Lander" sits: px from the page panel's foot (owner's tuning, 2026-11-04;
+    /** Where "Work with Lander" sits: px from the page panel's foot (owner's tuning, 2026-11-06;
      * Sidekick's is 16). */
-    fromBottom: [5, 0, 96, 1] as Range,
+    fromBottom: [32, 0, 96, 1] as Range,
     /** Opening the editor: the bar rises into place after this long (owner, 2026-11-05). */
     enterDelay: [0.35, 0, 1.5, 0.05] as Range,
     sink: { type: "easing", duration: 0.32, ease: SINK } as Easing,
@@ -59,8 +59,8 @@ const DIAL = {
   },
   thread: {
     wordStagger: [0.022, 0, 0.1, 0.002] as Range,
-    // 2 px: enough to bridge each word in, not a smudge across a sentence (emil-design-eng).
-    wordBlur: [2, 0, 10, 0.5] as Range,
+    // The owner's tuning (2026-11-06).
+    wordBlur: [4, 0, 10, 0.5] as Range,
     arrive: { type: "easing", duration: 0.34, ease: ARRIVE } as Easing,
   },
   sections: {

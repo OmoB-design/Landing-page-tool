@@ -159,7 +159,7 @@ export function LanderComposer({
         ) : null}
       </AnimatePresence>
       <label className="sr-only" htmlFor="lander-composer">
-        Ask Lander
+        Ask Buddy
       </label>
       <textarea
         id="lander-composer"
@@ -173,7 +173,7 @@ export function LanderComposer({
             ? "Listening…"
             : hasThread
               ? "Add a follow-up"
-              : "Ask Lander to change the page"
+              : "Ask Buddy to change the page"
         }
         onChange={(event) => setText(event.target.value)}
         onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 2)}
@@ -267,7 +267,7 @@ export function LanderComposer({
           ) : (
             <motion.span key="send" className="flex" {...SWAP}>
               <SendButton
-                label="Send to Lander"
+                label="Send to Buddy"
                 size="md"
                 disabled={!text.trim()}
                 busy={false}

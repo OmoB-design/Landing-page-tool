@@ -62,7 +62,7 @@ export function LanderPanel({
                   className="flex items-center gap-2 text-type-body-small font-medium text-heading-01"
                 >
                   <LanderMark working={working} />
-                  Lander
+                  Buddy
                 </motion.p>
               )}
             </AnimatePresence>
@@ -73,7 +73,7 @@ export function LanderPanel({
               <NewChatIcon aria-hidden className="size-4" />
             </IconButton>
           ) : null}
-          <IconButton label="Close Lander" shortcut="⌘J" onClick={onClose}>
+          <IconButton label="Close Buddy" shortcut="⌘J" onClick={onClose}>
             <CloseIcon aria-hidden className="size-4" />
           </IconButton>
         </header>

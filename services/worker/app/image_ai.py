@@ -206,7 +206,7 @@ def apply(
                 break
         if time.monotonic() > deadline:
             raise desk.DeskEditError(
-                "Lander was still working on the page, so the picture wasn't placed. Try again."
+                "Buddy was still working on the page, so the picture wasn't placed. Try again."
             )
         wait(3)
     desk._remove(stale)
