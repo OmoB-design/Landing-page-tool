@@ -5,6 +5,8 @@ import {
   type PageListItem,
   activeFilterCount,
   filterPages,
+  foldBatches,
+  groupPages,
   groupPagesByStatus,
   pagesHref,
   parsePageFilters,
@@ -152,5 +154,53 @@ describe("page filters", () => {
     expect(
       activeFilterCount({ status: ["published"], origin: ["owned"], type: [] }),
     ).toBe(2);
+  });
+});
+
+describe("batch folders (B3.5b)", () => {
+  const batch = { batchId: "b1", product: "Calm Serum", brand: "Lume" };
+  it("folds a batch's pages into one folder in the group of its least finished page", () => {
+    const pages = [
+      page({
+        id: "a",
+        ...batch,
+        status: "needs_review",
+        costUsd: 0.2,
+        templateId: "t1",
+      }),
+      page({
+        id: "b",
+        ...batch,
+        status: "building",
+        costUsd: 0.1,
+        templateId: "t2",
+      }),
+      page({ id: "c", status: "needs_review" }),
+      page({ id: "d", batchId: "solo", status: "needs_review" }), // a batch of one stays a page
+    ];
+    const folded = foldBatches(pages);
+    expect(folded.map((p) => p.id)).toEqual(["batch:b1", "c", "d"]);
+    const folder = folded[0];
+    expect(folder?.status).toBe("building");
+    expect(folder?.title).toBe("Calm Serum · Lume");
+    expect(folder?.costUsd).toBeCloseTo(0.3);
+    expect(folder?.folder).toMatchObject({
+      batchId: "b1",
+      ready: 1,
+      active: 1,
+    });
+    expect(folder?.folder?.pages.map((p) => p.id)).toEqual(["a", "b"]);
+    const groups = groupPagesByStatus(pages);
+    expect(
+      groups.find((g) => g.id === "building")?.rows.map((r) => r.id),
+    ).toEqual(["batch:b1"]);
+    // Grouped by template type, the pages show on their own.
+    const byType = groupPages(pages, { group: "type", order: "updated" });
+    expect(byType.flatMap((g) => g.rows.map((r) => r.id)).sort()).toEqual([
+      "a",
+      "b",
+      "c",
+      "d",
+    ]);
   });
 });

@@ -1,9 +1,10 @@
 """Creating a build (BUILD_SPEC §9 step 6): the build row with its key and its `build` job, in
-one transaction. Used by POST /builds and the smoke-build command. Retrying a failed build queues
+one transaction. Used by POST /builds and the smoke-build command; a batch (B3.5) makes a page
+from each of several templates in one go. Retrying a failed build queues
 its `build` job again (POST /builds/{id}/retry)."""
 
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
 
@@ -13,7 +14,7 @@ from app.engines import targeting
 from app.jobs import queue
 from app.jobs.models import Job
 from app.jobs.registry import KINDS
-from app.models.build import BuildWizard
+from app.models.build import BatchPage, BatchState, BuildWizard
 from app.models.template import RANKING_TYPE
 
 
@@ -37,6 +38,90 @@ class BuildNotFailedError(Exception):
     """Only a failed build can be retried (one that is queued or building is still going)."""
 
 
+def _template(conn: Any, org_id: UUID, template_id: UUID) -> dict[str, Any]:
+    """A template this org can build from: the library's or its own, active; a cloned one once its
+    analysis is confirmed (B2.2, D96)."""
+    template = conn.execute(
+        """
+        select id, name, type, origin, version, blueprint, reviewed_at from templates
+        where id = %(t)s and (org_id is null or org_id = %(o)s)
+          and deleted_at is null and status = 'active'
+        """,
+        {"t": template_id, "o": org_id},
+    ).fetchone()
+    if template is None:
+        raise BuildInputsMissingError
+    if template["origin"] == "cloned" and not (template["blueprint"] and template["reviewed_at"]):
+        raise TemplateNotReadyError
+    return dict(template)
+
+
+def _product(conn: Any, org_id: UUID, brand_id: UUID, product_id: UUID) -> dict[str, Any]:
+    product = conn.execute(
+        """
+        select p.id, p.name from products p join brands b on b.id = p.brand_id
+        where p.id = %(p)s and p.brand_id = %(b)s and p.org_id = %(o)s and b.org_id = %(o)s
+          and p.deleted_at is null and b.deleted_at is null
+        """,
+        {"p": product_id, "b": brand_id, "o": org_id},
+    ).fetchone()
+    if product is None:
+        raise BuildInputsMissingError
+    return dict(product)
+
+
+def _add_build(
+    conn: Any,
+    *,
+    org_id: UUID,
+    template: dict[str, Any],
+    product: dict[str, Any],
+    brand_id: UUID,
+    wizard: BuildWizard,
+    created_by: UUID | None,
+    batch_id: UUID | None = None,
+) -> tuple[dict[str, Any], Job]:
+    """The build row with its key (only the worker allocates keys, D27, D57) and its `build` job,
+    in the caller's transaction."""
+    # Competitors belong to ranking pages only (B2.4a, D102).
+    if template["type"] == RANKING_TYPE and wizard.competitors is None:
+        raise CompetitorsMissingError
+    if template["type"] != RANKING_TYPE:
+        wizard = wizard.model_copy(update={"competitors": None})
+    key = conn.execute("select allocate_build_key(%(b)s) as key", {"b": brand_id}).fetchone()
+    assert key is not None
+    build = conn.execute(
+        """
+        insert into builds (org_id, brand_id, product_id, template_id, template_version, key,
+                            origin, status, title, wizard, targeting, mock_images,
+                            created_by, batch_id, created_at)
+        values (%(o)s, %(b)s, %(p)s, %(t)s, %(v)s, %(key)s, %(origin)s, 'queued', %(title)s,
+                %(wizard)s, %(targeting)s, %(mock)s, %(user)s, %(batch)s, clock_timestamp())
+        returning id, key, status, title
+        """,
+        {
+            "o": org_id, "b": brand_id, "p": product["id"], "t": template["id"],
+            "v": template["version"], "key": key["key"], "origin": template["origin"],
+            "title": f"{template['name']} · {product['name']}",
+            "wizard": Jsonb(wizard.model_dump(mode="json")),
+            "targeting": Jsonb(targeting.compose(wizard.model_dump(mode="json"))),
+            "mock": get_settings().lp_mock_images, "user": created_by, "batch": batch_id,
+        },
+    ).fetchone()  # fmt: skip
+    assert build is not None
+    kind = KINDS["build"]
+    job, _ = queue.enqueue(
+        org_id=org_id,
+        kind=kind.name,
+        payload={"build_id": str(build["id"])},
+        created_by=created_by,
+        build_id=build["id"],
+        max_attempts=kind.max_attempts,
+        conn=conn,
+    )
+    return dict(build), job
+
+
 def create_build(
     *,
     org_id: UUID,
@@ -46,70 +131,137 @@ def create_build(
     wizard: BuildWizard,
     created_by: UUID | None,
 ) -> tuple[dict[str, Any], Job]:
-    """The build key (e.g. ALL-3) is allocated here because only the worker may allocate keys
-    (D27, D57)."""
+    """One page: its build and job in one transaction."""
     with transaction() as conn:
-        template = conn.execute(
+        template = _template(conn, org_id, template_id)
+        product = _product(conn, org_id, brand_id, product_id)
+        return _add_build(
+            conn, org_id=org_id, template=template, product=product, brand_id=brand_id,
+            wizard=wizard, created_by=created_by,
+        )  # fmt: skip
+
+
+class BatchTooBigError(Exception):
+    """More pages than the workspace may still start this hour (B3.5)."""
+
+    def __init__(self, room: int) -> None:
+        super().__init__(room)
+        self.room = room
+
+
+def create_batch(
+    *,
+    org_id: UUID,
+    template_ids: list[UUID],
+    brand_id: UUID,
+    product_id: UUID,
+    wizard: BuildWizard,
+    created_by: UUID | None,
+) -> tuple[UUID, list[tuple[dict[str, Any], Job]]]:
+    """A page from each template for one product (B3.5, D115), all in one transaction: every
+    template is checked first and nothing is started unless they all can be, within the hourly
+    cap. The pages share a batch id, so the batch screen can follow them together. The ranking
+    templates in it share the wizard's one set of competitors."""
+    chosen = list(dict.fromkeys(template_ids))  # each template once, in the order chosen
+    batch_id = uuid4()
+    with transaction() as conn:
+        product = _product(conn, org_id, brand_id, product_id)
+        templates = [_template(conn, org_id, t) for t in chosen]
+        room = queue.remaining(conn, org_id, KINDS["build"].name)
+        if room is not None and len(templates) > room:
+            raise BatchTooBigError(room)
+        made = []
+        for template in templates:
+            made.append(
+                _add_build(
+                    conn,
+                    org_id=org_id,
+                    template=template,
+                    product=product,
+                    brand_id=brand_id,
+                    wizard=wizard,
+                    created_by=created_by,
+                    batch_id=batch_id,
+                )
+            )
+    return batch_id, made
+
+
+def _score(value: Any) -> int | None:
+    """A clone's residue score from the report (text in the JSON), or None."""
+    try:
+        return round(float(value)) if value not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
+def batch_state(org_id: UUID, batch_id: UUID) -> BatchState:
+    """A batch's pages with how each is getting on: its build's status, what its job is doing now,
+    its place in line while it waits (a workspace runs two builds at a time), or why it failed."""
+    with transaction() as conn:
+        rows = conn.execute(
             """
-            select id, name, type, origin, version, blueprint, reviewed_at from templates
-            where id = %(t)s and (org_id is null or org_id = %(o)s)
-              and deleted_at is null and status = 'active'
+            select b.id, b.key, b.title, b.status, b.created_at, b.template_id,
+                   b.origin, b.cost_usd, b.created_by, b.updated_at,
+                   b.report->'residue'->>'score' as residue,
+                   t.name as template_name, t.type as template_type,
+                   br.name as brand, p.name as product,
+                   j.id as job_id, j.status as job_status, j.created_at as job_created,
+                   j.started_at, j.finished_at,
+                   j.error->>'message' as error,
+                   (select e.message from job_events e where e.job_id = j.id
+                     order by e.ts desc limit 1) as step
+            from builds b
+            join templates t on t.id = b.template_id
+            join brands br on br.id = b.brand_id
+            join products p on p.id = b.product_id
+            left join lateral (
+              select id, status, created_at, started_at, finished_at, error from jobs
+              where build_id = b.id and kind = %(kind)s order by created_at desc limit 1
+            ) j on true
+            where b.org_id = %(o)s and b.batch_id = %(batch)s and b.deleted_at is null
+            order by b.created_at, b.key
             """,
-            {"t": template_id, "o": org_id},
-        ).fetchone()
-        if (
-            template is not None
-            and template["origin"] == "cloned"
-            and not (template["blueprint"] and template["reviewed_at"])
-        ):
-            raise TemplateNotReadyError
-        product = conn.execute(
+            {"o": org_id, "batch": batch_id, "kind": KINDS["build"].name},
+        ).fetchall()
+        if not rows:
+            raise BuildNotFoundError
+        waiting = conn.execute(
             """
-            select p.id, p.name from products p join brands b on b.id = p.brand_id
-            where p.id = %(p)s and p.brand_id = %(b)s and p.org_id = %(o)s and b.org_id = %(o)s
-              and p.deleted_at is null and b.deleted_at is null
+            select id from jobs
+            where org_id = %(o)s and kind = %(kind)s and status = 'queued'
+            order by created_at, id
             """,
-            {"p": product_id, "b": brand_id, "o": org_id},
-        ).fetchone()
-        if template is None or product is None:
-            raise BuildInputsMissingError
-        # Competitors belong to ranking pages only (B2.4a, D102).
-        if template["type"] == RANKING_TYPE and wizard.competitors is None:
-            raise CompetitorsMissingError
-        if template["type"] != RANKING_TYPE:
-            wizard = wizard.model_copy(update={"competitors": None})
-        key = conn.execute("select allocate_build_key(%(b)s) as key", {"b": brand_id}).fetchone()
-        assert key is not None
-        build = conn.execute(
-            """
-            insert into builds (org_id, brand_id, product_id, template_id, template_version, key,
-                                origin, status, title, wizard, targeting, mock_images,
-                                created_by)
-            values (%(o)s, %(b)s, %(p)s, %(t)s, %(v)s, %(key)s, %(origin)s, 'queued', %(title)s,
-                    %(wizard)s, %(targeting)s, %(mock)s, %(user)s)
-            returning id, key, status, title
-            """,
-            {
-                "o": org_id, "b": brand_id, "p": product_id, "t": template["id"],
-                "v": template["version"], "key": key["key"], "origin": template["origin"],
-                "title": f"{template['name']} · {product['name']}",
-                "wizard": Jsonb(wizard.model_dump(mode="json")),
-                "targeting": Jsonb(targeting.compose(wizard.model_dump(mode="json"))),
-                "mock": get_settings().lp_mock_images, "user": created_by,
-            },
-        ).fetchone()  # fmt: skip
-        assert build is not None
-        kind = KINDS["build"]
-        job, _ = queue.enqueue(
-            org_id=org_id,
-            kind=kind.name,
-            payload={"build_id": str(build["id"])},
-            created_by=created_by,
-            build_id=build["id"],
-            max_attempts=kind.max_attempts,
-            conn=conn,
+            {"o": org_id, "kind": KINDS["build"].name},
+        ).fetchall()
+    line = {row["id"]: index + 1 for index, row in enumerate(waiting)}
+    pages = [
+        BatchPage(
+            id=r["id"],
+            key=r["key"],
+            title=r["title"],
+            template_id=r["template_id"],
+            template_name=r["template_name"],
+            template_type=r["template_type"],
+            status=r["status"],
+            job_id=r["job_id"],
+            step=r["step"] if r["job_status"] == "running" else None,
+            waiting=line.get(r["job_id"]) if r["job_status"] == "queued" else None,
+            error=r["error"] if r["status"] == "failed" else None,
+            origin=r["origin"],
+            residue_score=_score(r["residue"]),
+            cost_usd=float(r["cost_usd"] or 0),
+            created_by=r["created_by"],
+            updated_at=r["updated_at"],
+            started_at=r["started_at"],
+            finished_at=r["finished_at"],
         )
-    return dict(build), job
+        for r in rows
+    ]
+    return BatchState(
+        batch_id=batch_id, brand=rows[0]["brand"], product=rows[0]["product"],
+        created_at=rows[0]["created_at"], pages=pages,
+    )  # fmt: skip
 
 
 def retry_build(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  batchPayload,
   canOpen,
   competitorProblem,
   parseWizard,
@@ -198,5 +199,26 @@ describe("create wizard state", () => {
       naming: "real",
     });
     expect(wizardPayload(state, briefing)?.wizard.competitors).toBeNull();
+  });
+
+  it("keeps a batch's ticked templates in the URL and builds its payload (B3.5)", () => {
+    const OTHER = "44444444-4444-4444-8444-444444444444";
+    const state = parseWizard(
+      new URLSearchParams(
+        `brand=${BRAND}&product=${PRODUCT}&batch=1&tpl=${TEMPLATE}&tpl=${OTHER}&tpl=${TEMPLATE}&tpl=nope`,
+      ),
+    );
+    expect(state.batch).toBe(true);
+    expect(state.templates).toEqual([TEMPLATE, OTHER]); // each once, valid ids only
+    expect(stepReady(state, "template")).toBe(true);
+    expect(stepReady({ ...state, templates: [] }, "template")).toBe(false);
+    expect(parseWizard(new URLSearchParams(wizardSearch(state)))).toEqual(
+      state,
+    );
+    const payload = batchPayload(state, briefing);
+    expect(payload?.template_ids).toEqual([TEMPLATE, OTHER]);
+    expect(payload?.product_id).toBe(PRODUCT);
+    expect(batchPayload({ ...state, templates: [] }, briefing)).toBeNull();
+    expect(wizardSearch({ ...state, batch: false })).not.toContain("tpl=");
   });
 });

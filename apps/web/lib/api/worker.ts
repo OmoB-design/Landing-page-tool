@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-import { type BuildCreated, buildCreatedSchema } from "@/lib/validators/build";
+import {
+  type BatchCreated,
+  type BatchState,
+  type BuildCreated,
+  batchCreatedSchema,
+  batchStateSchema,
+  buildCreatedSchema,
+} from "@/lib/validators/build";
 import {
   type Analytics,
   type AnalyticsRange,
@@ -183,6 +190,43 @@ export function startBuild(
     body,
     buildCreatedSchema,
     "Could not start the build.",
+  );
+}
+
+/** A page from each chosen template for one product, all started or none (B3.5; worker POST
+ * /builds/batch). */
+export function startBatch(
+  accessToken: string,
+  body: {
+    org_id: string;
+    template_ids: string[];
+    brand_id: string;
+    product_id: string;
+    wizard?: Record<string, unknown>;
+  },
+): Promise<BatchCreated> {
+  return postToWorker(
+    "/builds/batch",
+    accessToken,
+    body,
+    batchCreatedSchema,
+    "Could not start the pages.",
+  );
+}
+
+/** A batch's pages and how each is getting on (B3.5; worker GET /builds/batch/{id}). */
+export function getBatch(
+  accessToken: string,
+  orgId: string,
+  batchId: string,
+): Promise<BatchState> {
+  return callWorker(
+    "GET",
+    `/builds/batch/${encodeURIComponent(batchId)}?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    batchStateSchema,
+    "Couldn't load the batch.",
   );
 }
 

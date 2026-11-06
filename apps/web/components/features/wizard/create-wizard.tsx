@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { WizardArrowIcon } from "@/components/ui/lp-icons";
 import { Spinner } from "@/components/ui/spinner";
-import { createPage } from "@/lib/builds/actions";
+import { createBatch, createPage } from "@/lib/builds/actions";
 import type { WizardData } from "@/lib/wizard/queries";
 import {
   type StepId,
@@ -15,6 +15,7 @@ import {
   parseWizard,
   stepIndex,
   stepReady,
+  batchPayload,
   wizardPayload,
   wizardSearch,
   wizardSteps,
@@ -67,7 +68,7 @@ const HEADINGS: Record<StepId, { title: string; hint: string }> = {
 /** Why Next is unavailable on a step (Next's tooltip). */
 const NOT_READY: Partial<Record<StepId, string>> = {
   product: "Choose a brand and a product first",
-  template: "Choose a template first",
+  template: "Choose a template first (or tick at least one)",
   competitors: "Add four different competitor pages first",
 };
 
@@ -79,12 +80,19 @@ function normalise(state: WizardState, data: WizardData): WizardState {
     product?.brandId ??
     (data.brands.some((b) => b.id === state.brand) ? state.brand : null);
   const template = data.templates.find((t) => t.id === state.template);
+  // A batch's ticked templates (B3.5): only ones the org still has.
+  const ticked = state.templates
+    .map((id) => data.templates.find((t) => t.id === id))
+    .filter((t): t is (typeof data.templates)[number] => Boolean(t));
   const next: WizardState = {
     ...state,
     brand,
     product: product && product.brandId === brand ? product.id : null,
     template: template ? template.id : null,
-    ranking: template?.type === "top5_ranking",
+    templates: ticked.map((t) => t.id),
+    ranking: state.batch
+      ? ticked.some((t) => t.type === "top5_ranking")
+      : template?.type === "top5_ranking",
   };
   if (!canOpen(next, next.step)) {
     next.step =
@@ -192,6 +200,21 @@ export function CreateWizard({ data }: { data: WizardData }) {
   const [building, startBuilding] = useTransition();
   const [buildError, setBuildError] = useState<string | null>(null);
   const build = () => {
+    if (state.batch) {
+      // "Build with every template" (B3.5): all the pages start together, then the batch screen.
+      const batch = batchPayload(state, briefing.briefing);
+      if (!batch) {
+        setBuildError("Choose a brand, product and templates first.");
+        return;
+      }
+      startBuilding(async () => {
+        setBuildError(null);
+        const result = await createBatch(batch);
+        if (result.batchId) router.push(`/pages/batch/${result.batchId}`);
+        else setBuildError(result.error ?? "Couldn't start the pages.");
+      });
+      return;
+    }
     const payload = wizardPayload(state, briefing.briefing);
     if (!payload) {
       setBuildError("Choose a brand, product and template first.");
@@ -301,7 +324,9 @@ export function CreateWizard({ data }: { data: WizardData }) {
                 className="h-6.5 gap-1.5 px-2.5"
               >
                 {building ? <Spinner className="size-3.5" /> : null}
-                Build page
+                {state.batch
+                  ? `Build ${state.templates.length} ${state.templates.length === 1 ? "page" : "pages"}`
+                  : "Build page"}
               </Button>
             )}
           </div>

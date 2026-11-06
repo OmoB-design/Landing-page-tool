@@ -28,6 +28,10 @@ export function ReviewStep({
   const brand = data.brands.find((b) => b.id === state.brand);
   const product = data.products.find((p) => p.id === state.product);
   const template = data.templates.find((t) => t.id === state.template);
+  // A batch's pages (B3.5), in the gallery's order.
+  const ticked = state.batch
+    ? data.templates.filter((t) => state.templates.includes(t.id))
+    : [];
   const author = AUTHOR_TYPES.find((a) => a.id === state.author);
   const audienceExtra = [
     state.gender !== "any"
@@ -39,7 +43,12 @@ export function ReviewStep({
   const rows: [string, string][] = [
     ["Brand", brand?.name ?? "—"],
     ["Product", product?.name ?? "—"],
-    ["Template", template?.name ?? "—"],
+    state.batch
+      ? [
+          "Templates",
+          `${ticked.length} ${ticked.length === 1 ? "page" : "pages"}, one from each`,
+        ]
+      : ["Template", template?.name ?? "—"],
     ...(state.ranking
       ? ([
           [
@@ -80,6 +89,31 @@ export function ReviewStep({
           </div>
         ))}
       </dl>
+      {state.batch ? (
+        <div className="flex flex-col gap-1.5">
+          <ol aria-label="Templates" className="flex flex-col gap-1.5">
+            {ticked.map((t, index) => (
+              <li
+                key={t.id}
+                className="flex gap-2 rounded-md bg-foreground-02 px-1.5 py-1.5 text-type-caption-1 font-medium text-heading-02 dark:bg-overlay"
+              >
+                <span className="shrink-0 text-heading-05 tabular-nums">
+                  {index + 1}
+                </span>
+                <span className="min-w-0 truncate">{t.name}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="text-type-caption-2 font-medium text-heading-05">
+            Each page’s copy is written by Claude, about $0.05–0.35 a page
+            {state.ai
+              ? "; AI pictures are free placeholders until fal is set up, then $0.15 each"
+              : ""}
+            . They build two at a time; a batch counts towards the workspace’s
+            20 pages an hour.
+          </p>
+        </div>
+      ) : null}
       {state.ranking ? (
         <ol aria-label="Competitors" className="flex flex-col gap-1.5">
           {state.competitors.map((url, index) => (

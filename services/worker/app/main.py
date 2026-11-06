@@ -38,7 +38,7 @@ from app.models.agent import (
     AgentThreads,
 )
 from app.models.analytics import AnalyticsRange, AnalyticsState
-from app.models.build import BuildRequest
+from app.models.build import BatchRequest, BatchState, BuildRequest
 from app.models.clone import CloneRequest, CloneTermsRequest, CloneTermsState
 from app.models.desk import (
     CopyEditRequest,
@@ -178,6 +178,64 @@ def create_build(body: BuildRequest, user: CurrentUser) -> BuildCreated:
             "A ranking page needs its four competitor pages. Add them in the Competitors step.",
         ) from exc
     return BuildCreated(build=BuildSummary.model_validate(build), job=job)
+
+
+class BatchCreated(BaseModel):
+    batch_id: UUID
+    builds: list[BuildSummary]
+
+
+@app.post("/builds/batch", status_code=status.HTTP_201_CREATED)
+def create_batch(body: BatchRequest, user: CurrentUser) -> BatchCreated:
+    """A page from each chosen template for one product (B3.5, D115): all of them or none."""
+    require_org_member(user, body.org_id)
+    try:
+        batch_id, made = builds.create_batch(
+            org_id=body.org_id,
+            template_ids=body.template_ids,
+            brand_id=body.brand_id,
+            product_id=body.product_id,
+            wizard=body.wizard,
+            created_by=user.id,
+        )
+    except builds.BuildInputsMissingError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "One of those templates, or the brand or product, isn't available.",
+        ) from exc
+    except builds.TemplateNotReadyError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "A cloned page in the batch needs its analysis confirmed first.",
+        ) from exc
+    except builds.CompetitorsMissingError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "The ranking page needs its four competitor pages. Add them in the Competitors step.",
+        ) from exc
+    except builds.BatchTooBigError as exc:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            (
+                f"You can start {exc.room} more page{'' if exc.room == 1 else 's'} this hour. "
+                "Untick some templates, or try again later."
+            )
+            if exc.room
+            else "This workspace has started its 20 pages for this hour. Try again later.",
+        ) from exc
+    return BatchCreated(
+        batch_id=batch_id, builds=[BuildSummary.model_validate(build) for build, _ in made]
+    )
+
+
+@app.get("/builds/batch/{batch_id}")
+def get_batch(batch_id: UUID, org_id: UUID, user: CurrentUser) -> BatchState:
+    """A batch's pages and how each is getting on (B3.5): the batch screen polls this."""
+    require_org_member(user, org_id)
+    try:
+        return builds.batch_state(org_id, batch_id)
+    except builds.BuildNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That batch isn't available.") from exc
 
 
 class RetryBuildRequest(BaseModel):

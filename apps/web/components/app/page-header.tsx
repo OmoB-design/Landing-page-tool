@@ -26,7 +26,8 @@ type PageHeaderProps = {
 };
 
 /** The page panel's header (DESIGN.md §2; Figma: Home): 49 px with its border, 16 px in counting the panel's border; a mark if
- * any, the 13 px medium Heading-01 title (every Figma page header), a divider, then tabs; actions, Jobs and Notifications on the right. Opens the sidebar on small screens or when it's collapsed. */
+ * any, the 13 px medium Heading-01 title (every Figma page header), a divider, then tabs; actions, Jobs and Notifications on the right. Opens the sidebar on small screens or when it's collapsed.
+ * It stays at the top of the page panel (sticky in its scroll) and the page scrolls under it. */
 export function PageHeader({
   title,
   emoji,
@@ -36,7 +37,7 @@ export function PageHeader({
   crumb,
 }: PageHeaderProps) {
   return (
-    <header className="flex h-header shrink-0 items-center gap-3 px-3.75 edge-b">
+    <header className="sticky top-0 z-20 flex h-header shrink-0 items-center gap-3 bg-surface-primary px-3.75 edge-b">
       {/* Figma Build (full screen): the open-sidebar button's 32 px box 16 px in, the title 6 px after it. */}
       <div className="flex min-w-0 items-center gap-1.5">
         <SidebarToggleButton

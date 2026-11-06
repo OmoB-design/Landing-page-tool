@@ -50,7 +50,7 @@ export async function getOrgPages(
   const { data, error } = await supabase
     .from("builds")
     .select(
-      "id, key, title, status, origin, cost_usd, created_at, updated_at, parent_build_id, created_by, residue:report->residue->>score, template:templates(type)",
+      "id, key, title, status, origin, cost_usd, created_at, updated_at, parent_build_id, created_by, batch_id, template_id, residue:report->residue->>score, template:templates(type), product:products(name), brand:brands(name)",
     )
     .eq("org_id", orgId)
     .is("deleted_at", null)
@@ -72,6 +72,10 @@ export async function getOrgPages(
     createdAt: new Date(build.created_at),
     updatedAt: new Date(build.updated_at),
     parentId: build.parent_build_id,
+    batchId: build.batch_id,
+    templateId: build.template_id,
+    product: build.product?.name ?? undefined,
+    brand: build.brand?.name ?? undefined,
     createdBy: {
       // Other members' names arrive with the members build (B1.6).
       name: build.created_by === me.id ? me.name : "A teammate",

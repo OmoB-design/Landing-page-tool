@@ -894,7 +894,9 @@ export function GroupChevronIcon(props: IconProps) {
   );
 }
 
-/** Status ring (Needs review group, 20 px; colour from currentColor). */
+/** Status ring (Needs review group, 20 px; colour from currentColor). Drawn with the published
+ * check's own circle, the same size and line (owner, 2026-11-06: the ring filled the whole box
+ * with a heavier band, so it looked bigger than the other status icons). */
 export function StatusRingIcon(props: IconProps) {
   return (
     <svg
@@ -905,9 +907,12 @@ export function StatusRingIcon(props: IconProps) {
       aria-hidden
       {...props}
     >
-      <path
-        d="M20 10C20 15.5228 15.5228 20 10 20C4.47715 20 0 15.5228 0 10C0 4.47715 4.47715 0 10 0C15.5228 0 20 4.47715 20 10ZM1.91918 10C1.91918 14.4629 5.53709 18.0808 10 18.0808C14.4629 18.0808 18.0808 14.4629 18.0808 10C18.0808 5.53709 14.4629 1.91918 10 1.91918C5.53709 1.91918 1.91918 5.53709 1.91918 10Z"
-        fill="currentColor"
+      <circle
+        cx="10.0003"
+        cy="9.99996"
+        r="8.05557"
+        stroke="currentColor"
+        strokeWidth="1.66667"
       />
     </svg>
   );

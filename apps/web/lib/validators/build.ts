@@ -16,6 +16,55 @@ export const buildCreatedSchema = z.object({
 });
 export type BuildCreated = z.infer<typeof buildCreatedSchema>;
 
+/** A batch started (B3.5, D115; worker POST /builds/batch): a page from each chosen template. */
+export const batchCreatedSchema = z.object({
+  batch_id: z.string(),
+  builds: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      status: z.string(),
+      title: z.string(),
+    }),
+  ),
+});
+export type BatchCreated = z.infer<typeof batchCreatedSchema>;
+
+/** A batch's pages and how each is getting on (worker GET /builds/batch/{id}). */
+export const batchStateSchema = z.object({
+  batch_id: z.string(),
+  brand: z.string(),
+  product: z.string(),
+  created_at: z.string(),
+  pages: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      title: z.string(),
+      template_id: z.string(),
+      template_name: z.string(),
+      template_type: z.string(),
+      status: z.string(),
+      job_id: z.string().nullable(),
+      /** What its build is doing now, while it runs. */
+      step: z.string().nullable(),
+      /** Its place in line while it waits (1 is next). */
+      waiting: z.number().int().nullable(),
+      error: z.string().nullable(),
+      // For the list (B3.5b), as the Pages list shows them.
+      origin: z.enum(["owned", "cloned"]).catch("owned"),
+      residue_score: z.number().nullable().catch(null),
+      cost_usd: z.number().catch(0),
+      created_by: z.string().nullable().catch(null),
+      updated_at: z.string(),
+      started_at: z.string().nullable().catch(null),
+      finished_at: z.string().nullable().catch(null),
+    }),
+  ),
+});
+export type BatchState = z.infer<typeof batchStateSchema>;
+export type BatchPage = BatchState["pages"][number];
+
 const counts = z.record(z.string(), z.number()).catch({});
 
 export const complianceFindingSchema = z.object({
@@ -245,3 +294,9 @@ export const createPageSchema = z.object({
   }),
 });
 export type CreatePageInput = z.infer<typeof createPageSchema>;
+
+/** The wizard's batch (B3.5): the same choices, a page from each of these templates. */
+export const createBatchSchema = createPageSchema
+  .omit({ template_id: true })
+  .extend({ template_ids: z.array(z.uuid()).min(1).max(20) });
+export type CreateBatchInput = z.infer<typeof createBatchSchema>;

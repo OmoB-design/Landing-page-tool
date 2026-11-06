@@ -8,8 +8,9 @@ import { SelectField } from "@/components/app/select-field";
 import { SkeletonText } from "@/components/app/skeletons";
 import { TypeGlyph, templateTypeLabel } from "@/components/app/type-glyph";
 import { Button } from "@/components/ui/button";
-import { TemplatesIcon } from "@/components/ui/icons";
+import { CheckIcon, TemplatesIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   AddPlusIcon,
   CheckboxCheckedFigmaIcon,
@@ -200,32 +201,116 @@ export function TemplateStep({
   )?.group;
   const [group, setGroup] = useState<Group>(chosenGroup ?? "Library");
   const templates = data.templates.filter((t) => t.group === group);
+  const all = data.templates.map((t) => t.id);
+  const toggle = (id: string, on: boolean) =>
+    update({
+      // Kept in the gallery's order, whatever order they're ticked in.
+      templates: all.filter((t) =>
+        t === id ? on : state.templates.includes(t),
+      ),
+    });
   return (
-    // Figma: the cards start 34 px under the tabs' line.
-    <div className="flex flex-col gap-8.5">
-      <GroupTabs active={group} onChange={setGroup} />
-      {templates.length === 0 ? (
-        <p className="py-10 text-center text-type-caption-1 font-medium text-heading-05">
-          {group === "Yours"
-            ? "No templates of your own yet. Choose Use Template on a library template to add one."
-            : "The library is empty: load it with pnpm seed:library."}
-        </p>
-      ) : (
-        <div
-          role="radiogroup"
-          aria-label={`${group} templates`}
-          className="flex flex-wrap justify-center gap-2.5"
+    <div className="flex flex-col gap-5">
+      <BatchSwitch
+        on={state.batch}
+        ticked={state.templates.length}
+        total={all.length}
+        onChange={(on) =>
+          update(on ? { batch: true, templates: all } : { batch: false })
+        }
+        onAll={(on) => update({ templates: on ? all : [] })}
+      />
+      {/* Figma: the cards start 34 px under the tabs' line. */}
+      <div className="flex flex-col gap-8.5">
+        <GroupTabs active={group} onChange={setGroup} />
+        {templates.length === 0 ? (
+          <p className="py-10 text-center text-type-caption-1 font-medium text-heading-05">
+            {group === "Yours"
+              ? "No templates of your own yet. Choose Use Template on a library template to add one."
+              : "The library is empty: load it with pnpm seed:library."}
+          </p>
+        ) : (
+          <div
+            role={state.batch ? "group" : "radiogroup"}
+            aria-label={`${group} templates`}
+            className="flex flex-wrap justify-center gap-2.5"
+          >
+            {templates.map((template) => (
+              <TemplatePick
+                key={template.id}
+                template={template}
+                many={state.batch}
+                checked={
+                  state.batch
+                    ? state.templates.includes(template.id)
+                    : state.template === template.id
+                }
+                onChoose={(on) =>
+                  state.batch
+                    ? toggle(template.id, on)
+                    : update({ template: template.id })
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Build with every template" (B3.5, D115; no Figma frame yet, drawn as the step's option cards):
+ * a 12 px card on Surface-Primary with its 1 px line, the title in 13 px medium over a Caption-1
+ * hint, and the Switch on the right. On, every card becomes a tick box, all ticked, and the hint
+ * counts them with Tick all or Untick all; the later steps apply to every page.
+ */
+function BatchSwitch({
+  on,
+  ticked,
+  total,
+  onChange,
+  onAll,
+}: {
+  on: boolean;
+  ticked: number;
+  total: number;
+  onChange: (on: boolean) => void;
+  onAll: (on: boolean) => void;
+}) {
+  // Two build at a time, each a few minutes (BUILD_SPEC §6.1's org limit).
+  const minutes = Math.max(3, Math.ceil(ticked / 2) * 4);
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-surface-primary p-3 ring-1 ring-stroke ring-inset">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <label
+          htmlFor="batch-switch"
+          className="cursor-pointer text-type-body-small font-medium text-heading-01"
         >
-          {templates.map((template) => (
-            <TemplatePick
-              key={template.id}
-              template={template}
-              checked={state.template === template.id}
-              onChoose={() => update({ template: template.id })}
-            />
-          ))}
-        </div>
-      )}
+          Build with every template
+        </label>
+        <p className="text-type-caption-1 text-sub-text">
+          {on ? (
+            <>
+              {ticked} of {total} ticked
+              {ticked > 0
+                ? ` · they build two at a time, about ${minutes} minutes`
+                : ""}
+              {" · "}
+              <button
+                type="button"
+                onClick={() => onAll(ticked < total)}
+                className="rounded-xsm font-medium text-heading-02 underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {ticked < total ? "Tick all" : "Untick all"}
+              </button>
+            </>
+          ) : (
+            "A page from each template for this product, all at once, with the same choices."
+          )}
+        </p>
+      </div>
+      <Switch id="batch-switch" checked={on} onCheckedChange={onChange} />
     </div>
   );
 }
@@ -301,22 +386,34 @@ function GroupTabs({
 function TemplatePick({
   template,
   checked,
+  many = false,
   onChoose,
 }: {
   template: WizardTemplate;
   checked: boolean;
-  onChoose: () => void;
+  /** A batch's tick box rather than the one choice (B3.5). */
+  many?: boolean;
+  onChoose: (on: boolean) => void;
 }) {
   return (
     <label className="group/card frame-stroke relative flex w-67.5 cursor-pointer flex-col overflow-hidden rounded-card bg-surface-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-spot-500-blue/40">
       <input
-        type="radio"
-        name="template"
+        type={many ? "checkbox" : "radio"}
+        name={many ? `template-${template.id}` : "template"}
         value={template.id}
         checked={checked}
-        onChange={onChoose}
+        onChange={(event) => onChoose(event.target.checked)}
         className="sr-only"
       />
+      {many ? (
+        // A batch's tick, top right over the picture.
+        <span
+          aria-hidden
+          className="absolute top-2.5 right-2.5 z-10 flex size-4.5 items-center justify-center rounded-full bg-surface-primary text-surface-primary shadow-light ring-1 ring-stroke transition-colors duration-150 ease-out group-has-checked/card:bg-spot-500-blue group-has-checked/card:ring-spot-500-blue"
+        >
+          <CheckIcon className="size-3" />
+        </span>
+      ) : null}
       <span className="flex h-55 shrink-0 overflow-hidden rounded-b-well border-b border-stroke bg-foreground-01 p-4">
         <span className="relative flex-1 overflow-hidden template-shot">
           <TemplatesIcon

@@ -75,6 +75,26 @@ def check_limit(conn: Connection[DictRow], org_id: UUID, kind: str) -> None:
     )
 
 
+def remaining(conn: Connection[DictRow], org_id: UUID, kind: str) -> int | None:
+    """How many more jobs of this kind's group the workspace may start in the coming hour (None
+    when the group has no cap). A batch checks it up front, so it can say how many fit (B3.5)."""
+    group = next(((name, spec) for name, spec in LIMIT_GROUPS.items() if kind in spec[0]), None)
+    if group is None:
+        return None
+    name, (kinds, _noun) = group
+    limit: int = getattr(get_settings(), f"lp_limit_{name}_per_hour")
+    if limit <= 0:
+        return None
+    row = conn.execute(
+        """
+        select count(*) as n from jobs
+        where org_id = %(o)s and kind = any(%(k)s) and created_at > now() - interval '1 hour'
+        """,
+        {"o": org_id, "k": list(kinds)},
+    ).fetchone()
+    return max(0, limit - int(row["n"] if row else 0))
+
+
 # Recorded on a job whose worker stopped heartbeating after its last allowed attempt.
 LOST_MESSAGE = "The worker stopped responding during this job. Try again."
 LOST_ERROR: dict[str, Any] = {"code": "worker_lost", "message": LOST_MESSAGE, "user_facing": True}
@@ -94,16 +114,17 @@ def enqueue(
     """Queues a job on this worker's queue (LP_JOB_QUEUE, D85). If a queued or running job in the
     org has the same dedupe key, returns that job instead (so one build is never paid for twice).
     Returns (job, created). With `conn`, the insert joins the caller's transaction (e.g. a build
-    and its job are created together)."""
+    and its job are created together). Stamped with the moment it's inserted, not its transaction's
+    start, so jobs queued together keep their order (a batch's pages, B3.5)."""
     job_queue = get_settings().lp_job_queue
     if conn is not None:
         check_limit(conn, org_id, kind)
         row = conn.execute(
             """
             insert into jobs (org_id, kind, payload, dedupe_key, build_id, max_attempts, created_by,
-                              queue)
+                              queue, created_at)
             values (%(org_id)s, %(kind)s, %(payload)s, %(dedupe_key)s, %(build_id)s,
-                    %(max_attempts)s, %(created_by)s, %(queue)s)
+                    %(max_attempts)s, %(created_by)s, %(queue)s, clock_timestamp())
             returning *
             """,
             {
@@ -129,9 +150,9 @@ def enqueue(
         row = conn.execute(
             """
             insert into jobs (org_id, kind, payload, dedupe_key, build_id, max_attempts, created_by,
-                              queue)
+                              queue, created_at)
             values (%(org_id)s, %(kind)s, %(payload)s, %(dedupe_key)s, %(build_id)s,
-                    %(max_attempts)s, %(created_by)s, %(queue)s)
+                    %(max_attempts)s, %(created_by)s, %(queue)s, clock_timestamp())
             on conflict (org_id, dedupe_key)
               where status in ('queued', 'running') and dedupe_key is not null
               do nothing

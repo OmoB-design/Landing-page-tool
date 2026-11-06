@@ -1,6 +1,7 @@
 """Builds (BUILD_SPEC §9, §10): the wizard payload stored on a build and the request that
 creates one. The create wizard (B1.2) fills every field; test builds use the defaults."""
 
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -64,3 +65,52 @@ class BuildRequest(BaseModel):
     brand_id: UUID
     product_id: UUID
     wizard: BuildWizard = Field(default_factory=BuildWizard)
+
+
+MAX_BATCH = 20  # the workspace's hourly cap on builds, so one batch can never be more
+
+
+class BatchRequest(BaseModel):
+    """POST /builds/batch (B3.5, D115): one product, a page from each template."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    template_ids: list[UUID] = Field(min_length=1, max_length=MAX_BATCH)
+    brand_id: UUID
+    product_id: UUID
+    wizard: BuildWizard = Field(default_factory=BuildWizard)
+
+
+class BatchPage(BaseModel):
+    """One page of a batch, as the batch screen shows it."""
+
+    id: UUID
+    key: str
+    title: str
+    template_id: UUID
+    template_name: str
+    template_type: str
+    status: str  # the build's: queued, building, needs_review, failed …
+    job_id: UUID | None
+    # What its build is doing now ("Writing the copy"), from its job's newest progress event.
+    step: str | None
+    # Its place in line among the workspace's builds still waiting (1 is next), while queued.
+    waiting: int | None
+    error: str | None
+    # For the batch screen's list (B3.5b), as the Pages list shows them.
+    origin: str
+    residue_score: int | None
+    cost_usd: float
+    created_by: UUID | None
+    updated_at: datetime
+    started_at: datetime | None  # its build job's, for the time it's been building
+    finished_at: datetime | None
+
+
+class BatchState(BaseModel):
+    batch_id: UUID
+    brand: str
+    product: str
+    created_at: datetime
+    pages: list[BatchPage]

@@ -59,4 +59,25 @@ describe("PagesList", () => {
     render(<PagesList groups={[]} />);
     expect(screen.getByRole("heading", { name: "No pages yet" })).toBeTruthy();
   });
+
+  it("shows a batch as one folder row that opens its page (B3.5b)", () => {
+    const base = samplePages(now, "Ada")[0];
+    if (!base) throw new Error("no sample");
+    const pages = ["x", "y"].map((id, i) => ({
+      ...base,
+      id,
+      key: `BTC-${i + 1}`,
+      batchId: "b1",
+      product: "Calm Serum",
+      brand: "Lume",
+      templateId: `t${i}`,
+      status: "needs_review" as const,
+    }));
+    render(<PagesList groups={groupPagesByStatus(pages)} />);
+    const folder = screen.getByRole("link", { name: /2 pages/ });
+    expect(folder.getAttribute("href")).toBe("/pages/batch/b1");
+    expect(folder.textContent).toContain("Calm Serum");
+    expect(within(folder).getByText("2/2 ready")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /BTC-1/ })).toBeNull();
+  });
 });

@@ -125,7 +125,7 @@ export function FloatingComposer({
           // The hint, drawn over the empty field so it can morph (a placeholder can't).
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-0.5 flex items-center text-type-body-small whitespace-nowrap text-caption-1"
+            className="pointer-events-none absolute inset-y-0 left-0.5 flex items-center text-type-body-small whitespace-nowrap text-bar-hint"
           >
             {dictation.listening ? (
               "Listening…"

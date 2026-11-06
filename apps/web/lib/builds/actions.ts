@@ -1,9 +1,14 @@
 "use server";
 
-import { WorkerError, startBuild } from "@/lib/api/worker";
+import { WorkerError, startBatch, startBuild } from "@/lib/api/worker";
 import { getSessionContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { type CreatePageInput, createPageSchema } from "@/lib/validators/build";
+import {
+  type CreateBatchInput,
+  type CreatePageInput,
+  createBatchSchema,
+  createPageSchema,
+} from "@/lib/validators/build";
 
 export type StartBuildResult = { buildId?: string; error?: string };
 
@@ -33,6 +38,38 @@ export async function createPage(
         cause instanceof WorkerError
           ? cause.message
           : "Couldn't start the build.",
+    };
+  }
+}
+
+export type StartBatchResult = { batchId?: string; error?: string };
+
+/** "Build with every template" (B3.5, D115): a page from each chosen template for one product,
+ * with the wizard's choices; all of them start or none do. */
+export async function createBatch(
+  input: CreateBatchInput,
+): Promise<StartBatchResult> {
+  const parsed = createBatchSchema.safeParse(input);
+  if (!parsed.success)
+    return { error: "Some choices are no longer valid. Check each step." };
+  const { currentOrg } = await getSessionContext();
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return { error: "Your session has ended. Sign in again." };
+  try {
+    const { batch_id } = await startBatch(session.access_token, {
+      org_id: currentOrg.id,
+      ...parsed.data,
+    });
+    return { batchId: batch_id };
+  } catch (cause) {
+    return {
+      error:
+        cause instanceof WorkerError
+          ? cause.message
+          : "Couldn't start the pages.",
     };
   }
 }

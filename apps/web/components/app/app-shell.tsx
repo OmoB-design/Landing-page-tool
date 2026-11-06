@@ -5,6 +5,7 @@ import { RememberPath } from "./remember-path";
 import { ShellSidebar } from "./settings-sidebar";
 import { SidebarNav, SidebarSkeleton } from "./sidebar";
 import { SidebarProvider } from "./sidebar-state";
+import { PAGE_ASIDE } from "./page-aside";
 
 /**
  * The signed-in workspace (DESIGN.md §2, D67; Figma: Home): the 240 px sidebar on the grey canvas
@@ -50,6 +51,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             {children}
           </main>
+          {/* A page's side panel (a batch's builds, B3.5b) goes here, beside the page panel, which
+              narrows to make room (as the page editor's Buddy panel does). */}
+          <div id={PAGE_ASIDE} className="flex shrink-0" />
         </div>
       </div>
       <MobileSidebar>{sidebar}</MobileSidebar>

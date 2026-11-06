@@ -438,6 +438,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          batch_id: string | null
           brand_id: string
           cost_usd: number
           created_at: string
@@ -467,6 +468,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          batch_id?: string | null
           brand_id: string
           cost_usd?: number
           created_at?: string
@@ -496,6 +498,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          batch_id?: string | null
           brand_id?: string
           cost_usd?: number
           created_at?: string

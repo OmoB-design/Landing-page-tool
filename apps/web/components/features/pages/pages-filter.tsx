@@ -81,7 +81,9 @@ export function PagesFilter({
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-96 max-w-dvw border-0 bg-transparent p-0 shadow-pop"
+        sideOffset={6}
+        collisionPadding={12}
+        className="w-96 max-w-dvw rounded-lg border border-stroke-strong bg-surface-modal p-0 shadow-float ring-0"
       >
         {/* Uncontrolled: it starts from the URL each time it opens, and changes update the URL. */}
         <FilterMenu

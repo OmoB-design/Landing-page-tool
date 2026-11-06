@@ -4,7 +4,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { parseWizard } from "@/lib/wizard/state";
 
-import { AudienceStep, CompetitorsStep, EmphasisStep } from "./steps";
+import {
+  AudienceStep,
+  CompetitorsStep,
+  EmphasisStep,
+  TemplateStep,
+} from "./steps";
 import type { useBriefing } from "./use-briefing";
 
 afterEach(cleanup);
@@ -125,5 +130,45 @@ describe("wizard steps", () => {
     });
     fireEvent.click(screen.getByLabelText(/Real names/));
     expect(update).toHaveBeenCalledWith({ naming: "real" });
+  });
+
+  it("ticks every template for a batch, and unticks one (B3.5)", () => {
+    const templates = ["a", "b", "c"].map((id, i) => ({
+      id: `0000000${i}-0000-4000-8000-000000000000`,
+      name: `Template ${id.toUpperCase()}`,
+      type: "advertorial",
+      description: null,
+      sections: 6,
+      group: "Library" as const,
+    }));
+    const data = {
+      brands: [],
+      products: [],
+      templates,
+    } as unknown as Parameters<typeof TemplateStep>[0]["data"];
+    const update = vi.fn();
+    const { rerender } = render(
+      <TemplateStep data={data} state={base} update={update} />,
+    );
+    fireEvent.click(screen.getByRole("switch"));
+    expect(update).toHaveBeenLastCalledWith({
+      batch: true,
+      templates: templates.map((t) => t.id),
+    });
+    const batch = {
+      ...base,
+      batch: true,
+      templates: templates.map((t) => t.id),
+    };
+    rerender(<TemplateStep data={data} state={batch} update={update} />);
+    expect(screen.getByText(/3 of 3 ticked/)).toBeTruthy();
+    const boxes = screen.getAllByRole("checkbox");
+    expect(boxes).toHaveLength(3);
+    fireEvent.click(boxes[1] as HTMLElement);
+    expect(update).toHaveBeenLastCalledWith({
+      templates: [templates[0]?.id, templates[2]?.id],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Untick all" }));
+    expect(update).toHaveBeenLastCalledWith({ templates: [] });
   });
 });

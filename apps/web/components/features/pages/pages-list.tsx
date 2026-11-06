@@ -20,6 +20,7 @@ import {
   RESIDUE_MIN_SCORE,
 } from "@/lib/pages/list";
 
+import { FolderRow } from "./folder-row";
 import { PageRowMenu } from "./page-row-menu";
 
 /**
@@ -98,6 +99,8 @@ function PageRow({
   hide: PageProperty[];
   children?: ReactNode;
 }) {
+  // A batch's pages as one folder row (B3.5b).
+  if (page.folder) return <FolderRow page={page} folder={page.folder} />;
   const shows = (property: PageProperty) => !hide.includes(property);
   const href = `/pages/${page.id}`;
   return (

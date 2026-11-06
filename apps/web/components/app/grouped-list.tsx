@@ -128,6 +128,8 @@ type ListRowProps = {
   level?: 0 | 1;
   /** Nested child rows. */
   children?: ReactNode;
+  /** The pointer came onto the row or left it (a batch folder's animation, B3.5b). */
+  onHoverChange?: (hovered: boolean) => void;
 };
 
 /**
@@ -142,10 +144,15 @@ export function ListRow({
   actions,
   level = 0,
   children,
+  onHoverChange,
 }: ListRowProps) {
   return (
     <li>
-      <div className="group/row flex h-12 items-center gap-3 pr-4 divider-b-thin hover:bg-foreground-01">
+      <div
+        onPointerEnter={onHoverChange ? () => onHoverChange(true) : undefined}
+        onPointerLeave={onHoverChange ? () => onHoverChange(false) : undefined}
+        className="group/row flex h-12 items-center gap-3 pr-4 divider-b-thin hover:bg-foreground-01"
+      >
         <Link
           href={href}
           data-list-nav=""

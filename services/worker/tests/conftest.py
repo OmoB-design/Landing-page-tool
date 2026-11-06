@@ -14,6 +14,7 @@ os.environ["LP_MOCK_IMAGES"] = "1"
 os.environ["LP_JOB_QUEUE"] = f"test-{uuid.uuid4().hex[:8]}"
 
 from collections.abc import Iterator
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 
@@ -37,6 +38,38 @@ def _database_up() -> bool:
 
 DB_UP = _database_up()
 needs_db = pytest.mark.skipif(not DB_UP, reason="database in DATABASE_URL is not reachable")
+
+# Throwaway library templates a test seeds (test_template_import's library_copy): visible to every
+# workspace while they exist, so a run that's cut off before its cleanup would leave one in the
+# real gallery (owner, 2026-11-06). Each run first removes any older than this.
+STALE_TEST_TEMPLATES = "30 minutes"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _sweep_test_templates() -> Iterator[None]:
+    if DB_UP:
+        with transaction() as conn:
+            stale = conn.execute(
+                """
+                select id, slug from templates
+                where org_id is null and slug like 'test-import-%%'
+                  and created_at < now() - %(age)s::interval
+                """,
+                {"age": STALE_TEST_TEMPLATES},
+            ).fetchall()
+            for row in stale:
+                conn.execute(
+                    "delete from templates where parent_template_id = %(t)s", {"t": row["id"]}
+                )
+                conn.execute("delete from templates where id = %(t)s", {"t": row["id"]})
+        for row in stale:
+            for bucket, path in (
+                ("library", f"{row['slug']}/index.html"),
+                ("library-assets", f"{row['slug']}/dot.png"),
+            ):
+                with suppress(storage.StorageError):  # already gone
+                    storage.remove(bucket, [path])
+    yield
 
 
 @dataclass

@@ -27,7 +27,91 @@ export type PageListItem = {
   /** Set for a re-build or variant, which nests under the original. */
   parentId: string | null;
   createdBy: { name: string; isMe: boolean };
+  /** Pages started together (B3.5, D115) share one; they show as a folder (B3.5b). */
+  batchId?: string | null;
+  product?: string;
+  brand?: string;
+  templateId?: string;
+  /** Set on the folder row that stands for a batch's pages. */
+  folder?: BatchFolder;
 };
+
+/** A batch's pages folded into one row of the Pages list (B3.5b, owner 2026-11-06). */
+export type BatchFolder = {
+  batchId: string;
+  product: string;
+  brand: string;
+  pages: PageListItem[];
+  ready: number;
+  active: number;
+};
+
+const READY_STATUSES = new Set(["needs_review", "approved", "published"]);
+// A folder sits in the group of its least finished page: building while any is, then review,
+// then a failure, then approved, then published.
+const FOLDER_STATUS: Enums["build_status"][] = [
+  "needs_review",
+  "failed",
+  "approved",
+  "published",
+];
+
+/**
+ * A batch's pages (two or more of them here) become one folder row; everything else is as it
+ * was. The folder takes the batch's newest change, its first creation, its total cost, and the
+ * status of its least finished page (B3.5b).
+ */
+export function foldBatches(pages: PageListItem[]): PageListItem[] {
+  const byBatch = new Map<string, PageListItem[]>();
+  for (const page of pages)
+    if (page.batchId)
+      byBatch.set(page.batchId, [...(byBatch.get(page.batchId) ?? []), page]);
+  const folded = new Set<string>();
+  const out: PageListItem[] = [];
+  for (const page of pages) {
+    const members = page.batchId ? byBatch.get(page.batchId) : undefined;
+    if (!page.batchId || !members || members.length < 2) {
+      out.push(page);
+      continue;
+    }
+    if (folded.has(page.batchId)) continue;
+    folded.add(page.batchId);
+    const statuses = new Set(members.map((m) => m.status));
+    const status: Enums["build_status"] =
+      statuses.has("queued") || statuses.has("building")
+        ? "building"
+        : (FOLDER_STATUS.find((s) => statuses.has(s)) ?? page.status);
+    const first = members.reduce((a, b) =>
+      a.createdAt <= b.createdAt ? a : b,
+    );
+    out.push({
+      ...first,
+      id: `batch:${page.batchId}`,
+      key: "",
+      title: `${first.product ?? "Batch"} · ${first.brand ?? ""}`,
+      status,
+      templateType: "batch",
+      residueScore: null,
+      costUsd: members.reduce((sum, m) => sum + m.costUsd, 0),
+      createdAt: first.createdAt,
+      updatedAt: new Date(
+        Math.max(...members.map((m) => m.updatedAt.getTime())),
+      ),
+      parentId: null,
+      folder: {
+        batchId: page.batchId,
+        product: first.product ?? "Batch",
+        brand: first.brand ?? "",
+        pages: members,
+        ready: members.filter((m) => READY_STATUSES.has(m.status)).length,
+        active: members.filter(
+          (m) => m.status === "queued" || m.status === "building",
+        ).length,
+      },
+    });
+  }
+  return out;
+}
 
 export type StatusGroupId =
   "building" | "needs_review" | "approved" | "published" | "failed";
@@ -113,6 +197,8 @@ export function groupPages(
   display: Pick<PageDisplay, "group" | "order"> = DEFAULT_DISPLAY,
 ): PageGroup[] {
   const { order } = display;
+  // A batch's pages share a folder (B3.5b), except grouped by template type, where they differ.
+  if (display.group !== "type") pages = foldBatches(pages);
   switch (display.group) {
     case "status":
       return STATUS_GROUPS.flatMap((group) =>

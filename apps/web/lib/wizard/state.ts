@@ -117,6 +117,9 @@ export const AGE_RANGES = [
   "65+",
 ] as const;
 
+/** A batch is at most the workspace's hourly cap on builds (B3.5). */
+export const MAX_BATCH = 20;
+
 export const MAX_EMPHASIS = 3;
 export const MAX_EMPHASIS_CHARS = 200;
 export type EmphasisKind = "benefits" | "features" | "objections";
@@ -136,7 +139,12 @@ export type WizardState = {
   features: string[];
   objections: string[];
   author: AuthorType;
-  /** The chosen template is a Top 5 ranking (set from the templates, not kept in the URL). */
+  /** "Build with every template" (B3.5, D115): a page from each ticked template. */
+  batch: boolean;
+  /** The batch's ticked templates, in order. */
+  templates: string[];
+  /** The chosen template is a Top 5 ranking, or the batch has one (set from the templates, not
+   * kept in the URL). */
   ranking: boolean;
   /** Ranks #2 to #5, in order: product page addresses (empty until filled). */
   competitors: string[];
@@ -196,6 +204,10 @@ export function parseWizard(params: Params): WizardState {
     brand: id("brand"),
     product: id("product"),
     template: id("template"),
+    batch: params.get("batch") === "1",
+    templates: [
+      ...new Set(params.getAll("tpl").filter((v) => UUID.test(v))),
+    ].slice(0, MAX_BATCH),
     ai: params.get("ai") !== "0",
     styles: list(params.getAll("style"), IMAGE_STYLES.length).filter(
       (s): s is ImageStyle => IMAGE_STYLES.some((style) => style.id === s),
@@ -225,6 +237,10 @@ export function wizardSearch(state: WizardState): string {
   if (state.brand) params.set("brand", state.brand);
   if (state.product) params.set("product", state.product);
   if (state.template) params.set("template", state.template);
+  if (state.batch) {
+    params.set("batch", "1");
+    for (const template of state.templates) params.append("tpl", template);
+  }
   if (!state.ai) params.set("ai", "0");
   for (const style of state.styles) params.append("style", style);
   if (state.audience) params.set("audience", state.audience);
@@ -243,7 +259,8 @@ export function wizardSearch(state: WizardState): string {
 /** Whether a step has what it needs (the later steps all have defaults). */
 export function stepReady(state: WizardState, step: StepId): boolean {
   if (step === "product") return Boolean(state.brand && state.product);
-  if (step === "template") return Boolean(state.template);
+  if (step === "template")
+    return state.batch ? state.templates.length > 0 : Boolean(state.template);
   if (step === "competitors")
     return (
       !state.ranking ||
@@ -291,36 +308,62 @@ export function wizardPayload(
   briefing: Briefing | null,
 ): WizardPayload | null {
   if (!state.brand || !state.product || !state.template) return null;
-  const audience = state.audience
-    ? briefing?.audiences.find((a) => a.name === state.audience)
-    : undefined;
   return {
     template_id: state.template,
     brand_id: state.brand,
     product_id: state.product,
-    wizard: {
-      author_type: state.author,
-      ai_images: state.ai,
-      image_styles: state.ai ? state.styles : [],
-      audience: state.audience
-        ? (audience
-            ? `${audience.name}: ${audience.description}`
-            : state.audience
-          ).slice(0, 300)
-        : null,
-      audience_gender: state.gender,
-      audience_age: state.age,
-      emphasis: {
-        benefits: state.benefits,
-        features: state.features,
-        objections: state.objections,
-      },
-      competitors: state.ranking
-        ? {
-            urls: state.competitors.map((url) => url.trim()),
-            naming: state.naming,
-          }
-        : null,
+    wizard: wizardChoices(state, briefing),
+  };
+}
+
+export type BatchPayload = Omit<WizardPayload, "template_id"> & {
+  template_ids: string[];
+};
+
+/** A batch's payload (B3.5): the same choices for a page from each ticked template. */
+export function batchPayload(
+  state: WizardState,
+  briefing: Briefing | null,
+): BatchPayload | null {
+  if (!state.brand || !state.product || state.templates.length === 0)
+    return null;
+  return {
+    template_ids: state.templates,
+    brand_id: state.brand,
+    product_id: state.product,
+    wizard: wizardChoices(state, briefing),
+  };
+}
+
+function wizardChoices(
+  state: WizardState,
+  briefing: Briefing | null,
+): WizardPayload["wizard"] {
+  const audience = state.audience
+    ? briefing?.audiences.find((a) => a.name === state.audience)
+    : undefined;
+  return {
+    author_type: state.author,
+    ai_images: state.ai,
+    image_styles: state.ai ? state.styles : [],
+    audience: state.audience
+      ? (audience
+          ? `${audience.name}: ${audience.description}`
+          : state.audience
+        ).slice(0, 300)
+      : null,
+    audience_gender: state.gender,
+    audience_age: state.age,
+    emphasis: {
+      benefits: state.benefits,
+      features: state.features,
+      objections: state.objections,
     },
+    competitors: state.ranking
+      ? {
+          urls: state.competitors.map((url) => url.trim()),
+          naming: state.naming,
+        }
+      : null,
   };
 }

@@ -50,6 +50,27 @@ function buildSteps(
   }));
 }
 
+/** A build's steps from its job, live while it runs, and how many are done (BuildSteps; a batch's
+ * frames and rows, B3.5b). */
+export function useBuildSteps(
+  jobId: string | null,
+  finished: boolean,
+  origin = "owned",
+  templateType: string | null = null,
+): { steps: BuildStep[]; done: number; job: JobDetail | null } {
+  const { data: job } = useJob(jobId);
+  const steps = buildSteps(
+    job ?? null,
+    finished,
+    buildStepsFor(origin, templateType),
+  );
+  return {
+    steps,
+    done: steps.filter((step) => step.state === "done").length,
+    job: job ?? null,
+  };
+}
+
 /**
  * The build's steps, live while it runs, and its log folded under Details (Figma Build: Stepper,
  * Completion chip, Details). The page re-renders when the job finishes, to show the preview and
@@ -135,9 +156,12 @@ export function BuildLog({
 export function BuildStepsCard({
   steps,
   done,
+  title = "Build steps",
 }: {
   steps: BuildStep[];
   done: number | null;
+  /** The card's heading: "Build steps", or a batch frame's template (B3.5b). */
+  title?: string;
 }) {
   const complete = done === steps.length;
   return (
@@ -148,9 +172,9 @@ export function BuildStepsCard({
       <div className="flex items-center gap-1.5 bg-surface-primary px-2.5 py-2 divider-b-thin">
         <h2
           id="build-steps-title"
-          className="min-w-0 flex-1 text-type-body-small leading-5 font-medium text-heading-02"
+          className="min-w-0 flex-1 truncate text-type-body-small leading-5 font-medium text-heading-02"
         >
-          Build steps
+          {title}
         </h2>
         {done === null ? (
           <SkeletonText className="text-type-caption-2" width={72} />

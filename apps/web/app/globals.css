@@ -787,6 +787,14 @@
 }
 
 @theme inline {
+  /* "Work with Buddy"'s hint (owner, 2026-11-06: about 15 % stronger than Caption-1): Caption-1
+     moved 15 % toward the text colour, worked out where it's used so it follows the bar's own
+     light or dark look (.theme-light / .theme-dark). */
+  --color-bar-hint: color-mix(
+    in srgb,
+    var(--color-caption-1) 85%,
+    var(--color-heading-01)
+  );
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -975,19 +983,21 @@
 
 :root .ui-fm {
   --ui-fm-ease: var(--ease-out);
-  --ui-fm-tray: var(--color-foreground-01);
+  /* One surface, like the other floating menus (the Display and row menus): no grey tray around
+     a card; text in the menus' heading-02 with heading-05 for the quiet parts. */
+  --ui-fm-tray: var(--color-surface-modal);
   --ui-fm-card: var(--color-surface-modal);
-  --ui-fm-card-line: var(--color-stroke);
-  --ui-fm-ink: var(--color-body);
-  --ui-fm-text: var(--color-body);
-  --ui-fm-muted: var(--color-sub-text);
-  --ui-fm-chip: var(--color-foreground-01);
+  --ui-fm-card-line: transparent;
+  --ui-fm-ink: var(--color-heading-02);
+  --ui-fm-text: var(--color-heading-02);
+  --ui-fm-muted: var(--color-heading-05);
+  --ui-fm-chip: var(--color-foreground-02);
   --ui-fm-chip-hover: var(--color-foreground-03);
-  --ui-fm-box: var(--color-foreground-01);
-  --ui-fm-box-line: var(--color-stroke-strong);
+  --ui-fm-box: transparent;
+  --ui-fm-box-line: var(--color-foreground-03);
   --ui-fm-check: var(--color-surface-modal);
   --ui-fm-row-hover: var(--color-foreground-02);
-  --ui-fm-kbd: var(--color-surface-modal);
+  --ui-fm-kbd: var(--color-foreground-02);
   --ui-fm-focus: color-mix(
     in oklab,
     var(--color-spot-500-indigo) 40%,
@@ -997,8 +1007,48 @@
   font-family: inherit;
   border-radius: var(--radius-lg);
 }
+:root .ui-fm {
+  /* Never taller than the room the popover has (Radix sets the variable; collision padding
+     included): the groups scroll, the title and the hints stay put. */
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  max-height: var(--radix-popover-content-available-height, 100dvh);
+  min-height: 0;
+  padding: 0;
+}
 :root .ui-fm__card {
-  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 14px 6px;
+  border: 0;
+  border-radius: var(--radius-lg);
+}
+:root .ui-fm__title {
+  font-size: 14px;
+}
+/* The title and the picked chips keep their height while the groups scroll. */
+:root .ui-fm__head,
+:root .ui-fm__chips-outer {
+  flex: none;
+}
+:root .ui-fm__groups {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  /* Room for the rows' 6 px hover bleed, so scrolling doesn't clip it. */
+  margin: 0 -6px;
+  padding: 6px 6px 0;
+}
+:root .ui-fm__hints {
+  flex: none;
+  padding: 8px 14px 10px;
+  border-top: 0.5px solid var(--color-stroke);
+}
+:root .ui-fm__hint kbd {
+  box-shadow: none;
 }
 
 :root .ui-shm,
@@ -1732,6 +1782,21 @@
    composer's height, set from script; a mask, so it needs no colour and works in both themes. */
 /* The composer's field once it scrolls (owner, 2026-11-05): its top 14 px fade instead of a line
    being cut in half at the card's edge. A mask, so it works in both themes. */
+/* The batch folder's glint (components/ui/folder-icon.tsx; owner, 2026-11-06): a band of light
+   crosses its front in 1.1 s, then rests, every 5 s. */
+.folder-shimmer {
+  animation: folder-shimmer 5s ease-in-out infinite;
+}
+@keyframes folder-shimmer {
+  0% {
+    background-position: 160% 0;
+  }
+  22%,
+  100% {
+    background-position: -60% 0;
+  }
+}
+
 /* "Work with Buddy" hints (owner, 2026-11-06): as each one morphs in, a soft glint passes through
    the words once: the text stays whole, with a dimmed shoulder either side of a moving band
    (a mask, so it reaches torph's letters on their own layers). */

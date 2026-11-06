@@ -126,7 +126,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 - B3.2 Image studio. *Split (owner, 2026-11-05, D109):* **B3.2a** the studio without AI (click an image: replace with a product photo, another image on the page or an upload; shape, fit, focus, alt text; the last five versions with restore; every change one undo step; Lander's `replace_image` and `adjust_image`); **B3.2b** AI images on fal (generate, AI edit with up to 3 product photos, "Match product everywhere"; Lander generates and edits), built in mock mode until the owner adds a fal key. *B3.2a done 2026-11-05.* *Split again (2026-11-05, D110):* **B3.2b** generate and edit (studio and Lander), done 2026-11-05 in mock mode; **B3.2c** "Match product everywhere" (a vision step choosing which images show a generic product, then an edit per image), shared with the build pipeline's product-matching step.
 - B3.3 Mobile optimise + QA screenshots + OG image. *Split (owner, 2026-11-05, D111):* **B3.3a** the preview check (screenshots at desktop and phone widths after every build and on Refresh) and the share image (the top of the page, written into exports and publishes), done 2026-11-05; **B3.3b** automatic phone rules and an automatic phone check in every build, with Fix for phone (Claude) on the review desk and in Lander, done 2026-11-05 (D112).
 - B3.4 Edit agent chat. *Moved up as B3.1b (owner, 2026-11-04).*
-- B3.5 Batch build (all templates for one product).
+- B3.5 Batch build (all templates for one product). *Done 2026-11-06 (D115): the wizard's "Build with every template", all-or-nothing starts within the hourly cap, and the batch screen.*
 - B3.6 Client review link (BUILD_SPEC §11.4, D55).
 
 ## M4 — Editable Shopify publish
