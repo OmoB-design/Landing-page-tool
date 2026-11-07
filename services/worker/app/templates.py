@@ -13,7 +13,9 @@ from app.db import transaction
 from app.engines import editor_map
 from app.engines.sections import DUPLICATE_KEY, apply_layout, duplicate_section, section_order
 from app.engines.template_outline import checks, look, outline, read_minutes
-from app.models.editor_map import MapReport
+from app.jobs import queue
+from app.jobs.models import Job
+from app.models.editor_map import EditorMap, LayoutCheck, MapReport
 from app.models.template import (
     DuplicateAction,
     EditorAnalysis,
@@ -269,9 +271,62 @@ def _state(
 
 
 def _shopify(template: dict[str, Any], rows: list[dict[str, Any]], html: str) -> MapReport:
-    """What would become editable in Shopify (B4.1, D120), for the editor's card."""
+    """What would become editable in Shopify (B4.1, D120), for the editor's card, with the last
+    layout check (B4.3) and whether the page has changed since."""
     current = editor_map.effective(template["editor_map"], rows)
-    return editor_map.report(editor_map.plan(html, current, template=True), template["slug"])
+    summary = editor_map.report(editor_map.plan(html, current, template=True), template["slug"])
+    layout = current.layout
+    return summary.model_copy(
+        update={
+            "layout": layout,
+            "layout_stale": layout is not None and layout.version != template["version"],
+        }
+    )
+
+
+# ── The layout check (B4.3, D122) ─────────────────────────────────────────────
+
+
+def start_layout_check(org_id: UUID, user_id: UUID, template_id: UUID) -> Job:
+    """Queues `shopify_layout_check` for one of the org's templates (about ten seconds in a
+    browser, free). A second request while one runs returns that job."""
+    with transaction() as conn:
+        _load(conn, org_id, template_id)
+    job, _ = queue.enqueue(
+        org_id=org_id,
+        kind="shopify_layout_check",
+        payload={"template_id": str(template_id)},
+        created_by=user_id,
+        dedupe_key=f"shopify_layout_check:{template_id}",
+        max_attempts=1,
+    )
+    return job
+
+
+def layout_inputs(org_id: UUID, template_id: UUID) -> tuple[str, EditorMap, str, int]:
+    """The template's page, its editor map, slug and version, for the layout check."""
+    with transaction() as conn:
+        template = _load(conn, org_id, template_id)
+        rows = _sections(conn, template_id)
+    html = storage.download("templates", template["html_path"]).decode("utf-8")
+    current = editor_map.effective(template["editor_map"], rows)
+    return html, current, str(template["slug"] or "page"), int(template["version"])
+
+
+def save_layout(org_id: UUID, template_id: UUID, check: LayoutCheck) -> None:
+    """Keeps a layout check's result with the template's editor map."""
+    with transaction() as conn:
+        template = _load(conn, org_id, template_id, lock=True)
+        rows = _sections(conn, template_id)
+        current = editor_map.effective(template["editor_map"], rows)
+        conn.execute(
+            "update templates set editor_map = %(m)s where id = %(t)s and org_id = %(o)s",
+            {
+                "m": Jsonb(current.model_copy(update={"layout": check}).model_dump(mode="json")),
+                "t": template_id,
+                "o": org_id,
+            },
+        )
 
 
 def editor_state(org_id: UUID, template_id: UUID) -> TemplateEditorState:

@@ -265,7 +265,10 @@ function RowConfirm({ children }: { children: ReactNode }) {
 /**
  * The published modal's Shopify row (D90), by state: not connected (Connect Shopify opens the
  * connect modal for this page's brand), connected (Publish to Shopify; reasons the page is held
- * back are asked about first), publishing, and a draft (Open in admin, Update draft).
+ * back are asked about first), publishing, and a draft (Open in admin, Update draft). With the
+ * store's Theme Access password (B4.2, D121), a choice under the row: **Editable sections** (each
+ * publish a new draft version, `Edit in Shopify` opens the theme editor on it) or **One block**
+ * (the draft page as before).
  */
 function ShopifyRow() {
   const { publishing, page, publish, unpublish, starting, refresh } =
@@ -314,8 +317,16 @@ function ShopifyRow() {
         />
       ),
     });
-  const running = publishing.running?.destination === "shopify_page";
+  const [mode, setMode] = useState<"shopify_editable" | "shopify_page">(
+    "shopify_editable",
+  );
+  const chosen = publishing.shopify_theme_access ? mode : "shopify_page";
+  const editableMode = chosen === "shopify_editable";
+  const running =
+    publishing.running?.destination === "shopify_page" ||
+    publishing.running?.destination === "shopify_editable";
   const removingNow = running && publishing.running?.action === "unpublish";
+  const editable = publishing.shopify_editable;
   const draft = publishing.shopify_draft;
   const remove = async () => {
     if (await unpublish("shopify_page")) setRemoving(false);
@@ -323,7 +334,7 @@ function ShopifyRow() {
   const stuck = publishing.gate.filter((b) => !b.overridable);
   const passable = publishing.gate.filter((b) => b.overridable);
   const send = async (override: boolean) => {
-    if (await publish(override, "shopify_page")) setAsking(false);
+    if (await publish(override, chosen)) setAsking(false);
   };
   const start = () =>
     publishing.gate.length > 0 ? setAsking(true) : void send(false);
@@ -342,7 +353,14 @@ function ShopifyRow() {
         Publishing to Shopify…
       </>
     );
-  else if (draft)
+  else if (editableMode && editable)
+    status = (
+      <span className="truncate">
+        Editable draft v{editable.version} ·{" "}
+        {editable.url?.split("/pages/")[1] ?? "saved"}
+      </span>
+    );
+  else if (!editableMode && draft)
     status = (
       <span className="truncate">
         Draft · {draft.url?.split("/pages/")[1] ?? "saved"}
@@ -371,7 +389,14 @@ function ShopifyRow() {
   else if (!asking && !removing)
     action = (
       <div className="flex gap-1.5">
-        {draft && !running ? (
+        {editableMode && editable?.editor_url ? (
+          <Button asChild variant="outline" size="sm" className={ROW_ACTION}>
+            <a href={editable.editor_url} target="_blank" rel="noreferrer">
+              Edit in Shopify
+            </a>
+          </Button>
+        ) : null}
+        {!editableMode && draft && !running ? (
           <Button
             type="button"
             variant="outline"
@@ -383,7 +408,7 @@ function ShopifyRow() {
             Remove draft
           </Button>
         ) : null}
-        {draft?.admin_url ? (
+        {!editableMode && draft?.admin_url ? (
           <Button asChild variant="outline" size="sm" className={ROW_ACTION}>
             <a href={draft.admin_url} target="_blank" rel="noreferrer">
               Open in admin
@@ -399,7 +424,13 @@ function ShopifyRow() {
           disabled={running || starting}
           onClick={start}
         >
-          {draft ? "Update draft" : "Publish to Shopify"}
+          {editableMode
+            ? editable
+              ? "Publish new version"
+              : "Publish to Shopify"
+            : draft
+              ? "Update draft"
+              : "Publish to Shopify"}
         </Button>
       </div>
     );
@@ -410,7 +441,40 @@ function ShopifyRow() {
       status={status}
       action={action}
     >
-      {draft?.full_width === false && !asking && !removing ? (
+      {publishing.shopify_theme_access && !asking && !removing ? (
+        <div className="flex items-center gap-2 pl-11 text-type-caption-1 text-heading-05">
+          <span>As</span>
+          <div
+            role="group"
+            aria-label="How to send the page to Shopify"
+            className="flex rounded-xsm bg-surface-primary p-0.5 shadow-light ring-half ring-stroke dark:bg-foreground-01"
+          >
+            {(
+              [
+                ["shopify_editable", "Editable sections"],
+                ["shopify_page", "One block"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={mode === id}
+                disabled={running}
+                onClick={() => setMode(id)}
+                className="rounded-xxs px-1.5 py-0.5 font-medium text-heading-02 transition-colors duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 aria-pressed:bg-foreground-02 aria-pressed:text-heading-01 dark:aria-pressed:bg-foreground-03"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <span className="truncate">
+            {mode === "shopify_editable"
+              ? "every text and picture editable in Shopify’s theme editor"
+              : "the page in one block, as before"}
+          </span>
+        </div>
+      ) : null}
+      {!editableMode && draft?.full_width === false && !asking && !removing ? (
         <p className="pl-11 text-type-caption-1 text-heading-05">
           Fitted into the theme’s page, its header and footer hidden.{" "}
           <button

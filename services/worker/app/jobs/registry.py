@@ -20,9 +20,11 @@ from app.jobs.kinds import (
     product_fidelity,
     product_pull,
     publish_shopify,
+    publish_shopify_editable,
     publish_vercel,
     qa,
     redraft,
+    shopify_layout_check,
     template_analyze,
     template_clone,
 )
@@ -178,6 +180,20 @@ KINDS: dict[str, JobKind] = {
             title="Publish to Shopify",
             handler=publish_shopify.run,
             payload_model=publish_shopify.PublishShopifyPayload,
+            max_attempts=1,
+        ),
+        JobKind(
+            name="shopify_layout_check",
+            title="Check the Shopify layout",
+            handler=shopify_layout_check.run,
+            payload_model=shopify_layout_check.ShopifyLayoutCheckPayload,
+            max_attempts=1,
+        ),
+        JobKind(
+            name="publish_shopify_editable",
+            title="Publish editable sections to Shopify",
+            handler=publish_shopify_editable.run,
+            payload_model=publish_shopify_editable.PublishEditablePayload,
             max_attempts=1,
         ),
         JobKind(

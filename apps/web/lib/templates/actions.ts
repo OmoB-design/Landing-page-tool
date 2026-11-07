@@ -3,6 +3,7 @@
 import {
   WorkerError,
   analyseTemplate,
+  checkTemplateLayout,
   confirmTemplateReview,
   copyLibraryTemplate,
   editTemplateLayout,
@@ -223,6 +224,33 @@ export async function startAnalysis(
         cause instanceof WorkerError
           ? cause.message
           : "Couldn't start the analysis.",
+    };
+  }
+}
+
+/** Check layout (B4.3, D122): starts the job; the card follows it and reloads the editor. */
+export async function startLayoutCheck(
+  templateId: string,
+): Promise<{ jobId?: string; error?: string }> {
+  const { currentOrg } = await getSessionContext();
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return { error: "Your session has ended. Sign in again." };
+  try {
+    const { job } = await checkTemplateLayout(
+      session.access_token,
+      currentOrg.id,
+      templateId,
+    );
+    return { jobId: job.id };
+  } catch (cause) {
+    return {
+      error:
+        cause instanceof WorkerError
+          ? cause.message
+          : "Couldn't start the layout check.",
     };
   }
 }

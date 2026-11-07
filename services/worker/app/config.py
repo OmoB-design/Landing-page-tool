@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     # The client review link (B3.6, D119): tokens are made from a link's id with this secret, so
     # none is stored. Without it, client links can't be made or opened.
     lp_share_secret: str = ""
+    # Shopify CLI for editable pages' theme files (B4.2, D121): the command to run.
+    lp_shopify_cli: str = "shopify"
     lp_provider_lock_minutes: float = 10.0
     # One Lander request's budget (B3.1f, D114): it stops at whichever comes first.
     lp_agent_max_rounds: int = 30

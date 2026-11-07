@@ -21,6 +21,16 @@ RUN uv sync --frozen --no-dev --no-install-project
 # Chromium and its system libraries for brand fetches and page rendering (Playwright).
 RUN uv run --no-sync playwright install --with-deps chromium
 
+# Node and Shopify CLI for editable pages' theme files (B4.2, D121): the store's Theme Access
+# password writes them through the CLI. Node comes from the official image (24 LTS, as .nvmrc);
+# the CLI is pinned.
+COPY --from=node:24-bookworm-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:24-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && npm install -g @shopify/cli@4.9.4 \
+    && npm cache clean --force
+
 COPY app ./app
 COPY worker.py ./
 

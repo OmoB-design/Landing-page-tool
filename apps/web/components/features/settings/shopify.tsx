@@ -40,6 +40,7 @@ import { SettingsDivider } from "./settings-page";
 export const SHOPIFY_DESCRIPTION =
   "Send pages to a brand’s Shopify store as draft pages, ready to check and switch on.";
 const DEV_DASHBOARD_URL = "https://dev.shopify.com/dashboard";
+const THEME_ACCESS_URL = "https://apps.shopify.com/theme-access";
 
 /** A field of the connect modal: its label, the input, and a hint under it. */
 function Field({
@@ -410,7 +411,7 @@ export function ShopifyDetail({
             {state.shopify.map((store) => (
               <li
                 key={store.brand_id}
-                className="flex items-center justify-between gap-3 rounded-md bg-foreground-01 p-2.5 dark:bg-foreground-02"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-foreground-01 p-2.5 dark:bg-foreground-02"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-type-caption-1">
                   <span className="truncate font-medium text-heading-01">
@@ -440,6 +441,7 @@ export function ShopifyDetail({
                     Disconnect
                   </Button>
                 ) : null}
+                <ThemeAccess store={store} canManage={canManage} />
               </li>
             ))}
           </ul>
@@ -449,6 +451,167 @@ export function ShopifyDetail({
         open={fullWidthOpen}
         onOpenChange={setFullWidthOpen}
       />
+    </div>
+  );
+}
+
+/**
+ * A store's Theme Access password (B4.2, D121; no Figma frame yet, styled as the store row's own
+ * lines): with it, pages go to Shopify as editable sections. Set: its last four characters and
+ * Remove. Not set: what it's for and Add, which opens the steps (Shopify's free Theme Access app,
+ * Create password, the email's one-time link) and the field. The worker checks it with Shopify
+ * before keeping it.
+ */
+function ThemeAccess({
+  store,
+  canManage,
+}: {
+  store: IntegrationsState["shopify"][number];
+  canManage: boolean;
+}) {
+  const save = useSetIntegrations();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const id = useId();
+  const keep = useMutation({
+    mutationFn: () =>
+      apiFetch(
+        "/api/integrations/shopify/theme-access",
+        integrationsStateSchema,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            brand_id: store.brand_id,
+            password: password.trim(),
+          }),
+        },
+      ),
+    onSuccess: (next) => {
+      save(next);
+      setOpen(false);
+      setPassword("");
+      toast.success("Theme Access password saved");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const remove = useMutation({
+    mutationFn: () =>
+      apiFetch(
+        `/api/integrations/shopify/theme-access?brand_id=${encodeURIComponent(store.brand_id)}`,
+        integrationsStateSchema,
+        { method: "DELETE" },
+      ),
+    onSuccess: (next) => {
+      save(next);
+      toast.success("Theme Access password removed");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  return (
+    <div className="flex w-full flex-col gap-2 border-t border-stroke pt-2.5 text-type-caption-1">
+      <div className="flex items-center justify-between gap-3">
+        <span className="min-w-0 text-heading-05">
+          {store.theme_access ? (
+            <>
+              <span className="font-medium text-heading-02">
+                Editable pages on
+              </span>
+              {" · Theme Access password "}
+              <span className="font-mono">····{store.theme_last4}</span>
+            </>
+          ) : (
+            "Add the store’s Theme Access password to publish pages as editable sections."
+          )}
+        </span>
+        {canManage ? (
+          store.theme_access ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="shrink-0 rounded-sm text-type-caption-1"
+              disabled={remove.isPending}
+              onClick={() => remove.mutate()}
+            >
+              Remove
+            </Button>
+          ) : open ? null : (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              className="shrink-0 rounded-sm text-type-caption-1"
+              onClick={() => setOpen(true)}
+            >
+              Add
+            </Button>
+          )
+        ) : null}
+      </div>
+      {open && !store.theme_access ? (
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (password.trim()) keep.mutate();
+          }}
+        >
+          <ol className="flex list-decimal flex-col gap-1 pl-4 text-heading-05">
+            <li>
+              In the store’s Shopify admin, install{" "}
+              <a
+                href={THEME_ACCESS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-text-link hover:underline"
+              >
+                Theme Access
+              </a>{" "}
+              (free, by Shopify).
+            </li>
+            <li>In the app, Create password with your name and email.</li>
+            <li>
+              Open Shopify’s email (its link works once, for 7 days) and copy
+              the password.
+            </li>
+          </ol>
+          <Field id={id} label="Theme Access password">
+            <Input
+              id={id}
+              type="password"
+              autoComplete="off"
+              placeholder="shptka_…"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </Field>
+          <div className="flex justify-end gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="xs"
+              className="rounded-sm text-type-caption-1"
+              onClick={() => {
+                setOpen(false);
+                setPassword("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="xs"
+              className="rounded-sm text-type-caption-1"
+              disabled={keep.isPending || !password.trim()}
+            >
+              {keep.isPending ? (
+                <Spinner className="size-3" label="Checking" />
+              ) : null}
+              Save
+            </Button>
+          </div>
+        </form>
+      ) : null}
     </div>
   );
 }

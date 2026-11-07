@@ -7,7 +7,7 @@ import { toast } from "@/components/app/toaster";
 import type { Viewport } from "@/components/app/viewport-switch";
 import { TYPING_PAUSE_MS, textToSave } from "@/lib/pages/editor";
 import { cn } from "@/lib/utils";
-import type { FormatRange, TextFormat } from "@/lib/validators/desk";
+import type { FormatRange, MapPart, TextFormat } from "@/lib/validators/desk";
 
 import { useDesk } from "../builds/desk-context";
 import {
@@ -18,6 +18,7 @@ import {
   shrinkSize,
 } from "./format-toolbar";
 import { BUDDY_POINTER } from "./lander/lander-mark";
+import type { PartPointer } from "./section-panel";
 
 export type { Viewport } from "@/components/app/viewport-switch";
 
@@ -75,6 +76,13 @@ export function PageCanvas({
   updatedAt,
   selected,
   onSelect,
+  part = null,
+  onPart,
+  treeHover = null,
+  onHover,
+  names,
+  onAsk,
+  typeRef,
   onSaving,
   onUpdating,
   onZoom,
@@ -96,6 +104,27 @@ export function PageCanvas({
   updatedAt: string;
   selected: string | null;
   onSelect: (key: string) => void;
+  /** The part picked in the tree or on the page (B4.4): its line is outlined with its name. */
+  part?: MapPart | null;
+  /** A line was clicked once on the page: it's picked (a second click types in it). */
+  onPart?: (line: number) => void;
+  /** What the pointer is over in the tree: outlined on the page with its name. */
+  treeHover?: PartPointer;
+  /** What the pointer is over on the page, for the tree to light its row. */
+  onHover?: (pointer: PartPointer) => void;
+  /** The names the outline tabs show (a part's Shopify name, a section's label). */
+  names?: {
+    blocks: Record<number, string>;
+    images: Record<number, string>;
+    sections: Record<string, string>;
+  };
+  /** Ask Buddy, from the pill beside the picked part. */
+  onAsk?: () => void;
+  /** Set to a function the part's panel types through: the words show on the page and save as
+   * typing on the page does. */
+  typeRef?: React.RefObject<
+    ((line: number, text: string, done: boolean) => void) | null
+  >;
   onSaving: (saving: boolean) => void;
   /** A newer page is loading behind the one shown (the top bar says so). */
   onUpdating: (updating: boolean) => void;
@@ -190,9 +219,28 @@ export function PageCanvas({
   // words filled from data are editable on the page like any other.
   const locked: number[] = NO_LOCKS;
   const paused = desk.redraft !== null;
-  const setup = useRef({ locked, paused, busyLines, flash, image, busyImage });
+  const pickedLine = part?.kind === "text" ? (part.line ?? null) : null;
+  const setup = useRef({
+    locked,
+    paused,
+    busyLines,
+    flash,
+    image,
+    busyImage,
+    names,
+    pickedLine,
+  });
   useEffect(() => {
-    setup.current = { locked, paused, busyLines, flash, image, busyImage };
+    setup.current = {
+      locked,
+      paused,
+      busyLines,
+      flash,
+      image,
+      busyImage,
+      names,
+      pickedLine,
+    };
   });
   const post = useCallback(
     (message: Record<string, unknown>, to?: Window | null) => {
@@ -310,6 +358,14 @@ export function PageCanvas({
   useEffect(() => {
     applyRef.current = applyFormat;
   }, [applyFormat]);
+  const onPartRef = useRef(onPart);
+  const onHoverRef = useRef(onHover);
+  const onAskRef = useRef(onAsk);
+  useEffect(() => {
+    onPartRef.current = onPart;
+    onHoverRef.current = onHover;
+    onAskRef.current = onAsk;
+  });
 
   useEffect(() => {
     // A frame that's ready gets the locked lines, the pause, your place, the selection, the busy
@@ -330,6 +386,11 @@ export function PageCanvas({
       post({ type: "lp-busy", blocks: now.busyLines }, to);
       post({ type: "lp-image-select", number: now.image, scroll: false }, to);
       post({ type: "lp-image-busy", number: now.busyImage }, to);
+      if (now.names) post({ type: "lp-names", ...now.names }, to);
+      post(
+        { type: "lp-part-select", block: now.pickedLine, scroll: false },
+        to,
+      );
       probeRef.current(address);
       if (
         now.flash &&
@@ -403,6 +464,31 @@ export function PageCanvas({
           );
           break;
         }
+        case "lp-part":
+          if (block !== null) {
+            fromFrame.current = true;
+            onPartRef.current?.(block);
+          }
+          break;
+        case "lp-hover": {
+          const over = data as { key?: unknown; image?: unknown };
+          onHoverRef.current?.(
+            block !== null ||
+              typeof over.image === "number" ||
+              typeof over.key === "string"
+              ? {
+                  key: typeof over.key === "string" ? over.key : undefined,
+                  line: block ?? undefined,
+                  image:
+                    typeof over.image === "number" ? over.image : undefined,
+                }
+              : null,
+          );
+          break;
+        }
+        case "lp-ask":
+          onAskRef.current?.();
+          break;
         case "lp-section":
           if (typeof data.key === "string") {
             fromFrame.current = true;
@@ -545,6 +631,54 @@ export function PageCanvas({
   useEffect(() => {
     post({ type: "lp-image-select", number: image, scroll: true });
   }, [post, image]);
+  // The section tree (B4.4): the picked line, what the tree's pointer is over, and the names.
+  useEffect(() => {
+    post({
+      type: "lp-part-select",
+      block: pickedLine,
+      scroll: !fromFrame.current,
+    });
+  }, [post, pickedLine]);
+  const hoverKey = treeHover
+    ? `${treeHover.key ?? ""}|${treeHover.line ?? ""}|${treeHover.image ?? ""}`
+    : "";
+  useEffect(() => {
+    const [key, line, picture] = hoverKey.split("|");
+    post({
+      type: "lp-hover-part",
+      key: key || null,
+      block: line ? Number(line) : null,
+      image: picture ? Number(picture) : null,
+    });
+  }, [post, hoverKey]);
+  useEffect(() => {
+    if (names) post({ type: "lp-names", ...names });
+  }, [post, names]);
+  // Typing in a part's panel: the words show on the page at once, and save as typing on the page
+  // does (a pause, or leaving the field).
+  useEffect(() => {
+    if (!typeRef) return;
+    typeRef.current = (lineNumber, text, done) => {
+      const paragraph = desks.current.paragraphs.find(
+        (p) => p.number === lineNumber,
+      );
+      if (!paragraph) return;
+      if (!line.current || line.current.block !== lineNumber) {
+        flush();
+        line.current = { block: lineNumber, saved: paragraph.text, text };
+      }
+      line.current.text = text;
+      post({ type: "lp-text", block: lineNumber, text });
+      if (timer.current) clearTimeout(timer.current);
+      if (done) {
+        flush();
+        line.current = null;
+      } else timer.current = setTimeout(flush, TYPING_PAUSE_MS);
+    };
+    return () => {
+      typeRef.current = null;
+    };
+  }, [flush, post, typeRef]);
   useEffect(() => {
     post({ type: "lp-image-busy", number: busyImage });
   }, [post, busyImage]);

@@ -422,6 +422,53 @@ def test_the_editor_moves_copies_and_removes_sections_by_the_templates_rules(
     assert section_change(client, user, ruled, v, type="remove", key="faq").status_code == 409
 
 
+@needs_db
+def test_sections_lines_and_pictures_hide_and_show(
+    client: TestClient, user: DbUser, ruled: dict[str, Any]
+) -> None:
+    """Shopify's eye (B4.4, D123): hiding keeps the part in the page but out of sight, one
+    undoable change each way."""
+    state = desk(client, user, ruled)
+    v = state["build"]["page_version"]
+    hid = section_change(client, user, ruled, v, type="hide", key="faq", hidden=True).json()
+    assert [s["hidden"] for s in hid["layout"]] == [False, True]
+    assert hid["snapshots"][0]["reason"] == "Hid Questions"
+    again = section_change(client, user, ruled, v + 1, type="hide", key="faq", hidden=True)
+    assert again.status_code == 422 and "already hidden" in again.json()["detail"]
+    shown = section_change(client, user, ruled, v + 1, type="hide", key="faq", hidden=False).json()
+    assert (
+        not shown["layout"][1]["hidden"] and shown["snapshots"][0]["reason"] == "Showed Questions"
+    )
+
+    line = next(p for p in shown["paragraphs"] if p["section"] == "hero")
+    hid_line = section_change(client, user, ruled, v + 2, type="hide", block=line["number"],
+                              hidden=True).json()  # fmt: skip
+    assert hid_line["snapshots"][0]["reason"] == "Hid a line in Hero"
+    with transaction() as conn:
+        row = conn.execute(
+            "select working_html_path from builds where id = %(b)s", {"b": ruled["id"]}
+        ).fetchone()
+    assert row is not None
+    page = storage.download("builds", row["working_html_path"]).decode()
+    assert "data-lp-hidden" in page and "display:none !important" in page
+    shown_line = section_change(client, user, ruled, v + 3, type="hide", block=line["number"],
+                                hidden=False)  # fmt: skip
+    assert shown_line.status_code == 200
+    gone = section_change(client, user, ruled, v + 4, type="hide", block=9999, hidden=True)
+    assert gone.status_code == 422
+
+
+@needs_db
+def test_the_desk_after_a_change_is_the_desk_read_fresh(
+    client: TestClient, user: DbUser, ruled: dict[str, Any]
+) -> None:
+    """The speed pass (B4.5, D124): after a change the desk is built from the page just written
+    instead of downloading it again; it must be the same as reading it afresh."""
+    v = desk(client, user, ruled)["build"]["page_version"]
+    after = section_change(client, user, ruled, v, type="hide", key="faq", hidden=True).json()
+    assert after == desk(client, user, ruled)
+
+
 def typed(
     client: TestClient, user: DbUser, build: dict[str, Any], state: dict[str, Any],
     original: str, text: str,

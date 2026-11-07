@@ -12,8 +12,21 @@ export const AGENT_REQUEST_MAX = 500;
 /** Pictures a request can carry (worker AgentRequest.images, B3.1d). */
 export const AGENT_IMAGES_MAX = 3;
 
+/** One part of a section a request is about (B4.4, D123): a line, a picture or a video. */
+export const agentPartSchema = z.object({
+  kind: z.enum(["text", "image", "media"]),
+  name: z.string().min(1).max(120),
+  line: z.number().int().min(1).nullable().optional(),
+  image: z.number().int().min(1).nullable().optional(),
+});
+export type AgentPart = z.infer<typeof agentPartSchema>;
+
 export const agentTargetSchema = z
-  .object({ key: z.string(), label: z.string() })
+  .object({
+    key: z.string(),
+    label: z.string(),
+    part: agentPartSchema.nullable().optional(),
+  })
   .nullable();
 
 const palette = z.object({
@@ -163,6 +176,7 @@ export const agentRequestSchema = z.object({
   base_version: z.number().int().min(1),
   text: z.string().trim().min(1).max(AGENT_REQUEST_MAX),
   target_key: z.string().max(100).nullable().optional(),
+  target_part: agentPartSchema.nullable().optional(),
   thread_id: z.string().uuid().nullable().optional(),
   /** Pictures for reference, as data URLs (sized down in the browser first). */
   images: z

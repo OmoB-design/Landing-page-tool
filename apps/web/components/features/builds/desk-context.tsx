@@ -20,7 +20,11 @@ import { pickDesk } from "@/lib/builds/desk";
 import { isActive } from "@/lib/jobs/progress";
 import { useJob } from "@/lib/queries/jobs";
 import type { JobDetail } from "@/lib/validators/jobs";
-import { type AgentStart, agentStartSchema } from "@/lib/validators/agent";
+import {
+  type AgentPart,
+  type AgentStart,
+  agentStartSchema,
+} from "@/lib/validators/agent";
 import type { ImageAction, ImageActionBody } from "@/lib/validators/images";
 import {
   type DeskAction,
@@ -108,6 +112,7 @@ type DeskContextValue = {
   startAgent: (request: {
     text: string;
     target_key: string | null;
+    target_part?: AgentPart | null;
     thread_id: string | null;
     images?: string[];
   }) => Promise<AgentStart | null>;
@@ -167,6 +172,7 @@ export function DeskProvider({
   initialTab = "overview",
   initialEditing,
   quietRedrafts = false,
+  refreshRoute = true,
   children,
 }: {
   buildId: string;
@@ -178,6 +184,9 @@ export function DeskProvider({
   initialEditing?: number;
   /** The page editor (B3.1b): a finished redraft is told in Lander's thread, not a toast. */
   quietRedrafts?: boolean;
+  /** Rebuild the route on the server after a change (the review desk's other parts read it).
+   * The page editor turns it off (B4.5, D124): the change's answer already is the new desk. */
+  refreshRoute?: boolean;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -218,7 +227,7 @@ export function DeskProvider({
       ),
     onSuccess: (next) => {
       showDesk(next);
-      router.refresh();
+      if (refreshRoute) router.refresh();
     },
     onError: (error) => {
       if (error instanceof ApiError && error.status === 409) {
@@ -428,7 +437,7 @@ export function DeskProvider({
       .then((next) => {
         showDesk(next);
         remember(next);
-        router.refresh();
+        if (refreshRoute) router.refresh();
         if (!quietRedrafts) announce(next.build.page_version);
       })
       .catch(() => {
@@ -436,7 +445,7 @@ export function DeskProvider({
         router.refresh();
         if (!quietRedrafts) announce();
       });
-  }, [job.data, buildId, router, showDesk, quietRedrafts]);
+  }, [job.data, buildId, router, showDesk, quietRedrafts, refreshRoute]);
 
   const startRedraft = useCallback(
     async (input: RedraftInput) => {
@@ -463,6 +472,7 @@ export function DeskProvider({
     async (request: {
       text: string;
       target_key: string | null;
+      target_part?: AgentPart | null;
       thread_id: string | null;
       images?: string[];
     }) => {
@@ -594,7 +604,7 @@ export function DeskProvider({
           deskStateSchema,
         ).catch(() => null);
         if (next) showDesk(next);
-        router.refresh();
+        if (refreshRoute || !next) router.refresh();
       },
       recolor: async (colors) => {
         const done = await run("recolor", { colors });
@@ -654,6 +664,7 @@ export function DeskProvider({
       showDesk,
       onChange,
       router,
+      refreshRoute,
       job.data,
       mutation.isPending,
       mutation.variables,

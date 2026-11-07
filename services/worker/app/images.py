@@ -276,7 +276,7 @@ def replace(
             conn, build_id, number, before=before, src=request.src, source=request.source,
             asset_id=request.asset_id,
         )  # fmt: skip
-    return desk._finish(org_id, build_id, stale)
+    return desk._finish(org_id, build_id, stale, html=new_html)
 
 
 def adjust(
@@ -309,7 +309,7 @@ def adjust(
             else f"Cropped an image{where}"
         )
         stale = desk._change(conn, build, reason=reason, user_id=user_id, html=new_html)
-    return desk._finish(org_id, build_id, stale)
+    return desk._finish(org_id, build_id, stale, html=new_html)
 
 
 def restore(
@@ -354,7 +354,7 @@ def restore(
             "update image_versions set is_current = true where id = %(v)s and build_id = %(b)s",
             {"v": request.version_id, "b": build_id},
         )
-    return desk._finish(org_id, build_id, stale)
+    return desk._finish(org_id, build_id, stale, html=new_html)
 
 
 def upload(org_id: UUID, build_id: UUID, request: ImageUpload) -> UploadedImage:

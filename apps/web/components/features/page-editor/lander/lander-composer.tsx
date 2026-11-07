@@ -17,6 +17,7 @@ import {
   SendButton,
   StopButton,
   SWAP,
+  TargetChip,
   useComposerText,
 } from "./composer-parts";
 
@@ -117,6 +118,8 @@ export function LanderComposer({
         dropping && "ring-stroke-input-active",
       )}
     >
+      {/* What it's about, at the top of the box (owner, 2026-11-06). */}
+      <TargetChip target={target} onClear={onClearTarget} />
       <AnimatePresence initial={false}>
         {images.length ? (
           <motion.ul
@@ -203,23 +206,6 @@ export function LanderComposer({
         </p>
       ) : null}
       <div className="flex items-center gap-1.5">
-        {target ? (
-          <span className="flex min-w-0 items-center gap-0.5 rounded-sm bg-foreground-02 py-0.5 pr-0.5 pl-1.5 text-type-caption-1 font-medium text-heading-02">
-            <span className="truncate">{target.label}</span>
-            <button
-              type="button"
-              aria-label={`Ask about the whole page instead of ${target.label}`}
-              onClick={onClearTarget}
-              className="flex size-4 shrink-0 items-center justify-center rounded-xsm text-icon-system transition-colors duration-150 outline-none hover:bg-foreground-03 hover:text-body focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <CloseIcon aria-hidden className="size-3" />
-            </button>
-          </span>
-        ) : (
-          <span className="rounded-sm bg-foreground-02 px-1.5 py-0.5 text-type-caption-1 font-medium text-heading-02">
-            Whole page
-          </span>
-        )}
         <span
           className={cn(
             "ml-auto text-type-caption-2 text-heading-06 tabular-nums transition-opacity duration-150",

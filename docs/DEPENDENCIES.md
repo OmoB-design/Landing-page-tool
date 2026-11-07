@@ -126,6 +126,7 @@ Never expose the secret (service-role) key to the web app.
 | `LP_FAL_T2I_MODEL` | `fal-ai/nano-banana-pro` | text-to-image |
 | `LP_FAL_EDIT_MODEL` | `fal-ai/nano-banana-pro/edit` | edits and compositing |
 | `LP_MOCK_IMAGES` | `1` | mock images (set `0` explicitly for real) |
+| `LP_SHOPIFY_CLI` | `shopify` | the Shopify CLI command for editable pages' theme files (B4.2, D121); the worker image installs `@shopify/cli@4.9.4` with Node 24 |
 | `LP_SHARE_SECRET` | *(none)* | signs client review links (B3.6, D119); any long random string, the same on every worker API instance (Railway). Without it, client links can't be made or opened |
 | `LP_LIMIT_IMAGES_PER_HOUR` | `30` | AI pictures a workspace can start in an hour (B3.2b; $4.50 once live) |
 | `LP_MOCK_LLM` | `1` | fake LLM, ledger rows at $0 (D31); set `0` explicitly for real calls |

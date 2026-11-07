@@ -1,10 +1,41 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  cleanup,
+  fireEvent,
+  render as renderDom,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { ReactElement } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { ShopifyMap } from "@/lib/validators/template";
+import type { LayoutCheck, ShopifyMap } from "@/lib/validators/template";
 
 import { ShopifyCard } from "./shopify-card";
+
+const actions = vi.hoisted(() => ({
+  startLayoutCheck: vi.fn(async () => ({ jobId: "job-1" })),
+  reloadTemplate: vi.fn(async () => ({})),
+}));
+vi.mock("@/lib/templates/actions", () => actions);
+
+function render(ui: ReactElement) {
+  return renderDom(
+    <QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>,
+  );
+}
+
+const CHECKED: LayoutCheck = {
+  version: 3,
+  checked_at: "2026-11-06T22:00:00Z",
+  matched: true,
+  mode: "grouped",
+  sections: 5,
+  kept_together: ["The problem", "The discovery", "Product card", "Questions"],
+  widths: { desktop: true, tablet: true, phone: true },
+  differences: [],
+};
 
 const MAP: ShopifyMap = {
   sections: [
@@ -46,6 +77,8 @@ const MAP: ShopifyMap = {
     },
   ],
   ready: true,
+  layout: null,
+  layout_stale: false,
 };
 
 afterEach(cleanup);
@@ -89,5 +122,54 @@ describe("ShopifyCard (B4.1)", () => {
     ).toBeTruthy();
     expect(screen.getByText("Problem:")).toBeTruthy();
     expect(screen.queryByText(/can’t be edited in Shopify/)).toBeNull();
+  });
+
+  it("offers the layout check before one has run (B4.3)", async () => {
+    render(<ShopifyCard map={MAP} templateId="t-1" />);
+    expect(screen.getByText("Layout not checked yet")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Check layout" }));
+    await waitFor(() =>
+      expect(actions.startLayoutCheck).toHaveBeenCalledWith("t-1"),
+    );
+  });
+
+  it("sums up a matching check, with what was kept together", () => {
+    render(<ShopifyCard map={{ ...MAP, layout: CHECKED }} templateId="t-1" />);
+    expect(
+      screen.getByText("The layout matches at desktop, tablet and phone"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /5 Shopify sections; parts side by side or sticky are kept together in one: The problem, The discovery, Product card and 1 more\./,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Check again" })).toBeTruthy();
+  });
+
+  it("says where the layout differs, and when the page changed since", () => {
+    render(
+      <ShopifyCard
+        map={{
+          ...MAP,
+          layout: {
+            ...CHECKED,
+            matched: false,
+            mode: "coarse",
+            widths: { desktop: true, tablet: true, phone: false },
+            differences: ["“Product card” sits 40 px lower at phone."],
+          },
+          layout_stale: true,
+        }}
+      />,
+    );
+    expect(
+      screen.getByText("The layout differs in Shopify at phone"),
+    ).toBeTruthy();
+    expect(screen.getByText(/sits 40 px lower at phone/)).toBeTruthy();
+    expect(
+      screen.getByText(/changed since this check \(version 3\)/),
+    ).toBeTruthy();
+    // Without the template (a read-only view) there's no button.
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

@@ -14,6 +14,7 @@ from app import (
     builds,
     clones,
     desk,
+    editor_parts,
     fidelity,
     image_ai,
     images,
@@ -59,6 +60,7 @@ from app.models.desk import (
     SnapshotRestoreRequest,
     StatusRequest,
 )
+from app.models.editor_map import PageParts
 from app.models.images import (
     ImageAdjust,
     ImageAIRequest,
@@ -77,6 +79,7 @@ from app.models.publishing import (
     ShopifyConnectRequest,
     ShopifyTemplate,
     TestingSwitchRequest,
+    ThemeAccessRequest,
     ThemeFile,
     UnpublishRequest,
     VercelConnectRequest,
@@ -305,6 +308,15 @@ def build_desk(build_id: UUID, org_id: UUID, user: CurrentUser) -> DeskState:
     require_org_member(user, org_id)
     state: DeskState = _desk_call(desk.desk_state, org_id, build_id)
     return state
+
+
+@app.get("/builds/{build_id}/parts")
+def build_parts(build_id: UUID, org_id: UUID, user: CurrentUser) -> PageParts:
+    """Each section's parts (texts, pictures, videos) for the page editor's tree (B4.4, D123),
+    named as Shopify's theme editor names them."""
+    require_org_member(user, org_id)
+    found: PageParts = _desk_call(editor_parts.page_parts, org_id, build_id)
+    return found
 
 
 @app.get("/builds/{build_id}/proof")
@@ -695,6 +707,23 @@ def disconnect_shopify(org_id: UUID, brand_id: UUID, user: CurrentUser) -> Integ
     return publishing.integrations_state(org_id, user.id)
 
 
+@app.post("/integrations/shopify/theme-access")
+def set_theme_access(body: ThemeAccessRequest, user: CurrentUser) -> IntegrationsState:
+    """A store's Theme Access password (B4.2, D121): checked with Shopify, kept in Vault."""
+    require_org_member(user, body.org_id)
+    _require_role(user.id, body.org_id, {"owner", "admin"}, "owners and admins")
+    _publish_call(publishing.set_theme_access, body.org_id, body.brand_id, body.password)
+    return publishing.integrations_state(body.org_id, user.id)
+
+
+@app.delete("/integrations/shopify/theme-access")
+def remove_theme_access(org_id: UUID, brand_id: UUID, user: CurrentUser) -> IntegrationsState:
+    require_org_member(user, org_id)
+    _require_role(user.id, org_id, {"owner", "admin"}, "owners and admins")
+    _publish_call(publishing.remove_theme_access, org_id, brand_id)
+    return publishing.integrations_state(org_id, user.id)
+
+
 @app.post("/orgs/{org_id}/testing")
 def set_testing_switch(
     org_id: UUID, body: TestingSwitchRequest, user: CurrentUser
@@ -966,6 +995,21 @@ def analyse_template(template_id: UUID, body: AnalyseRequest, user: CurrentUser)
         ) from exc
     except clones.CloneDisabledError as exc:
         raise HTTPException(status.HTTP_403_FORBIDDEN, CLONE_DISABLED) from exc
+
+
+@app.post("/templates/{template_id}/shopify-check", status_code=status.HTTP_201_CREATED)
+def check_template_layout(
+    template_id: UUID, body: AnalyseRequest, user: CurrentUser
+) -> CloneStarted:
+    """Check layout (B4.3, D122): Shopify's render of the template's page compared with the page
+    at three widths, as a job (about ten seconds, free)."""
+    require_org_member(user, body.org_id)
+    try:
+        return CloneStarted(job=templates.start_layout_check(body.org_id, user.id, template_id))
+    except templates.TemplateNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "That template isn't in your workspace."
+        ) from exc
 
 
 @app.post("/templates/{template_id}/review")

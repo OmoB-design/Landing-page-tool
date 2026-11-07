@@ -55,6 +55,20 @@ export const templateAnalysisSchema = z.object({
 export type TemplateAnalysis = z.infer<typeof templateAnalysisSchema>;
 
 /** A template's Shopify editor map, summed up (B4.1, D120). */
+/** The layout check's last result (B4.3, D122): Shopify's render compared with the page. */
+export const layoutCheckSchema = z.object({
+  version: z.number(),
+  checked_at: z.string(),
+  matched: z.boolean(),
+  /** sections: one Shopify section per LP section; grouped: parts kept together; coarse: one. */
+  mode: z.enum(["sections", "grouped", "coarse"]),
+  sections: z.number(),
+  kept_together: z.array(z.string()).default([]),
+  widths: z.record(z.string(), z.boolean()).default({}),
+  differences: z.array(z.string()).default([]),
+});
+export type LayoutCheck = z.infer<typeof layoutCheckSchema>;
+
 export const shopifyMapSchema = z.object({
   sections: z.array(
     z.object({
@@ -80,6 +94,9 @@ export const shopifyMapSchema = z.object({
     }),
   ),
   ready: z.boolean(),
+  layout: layoutCheckSchema.nullable().default(null),
+  /** The page changed since the last layout check. */
+  layout_stale: z.boolean().default(false),
 });
 export type ShopifyMap = z.infer<typeof shopifyMapSchema>;
 

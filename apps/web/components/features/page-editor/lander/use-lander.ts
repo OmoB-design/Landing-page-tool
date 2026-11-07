@@ -210,6 +210,7 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
       const started = await startAgent({
         text: turn.request,
         target_key: target?.key ?? null,
+        target_part: target?.part ?? null,
         thread_id: threadId,
         images,
       });

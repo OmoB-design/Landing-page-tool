@@ -54,6 +54,31 @@ def _event(ctx: JobContext, message: str, kind: str, **data: Any) -> None:
     ctx.progress(message, data={"agent": {"type": kind, **data}})
 
 
+def _about(target: AgentTarget | None) -> str:
+    """What the request is about, after its words: the whole page, a section, or one part of a
+    section (B4.4: a line by its number, a picture by its number)."""
+    if target is None:
+        return "\n\n(The request is about the whole page.)"
+    if target.part is None:
+        return (
+            f"\n\n(The user has {target.label} selected: section key {target.key}. The request "
+            "is about it unless it says otherwise.)"
+        )
+    part = target.part
+    where = (
+        f"line {part.line}"
+        if part.line is not None
+        else f"picture {part.image}"
+        if part.image is not None
+        else "a video or embed"
+    )
+    return (
+        f"\n\n(The user has one part of {target.label} selected: {part.name}, {where}, in "
+        f"section key {target.key}. The request is about that part only unless it says "
+        "otherwise; leave the rest of the page as it is.)"
+    )
+
+
 def _mock_blocks(
     round_index: int, work: agent.Work, target: AgentTarget | None
 ) -> list[dict[str, Any]]:
@@ -65,7 +90,9 @@ def _mock_blocks(
         (
             p
             for p in paragraphs.paragraphs(work.html)
-            if not p.locked and (target is None or p.section == target.key)
+            if not p.locked
+            and (target is None or p.section == target.key)
+            and (target is None or target.part is None or target.part.line in (None, p.number))
         ),
         None,
     )
@@ -222,12 +249,7 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
     reply["steps"].append(first.as_dict())
     _event(ctx, first.label, "step", **first.as_dict())
 
-    request = payload.text + (
-        f"\n\n(The user has {target.label} selected: section key {target.key}. The request is "
-        "about it unless it says otherwise.)"
-        if target
-        else "\n\n(The request is about the whole page.)"
-    )
+    request = payload.text + _about(target)
     messages: list[dict[str, Any]] = [
         *agent.history(payload.build_id, payload.thread_id, payload.message_id),
         {

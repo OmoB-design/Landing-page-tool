@@ -4,15 +4,23 @@ import { WorkingDots } from "@/components/app/working-dots";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
 
-import { MicIcon, SendIcon, StopIcon } from "@/components/ui/icons";
+import {
+  CloseIcon,
+  MicIcon,
+  PagesIcon,
+  SendIcon,
+  StopIcon,
+} from "@/components/ui/icons";
+import { SectionChipIcon } from "@/components/ui/lp-icons";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { REQUEST_MAX } from "@/lib/pages/lander";
+import { type LanderTarget, REQUEST_MAX } from "@/lib/pages/lander";
 import { cn } from "@/lib/utils";
 
+import { PartKindIcon } from "../section-panel";
 import { useDictation } from "./use-dictation";
 
 /** Two icons in one square: the old one blurs and shrinks away as the new one comes in. */
@@ -40,6 +48,55 @@ export function useComposerText() {
   }, []);
   const dictation = useDictation(append);
   return { text, setText, dictation };
+}
+
+/**
+ * What a request is about (owner, 2026-11-06: like the file chip Claude Code shows inside a
+ * message): a small chip at the top of the box, the part's icon and name, "Whole page" when it's
+ * about all of it. In the composer it can be cleared back to the whole page.
+ */
+export function TargetChip({
+  target,
+  onClear,
+}: {
+  target: LanderTarget;
+  onClear?: () => void;
+}) {
+  // The owner's section icon, 8 px (owner, 2026-11-06).
+  // A part of a section (B4.4): its own icon and name ("Paragraph — Most cocktail…").
+  const label = target ? (target.part?.name ?? target.label) : "Whole page";
+  return (
+    // The owner, 2026-11-06: as the file chip in Claude Code's chat (its size, weight, padding and
+    // radius: 11 px regular, 6 px at the sides and 4 px above and below, 4 px corners, 24 px
+    // tall), with the icon at 8 px; Foreground 01 with a thin stroke and a subtle shadow all
+    // around, in the composer and in a sent request alike.
+    <span className="flex max-w-full min-w-0 items-center gap-1 self-start rounded-xsm bg-foreground-01 px-1.5 py-1 text-type-caption-2 leading-4 font-normal text-heading-02 shadow-chip ring-thin ring-stroke-strong">
+      {target?.part ? (
+        <PartKindIcon
+          part={target.part}
+          className="size-2 shrink-0 text-icon-system"
+        />
+      ) : target ? (
+        <SectionChipIcon
+          aria-hidden
+          className="size-2 shrink-0 text-icon-system"
+        />
+      ) : (
+        <PagesIcon aria-hidden className="size-2 shrink-0 text-icon-system" />
+      )}
+      <span className="truncate">{label}</span>
+      {target && onClear ? (
+        <button
+          type="button"
+          aria-label={`Ask about the whole page instead of ${label}`}
+          onClick={onClear}
+          className="flex size-3 shrink-0 items-center justify-center rounded-xxs text-icon-system transition-colors duration-150 outline-none hover:bg-foreground-03 hover:text-body focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <CloseIcon aria-hidden className="size-2.5" />
+        </button>
+      ) : null}
+    </span>
+  );
 }
 
 export function IconButton({

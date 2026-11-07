@@ -1431,6 +1431,8 @@ export type Database = {
           scopes: string | null
           shop_domain: string
           status: string
+          theme_last4: string | null
+          theme_secret_id: string | null
           token_last4: string | null
           updated_at: string
           vault_secret_id: string
@@ -1445,6 +1447,8 @@ export type Database = {
           scopes?: string | null
           shop_domain: string
           status?: string
+          theme_last4?: string | null
+          theme_secret_id?: string | null
           token_last4?: string | null
           updated_at?: string
           vault_secret_id: string
@@ -1459,6 +1463,8 @@ export type Database = {
           scopes?: string | null
           shop_domain?: string
           status?: string
+          theme_last4?: string | null
+          theme_secret_id?: string | null
           token_last4?: string | null
           updated_at?: string
           vault_secret_id?: string

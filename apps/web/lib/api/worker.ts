@@ -23,7 +23,9 @@ import {
 import {
   type DeskAction,
   type DeskState,
+  type PageParts,
   deskStateSchema,
+  pagePartsSchema,
 } from "@/lib/validators/desk";
 import {
   type AgentRateInput,
@@ -275,6 +277,22 @@ export function retryBuild(
 // ── Review desk (worker /builds/{id}/…, BUILD_SPEC §11.1, D84) ────────────────
 
 /** A finished build's desk: status and version, every sentence, the snapshots. */
+/** Each section's parts for the page editor's tree (B4.4, D123). */
+export function getBuildParts(
+  accessToken: string,
+  orgId: string,
+  buildId: string,
+): Promise<PageParts> {
+  return callWorker(
+    "GET",
+    `/builds/${encodeURIComponent(buildId)}/parts?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    pagePartsSchema,
+    "Could not list the page's parts.",
+  );
+}
+
 export function getBuildDesk(
   accessToken: string,
   orgId: string,
@@ -830,7 +848,7 @@ export function startPublish(
   body: {
     org_id: string;
     base_version: number;
-    destination: "vercel" | "shopify_page";
+    destination: "vercel" | "shopify_page" | "shopify_editable";
     override: boolean;
   },
 ): Promise<PublishingState> {
@@ -892,6 +910,36 @@ export function disconnectShopify(
     undefined,
     integrationsStateSchema,
     "Could not disconnect the store.",
+  );
+}
+
+/** A store's Theme Access password (B4.2, D121): checked with Shopify, kept in Vault. */
+export function setThemeAccess(
+  accessToken: string,
+  body: { org_id: string; brand_id: string; password: string },
+): Promise<IntegrationsState> {
+  return postToWorker(
+    "/integrations/shopify/theme-access",
+    accessToken,
+    body,
+    integrationsStateSchema,
+    "Could not save the Theme Access password.",
+    30_000,
+  );
+}
+
+export function removeThemeAccess(
+  accessToken: string,
+  orgId: string,
+  brandId: string,
+): Promise<IntegrationsState> {
+  return callWorker(
+    "DELETE",
+    `/integrations/shopify/theme-access?org_id=${encodeURIComponent(orgId)}&brand_id=${encodeURIComponent(brandId)}`,
+    accessToken,
+    undefined,
+    integrationsStateSchema,
+    "Could not remove the Theme Access password.",
   );
 }
 
@@ -1056,6 +1104,21 @@ export function analyseTemplate(
     { org_id: orgId },
     cloneStartedSchema,
     "Could not start the analysis.",
+  );
+}
+
+/** Check layout (B4.3, D122): a job comparing Shopify's render of the template with the page. */
+export function checkTemplateLayout(
+  accessToken: string,
+  orgId: string,
+  templateId: string,
+) {
+  return postToWorker(
+    `/templates/${encodeURIComponent(templateId)}/shopify-check`,
+    accessToken,
+    { org_id: orgId },
+    cloneStartedSchema,
+    "Could not start the layout check.",
   );
 }
 

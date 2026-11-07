@@ -68,6 +68,18 @@ def transaction() -> Iterator[Connection[DictRow]]:
         yield conn
 
 
+@contextmanager
+def read() -> Iterator[Connection[DictRow]]:
+    """A pooled connection for reading only, outside a transaction (B4.5, D124): no BEGIN and
+    COMMIT round trips. Each statement sees the database as it is when it runs."""
+    with get_pool().connection() as conn:
+        conn.autocommit = True
+        try:
+            yield conn
+        finally:
+            conn.autocommit = False
+
+
 def fetch_one(sql: str, params: dict[str, Any] | None = None) -> DictRow | None:
     with transaction() as conn:
         return conn.execute(sql, params).fetchone()

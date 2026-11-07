@@ -24,6 +24,9 @@ export const integrationsStateSchema = z.object({
         shop_domain: z.string(),
         connected_at: z.string().nullable(),
         missing_scopes: z.array(z.string()).default([]),
+        /** The store's Theme Access password is set (B4.2, D121): editable pages. */
+        theme_access: z.boolean().default(false),
+        theme_last4: z.string().nullable().default(null),
       }),
     )
     .default([]),
@@ -52,8 +55,12 @@ export const publicationSchema = z.object({
   admin_url: z.string().nullable().optional(),
   /** Shopify: the full-width template (false: the theme's page layout, until it's added). */
   full_width: z.boolean().nullable().optional(),
+  /** An editable draft (B4.2, D121): its version and the theme editor on it. */
+  version: z.number().int().nullable().optional(),
+  editor_url: z.string().nullable().optional(),
 });
 export type Publication = z.infer<typeof publicationSchema>;
+export type PublishDestination = "vercel" | "shopify_page" | "shopify_editable";
 
 /** The full-width template's files, for the store owner to add to the theme (D90). */
 export const shopifyTemplateSchema = z.object({
@@ -82,6 +89,10 @@ export const publishingStateSchema = z.object({
   /** The brand's Shopify store, and the newest draft made there (D90). */
   shopify_domain: z.string().nullable().default(null),
   shopify_draft: publicationSchema.nullable().default(null),
+  /** The store has a Theme Access password: pages can go as editable sections (B4.2). */
+  shopify_theme_access: z.boolean().default(false),
+  /** The newest editable draft (B4.2). */
+  shopify_editable: publicationSchema.nullable().default(null),
 });
 export type PublishingState = z.infer<typeof publishingStateSchema>;
 
@@ -96,6 +107,20 @@ export const vercelConnectSchema = z.object({
 });
 
 /** Browser → POST /api/integrations/shopify (the route adds the org). */
+/** A store's Theme Access password (B4.2, D121), from Shopify's free Theme Access app. */
+export const themeAccessSchema = z.object({
+  brand_id: z.string().uuid("Choose a brand."),
+  password: z
+    .string()
+    .trim()
+    .min(10, "Paste the whole password.")
+    .max(200)
+    .refine((value) => value.startsWith("shptka_"), {
+      message: "Theme Access passwords start with shptka_.",
+    }),
+});
+export type ThemeAccessInput = z.infer<typeof themeAccessSchema>;
+
 export const shopifyConnectSchema = z.object({
   brand_id: z.string().uuid("Choose a brand."),
   shop_domain: z.string().trim().min(3, "Enter the store's address.").max(120),
@@ -114,6 +139,6 @@ export const testingSwitchSchema = z.object({
 /** Browser → POST /api/builds/[id]/publish. */
 export const publishSchema = z.object({
   base_version: z.number().int().min(1),
-  destination: z.enum(["vercel", "shopify_page"]),
+  destination: z.enum(["vercel", "shopify_page", "shopify_editable"]),
   override: z.boolean().default(false),
 });

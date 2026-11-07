@@ -16,15 +16,17 @@ page it undid as a redo row until the next new change.
 """
 
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from uuid import UUID
 
+import structlog
 from psycopg import errors
 from psycopg.types.json import Jsonb
 
 from app import share
-from app.db import transaction
-from app.engines import comparison, formatting, fragments, paragraphs, proof
+from app.db import read, transaction
+from app.engines import comparison, formatting, fragments, paragraphs, proof, visibility
 from app.engines import recolor as recolor_engine
 from app.engines.html import parse
 from app.engines.sections import (
@@ -48,6 +50,7 @@ from app.models.desk import (
     DeskState,
     FormatRange,
     FormattedLine,
+    HideAction,
     RecolorColors,
     RedraftRequest,
     SectionAction,
@@ -57,6 +60,7 @@ from app.models.template import DuplicateAction, RemoveAction, ReorderAction
 from app.providers import storage
 
 BUCKET = "builds"
+log = structlog.get_logger()
 MAX_SNAPSHOTS = 12  # BUILD_SPEC §11.2: keep 12 snapshots (and up to 12 undone pages for Redo)
 MAX_SECTIONS = 40
 # Typing saves of one line share an undo step while they come at most this far apart (D104).
@@ -80,16 +84,32 @@ class DeskEditError(Exception):
     """A change the build doesn't allow now; the message is shown to the user."""
 
 
+# The template's section rules as one JSON object (key → rule), for a query's select list.
+_RULES_JSON = """
+    (select coalesce(json_object_agg(s.key, json_build_object(
+              'key', s.key, 'label', s.label, 'removable', s.removable,
+              'duplicable', s.duplicable)), '{}'::json)
+     from template_sections s where s.template_id = b.template_id) as rules
+"""
+
+
 def _load(conn: Any, org_id: UUID, build_id: UUID, *, lock: bool = False) -> dict[str, Any]:
+    """The build, with the page job running on it (if any) and its template's section rules, in
+    one round trip (B4.5, D124)."""
     build = conn.execute(
         f"""
-        select id, org_id, brand_id, template_id, status, page_version, working_html_path,
-               approved_at, approved_by, report, wizard
-        from builds
-        where id = %(b)s and org_id = %(o)s and deleted_at is null
-        {"for update" if lock else ""}
+        select b.id, b.org_id, b.brand_id, b.template_id, b.status, b.page_version,
+               b.working_html_path, b.approved_at, b.approved_by, b.report, b.wizard,
+               (select j.id from jobs j
+                where j.build_id = b.id and j.kind = any(%(kinds)s)
+                  and j.status in ('queued', 'running')
+                order by j.created_at desc limit 1) as busy_job,
+               {_RULES_JSON}
+        from builds b
+        where b.id = %(b)s and b.org_id = %(o)s and b.deleted_at is null
+        {"for update of b" if lock else ""}
         """,
-        {"b": build_id, "o": org_id},
+        {"b": build_id, "o": org_id, "kinds": list(PAGE_JOBS)},
     ).fetchone()
     if build is None or not build["working_html_path"]:
         raise DeskNotFoundError
@@ -111,6 +131,21 @@ def _snapshots(conn: Any, build_id: UUID, *, redo: bool = False) -> list[dict[st
             {"b": build_id, "redo": redo, "window": MERGE_SECONDS},
         ).fetchall()
     ]
+
+
+def _all_snapshots(conn: Any, build_id: UUID) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The undo snapshots and the pages kept for Redo, newest first, in one round trip."""
+    rows = conn.execute(
+        """
+        select seq, html_path, reason, created_at, created_by, merge_key, redo,
+               created_at > now() - make_interval(secs => %(window)s) as recent
+        from build_snapshots where build_id = %(b)s order by seq desc
+        """,
+        {"b": build_id, "window": MERGE_SECONDS},
+    ).fetchall()
+    undo = [dict(r) for r in rows if not r["redo"]]
+    redo = [dict(r) for r in rows if r["redo"]]
+    return undo, redo
 
 
 def _next_seq(conn: Any, build_id: UUID) -> int:
@@ -149,6 +184,11 @@ def _colors(conn: Any, build: dict[str, Any], html: str) -> DeskColors:
         """,
         {"brand": build["brand_id"], "o": build["org_id"], "t": build["template_id"]},
     ).fetchone()
+    return _colors_from(build, html, row)
+
+
+def _colors_from(build: dict[str, Any], html: str, row: dict[str, Any] | None) -> DeskColors:
+    """_colors with the brand's palette and the template's source palette already read."""
     brand = recolor_engine.brand_colors(row["palette"] or {}) if row else None
     brand_palette = recolor_engine.palette_of(brand) if brand else None
     page = recolor_engine.page_palette(html)
@@ -186,6 +226,12 @@ def _rules(conn: Any, template_id: UUID) -> dict[str, dict[str, Any]]:
     }
 
 
+def _rules_of(conn: Any, build: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """The build's template's rules: read with the build by _load, else read now."""
+    rules = build.get("rules")
+    return dict(rules) if isinstance(rules, dict) else _rules(conn, build["template_id"])
+
+
 def _labels(conn: Any, template_id: UUID) -> dict[str, str]:
     return {key: rule["label"] for key, rule in _rules(conn, template_id).items()}
 
@@ -204,14 +250,16 @@ def _layout(rules: dict[str, dict[str, Any]], html: str) -> list[DeskSection]:
         base = rules.get(match.group("base")) if rule is None and match else None
         if rule is not None:
             out.append(DeskSection(key=key, label=rule["label"], removable=rule["removable"],
-                                   duplicable=rule["duplicable"], group=group))  # fmt: skip
+                                   duplicable=rule["duplicable"], group=group,
+                                   hidden=visibility.is_hidden(tag)))  # fmt: skip
         elif base is not None:
             out.append(DeskSection(key=key, label=f"{base['label']} (copy)", removable=True,
-                                   duplicable=base["duplicable"], group=group))  # fmt: skip
+                                   duplicable=base["duplicable"], group=group,
+                                   hidden=visibility.is_hidden(tag)))  # fmt: skip
         else:
             label = key.replace("-", " ").replace("_", " ").strip().capitalize() or key
             out.append(DeskSection(key=key, label=label, removable=True, duplicable=False,
-                                   group=group))  # fmt: skip
+                                   group=group, hidden=visibility.is_hidden(tag)))  # fmt: skip
     return out
 
 
@@ -291,29 +339,64 @@ def _state(
     )
 
 
-def desk_state(org_id: UUID, build_id: UUID) -> DeskState:
+def desk_state(org_id: UUID, build_id: UUID, *, html: str | None = None) -> DeskState:
     """The desk's view of a finished build: its status and version, every sentence of its page,
-    and its snapshots."""
-    with transaction() as conn:
-        build = _load(conn, org_id, build_id)
-        snapshots = _snapshots(conn, build_id)
-        redos = _snapshots(conn, build_id, redo=True)
-        rules = _rules(conn, build["template_id"])
-        redraft = _redraft(conn, build_id)
-        html = _page(build)
-        colors = _colors(conn, build, html)
-        matching = conn.execute(
-            """
-            select id from jobs
-            where build_id = %(b)s and kind = 'product_fidelity' and status in ('queued', 'running')
-              and coalesce((payload->>'fix')::boolean, false)
-            order by created_at desc limit 1
+    and its snapshots. One query, outside a transaction (B4.5, D124: the build, its snapshots,
+    its template's rules, a job running on it, its colours' sources); `html`: the page as it was
+    just written, so it isn't downloaded again."""
+    with read() as conn:
+        row = conn.execute(
+            f"""
+            select b.id, b.org_id, b.brand_id, b.template_id, b.status, b.page_version,
+                   b.working_html_path, b.approved_at, b.approved_by, b.report, b.wizard,
+                   coalesce((select json_agg(json_build_object(
+                                'seq', s.seq, 'reason', s.reason, 'created_at', s.created_at,
+                                'created_by', s.created_by, 'redo', s.redo) order by s.seq desc)
+                             from build_snapshots s where s.build_id = b.id), '[]'::json)
+                     as snaps,
+                   {_RULES_JSON},
+                   (select row_to_json(j) from (
+                      select id, status, kind, payload from jobs
+                      where build_id = b.id and kind = any(%(kinds)s)
+                        and status in ('queued', 'running')
+                      order by created_at desc limit 1) j) as redraft,
+                   (select id from jobs
+                    where build_id = b.id and kind = 'product_fidelity'
+                      and status in ('queued', 'running')
+                      and coalesce((payload->>'fix')::boolean, false)
+                    order by created_at desc limit 1) as matching,
+                   br.palette, t.source_palette
+            from builds b
+            left join brands br on br.id = b.brand_id and br.org_id = b.org_id
+            left join templates t on t.id = b.template_id
+            where b.id = %(b)s and b.org_id = %(o)s and b.deleted_at is null
             """,
-            {"b": build_id},
+            {"b": build_id, "o": org_id, "kinds": list(PAGE_JOBS)},
         ).fetchone()
-    state = _state(build, snapshots, html, rules, redraft, colors, redos)
+    if row is None or not row["working_html_path"]:
+        raise DeskNotFoundError
+    build = dict(row)
+    page = html if html is not None else _page(build)
+    snaps = list(build["snaps"] or [])
+    redraft = build["redraft"]
+    colors = _colors_from(
+        build,
+        page,
+        {"palette": build["palette"], "source_palette": build["source_palette"]}
+        if build["template_id"] is not None
+        else None,
+    )
+    state = _state(
+        build,
+        [x for x in snaps if not x["redo"]],
+        page,
+        build["rules"] or {},
+        redraft,
+        colors,
+        [x for x in snaps if x["redo"]],
+    )
     # Match product everywhere running (B3.2c): the editor follows it, whoever started it.
-    return state.model_copy(update={"matching": matching["id"] if matching else None})
+    return state.model_copy(update={"matching": build["matching"]})
 
 
 def proof_html(org_id: UUID, build_id: UUID) -> tuple[str, int]:
@@ -331,7 +414,8 @@ def _check(conn: Any, build: dict[str, Any], base_version: int) -> None:
         raise DeskEditError("This page can't be changed while it builds or after it failed.")
     if build["page_version"] != base_version:
         raise DeskConflictError
-    if _redraft(conn, build["id"]) is not None:
+    busy = build["busy_job"] if "busy_job" in build else _redraft(conn, build["id"])
+    if busy is not None:
         raise DeskEditError(REDRAFTING)
 
 
@@ -364,8 +448,8 @@ def _change(
     else:
         assert html_path is not None
         html = storage.download(BUCKET, html_path).decode("utf-8")
-    snapshots = _snapshots(conn, build["id"])
-    redos = [] if keep_redo else _snapshots(conn, build["id"], redo=True)
+    snapshots, all_redos = _all_snapshots(conn, build["id"])
+    redos = [] if keep_redo else all_redos
     if redos:
         conn.execute(
             "delete from build_snapshots where build_id = %(b)s and redo",
@@ -389,7 +473,10 @@ def _change(
         )
         superseded = [build["working_html_path"]]
     else:
-        seq = _next_seq(conn, build["id"])
+        # One past every snapshot left (the pages kept for Redo were just dropped, unless kept).
+        seq = (
+            max((x["seq"] for x in [*snapshots, *(all_redos if keep_redo else [])]), default=0) + 1
+        )
         conn.execute(
             """
             insert into build_snapshots (build_id, seq, html_path, reason, created_by, merge_key)
@@ -444,7 +531,7 @@ def _change(
             "delete from build_snapshots where build_id = %(b)s and seq = any(%(s)s)",
             {"b": build["id"], "s": [s["seq"] for s in dropped]},
         )
-    still_redo = _snapshots(conn, build["id"], redo=True) if keep_redo else []
+    still_redo = all_redos if keep_redo else []
     in_use = {html_path, *(k["html_path"] for k in kept), *(r["html_path"] for r in still_redo)}
     gone = {s["html_path"] for s in dropped} | {r["html_path"] for r in redos} | set(superseded)
     return sorted(gone - in_use)
@@ -455,9 +542,26 @@ def _remove(paths: list[str]) -> None:
         storage.remove(BUCKET, paths)
 
 
-def _finish(org_id: UUID, build_id: UUID, stale: list[str]) -> DeskState:
-    _remove(stale)
-    return desk_state(org_id, build_id)
+# Files a change replaced are deleted after the answer, not before it (B4.5): a failure only leaves
+# a file behind, which nothing points at.
+_CLEANUP = ThreadPoolExecutor(max_workers=2, thread_name_prefix="desk-cleanup")
+
+
+def _finish(
+    org_id: UUID, build_id: UUID, stale: list[str], *, html: str | None = None
+) -> DeskState:
+    """After a change: the files it replaced go (in the background) and the desk as it is now,
+    from `html` when the change just wrote it."""
+    if stale:
+        _CLEANUP.submit(_remove_quietly, stale)
+    return desk_state(org_id, build_id, html=html)
+
+
+def _remove_quietly(paths: list[str]) -> None:
+    try:
+        _remove(paths)
+    except storage.StorageError:
+        log.warning("desk cleanup failed", paths=len(paths))
 
 
 def _where(sections: list[str | None]) -> str:
@@ -515,7 +619,7 @@ def edit_copy(
             conn, build, reason=reason, user_id=user_id, html=html, edited=written,
             merge_key=merge,
         )  # fmt: skip
-    return _finish(org_id, build_id, stale)
+    return _finish(org_id, build_id, stale, html=html)
 
 
 def format_text(
@@ -544,7 +648,7 @@ def format_text(
             conn, build, reason=formatting.reason(change, result), user_id=user_id,
             html=result.html,
         )  # fmt: skip
-    state = _finish(org_id, build_id, stale)
+    state = _finish(org_id, build_id, stale, html=result.html)
     marked = proof.lines(result.html, {r.block for r in ranges})
     state.lines = [FormattedLine(block=n, html=h) for n, h in marked.items()]
     return state
@@ -685,11 +789,9 @@ def edit_sections(
         build = _load(conn, org_id, build_id, lock=True)
         _check(conn, build, base_version)
         html = _page(build)
-        new_html, reason = section_change(
-            html, _layout(_rules(conn, build["template_id"]), html), action
-        )
+        new_html, reason = section_change(html, _layout(_rules_of(conn, build), html), action)
         stale = _change(conn, build, reason=reason, user_id=user_id, html=new_html)
-    return _finish(org_id, build_id, stale)
+    return _finish(org_id, build_id, stale, html=new_html)
 
 
 def section_change(html: str, layout: list[DeskSection], action: SectionAction) -> tuple[str, str]:
@@ -734,9 +836,34 @@ def section_change(html: str, layout: list[DeskSection], action: SectionAction) 
             n += 1
         new_html = duplicate_section(html, action.key, f"{root}-{n}")
         reason = f"Duplicated {section.label}"
+    elif isinstance(action, HideAction):
+        new_html, reason = _hide(html, by_key, action)
     else:  # pragma: no cover (the union is exhaustive)
         raise DeskEditError("Unknown change.")
     return new_html, reason
+
+
+def _hide(html: str, by_key: dict[str, DeskSection], action: HideAction) -> tuple[str, str]:
+    """Hides or shows a section, a line or a picture (B4.4, Shopify's eye): "Hid The problem",
+    "Showed a line in Hero"."""
+    if sum(x is not None for x in (action.key, action.block, action.image)) != 1:
+        raise DeskEditError("Choose one section, line or picture to hide or show.")
+    if action.key is not None and action.key not in by_key:
+        raise DeskConflictError
+    try:
+        new_html, owner, changed = visibility.toggle(
+            html, hidden=action.hidden, key=action.key, block=action.block, image=action.image
+        )
+    except visibility.NotOnPageError as exc:
+        raise DeskEditError("That isn't on the page any more. Reload the page.") from exc
+    verb = "Hid" if action.hidden else "Showed"
+    if not changed:
+        raise DeskEditError(f"That's already {'hidden' if action.hidden else 'showing'}.")
+    if action.key is not None:
+        return new_html, f"{verb} {by_key[action.key].label}"
+    where = by_key[owner].label if owner in by_key else "the page"
+    thing = "a line" if action.block is not None else "a picture"
+    return new_html, f"{verb} {thing} in {where}"
 
 
 def restore(
@@ -767,7 +894,7 @@ def recolor(
         html = _page(build)
         new_html = recolor_change(html, _colors(conn, build, html).page, colors.model_dump())
         stale = _change(conn, build, reason="Recoloured the page", user_id=user_id, html=new_html)
-    return _finish(org_id, build_id, stale)
+    return _finish(org_id, build_id, stale, html=new_html)
 
 
 def recolor_change(

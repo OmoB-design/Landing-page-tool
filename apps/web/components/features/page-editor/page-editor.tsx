@@ -1,10 +1,15 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -18,6 +23,7 @@ import {
   type LanderSuggestion,
   type LanderTarget,
   changedLineNumbers,
+  partName,
   suggestions as suggestionsFor,
 } from "@/lib/pages/lander";
 import { useJob } from "@/lib/queries/jobs";
@@ -28,7 +34,11 @@ import {
   imageJobSchema,
   matchStartedSchema,
 } from "@/lib/validators/images";
-import type { SectionAction } from "@/lib/validators/desk";
+import {
+  type MapPart,
+  pagePartsSchema,
+  type SectionAction,
+} from "@/lib/validators/desk";
 
 import { useDesk } from "../builds/desk-context";
 import { EditorTopBar } from "./editor-top-bar";
@@ -42,7 +52,7 @@ import { LanderThread } from "./lander/lander-thread";
 import { type TurnView, useLander } from "./lander/use-lander";
 import { LanderMotionProvider, useLanderMotion } from "./lander-motion";
 import { type FlashRequest, PageCanvas, type Viewport } from "./page-canvas";
-import { SectionPanel } from "./section-panel";
+import { type PartPointer, SectionPanel } from "./section-panel";
 
 /**
  * The drawer's drill-in (the image studio over the section list) and back: `custom` is 1 going in,
@@ -182,8 +192,47 @@ function Editor({
   const section = layout.find((s) => s.key === selected) ?? null;
   // Lander's requests are about the whole page until you pick a section (on the page or the list).
   const [wholePage, setWholePage] = useState(true);
+  // The section tree (B4.4, D123): each section's parts for the page shown, the part picked (in
+  // the tree or on the page), whether its panel is open, the sections opened in the tree, and
+  // what the pointer is over on the page.
+  const parts = useQuery({
+    queryKey: ["page-parts", build.id, desk.build.page_version],
+    queryFn: () => apiFetch(`/api/builds/${build.id}/parts`, pagePartsSchema),
+    placeholderData: keepPreviousData,
+    staleTime: Infinity,
+  });
+  // The names the page's outline tabs show: a section's label, a part's Shopify name.
+  const names = useMemo(() => {
+    const blocks: Record<number, string> = {};
+    const images: Record<number, string> = {};
+    for (const s of parts.data?.sections ?? [])
+      for (const p of s.parts) {
+        if (p.line != null) blocks[p.line] = p.name;
+        if (p.image != null) images[p.image] = p.name;
+      }
+    const sections = Object.fromEntries(layout.map((s) => [s.key, s.label]));
+    return { blocks, images, sections };
+  }, [parts.data, layout]);
+  const [part, setPart] = useState<MapPart | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const [pointer, setPointer] = useState<PartPointer>(null);
+  const [treeHover, setTreeHover] = useState<PartPointer>(null);
   const target: LanderTarget =
-    section && !wholePage ? { key: section.key, label: section.label } : null;
+    section && !wholePage
+      ? {
+          key: section.key,
+          label: section.label,
+          part: part
+            ? {
+                kind: part.kind,
+                name: partName(part),
+                line: part.line,
+                image: part.image,
+              }
+            : null,
+        }
+      : null;
 
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [saving, setSaving] = useState(false);
@@ -193,6 +242,10 @@ function Editor({
   // The bar's first rise (opening the editor) waits a moment; later rises don't.
   const [barArrived, setBarArrived] = useState(false);
   const settleRef = useRef<(() => Promise<void>) | null>(null);
+  // Words typed in a part's panel go to the canvas, which shows them and saves them as typing.
+  const typeRef = useRef<
+    ((line: number, text: string, done: boolean) => void) | null
+  >(null);
   const settle = useCallback(async () => {
     await settleRef.current?.();
   }, []);
@@ -251,6 +304,68 @@ function Editor({
   const select = (key: string) => {
     setChosen(key);
     setWholePage(false);
+    setPart(null);
+    setPanelOpen(true);
+  };
+  // A part picked in the tree or on the page: a picture opens in the image studio (as a click on
+  // it does), anything else opens its panel under the tree, its section opened in the tree.
+  const selectPart = (key: string, picked: MapPart) => {
+    setChosen(key);
+    setWholePage(false);
+    setPart(picked);
+    setExpanded((open) => (open.includes(key) ? open : [...open, key]));
+    if (picked.kind === "image" && picked.image != null) {
+      setImage(picked.image);
+      return;
+    }
+    setPanelOpen(true);
+    if (!sectionsOpen) {
+      setOpenChoice(true);
+      if (landerOpen) setBeside(true);
+    }
+  };
+  const closePanel = () => {
+    setPanelOpen(false);
+    setPart(null);
+    setWholePage(true);
+  };
+  // The part a line on the page is (from the tree's list, or a plain line when the list hasn't
+  // loaded or doesn't have it).
+  const partOfLine = (line: number): { key: string; part: MapPart } | null => {
+    for (const s of parts.data?.sections ?? []) {
+      const found = s.parts.find((p) => p.line === line);
+      if (found && keys.includes(s.key)) return { key: s.key, part: found };
+    }
+    const paragraph = desk.paragraphs.find((p) => p.number === line);
+    if (!paragraph?.section || !keys.includes(paragraph.section)) return null;
+    return {
+      key: paragraph.section,
+      part: {
+        kind: "text",
+        name: "Text",
+        role: "text",
+        excerpt: paragraph.text.slice(0, 60),
+        line,
+        image: null,
+        thumb: "",
+        hidden: false,
+      },
+    };
+  };
+  const partOfImage = (
+    number: number,
+  ): { key: string; part: MapPart } | null => {
+    for (const s of parts.data?.sections ?? []) {
+      const found = s.parts.find((p) => p.image === number);
+      if (found && keys.includes(s.key)) return { key: s.key, part: found };
+    }
+    return null;
+  };
+  const askAbout = (key: string, picked: MapPart | null) => {
+    setChosen(key);
+    setWholePage(false);
+    setPart(picked);
+    openLander();
   };
   // Back from an image shows the section list, open beside Lander if Lander is open.
   const backToSections = () => {
@@ -280,10 +395,6 @@ function Editor({
   ) => {
     setLanderOpen(true);
     void lander.send(text, to, images);
-  };
-  const improve = (key: string) => {
-    select(key);
-    openLander();
   };
 
   // Show on page: a card's lines flash on the page as it is; a request that finished in this visit
@@ -527,7 +638,14 @@ function Editor({
             transition={motionConfig.sectionsToggle}
             className="relative shrink-0"
           >
-            <div className="absolute inset-0 overflow-hidden divider-r-thin">
+            <div className="absolute inset-0 overflow-hidden">
+              {/* The divider to the preview (owner, 2026-11-06): a line drawn over the drawer's
+                  content, as the review desk's panel has it (an inset shadow sat under the
+                  content and didn't show). */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 right-0 z-10 w-px bg-stroke-strong"
+              />
               {/* The list keeps its width while the drawer slides, so nothing reflows inside it. */}
               <div
                 className="relative h-full overflow-hidden"
@@ -567,11 +685,36 @@ function Editor({
                       <SectionPanel
                         layout={layout}
                         paragraphs={desk.paragraphs}
+                        parts={parts.data?.sections}
                         selected={selected}
+                        part={part}
+                        open={panelOpen}
+                        hovered={pointer}
                         busy={busy}
+                        reduced={motionConfig.reduced}
                         onSelect={select}
+                        onSelectPart={selectPart}
+                        onClose={closePanel}
+                        onHover={setTreeHover}
                         onEdit={(action) => void edit(action)}
-                        onImprove={improve}
+                        onAsk={askAbout}
+                        onType={(line, text, done) =>
+                          typeRef.current?.(line, text, done)
+                        }
+                        card={{
+                          enter: motionConfig.panelEnter,
+                          exit: motionConfig.panelExit,
+                          scaleFrom: motionConfig.panelScaleFrom,
+                          blurFrom: motionConfig.panelBlurFrom,
+                        }}
+                        expanded={expanded}
+                        onExpand={(key, open) =>
+                          setExpanded((list) =>
+                            open
+                              ? [...list, key]
+                              : list.filter((k) => k !== key),
+                          )
+                        }
                       />
                     )}
                   </motion.div>
@@ -598,8 +741,23 @@ function Editor({
             <PageCanvas
               buildId={build.id}
               updatedAt={build.updatedAt}
-              selected={selected}
+              // Outlined once something's picked (Shopify's), not the first section by default.
+              selected={
+                panelOpen || image !== null || !wholePage ? selected : null
+              }
               onSelect={select}
+              part={panelOpen || image !== null ? part : null}
+              onPart={(line) => {
+                const found = partOfLine(line);
+                if (found) selectPart(found.key, found.part);
+              }}
+              treeHover={treeHover}
+              onHover={setPointer}
+              names={names}
+              onAsk={() => {
+                if (section) askAbout(section.key, part);
+              }}
+              typeRef={typeRef}
               onSaving={setSaving}
               onUpdating={setUpdating}
               onZoom={setZoom}
@@ -610,7 +768,15 @@ function Editor({
               busyLines={lander.busyLines}
               flash={flash}
               image={image}
-              onImage={setImage}
+              onImage={(number) => {
+                setImage(number);
+                const found = number === null ? null : partOfImage(number);
+                if (found) {
+                  setChosen(found.key);
+                  setWholePage(false);
+                  setPart(found.part);
+                }
+              }}
               busyImage={making?.number ?? null}
               probe={barSpot}
               onTone={setPageDark}

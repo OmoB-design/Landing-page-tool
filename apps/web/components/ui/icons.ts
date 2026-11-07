@@ -119,4 +119,12 @@ export {
   ScrollText as TypeLongFormIcon,
   FileText as TypeOtherIcon,
   Swords as TypeVersusIcon,
+  // The page editor's section tree (B4.4): each kind of part.
+  TextAlignStart as PartTextIcon,
+  Heading as PartHeadingIcon,
+  RectangleHorizontal as PartButtonIcon,
+  Play as PartMediaIcon,
+  // Shopify's eye in the section tree (B4.4).
+  Eye as EyeIcon,
+  EyeOff as EyeOffIcon,
 } from "lucide-react";

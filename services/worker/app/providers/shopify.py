@@ -281,6 +281,15 @@ class ShopifyClient:
             raise ShopifyError("Shopify didn't return the page.")
         return page
 
+    def page_exists(self, handle: str) -> bool:
+        """Whether the store has a page at this address (an editable draft's next version)."""
+        data = self.graphql(
+            "query Pages($q: String!) { pages(first: 5, query: $q) { nodes { handle } } }",
+            {"q": f"handle:{handle}"},
+        )
+        nodes = (data.get("pages") or {}).get("nodes") or []
+        return any(isinstance(n, dict) and n.get("handle") == handle for n in nodes)
+
     def delete_page(self, page_id: str) -> bool:
         """Deletes the page; False when the store no longer has it (deleted in Shopify already)."""
         data = self.graphql(

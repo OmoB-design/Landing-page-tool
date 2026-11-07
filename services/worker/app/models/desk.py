@@ -88,6 +88,8 @@ class DeskSection(BaseModel):
     duplicable: bool
     # Sections in different parts of the page (different containers) can't swap places.
     group: int = 0
+    # Hidden (B4.4, Shopify's eye): it stays in the page but doesn't show.
+    hidden: bool = False
 
 
 class FormattedLine(BaseModel):
@@ -178,9 +180,23 @@ class FormatRequest(DeskChange):
     format: TextFormat
 
 
-# The page editor's section changes (B3.1a): the template editor's, without renaming.
+class HideAction(BaseModel):
+    """Hide or show a section, a line or a picture (B4.4, D123: Shopify's eye); one of `key`,
+    `block` or `image`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["hide"]
+    hidden: bool
+    key: str | None = Field(default=None, max_length=100)
+    block: int | None = Field(default=None, ge=1)
+    image: int | None = Field(default=None, ge=1)
+
+
+# The page editor's section changes (B3.1a): the template editor's, without renaming; B4.4 adds
+# hiding and showing.
 SectionAction = Annotated[
-    ReorderAction | RemoveAction | DuplicateAction, Field(discriminator="type")
+    ReorderAction | RemoveAction | DuplicateAction | HideAction, Field(discriminator="type")
 ]
 
 

@@ -1202,3 +1202,117 @@ as new entries.
 - **Owner confirmed:** no
 - **Follow-up (owner, same day):** the review desk header shows **Edit page black in light mode** (white in dark; new `button-ink` tokens, the white-only button tokens gone), and the order is now the status and Approve first, a rule, Edit page, Live and Publish, a rule, **Client link with Export**.
 - **Next:** B4.2, emit the theme files and publish an editable draft through Theme Access.
+
+### B4.2 — Editable pages in Shopify
+- **Status:** complete (owner: the Theme Access password as the go, the migration push permitted, 2026-11-06; not yet committed)
+- **Date:** 2026-11-06
+- **Summary:** A page can go to a brand's Shopify store as **editable sections**: every text, picture and video the editor map marks can be changed in Shopify's own theme editor, without a paid Shopify app.
+  - **The password:** the store's free **Theme Access** password, added in Settings → Connections (checked with Shopify, kept in Vault), lets LP write the theme files through Shopify CLI.
+  - **Publishing:** the published modal's Shopify row offers **Editable sections** or **One block** (as before). Each editable publish:
+    - moves the pictures to Shopify Files;
+    - builds the theme files from the page and its map: shared block types, one section per map section with **static blocks** at each editable spot, a bare layout, the CSS and the template;
+    - checks Shopify's sizes, then uploads in two steps, block types first, only adding LP's own `lp-` files;
+    - makes a new hidden draft page `<key>-v<N>`.
+  - **Edit in Shopify** opens the theme editor on the draft's template; Shopify's editor can't open a hidden page.
+  - **Tested on FourU** with the owner's BRĒZ page: 15 sections, 113 texts and 18 pictures, published in 27 seconds through the app; the owner opened it in the theme editor on their M5.
+- **Key files:** worker `app/engines/shopify_theme.py` (new), `app/providers/shopify_cli.py` (new), `app/jobs/kinds/publish_shopify_editable.py` (new), `app/engines/editor_map.py` (`walk` keeps each block's element; 25 sections; no block limit for static blocks; a picture inside a text belongs to it), `app/publishing.py` (the password; the editable destination), `app/providers/shopify.py` (`page_exists`), `app/models/publishing.py`, `app/main.py`, `app/jobs/registry.py`, `app/config.py` (`lp_shopify_cli`), `Dockerfile` (Node 24 and `@shopify/cli@4.9.4`), `supabase/migrations/20261106204423_store_theme_access.sql` (new; pushed with the owner's permission), tests `test_shopify_theme.py` (new, 9), `test_publish_editable.py` (new, 2), `test_editor_map.py`; web `components/features/settings/shopify.tsx` (Theme Access), `components/features/builds/publish-controls.tsx` and `publish-context.tsx` (Editable sections, Edit in Shopify), `app/api/integrations/shopify/theme-access/route.ts` (new), `lib/api/worker.ts`, `lib/validators/publishing.ts`, `types/database.ts`; docs D121, BUILD_SPEC §12.6, MILESTONES, DESIGN, DEPENDENCIES, CLAUDE.md §5.
+- **Schema changes:** `store_connections.theme_secret_id`, `theme_last4`. **New dependencies:** Shopify CLI 4.9.4 and Node 24 in the worker image (about 200 MB).
+- **Decisions:** D121 locked.
+- **Deviations from the plan:**
+  - one migration after all, for the password's Vault id, as the other secrets have;
+  - the Edit in Shopify link opens the template, not the page;
+  - the 600-blocks-a-section split is gone, because static blocks don't count toward Shopify's block limits;
+  - pictures inside a text stay part of that text.
+- **Verification:**
+  - **Code checks:** `pnpm typecheck` (tsc, mypy 204 files) and `pnpm lint` are clean; vitest 254 passed.
+  - **Worker tests:** generator and map 23 passed; Shopify and editable publish 14 passed (the password checked and kept, two upload steps, version numbers skipping taken addresses, a refused file failing with Shopify's reason and no page made).
+  - **Real store (FourU):** Shopify CLI listed the themes; the BRĒZ files pushed after renaming `src` (Shopify's reserved name) and went in with no errors. Shopify's theme checker found no Liquid or schema errors. A full publish through the website's endpoint succeeded in 27 s, and its test draft was then deleted.
+  - **Theme editor:** both template links open on the owner's M5. On this Mac the editor won't load, which looks like a browser cookie setting.
+  - **Local comparison of Shopify's render with the original:** the top bars sit the same; the article's sticky product card column and the sticky bars don't hold across sections (B4.3).
+- **Owner actions requested:** after the push, check Railway's worker build (the image now installs Node and Shopify CLI). Delete "BRĒZ test (editable, delete me)" in FourU when done comparing.
+- **Owner confirmed:** no
+- **Follow-up (owner, same day):** Buddy's section chip sits **inside** the box, at the top, in the composer and in each sent request (as Claude Code shows a file in a message), with the owner's section icon at 12 px.
+- **Next:** B4.3, the layout check: render the original, keep side-by-side and sticky parts together in one Shopify section, compare, and fall back to coarser sections when needed; also the story bar alignment the owner saw.
+
+### B4.3 — The layout check for editable Shopify pages
+- **Status:** complete (owner: "1. yes. 2. yes. 3. yes." to the plan and "go with the next build", 2026-11-06; not yet committed)
+- **Date:** 2026-11-06
+- **Summary:** An editable Shopify page now keeps the page's layout: columns side by side, sticky parts and the spacing between sections.
+  - **The check** (`publish/parity`): Shopify's render of LP's own theme files is worked out locally (`engines/shopify_render`, no Shopify call) and compared with the page in Chromium at desktop 1280, tablet 768 and phone 390, the sticky parts also at a third and two thirds down; boxes match within 4 px or 1 % of the width.
+  - **Fixing the split:** shared wrappers that only group things become transparent; shared containers holding sections side by side are kept together as one Shopify section, its parts as group blocks (nested static blocks, each still editable); up to three more tries; then coarse.
+  - **Every text is one whole block** (its element drawn by the block), so Shopify's outline and spacing sit on the element.
+  - **Every editable publish** runs the check and records the mode with the publication.
+  - **The template editor's Shopify editing card** has **Check layout** (job `shopify_layout_check`, 10–20 s, free), which keeps the result with the template's editor map and says when the page changed since; `app.cli.shopify_check` checks every template.
+  - **Result:** every template with sections matches at all three widths (fixture and top 5: one section per LP section; the wear test (BRĒZ): 5 sections with the article and its card kept together; listicle and the cardio clone: one). FourU accepted a published copy with group blocks and selection markers (34 s).
+- **Same-day follow-ups (owner):**
+  - Buddy's section chip, in the composer and in sent requests, as the file chip in Claude Code's chat: 11 px regular, 6 / 4 px padding, 4 px corners, 24 px tall, the section icon at 8 px, Foreground-01 with a thin Stroke-Strong ring and a soft shadow all round (`shadow-chip`); sent requests have 8 px padding on every side.
+  - The sections drawer's line against the preview is back (a 1 px Stroke-Strong line above the content).
+  - The page editor's Undo and Redo as Shopify draws them: one pill, two icon-only halves (`HistoryButtons`, tokens `icon-strong` and `icon-off`).
+  - The page editor's top bar laid out as Shopify's: the exit icon and Sections on the left, the page icon, the title (cut shorter, without the key), a divider and the save status centred, the viewport and Undo / Redo on the right (`ExitIcon`, `PageFileIcon`).
+  - `cn` now knows `shadow-chip` (it had been dropping a custom size class as a colour).
+  - A study of Shopify's theme editor from the owner's recording (`docs/reference/shopify-editor-study.md`), for the next build.
+- **Key files:** worker `app/publish/parity.py` (new), `app/engines/shopify_render.py` (new), `app/engines/shopify_theme.py` (group blocks, whole-element texts, transparency, selection markers), `app/engines/editor_map.py` (`walk` with grouping), `app/models/editor_map.py` (`LayoutCheck`; `EditorMap.layout`, `MapReport.layout` and `layout_stale`), `app/templates.py` (`start_layout_check`, `layout_inputs`, `save_layout`), `app/jobs/kinds/shopify_layout_check.py` (new), `app/jobs/kinds/publish_shopify_editable.py`, `app/jobs/registry.py`, `app/main.py` (`POST /templates/{id}/shopify-check`), `app/cli/shopify_check.py` (new), tests `test_parity.py` (new, 3), `test_template_editor.py` (the job), `test_shopify_theme.py`, `test_editor_map.py`; web `components/features/templates/editor/shopify-card.tsx` (+ tests), `details-panel.tsx`, `template-editor.tsx`, `lib/templates/actions.ts` (`startLayoutCheck`), `lib/api/worker.ts`, `lib/validators/template.ts`, `components/app/history-buttons.tsx` (new), `components/features/page-editor/editor-top-bar.tsx`, `lander/composer-parts.tsx`, `lander/lander-thread.tsx`, `page-editor.tsx`, `app/globals.css`, `lib/utils.ts`; docs D122, BUILD_SPEC §12.6, MILESTONES (B4.3 done, B4.4 proposed), DESIGN, CLAUDE.md §5, `docs/reference/shopify-editor-study.md` (new).
+- **Schema changes:** none (the result lives in the existing `templates.editor_map` JSON). **New dependencies:** none.
+- **Decisions:** D122 locked.
+- **Deviations from the spec:**
+  - Shopify's render is worked out locally from LP's own files, not by asking Shopify;
+  - four tries rather than three (transparency first, then keeping together);
+  - the template editor gets Check layout, which the spec didn't ask for (the owner asked how to check every template).
+- **Verification:** `pnpm typecheck` (tsc, mypy 209 files) and `pnpm lint` clean; vitest 257 passed; worker tests 57 passed (Shopify theme, parity, editable publish, editor map, template editor with the new job, Shopify), API and jobs 35 passed; `app.cli.shopify_check` over every template (6 of 7 match, the seventh is a test clone with no sections); Check layout clicked in the app on the owner's wear-test template (16 s, matched; light and dark); the chip, bubble and Undo / Redo measured in a browser in light and dark.
+- **Owner actions requested:** check the FourU draft `tmp-3c30-v1` in the theme editor (the product card beside the article, the spacing), then it can be deleted; delete "BRĒZ test (editable, delete me)".
+- **Owner confirmed:** no
+- **Owner confirmed:** yes (2026-11-07: "i have checked"; the FourU test pages `tmp-3c30-v1` and `bre-6-v1` then deleted, with the temporary LP copy).
+- **Next:** B4.4: the section tree in the page editor, after Shopify's theme editor.
+
+### B4.4 — The section tree, after Shopify's theme editor
+- **Status:** complete (owner: "1. use what shopify uses. 2. yes. 3. yes. 4. yes." to the plan, 2026-11-07; not yet committed)
+- **Date:** 2026-11-07
+- **Summary:** You can now pick any single text, picture or video in the page editor, as in Shopify's theme editor, and point Buddy at just that part.
+  - **The tree:** each section in the sections drawer opens into its parts, named as Shopify names their blocks ("Paragraph — *Most cocktail nights…*", "Headline", "Button", "Scene picture"), from the editor map (`GET /builds/{id}/parts`, per page version). Drag still reorders sections.
+  - **Shared hover:** hovering a row outlines the part on the page with a tab naming it. Hovering the page lights the row.
+  - **Picking:** a row, or the first click on a line on the page, picks the part (outline and name tab on the page, the row blue, its panel). A second click, or a double click, types on the page. Pictures still open the image studio; a section row opens the section's panel. Nothing is outlined until something is picked.
+  - **The panel:** the tree shrinks to a strip scrolled to the row; the panel fills the room under it, framed as Buddy's change card, and arrives as Buddy's panel does. A part's words can be edited there: they show on the page as you type and save as typing does.
+  - **Buddy on one part:** the chip names the part, the request says which line or picture, and Buddy is told to change only that. The panel's **Ask Buddy to edit** and an **Ask Buddy** pill under the picked part on the page open Buddy on it.
+- **Same-session requests (owner):**
+  - the template editor's Undo / Redo now use the same Shopify-style pill (the old ShortcutButton is gone);
+  - the Sections button in the top bar uses the owner's sections icon (`SectionsNavIcon`) and the tree the owner's section icon (`SectionIcon`), both drawn with the line and margin of the icons beside them;
+  - the motion of Shopify's panel measured frame by frame (`docs/reference/shopify-editor-study.md`).
+- **Key files:** worker `app/engines/editor_map.py` (`parts`; Shopify's block names moved here), `app/engines/shopify_theme.py` (uses them), `app/editor_parts.py` (new: the map for a build, the parts), `app/main.py` (`GET /builds/{id}/parts`), `app/models/editor_map.py` (`MapPart`, `SectionParts`, `PageParts`), `app/models/agent.py` (`AgentPart`, `target_part`), `app/agent.py` (checks and keeps the part), `app/jobs/kinds/agent_turn.py` (`_about`; mock on the line), `app/jobs/kinds/publish_shopify_editable.py` (shares the map loader), tests `test_editor_map.py`, `test_agent.py`; web `components/features/page-editor/section-panel.tsx` (the tree, the cards), `page-editor.tsx` (parts query, picking, Buddy's target), `page-canvas.tsx` (picked part, hover, names, panel typing), `app/preview/[buildId]/route.ts` (first click picks, tabs, the pill, live text), `lander/composer-parts.tsx` (the part chip), `lib/pages/lander.ts`, `lib/validators/{desk,agent}.ts`, `lib/api/worker.ts`, `app/api/builds/[buildId]/parts/route.ts` (new), `components/builds/desk-context.tsx`, `components/ui/{icons.ts,lp-icons.tsx}`, `components/app/history-buttons.tsx`, `editor-top-bar.tsx`, `templates/editor/template-editor.tsx`, `page-editor.test.tsx`; docs D123, BUILD_SPEC §11.2, MILESTONES, DESIGN, the Shopify editor study.
+- **Schema changes:** none. **New dependencies:** none.
+- **Decisions:** D123 locked.
+- **Deviations from the plan:**
+  - the panel is framed as Buddy's change card and arrives as Buddy's panel (owner, during the build), not Shopify's slide-up;
+  - parts outside the marked sections aren't in the tree (they can still be picked on the page);
+  - a section row opens the section's panel (its move, duplicate, remove) in the same card.
+- **Verification:** see the Build Report (typecheck, lint, web and worker tests, and the editor driven in a browser on a temporary copy of the BRĒZ page in light and dark: parts listed in about 2 s with line numbers matching the editor's; the split measured frame by frame; first click picks and the second types; panel typing shown live and saved; the pill opens Buddy with the part chip).
+- **Follow-up (owner, same day, from a second recording of Shopify's sidebar):** the grip takes the section icon's place on hover (its own grey square), the chevron has its own hover square, parts start under the section's icon with picture thumbnails, and the tree's foot fades so rows flow under the card (`scroll-fade-b`).
+- **Follow-up (owner: "you can add those"):** Shopify's eye hides and shows a section, line or picture (one undoable change each way; `HideAction`, `engines/visibility`; hidden rows dimmed with the crossed-out eye; the part left out everywhere the page goes); a lock in place of a part's icon on hover. The "+" line and Add section were built and then taken out at the owner's word (no section library yet). Noted: every desk change takes 10 to 17 s on this machine's dev setup (saving the version and reading the editor's state again; the page change itself takes 0.03 s), the same for typing, moving and formatting, worth a speed pass.
+- **Owner actions requested:** none required; try it on a page and say what to change.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner (open ideas: hiding single parts as Shopify does, the parts outside sections, and the ad readiness checks).
+
+### B4.5 — Speed pass (the editor's saves and loads)
+- **Status:** complete (owner: "optimize the app", then "go" on the plan, 2026-11-07; not yet committed)
+- **Date:** 2026-11-07
+- **Summary:** Changes in the page editor and opening it now wait on far fewer network round trips.
+  - **Storage:** one HTTP client kept open for the whole process (repeat downloads 1.0 → 0.24 s here).
+  - **Database:** the build, its running page job and its template's rules in one query; undo and redo snapshots in one; the editor's state in one query outside a transaction (`db.read`).
+  - **After a change:** the state is built from the page just written (no second download), and the replaced files are deleted after the answer, in the background.
+  - **Web:** the page editor no longer rebuilds its route on the server after each change (the answer carries the new state); the review desk still does.
+- **Measured from this Mac, on a copy of BRĒZ:**
+
+  | | Before | After |
+  |---|---|---|
+  | Read the editor's state | 4.0 s | 0.55 s |
+  | Hide or show a section | 11.4 s | 2.0 s |
+  | Typing save | (slow, "Saving…" for 6 s or more) | 1.9 s |
+  | Click to screen in the browser | 11 s or more, plus a route rebuild | about 3 s, no rebuild |
+
+  On Railway each database trip is about 20 ms (beside the database), so the live app gains less in seconds but the same in trips. The website's functions already run in Dublin (`dub1`), beside the database.
+- **Key files:** worker `app/providers/storage.py` (shared client), `app/db.py` (`read`), `app/desk.py` (`_load` with the busy job and rules, `_all_snapshots`, `_colors_from`, `desk_state(html=…)`, `_finish` cleanup in the background, `_rules_of`), `app/images.py`, `app/agent.py`; tests `test_desk.py` (the state after a change equals a fresh read), `test_share.py` (a minute's leeway for the database's clock); web `components/features/builds/desk-context.tsx` (`refreshRoute`), `app/(studio)/pages/[buildId]/editor/page.tsx`; docs D124, MILESTONES.
+- **Schema changes:** none. **New dependencies:** none.
+- **Decisions:** D124 locked.
+- **Deviations from the plan:** none. Also noted: each website API call looks up the workspace membership in the database (one trip; a few ms in Dublin), left as it is.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner.

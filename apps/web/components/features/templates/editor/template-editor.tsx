@@ -12,17 +12,13 @@ import {
   useTransition,
 } from "react";
 
-import { ShortcutButton } from "@/components/app/shortcut-button";
+import { HistoryButtons } from "@/components/app/history-buttons";
 import { TruncatedTitle } from "@/components/app/truncated-title";
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
 import { Mover } from "@/components/app/mover";
 import { PagesIcon } from "@/components/ui/icons";
-import {
-  BackArrowFigmaIcon,
-  RedoFigmaIcon,
-  UndoFigmaIcon,
-} from "@/components/ui/lp-icons";
+import { BackArrowFigmaIcon } from "@/components/ui/lp-icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -267,23 +263,13 @@ export function TemplateEditor({
           />
           {pending ? "Saving…" : `Saved · version ${version}`}
         </p>
-        <div className="ml-auto flex items-center gap-1">
-          <ShortcutButton
-            label="Undo"
-            shortcut="⌘Z"
-            disabled={!state.can_undo || pending}
-            onClick={undo}
-          >
-            <UndoFigmaIcon aria-hidden className="size-3.5 text-icon-system" />
-          </ShortcutButton>
-          <ShortcutButton
-            label="Redo"
-            shortcut="⇧⌘Z"
-            disabled={!state.can_redo || pending}
-            onClick={redo}
-          >
-            <RedoFigmaIcon aria-hidden className="size-4 text-icon-system" />
-          </ShortcutButton>
+        <div className="ml-auto flex items-center gap-1.5">
+          <HistoryButtons
+            canUndo={state.can_undo && !pending}
+            canRedo={state.can_redo && !pending}
+            onUndo={undo}
+            onRedo={redo}
+          />
           {state.template.ready ? (
             <Button size="sm" className="ml-1" asChild>
               <Link href={`/pages/new?template=${templateId}`}>
@@ -388,6 +374,7 @@ export function TemplateEditor({
                 analysing={analysing}
                 onAnalyse={analyse}
                 onRestore={restore}
+                onState={setState}
                 onSaved={(details) =>
                   setState((current) => ({
                     ...current,

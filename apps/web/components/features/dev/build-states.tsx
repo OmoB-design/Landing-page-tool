@@ -432,6 +432,8 @@ const SAMPLE_PUBLISHING: PublishingState = {
   publications: [],
   shopify_domain: null,
   shopify_draft: null,
+  shopify_theme_access: false,
+  shopify_editable: null,
 };
 
 const SAMPLE_PAGE = {
@@ -572,6 +574,8 @@ export function SampleConnections({ connected }: { connected: boolean }) {
                 shop_domain: "lume.myshopify.com",
                 connected_at: "2026-10-26T09:00:00.000Z",
                 missing_scopes: [],
+                theme_access: false,
+                theme_last4: null,
               },
             ]
           : [],

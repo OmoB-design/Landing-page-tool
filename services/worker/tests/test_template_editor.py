@@ -384,3 +384,33 @@ def test_the_editor_api(
             restored.status_code == 200
             and restored.json()["versions"][0]["reason"] == "Restored version 1"
         )
+
+
+@needs_db
+def test_the_layout_check_runs_as_a_job_and_is_kept_with_the_map(
+    user: DbUser, org_copy: tuple[uuid.UUID, uuid.UUID]
+) -> None:
+    """Check layout (B4.3, D122): the job compares Shopify's render with the page at three widths,
+    keeps the outcome with the editor map, and the card says when the page changed since."""
+    pytest.importorskip("playwright")
+    from tests.test_shopify import run_job
+
+    org_id, template_id = org_copy
+    assert templates.editor_state(org_id, template_id).shopify.layout is None  # type: ignore[union-attr]
+    job = templates.start_layout_check(org_id, user.id, template_id)
+    # A second click while it runs follows the same job.
+    assert templates.start_layout_check(org_id, user.id, template_id).id == job.id
+    done = run_job("shopify_layout_check")
+    assert done["status"] == "succeeded", done["error"]
+
+    shopify = templates.editor_state(org_id, template_id).shopify
+    assert shopify is not None and shopify.layout is not None
+    assert shopify.layout.matched and shopify.layout.version == 1
+    assert set(shopify.layout.widths) == {"desktop", "tablet", "phone"}
+    assert not shopify.layout_stale
+
+    start = templates.editor_state(org_id, template_id)
+    moved = swap(keys(start), "problem", "mechanism")
+    templates.edit_layout(org_id, template_id, None, 1, ReorderAction(type="reorder", keys=moved))
+    shopify = templates.editor_state(org_id, template_id).shopify
+    assert shopify is not None and shopify.layout is not None and shopify.layout_stale

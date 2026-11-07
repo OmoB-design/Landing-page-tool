@@ -45,6 +45,8 @@ const BASE: PublishingState = {
   publications: [],
   shopify_domain: null,
   shopify_draft: null,
+  shopify_theme_access: false,
+  shopify_editable: null,
 };
 
 const LIVE = {

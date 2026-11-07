@@ -187,20 +187,17 @@ def test_copies_of_a_section_and_sections_the_map_doesnt_know() -> None:
 
 
 def test_shopifys_limits() -> None:
-    many = page(*(section(f"s{i}", f"<p>Text {i}</p>") for i in range(26)))
-    rows = [{"key": f"s{i}", "label": f"Part {i}"} for i in range(26)]
+    many = page(*(section(f"s{i}", f"<p>Text {i}</p>") for i in range(27)))
+    rows = [{"key": f"s{i}", "label": f"Part {i}"} for i in range(27)]
     result = em.plan(many, em.derive(rows))
-    assert [s.merged_into for s in result.sections[24:]] == ["s23", "s23"]
-    assert any("Shopify takes 24" in i.message for i in result.issues)
+    assert [s.merged_into for s in result.sections[25:]] == ["s24", "s24"]
+    assert any("Shopify takes 25" in i.message for i in result.issues)
 
-    # A long section becomes several Shopify sections: nothing is left out.
+    # Blocks placed in a section (static blocks) don't count toward Shopify's block limits: a long
+    # section stays one section, all of it editable.
     crowded = page(section("s", "".join(f"<p>Line {i}</p>" for i in range(605))))
-    crowded_plan = em.plan(crowded, em.derive([{"key": "s", "label": "S"}]))
-    assert crowded_plan.sections[0].parts == 2
-    summary = em.report(crowded_plan, "page")
-    assert summary.static == 0 and any(
-        "becomes 2 Shopify sections" in i.message for i in summary.issues
-    )
+    summary = em.report(em.plan(crowded, em.derive([{"key": "s", "label": "S"}])), "page")
+    assert len(summary.sections) == 1 and summary.texts == 605 and summary.static == 0
 
     assert em.file_slug("LUM-12") == "lum-12"
     long = em.file_slug("a-very-long-template-slug-for-a-page")
@@ -224,3 +221,31 @@ def test_odd_rules_and_empty_pages_are_reported() -> None:
     assert not em.report(result, "page").ready
     empty = em.report(em.plan(page("<p>No sections</p>"), em.derive([])), "page")
     assert not empty.ready and empty.static == 1
+
+
+def test_parts_are_listed_in_page_order_and_named_as_in_shopify() -> None:
+    """The page editor's tree (B4.4, D123): each section's texts, pictures and videos in page
+    order, named as Shopify names their blocks, with the editor's line and picture numbers."""
+    html = page(
+        section(
+            "hero",
+            '<h1>Glow in 7 days</h1><img data-lp-img="3" data-lp-scene="" src="s.jpg" alt="A calm'
+            ' morning"/><p>A calm serum for every skin.</p><a data-lp-cta="" href="#">Shop now</a>'
+            '<video src="v.mp4"></video>',
+        ),
+        section("faq", "<h2>Questions</h2><ul><li>Vegan</li></ul>"),
+    )
+    rows = [{"key": "hero", "role": "hero", "label": "Hero"}, {"key": "faq", "label": "FAQ"}]
+    hero, faq = em.parts(html, em.derive(rows))
+    assert (hero.key, hero.name) == ("hero", "Hero")
+    assert [(p.kind, p.name) for p in hero.parts] == [
+        ("text", "Headline"), ("image", "Scene picture"), ("text", "Subheadline"),
+        ("text", "Button"), ("media", "Video"),
+    ]  # fmt: skip
+    assert hero.parts[0].excerpt == "Glow in 7 days" and hero.parts[1].excerpt == "A calm morning"
+    assert hero.parts[1].image == 3 and hero.parts[1].line is None
+    assert hero.parts[1].thumb == ""  # a thumbnail only for a picture on the web
+    lines = [p.line or 0 for p in hero.parts if p.kind == "text"]
+    lines += [p.line or 0 for p in faq.parts]
+    assert all(lines) and lines == sorted(lines)  # the editor's numbering, in page order
+    assert [p.name for p in faq.parts] == ["Heading", "List item"]

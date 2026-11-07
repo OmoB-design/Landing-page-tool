@@ -85,6 +85,11 @@ const DESK_BRIDGE = `(function () {
  * studio (`lp-image`), even under an overlay; the editor outlines the one it has open
  * (`lp-image-select`). The brand's logo says where to change it instead (`lp-logo`). An image whose
  * AI picture is being made breathes (`lp-image-busy`, B3.2b).
+ * B4.4 (D123, Shopify's theme editor): the first click on a line picks it (`lp-part`: its outline
+ * and a tab with its name at the outline's top left, with the Ask Buddy pill under it, `lp-ask`);
+ * a second click, or a double click, types in it. What the pointer is over goes up (`lp-hover`) so
+ * the section tree lights its row, and the tree's pointer comes down (`lp-hover-part`) to outline
+ * the part with its name (`lp-names`). Words typed in a part's panel show at once (`lp-text`).
  * Both bridges fill the template's reading meter as the page scrolls (its own script is off).
  * Talks to the editor only through postMessage; the frame has an opaque origin.
  */
@@ -92,6 +97,11 @@ const WRITE_BRIDGE = `(function () {
   var colour = "Highlight", locked = {}, paused = false, busy = [], flash = [], flashTimer = 0;
   var section = null, hoverSection = null, hoverBlock = null, editing = null, saved = "";
   var image = null, hoverImage = null, imageBusy = null;
+  // The section tree (B4.4): the picked line, the names the outline tabs show, what the tree's
+  // pointer is over, and the tabs and the Ask Buddy pill drawn over the page.
+  var pick = null, names = { blocks: {}, images: {}, sections: {} };
+  var outer = { key: null, block: null, image: null }, lastHover = "";
+  var tabPick = null, tabHover = null, pill = null;
   var style = document.createElement("style");
   (document.head || document.documentElement).appendChild(style);
   function send(data) { parent.postMessage(data, "*"); }
@@ -324,8 +334,16 @@ const WRITE_BRIDGE = `(function () {
       "[contenteditable] [data-lp-frag-locked]{text-decoration:underline dotted;text-underline-offset:3px}";
     if (hoverSection && hoverSection !== section)
       css += sel(hoverSection) + "{outline:1.5px dashed " + colour + " !important;outline-offset:-2px !important}";
-    if (section)
+    if (section && !pick && !image)
       css += sel(section) + "{outline:2px solid " + colour + " !important;outline-offset:-2px !important}";
+    if (pick && !editing)
+      css += '[data-lp-block="' + pick + '"]{outline:2px solid ' + colour + " !important;outline-offset:3px !important;border-radius:2px}";
+    if (outer.block && outer.block !== pick)
+      css += '[data-lp-block="' + outer.block + '"]{outline:1.5px dashed ' + colour + " !important;outline-offset:3px !important;border-radius:2px}";
+    if (outer.image && outer.image !== image)
+      css += imgSel(outer.image) + "{outline:1.5px dashed " + colour + " !important;outline-offset:-2px !important}";
+    if (outer.key && !outer.block && !outer.image && outer.key !== section)
+      css += sel(outer.key) + "{outline:1.5px dashed " + colour + " !important;outline-offset:-2px !important}";
     if (hoverBlock && !editing)
       css += '[data-lp-block="' + hoverBlock + '"]:not([data-lp-locked-block]){outline:1.5px dashed ' + colour + " !important;outline-offset:3px !important;border-radius:2px}";
     if (hoverImage && hoverImage !== image)
@@ -344,7 +362,84 @@ const WRITE_BRIDGE = `(function () {
       css += flash.map(blockSel).join(",") + "{animation:lp-flash 1.9s cubic-bezier(.2,.8,0,1) 1;border-radius:3px}" +
         "@keyframes lp-flash{0%{background-color:color-mix(in srgb," + colour + " 22%,transparent);box-shadow:0 0 0 4px color-mix(in srgb," + colour + " 22%,transparent)}100%{background-color:transparent;box-shadow:0 0 0 4px transparent}}";
     style.textContent = css;
+    placeUi();
   }
+  // Outline tabs (Shopify's): the picked part's name (or its section's) at the outline's top left,
+  // and the hovered one's, on the page or from the tree; the Ask Buddy pill under the picked part.
+  var UI_FONT = "500 11px/16px -apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif";
+  function chip() {
+    var el = document.createElement("div");
+    el.setAttribute("data-lp-ui", "tab");
+    el.style.cssText = "position:fixed;z-index:2147483646;pointer-events:none;display:none;color:white;" +
+      "padding:2px 6px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;" +
+      "letter-spacing:0;text-transform:none;font:" + UI_FONT;
+    document.documentElement.appendChild(el);
+    return el;
+  }
+  function makePill() {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("data-lp-ui", "ask");
+    b.textContent = "Ask Buddy";
+    b.style.cssText = "position:fixed;z-index:2147483647;display:none;align-items:center;height:28px;" +
+      "padding:0 12px;border-radius:999px;border:0;background:white;color:black;cursor:pointer;" +
+      "letter-spacing:0;text-transform:none;font:500 12px/16px -apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;" +
+      "box-shadow:0 0 0 0.5px color-mix(in srgb,black 14%,transparent),0 2px 6px color-mix(in srgb,black 12%,transparent)," +
+      "0 10px 24px -8px color-mix(in srgb,black 22%,transparent)";
+    b.addEventListener("click", function (e) {
+      e.preventDefault(); e.stopPropagation(); send({ type: "lp-ask" });
+    });
+    document.documentElement.appendChild(b);
+    return b;
+  }
+  function labelOf(t) {
+    if (t.block) return names.blocks[t.block] || "Text";
+    if (t.image) return names.images[t.image] || "Picture";
+    return names.sections[t.key] || "Section";
+  }
+  function elOf(t) {
+    if (t.block) return document.querySelector(blockSel(t.block));
+    if (t.image) return document.querySelector(imgSel(t.image));
+    return t.key ? document.querySelector(sel(t.key)) : null;
+  }
+  function putTab(tab, t) {
+    var el = t && elOf(t);
+    var r = el && el.getBoundingClientRect();
+    if (!r || r.width === 0 || r.bottom < 0 || r.top > innerHeight) { tab.style.display = "none"; return null; }
+    var off = t.block ? 5 : 0;
+    tab.textContent = labelOf(t);
+    tab.style.background = colour;
+    tab.style.display = "block";
+    var top = r.top - off - 20;
+    if (top < 0) { top = Math.max(0, r.top - off + 2); tab.style.borderRadius = "0 0 4px 0"; }
+    else tab.style.borderRadius = "4px 4px 0 0";
+    tab.style.top = top + "px";
+    tab.style.left = Math.max(0, r.left - off) + "px";
+    return r;
+  }
+  function same(a, b) { return a && b && a.block === b.block && a.image === b.image && (a.block || a.image || a.key === b.key); }
+  function placeUi() {
+    if (!tabPick) { tabPick = chip(); tabHover = chip(); pill = makePill(); }
+    var picked = editing ? null : pick ? { block: pick } : image ? { image: image } : section ? { key: section } : null;
+    var over = editing ? null : hoverBlock ? { block: hoverBlock } : hoverImage ? { image: hoverImage }
+      : outer.block ? { block: outer.block } : outer.image ? { image: outer.image }
+      : outer.key ? { key: outer.key } : hoverSection ? { key: hoverSection } : null;
+    if (same(over, picked)) over = null;
+    var r = putTab(tabPick, picked);
+    putTab(tabHover, over);
+    if (r && picked && (picked.block || picked.image)) {
+      pill.style.display = "flex";
+      var pw = pill.offsetWidth || 92, ph = pill.offsetHeight || 28;
+      var top = r.bottom + 10;
+      if (top + ph > innerHeight - 6) top = Math.max(6, r.top - ph - 28);
+      pill.style.top = top + "px";
+      pill.style.left = Math.min(innerWidth - pw - 10, Math.max(10, r.right - pw)) + "px";
+    } else pill.style.display = "none";
+  }
+  var uiFrame = 0;
+  function placeSoon() { if (uiFrame) return; uiFrame = requestAnimationFrame(function () { uiFrame = 0; if (tabPick) placeUi(); }); }
+  addEventListener("scroll", placeSoon, { passive: true });
+  addEventListener("resize", placeSoon, { passive: true });
   function finish(cancel) {
     if (!editing) return;
     var block = editing;
@@ -377,11 +472,18 @@ const WRITE_BRIDGE = `(function () {
     if (n !== hoverBlock || s !== hoverSection || m !== hoverImage) {
       hoverBlock = n; hoverSection = s; hoverImage = m; paint();
     }
+    var hv = (n || "") + "|" + (m || "") + "|" + (s || "");
+    if (hv !== lastHover) {
+      lastHover = hv;
+      send({ type: "lp-hover", block: n ? Number(n) : null, image: m ? Number(m) : null, key: s });
+    }
   });
   document.documentElement.addEventListener("mouseleave", function () {
     hoverBlock = null; hoverSection = null; hoverImage = null; paint();
+    if (lastHover) { lastHover = ""; send({ type: "lp-hover", block: null, image: null, key: null }); }
   });
   document.addEventListener("click", function (e) {
+    if (e.target && e.target.closest && e.target.closest("[data-lp-ui]")) return;
     var b = closest(e.target, "data-lp-block");
     if (editing && b === editing) return;
     e.preventDefault();
@@ -392,6 +494,7 @@ const WRITE_BRIDGE = `(function () {
     var p = picture(e);
     if (p) {
       finish(false);
+      pick = null;
       if (p.hasAttribute("data-lp-logo")) { send({ type: "lp-logo" }); paint(); return; }
       image = p.getAttribute("data-lp-img");
       send({ type: "lp-image", number: Number(image) });
@@ -399,7 +502,18 @@ const WRITE_BRIDGE = `(function () {
       return;
     }
     if (image) { image = null; send({ type: "lp-image", number: null }); }
-    if (!b) { finish(false); paint(); return; }
+    if (!b) { pick = null; finish(false); paint(); return; }
+    // The first click picks the line (Shopify's: its outline, its name and its panel); a second
+    // click, or a double click, types in it on the page.
+    var n = String(number(b));
+    if (pick !== n && !(e.detail > 1)) {
+      finish(false);
+      pick = n;
+      send({ type: "lp-part", block: number(b) });
+      paint();
+      return;
+    }
+    pick = n;
     if (paused) { finish(false); send({ type: "lp-paused" }); paint(); return; }
     if (locked[number(b)]) { finish(false); send({ type: "lp-locked", block: number(b) }); paint(); return; }
     start(b, e.clientX, e.clientY);
@@ -583,6 +697,26 @@ const WRITE_BRIDGE = `(function () {
       }
     }
     if (d.type === "lp-image-busy") imageBusy = typeof d.number === "number" ? String(d.number) : null;
+    if (d.type === "lp-names") names = { blocks: d.blocks || {}, images: d.images || {}, sections: d.sections || {} };
+    if (d.type === "lp-hover-part") outer = {
+      key: typeof d.key === "string" ? d.key : null,
+      block: typeof d.block === "number" ? String(d.block) : null,
+      image: typeof d.image === "number" ? String(d.image) : null,
+    };
+    if (d.type === "lp-part-select") {
+      pick = typeof d.block === "number" ? String(d.block) : null;
+      var line = pick && document.querySelector(blockSel(pick));
+      if (line && d.scroll) {
+        stopPlacing();
+        var lr = line.getBoundingClientRect();
+        if (lr.top < 40 || lr.bottom > innerHeight - 90)
+          scrollTo({ top: lr.top + scrollY - innerHeight * 0.3, behavior: "smooth" });
+      }
+    }
+    if (d.type === "lp-text" && typeof d.block === "number" && typeof d.text === "string") {
+      var typed = document.querySelector(blockSel(d.block));
+      if (typed && typed !== editing) typed.textContent = d.text;
+    }
     if (d.type === "lp-image-select") {
       image = typeof d.number === "number" ? String(d.number) : null;
       var pic = image && document.querySelector(imgSel(image));

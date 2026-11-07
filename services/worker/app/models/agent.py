@@ -15,6 +15,17 @@ MAX_IMAGES = 3
 MAX_IMAGE_BYTES = 3_000_000
 
 
+class AgentPart(BaseModel):
+    """One part of a section a request is about (B4.4, D123), as the page editor's tree names it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["text", "image", "media"]
+    name: str = Field(min_length=1, max_length=120)  # "Paragraph — Most cocktail nights…"
+    line: int | None = Field(default=None, ge=1)
+    image: int | None = Field(default=None, ge=1)
+
+
 class AgentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -23,6 +34,8 @@ class AgentRequest(BaseModel):
     text: str = Field(min_length=1, max_length=REQUEST_MAX)
     # The section the request is about (the composer's chip), or None for the whole page.
     target_key: str | None = Field(default=None, max_length=100)
+    # One part of that section (B4.4, D123): a text line, a picture or a video.
+    target_part: AgentPart | None = None
     # The conversation to continue; None starts a new one.
     thread_id: UUID | None = None
     # Pictures for reference (B3.1d): data URLs (PNG, JPEG or WebP), up to three.
@@ -32,6 +45,7 @@ class AgentRequest(BaseModel):
 class AgentTarget(BaseModel):
     key: str
     label: str
+    part: AgentPart | None = None
 
 
 class AgentStart(BaseModel):

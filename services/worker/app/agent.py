@@ -1196,13 +1196,21 @@ def start(org_id: UUID, build_id: UUID, user_id: UUID | None, request: AgentRequ
     with transaction() as conn:
         build = desk._load(conn, org_id, build_id, lock=True)
         desk._check(conn, build, request.base_version)
-        target: dict[str, str] | None = None
+        target: dict[str, Any] | None = None
         if request.target_key:
-            layout = desk._layout(desk._rules(conn, build["template_id"]), desk._page(build))
+            layout = desk._layout(desk._rules_of(conn, build), desk._page(build))
             section = next((s for s in layout if s.key == request.target_key), None)
             if section is None:
                 raise desk.DeskEditError("That section isn't on the page any more.")
             target = {"key": section.key, "label": section.label}
+            part = request.target_part
+            if part is not None:
+                if part.kind == "text" and not any(
+                    p.number == part.line and p.section == section.key
+                    for p in paragraphs.paragraphs(desk._page(build))
+                ):
+                    raise desk.DeskEditError("That line isn't on the page any more.")
+                target["part"] = part.model_dump(exclude_none=True)
         images = store_images(org_id, build_id, request.images)
         thread_id = request.thread_id or uuid4()
         if request.thread_id:
@@ -1471,7 +1479,10 @@ def history(build_id: UUID, thread_id: UUID, before: UUID) -> list[dict[str, Any
     for row in rows[-HISTORY_TURNS * 2 :]:
         content = row["content"] or {}
         if row["role"] == "user":
-            target = (content.get("target") or {}).get("label")
+            about = content.get("target") or {}
+            target = about.get("label")
+            if target and isinstance(about.get("part"), dict):
+                target = f"{about['part'].get('name', 'a part')} in {target}"
             text = f"{content.get('text', '')}" + (f"\n(About: {target})" if target else "")
             if content.get("images"):
                 text += f"\n(With {plural(len(content['images']), 'picture')} attached.)"

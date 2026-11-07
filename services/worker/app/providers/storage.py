@@ -3,6 +3,7 @@ images and fonts are stored once per org, deduplicated by content hash (BUILD_SP
 
 import hashlib
 import io
+import threading
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -35,9 +36,28 @@ class StorageError(RuntimeError):
 TIMEOUT = httpx.Timeout(15.0, read=120.0, write=300.0)
 
 
+# One client for the whole process (B4.5, D124): it keeps its connections to storage open, so a
+# request doesn't open a new secure connection each time (0.3 to 1 s each from far away, a few ms
+# beside the database). httpx's client is safe to share between the worker's threads.
+_client: httpx.Client | None = None
+_client_lock = threading.Lock()
+
+
+def _http() -> httpx.Client:
+    global _client
+    if _client is None:
+        with _client_lock:
+            if _client is None:
+                _client = httpx.Client(
+                    timeout=TIMEOUT,
+                    limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+                )
+    return _client
+
+
 def _send(method: str, url: str, action: str, **kwargs: Any) -> httpx.Response:
     try:
-        response = httpx.request(method, url, timeout=TIMEOUT, **kwargs)
+        response = _http().request(method, url, **kwargs)
     except httpx.TimeoutException as exc:
         raise StorageError(f"Storage {action} timed out.") from exc
     except httpx.HTTPError as exc:

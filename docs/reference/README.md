@@ -9,3 +9,8 @@ in this project — see CLAUDE.md §3 and docs/DECISIONS.md D3, D8, D9, D10.
 
 If this document and docs/BUILD_SPEC.md disagree, BUILD_SPEC.md wins.
 Never edit this file.
+
+## Studies of other products
+
+- `sidekick-study.md`: Shopify Sidekick and other composers, for Buddy (the page editor's composer).
+- `shopify-editor-study.md`: Shopify's theme editor (its section tree, selecting and editing a block), from the owner's recording, for LP's section tree.

@@ -10,6 +10,7 @@ import {
   type AgentChange,
   type AgentFeedback,
   type AgentMessage,
+  type AgentPart,
   type AgentReply,
   type AgentStep,
   agentEventSchema,
@@ -17,8 +18,13 @@ import {
 } from "@/lib/validators/agent";
 import type { DeskParagraph, DeskSection } from "@/lib/validators/desk";
 
-/** What a request is about: a section of the page, or the whole page (null). */
-export type LanderTarget = { key: string; label: string } | null;
+/** What a request is about: a section of the page, one part of a section (B4.4, D123: a line, a
+ * picture or a video, as the section tree names it), or the whole page (null). */
+export type LanderTarget = {
+  key: string;
+  label: string;
+  part?: AgentPart | null;
+} | null;
 
 /** A request and what Lander did with it. */
 export type LanderTurn = {
@@ -48,7 +54,15 @@ export type TurnState = "starting" | "working" | "done" | "stopped" | "failed";
 export const REQUEST_MAX = AGENT_REQUEST_MAX;
 
 export function targetName(target: LanderTarget): string {
-  return target ? target.label : "the page";
+  if (!target) return "the page";
+  return target.part ? `${target.part.name} in ${target.label}` : target.label;
+}
+
+/** A part's name as the tree and Buddy's chip show it: "Paragraph — Most cocktail nights…". */
+export function partName(part: { name: string; excerpt?: string }): string {
+  const words = (part.excerpt ?? "").trim();
+  if (!words) return part.name;
+  return `${part.name} — ${words.length > 28 ? `${words.slice(0, 28).trimEnd()}…` : words}`;
 }
 
 export function plural(count: number, word: string): string {

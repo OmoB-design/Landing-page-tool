@@ -2,16 +2,15 @@
 
 import Link from "next/link";
 
-import { ShortcutButton } from "@/components/app/shortcut-button";
+import { HistoryButtons } from "@/components/app/history-buttons";
 import { TruncatedTitle } from "@/components/app/truncated-title";
 import { Button } from "@/components/ui/button";
 import { MorphText } from "@/components/ui/text-morph";
-import { SectionsCloseIcon, SectionsOpenIcon } from "@/components/ui/icons";
 import { ViewportSwitch } from "@/components/app/viewport-switch";
 import {
-  BackArrowFigmaIcon,
-  RedoFigmaIcon,
-  UndoFigmaIcon,
+  ExitIcon,
+  PageFileIcon,
+  SectionsNavIcon,
 } from "@/components/ui/lp-icons";
 import {
   Tooltip,
@@ -23,12 +22,15 @@ import { cn } from "@/lib/utils";
 import { DESKTOP_WIDTH, type Viewport } from "./page-canvas";
 
 /**
- * The page editor's top bar (B3.1b, D105; as the template editor's): back to the review desk, the
- * page's name and its save status on the left; Sections (opens the section list), Desktop / Phone,
- * the zoom when the page is zoomed out to fit (Desktop keeps a 1280 px layout), then Undo and Redo
- * on the right. The save status morphs (torph) between "Saving…", "Updating the page…" (the canvas
- * loading the newer page behind the one shown) and "Saved · version N", its number rolling; the
- * hint says the page can be typed in (or that it waits while Lander rewrites).
+ * The page editor's top bar (B3.1b, D105; laid out as Shopify's theme editor, owner 2026-11-06):
+ * on the left the way back to the review desk (the owner's exit icon) and Sections (opens the
+ * section list), with the typing hint on wide screens; in the middle the page icon, the page's
+ * name (cut short, the whole name in a tooltip), a divider and the save status; on the right
+ * Desktop / Phone, the zoom when the page is zoomed out to fit (Desktop keeps a 1280 px layout),
+ * then Undo and Redo (Shopify's pill, icons only). The two sides share the width equally so the
+ * middle stays centred. The save status morphs (torph) between "Saving…", "Updating the page…"
+ * (the canvas loading the newer page behind the one shown) and "Saved · version N", its number
+ * rolling.
  */
 export function EditorTopBar({
   build,
@@ -62,46 +64,23 @@ export function EditorTopBar({
   onUndo: () => void;
   onRedo: () => void;
 }) {
-  const SectionsIcon = sectionsOpen ? SectionsCloseIcon : SectionsOpenIcon;
   const status = saving ? "saving" : updating ? "updating" : "saved";
   return (
     <header className="flex h-topbar shrink-0 items-center gap-3 bg-surface-primary px-3 divider-b-half sm:px-4">
-      <Button variant="ghost" size="icon-sm" asChild>
-        <Link href={`/pages/${build.id}`} aria-label="Back to the review desk">
-          <BackArrowFigmaIcon aria-hidden className="text-icon-nav-active" />
-        </Link>
-      </Button>
-      <TruncatedTitle className="text-type-body-small font-medium">
-        {`${build.key} · ${build.title}`}
-      </TruncatedTitle>
-      <p
-        role="status"
-        className="hidden shrink-0 items-center gap-1.5 text-type-caption-1 text-highlight-yellow-500 sm:flex"
-      >
-        <span
-          aria-hidden
-          className={cn(
-            "size-1.5 rounded-full bg-highlight-yellow-500 transition-opacity duration-300",
-            status !== "saved" &&
-              "animate-live-pulse motion-reduce:animate-none",
-          )}
-        />
-        <span className="relative inline-grid">
-          <MorphText className="whitespace-nowrap">
-            {status === "saving"
-              ? "Saving…"
-              : status === "updating"
-                ? "Updating the page…"
-                : `Saved · version ${version}`}
-          </MorphText>
-        </span>
-      </p>
-      <p className="hidden min-w-0 truncate text-type-caption-1 text-sub-text 2xl:block">
-        {rewriting
-          ? "Buddy is rewriting: typing waits"
-          : "Click any line to type in it"}
-      </p>
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="flex min-w-0 flex-1 basis-0 items-center gap-1.5">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-sm" asChild>
+              <Link
+                href={`/pages/${build.id}`}
+                aria-label="Back to the review desk"
+              >
+                <ExitIcon aria-hidden className="text-icon-nav-active" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Back to the review desk</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -111,7 +90,7 @@ export function EditorTopBar({
               onClick={onToggleSections}
               className="gap-1.5 text-sub-text aria-pressed:bg-foreground-02 aria-pressed:text-body"
             >
-              <SectionsIcon aria-hidden className="size-4 text-icon-system" />
+              <SectionsNavIcon aria-hidden className="text-icon-system" />
               <span className="sr-only lg:not-sr-only">Sections</span>
             </Button>
           </TooltipTrigger>
@@ -119,6 +98,42 @@ export function EditorTopBar({
             {sectionsOpen ? "Hide sections" : "Show sections"}
           </TooltipContent>
         </Tooltip>
+        <p className="hidden min-w-0 truncate pl-1.5 text-type-caption-1 text-sub-text 2xl:block">
+          {rewriting
+            ? "Buddy is rewriting: typing waits"
+            : "Click any line to type in it"}
+        </p>
+      </div>
+      <div className="flex min-w-0 shrink items-center gap-2">
+        <PageFileIcon aria-hidden className="shrink-0 text-icon-nav-active" />
+        <TruncatedTitle className="max-w-40 text-type-body-small font-medium xl:max-w-48">
+          {build.title}
+        </TruncatedTitle>
+        <span aria-hidden className="hidden header-divider sm:block" />
+        <p
+          role="status"
+          className="hidden shrink-0 items-center gap-1.5 text-type-caption-1 text-highlight-yellow-500 sm:flex"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "size-1.5 rounded-full bg-highlight-yellow-500 transition-opacity duration-300",
+              status !== "saved" &&
+                "animate-live-pulse motion-reduce:animate-none",
+            )}
+          />
+          <span className="relative inline-grid">
+            <MorphText className="whitespace-nowrap">
+              {status === "saving"
+                ? "Saving…"
+                : status === "updating"
+                  ? "Updating the page…"
+                  : `Saved · version ${version}`}
+            </MorphText>
+          </span>
+        </p>
+      </div>
+      <div className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-1.5">
         <ViewportSwitch value={viewport} onChange={onViewport} />
         {zoom < 0.995 ? (
           <Tooltip>
@@ -138,22 +153,12 @@ export function EditorTopBar({
           </Tooltip>
         ) : null}
         <span aria-hidden className="mx-0.5 h-5 w-px bg-stroke" />
-        <ShortcutButton
-          label="Undo"
-          shortcut="⌘Z"
-          disabled={!canUndo}
-          onClick={onUndo}
-        >
-          <UndoFigmaIcon aria-hidden className="size-3.5 text-icon-system" />
-        </ShortcutButton>
-        <ShortcutButton
-          label="Redo"
-          shortcut="⇧⌘Z"
-          disabled={!canRedo}
-          onClick={onRedo}
-        >
-          <RedoFigmaIcon aria-hidden className="size-4 text-icon-system" />
-        </ShortcutButton>
+        <HistoryButtons
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
+        />
       </div>
     </header>
   );

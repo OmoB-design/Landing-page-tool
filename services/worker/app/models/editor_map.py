@@ -1,6 +1,7 @@
 """The editor map (B4.1, D120): how a page divides into Shopify sections and which of its texts and
 images become blocks people can edit in Shopify's theme editor (M4, BUILD_SPEC §12.6)."""
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -38,6 +39,26 @@ class RoleRule(BaseModel):
     role: str
 
 
+class LayoutCheck(BaseModel):
+    """The layout check's last result for a template (B4.3, D122): Shopify's render of its page
+    compared with the page in a browser at desktop, tablet and phone, and how the page had to be
+    split into Shopify sections to match."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    version: int  # the template version checked
+    checked_at: datetime
+    matched: bool
+    # "sections": one Shopify section per LP section; "grouped": parts side by side or sticky kept
+    # together in one; "coarse": the whole page in one section (its parts still editable).
+    mode: Literal["sections", "grouped", "coarse"]
+    sections: int
+    kept_together: list[str] = Field(default_factory=list)
+    # desktop / tablet / phone → matched there
+    widths: dict[str, bool] = Field(default_factory=dict)
+    differences: list[str] = Field(default_factory=list)
+
+
 class EditorMap(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -50,6 +71,8 @@ class EditorMap(BaseModel):
     # Parts of the page kept exactly as they are (nothing inside becomes a block), set by hand; the
     # built-in ones (dropdowns, canvases, `data-lp-static`) always apply too.
     keep_whole: list[str] = Field(default_factory=list)
+    # The last layout check (B4.3), kept with the map; None until one has run.
+    layout: LayoutCheck | None = None
 
 
 class MapOverrides(BaseModel):
@@ -95,9 +118,7 @@ class SectionPlan(BaseModel):
     loose: bool = False
     # Texts and images in this section that can't be edited in Shopify (inside a part kept whole).
     static: int = 0
-    # Shopify sections it makes: one for each 600 blocks.
-    parts: int = 1
-    # Past Shopify's 24 sections, the rest of the page goes into the last one (still editable).
+    # Past Shopify's 25 sections, the rest of the page goes into the last one (still editable).
     merged_into: str | None = None
 
 
@@ -139,3 +160,44 @@ class MapReport(BaseModel):
     unclear: int
     issues: list[MapIssue]
     ready: bool
+    # The last layout check (B4.3, D122), and whether the page has changed since.
+    layout: LayoutCheck | None = None
+    layout_stale: bool = False
+
+
+# ── The page editor's section tree (B4.4, D123) ─────────────────────────────
+
+
+PartKind = Literal["text", "image", "media"]
+
+
+class MapPart(BaseModel):
+    """One part of a section as the page editor's tree lists it, named as Shopify's theme editor
+    names its block: a text (its editor line), a picture (its `data-lp-img` number) or a video,
+    embed or sound."""
+
+    kind: PartKind
+    name: str  # "Paragraph", "Headline", "Button", "Scene picture", "Video"
+    role: str
+    excerpt: str = ""  # the start of its words, a picture's alt text, a video's address
+    line: int | None = None
+    image: int | None = None
+    # A picture's address, for its thumbnail in the tree (Shopify's shows one); web addresses only.
+    thumb: str = ""
+    # Hidden on the page (B4.4, Shopify's eye).
+    hidden: bool = False
+
+
+class SectionParts(BaseModel):
+    key: str
+    name: str
+    # Parts outside the marked sections, gathered into a section of their own (as in Shopify).
+    loose: bool = False
+    parts: list[MapPart]
+
+
+class PageParts(BaseModel):
+    """GET /builds/{id}/parts: each section's parts for the page version shown."""
+
+    version: int
+    sections: list[SectionParts]

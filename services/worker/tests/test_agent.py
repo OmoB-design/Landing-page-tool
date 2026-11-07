@@ -703,3 +703,41 @@ def test_restore_page_to_before_a_request(
     assert restore(first["message_id"], version + 5, str(other_org)).status_code == 403
     assert restore(str(uuid.uuid4()), version + 5).status_code == 404
     assert restore(first["message_id"], 1).status_code == 409
+
+
+@needs_db
+def test_a_request_about_one_part_changes_only_that_part(
+    client: TestClient, user: DbUser, finished: dict[str, Any]
+) -> None:
+    """Buddy on one part (B4.4, D123): the tree lists the hero's parts with the editor's line
+    numbers; a request about one line is about that line only, and the conversation keeps it."""
+    state = desk(client, user, finished)
+    version = state["build"]["page_version"]
+    listed = client.get(
+        f"/builds/{finished['id']}/parts",
+        params={"org_id": finished["org_id"]},
+        headers=bearer(user),
+    )
+    assert listed.status_code == 200, listed.text
+    body = listed.json()
+    assert body["version"] == version
+    hero = next(s for s in body["sections"] if s["key"] == "hero")
+    texts = [p for p in hero["parts"] if p["kind"] == "text"]
+    numbers = {p["number"]: p for p in state["paragraphs"]}
+    assert all(numbers[p["line"]]["section"] == "hero" for p in texts)
+    chosen = next(p for p in texts[1:] if not numbers[p["line"]]["locked"])
+    part = {"kind": "text", "name": f"{chosen['name']} — {chosen['excerpt'][:20]}"}
+
+    gone = ask(client, user, finished, version, "Shorter", target_key="hero",
+               target_part={**part, "line": 9999})  # fmt: skip
+    assert gone.status_code == 422 and "isn't on the page" in gone.json()["detail"]
+
+    started = ask(client, user, finished, version, "Shorter", target_key="hero",
+                  target_part={**part, "line": chosen["line"]})  # fmt: skip
+    assert started.status_code == 200, started.text
+    assert run_agent()["status"] == "succeeded"
+    after = {p["number"]: p for p in desk(client, user, finished)["paragraphs"]}
+    changed = [n for n, p in after.items() if p["text"] != numbers[n]["text"]]
+    assert changed == [chosen["line"]]  # mock mode rewrote the chosen line, nothing else
+    request, _ = conversation(client, user, finished)["messages"]
+    assert request["content"]["target"]["part"]["line"] == chosen["line"]

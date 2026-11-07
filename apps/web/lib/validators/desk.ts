@@ -95,6 +95,8 @@ export const deskStateSchema = z.object({
         duplicable: z.boolean(),
         /** Sections in different parts of the page can't swap places. */
         group: z.number().int().catch(0),
+        /** Hidden (B4.4, Shopify's eye): in the page, but not showing. */
+        hidden: z.boolean().catch(false),
       }),
     )
     .catch([]),
@@ -192,6 +194,14 @@ export const deskActionSchemas = {
       }),
       z.object({ type: z.literal("remove"), key: z.string().max(100) }),
       z.object({ type: z.literal("duplicate"), key: z.string().max(100) }),
+      /** Hide or show a section, a line or a picture (B4.4, Shopify's eye). */
+      z.object({
+        type: z.literal("hide"),
+        hidden: z.boolean(),
+        key: z.string().max(100).optional(),
+        block: z.number().int().min(1).optional(),
+        image: z.number().int().min(1).optional(),
+      }),
     ]),
   }),
 } as const;
@@ -205,3 +215,31 @@ export type DeskAction = keyof typeof deskActionSchemas;
 export function isDeskAction(value: string): value is DeskAction {
   return Object.hasOwn(deskActionSchemas, value);
 }
+
+/** One part of a section in the page editor's tree (B4.4, D123), named as Shopify names it. */
+export const mapPartSchema = z.object({
+  kind: z.enum(["text", "image", "media"]),
+  name: z.string(),
+  role: z.string(),
+  excerpt: z.string().default(""),
+  line: z.number().int().nullable().default(null),
+  image: z.number().int().nullable().default(null),
+  /** A picture's address, for its thumbnail in the tree. */
+  thumb: z.string().default(""),
+  /** Hidden on the page (B4.4, Shopify's eye). */
+  hidden: z.boolean().default(false),
+});
+export type MapPart = z.infer<typeof mapPartSchema>;
+
+export const pagePartsSchema = z.object({
+  version: z.number().int(),
+  sections: z.array(
+    z.object({
+      key: z.string(),
+      name: z.string(),
+      loose: z.boolean().default(false),
+      parts: z.array(mapPartSchema),
+    }),
+  ),
+});
+export type PageParts = z.infer<typeof pagePartsSchema>;

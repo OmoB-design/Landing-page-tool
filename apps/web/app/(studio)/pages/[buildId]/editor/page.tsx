@@ -48,6 +48,7 @@ async function Editor({ params }: { params: Promise<{ buildId: string }> }) {
       meId={user.id}
       initial={desk}
       quietRedrafts
+      refreshRoute={false}
     >
       <PageEditor
         build={{

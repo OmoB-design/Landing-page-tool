@@ -25,7 +25,7 @@ from app.models.publishing import (
     VercelConnection,
     VercelProject,
 )
-from app.providers import shopify
+from app.providers import shopify, shopify_cli
 from app.providers.vercel import VercelClient, VercelError
 from app.publish import gate
 
@@ -77,7 +77,8 @@ def integrations_state(org_id: UUID, user_id: UUID) -> IntegrationsState:
         role = _role(conn, org_id, user_id)
         stores = conn.execute(
             """
-            select s.brand_id, b.name as brand_name, s.shop_domain, s.connected_at, s.scopes
+            select s.brand_id, b.name as brand_name, s.shop_domain, s.connected_at, s.scopes,
+                   s.theme_secret_id, s.theme_last4
             from store_connections s join brands b on b.id = s.brand_id
             where s.org_id = %(o)s and s.status = 'connected' order by b.name
             """,
@@ -106,6 +107,8 @@ def integrations_state(org_id: UUID, user_id: UUID) -> IntegrationsState:
                 shop_domain=r["shop_domain"],
                 connected_at=r["connected_at"],
                 missing_scopes=shopify.missing_scopes(r["scopes"] or ""),
+                theme_access=r["theme_secret_id"] is not None,
+                theme_last4=r["theme_last4"],
             )
             for r in stores
         ],
@@ -233,11 +236,68 @@ def disconnect_shopify(org_id: UUID, brand_id: UUID) -> None:
     with transaction() as conn:
         row = conn.execute(
             "delete from store_connections where brand_id = %(b)s and org_id = %(o)s "
-            "returning vault_secret_id",
+            "returning vault_secret_id, theme_secret_id",
             {"b": brand_id, "o": org_id},
         ).fetchone()
         if row:
             vault.remove(conn, row["vault_secret_id"])
+            if row["theme_secret_id"]:
+                vault.remove(conn, row["theme_secret_id"])
+
+
+def theme_live(shop: str, password: str) -> dict[str, Any]:
+    """The store's live theme through its Theme Access password (tests replace it)."""
+    return shopify_cli.live_theme(shop, password)
+
+
+def set_theme_access(org_id: UUID, brand_id: UUID, password: str) -> None:
+    """Checks a store's Theme Access password with Shopify (it must list the store's themes), then
+    keeps it in Vault (B4.2, D121): with it, pages can go to Shopify as editable sections."""
+    with transaction() as conn:
+        store = conn.execute(
+            "select shop_domain, theme_secret_id from store_connections "
+            "where brand_id = %(b)s and org_id = %(o)s and status = 'connected'",
+            {"b": brand_id, "o": org_id},
+        ).fetchone()
+    if store is None:
+        raise PublishNotFoundError
+    clean = password.strip()
+    if not clean.startswith("shptka_"):
+        raise PublishError(
+            "That isn't a Theme Access password: they start with shptka_. Copy it from the email "
+            "the Theme Access app sent."
+        )
+    try:
+        theme_live(store["shop_domain"], clean)
+    except shopify_cli.ThemeAccessError as exc:
+        raise PublishError(exc.message) from exc
+    with transaction() as conn:
+        secret_id = vault.store(conn, clean, label=f"shopify-theme:{brand_id}")
+        conn.execute(
+            "update store_connections set theme_secret_id = %(s)s, theme_last4 = %(l)s "
+            "where brand_id = %(b)s and org_id = %(o)s",
+            {"s": secret_id, "l": vault.last4(clean), "b": brand_id, "o": org_id},
+        )
+        if store["theme_secret_id"]:
+            vault.remove(conn, store["theme_secret_id"])
+
+
+def remove_theme_access(org_id: UUID, brand_id: UUID) -> None:
+    with transaction() as conn:
+        row = conn.execute(
+            "select theme_secret_id from store_connections "
+            "where brand_id = %(b)s and org_id = %(o)s",
+            {"b": brand_id, "o": org_id},
+        ).fetchone()
+        if row is None:
+            raise PublishNotFoundError
+        conn.execute(
+            "update store_connections set theme_secret_id = null, theme_last4 = null "
+            "where brand_id = %(b)s and org_id = %(o)s",
+            {"b": brand_id, "o": org_id},
+        )
+        if row["theme_secret_id"]:
+            vault.remove(conn, row["theme_secret_id"])
 
 
 def set_testing_switch(org_id: UUID, allow: bool) -> None:
@@ -300,6 +360,8 @@ def _publication(row: dict[str, Any]) -> Publication:
         seconds=details.get("seconds"),
         admin_url=row.get("admin_url"),
         full_width=_full_width(row["destination"], details),
+        version=row.get("version"),
+        editor_url=row.get("editor_url"),
     )
 
 
@@ -320,8 +382,8 @@ def publishing_state(org_id: UUID, build_id: UUID) -> PublishingState:
             dict(r)
             for r in conn.execute(
                 """
-                select id, destination, status, url, admin_url, created_at, created_by,
-                       gate_overridden, override_reasons, details, job_id
+                select id, destination, status, url, admin_url, editor_url, version, created_at,
+                       created_by, gate_overridden, override_reasons, details, job_id
                 from publications where build_id = %(b)s and org_id = %(o)s
                 order by created_at desc limit 50
                 """,
@@ -332,11 +394,15 @@ def publishing_state(org_id: UUID, build_id: UUID) -> PublishingState:
             "select 1 from integrations where org_id = %(o)s and kind = 'vercel'", {"o": org_id}
         ).fetchone()
         store = conn.execute(
-            "select shop_domain from store_connections where brand_id = %(b)s and org_id = %(o)s "
-            "and status = 'connected'",
+            "select shop_domain, theme_secret_id from store_connections "
+            "where brand_id = %(b)s and org_id = %(o)s and status = 'connected'",
             {"b": build["brand_id"], "o": org_id},
         ).fetchone()
     running = next((r for r in rows if r["status"] == "pending"), None)
+    editable = next(
+        (r for r in rows if r["destination"] == "shopify_editable" and r["status"] == "succeeded"),
+        None,
+    )
     # Live on Vercel: the newest Vercel publication that finished is a publish, not an unpublish.
     finished = next(
         (
@@ -374,7 +440,16 @@ def publishing_state(org_id: UUID, build_id: UUID) -> PublishingState:
         publications=[_publication(r) for r in rows],
         shopify_domain=store["shop_domain"] if store else None,
         shopify_draft=_publication(draft) if draft else None,
+        shopify_theme_access=bool(store and store["theme_secret_id"]),
+        shopify_editable=_publication(editable) if editable else None,
     )
+
+
+PUBLISH_KINDS = {
+    "vercel": "publish_vercel",
+    "shopify_page": "publish_shopify_page",
+    "shopify_editable": "publish_shopify_editable",
+}
 
 
 def start_publish(
@@ -393,13 +468,18 @@ def start_publish(
             raise PublishConflictError
         if build["status"] not in PUBLISHABLE:
             raise PublishError("Approve the page before publishing it.")
-        if destination == "shopify_page":
-            if not conn.execute(
-                "select 1 from store_connections where brand_id = %(b)s and org_id = %(o)s "
-                "and status = 'connected'",
+        if destination in ("shopify_page", "shopify_editable"):
+            store = conn.execute(
+                "select theme_secret_id from store_connections where brand_id = %(b)s "
+                "and org_id = %(o)s and status = 'connected'",
                 {"b": build["brand_id"], "o": org_id},
-            ).fetchone():
+            ).fetchone()
+            if store is None:
                 raise PublishError("Connect this brand's Shopify store first.")
+            if destination == "shopify_editable" and not store["theme_secret_id"]:
+                raise PublishError(
+                    "Add the store's Theme Access password in Settings → Connections first."
+                )
         elif not conn.execute(
             "select 1 from integrations where org_id = %(o)s and kind = 'vercel'", {"o": org_id}
         ).fetchone():
@@ -425,7 +505,7 @@ def start_publish(
         try:
             job, _ = queue.enqueue(
                 org_id=org_id,
-                kind="publish_shopify_page" if destination == "shopify_page" else "publish_vercel",
+                kind=PUBLISH_KINDS[destination],
                 payload={
                     "build_id": str(build_id),
                     "publication_id": str(row["id"]),

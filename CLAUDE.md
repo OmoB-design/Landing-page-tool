@@ -217,6 +217,11 @@ uv run python -m app.cli.seed_library [slug] [--no-thumbnails]
 uv run python -m app.cli.editor_map [slug|id ...] [--write]
                                                    # Shopify editor maps (B4.1, D120): the dry run per template (sections,
                                                    # editable texts and pictures, issues); --write saves each map
+uv run python -m app.cli.shopify_check [slug|id ...] [--write]
+                                                   # layout check (B4.3, D122): each template's Shopify render vs the
+                                                   # page at desktop/tablet/phone, and how it was split; --write keeps it
+npm install -g @shopify/cli@4.9.4                  # once per machine, for publishing editable pages to Shopify locally
+                                                   # (B4.2, D121; the worker image has it); uses the store's Theme Access password
 uv run python -m app.cli.import_template <url> <slug> --type <type> --name "<name>"
                                                    # import a live site as a draft library template (template-onboarding skill)
 uv run python -m app.cli.smoke_build --email <you> --brand <name> [--product <name|handle>] [--template <slug>]

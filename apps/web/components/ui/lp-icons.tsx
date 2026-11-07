@@ -2585,3 +2585,155 @@ export function GripDotsIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+/** A section of the page (owner's icon, 2026-11-06): Buddy's chip for what a request is about.
+ * Drawn in the text colour so it follows light and dark. */
+export function SectionChipIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 12 12" fill="none" {...props}>
+      <line
+        x1="1.75"
+        y1=".75"
+        x2="10.25"
+        y2=".75"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      <line
+        x1="1.75"
+        y1="11.25"
+        x2="10.25"
+        y2="11.25"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+      <rect
+        x="3.75"
+        y=".75"
+        width="4.5"
+        height="10.5"
+        rx="1"
+        ry="1"
+        transform="translate(12) rotate(90)"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
+
+/** Exit (the owner's, 2026-11-06): an arrow leaving a door; the page editor's way back. Drawn
+ * with the margin and line of the lucide icons beside it (about 13 px of drawing in 16 px, a
+ * 1.33 px line: the owner's 1.5 stroke made 20 % thinner). */
+export function ExitIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="-1.2 -1.2 14.4 14.4"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <line x1="1" y1="6" x2="7" y2="6" />
+        <polyline points="3.25 3.5 .75 6 3.25 8.5" />
+        <path d="m6.75,11.25h2.5c1.105,0,2-.895,2-2V2.75c0-1.105-.895-2-2-2h-2.5" />
+      </g>
+    </svg>
+  );
+}
+
+/** A page with a folded corner (the owner's, 2026-11-06): beside the page's name in the editor's
+ * top bar, as Shopify's theme editor shows its template. */
+export function PageFileIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M15.16,6.25h-3.41c-.552,0-1-.448-1-1V1.852" />
+        <path d="M2.75,14.25V3.75c0-1.105,.895-2,2-2h5.586c.265,0,.52,.105,.707,.293l3.914,3.914c.188,.188,.293,.442,.293,.707v7.586c0,1.105-.895,2-2,2H4.75c-1.105,0-2-.895-2-2Z" />
+      </g>
+    </svg>
+  );
+}
+
+/** Sections (the owner's, 2026-11-06): the page editor's top bar button that opens the section
+ * list. Drawn with the margin and line of the icons beside it (as ExitIcon). */
+export function SectionsNavIcon(props: IconProps) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="-1.2 -1.2 14.4 14.4"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M6 1.25V10.75" />
+        <path d="M1.25 1.25C2.355 1.25 3.25 2.145 3.25 3.25V8.75C3.25 9.855 2.355 10.75 1.25 10.75" />
+        <path d="M10.75 1.25C9.645 1.25 8.75 2.145 8.75 3.25V8.75C8.75 9.855 9.645 10.75 10.75 10.75" />
+      </g>
+    </svg>
+  );
+}
+
+/** A section (the owner's, 2026-11-07): two brackets with a dotted line between; the section
+ * tree's rows and a section's panel. */
+export function SectionIcon(props: IconProps) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden
+      {...props}
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="m2.75,2.25v1.5c0,1.105.895,2,2,2h8.5c1.105,0,2-.895,2-2v-1.5" />
+        <path d="m2.75,15.75v-1.5c0-1.105.895-2,2-2h8.5c1.105,0,2,.895,2,2v1.5" />
+      </g>
+      <g fill="currentColor">
+        <circle cx="2.75" cy="9" r=".75" />
+        <circle cx="5.875" cy="9" r=".75" />
+        <circle cx="9" cy="9" r=".75" />
+        <circle cx="12.125" cy="9" r=".75" />
+        <circle cx="15.25" cy="9" r=".75" />
+      </g>
+    </svg>
+  );
+}

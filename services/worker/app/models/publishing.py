@@ -31,6 +31,10 @@ class ShopifyStore(BaseModel):
     connected_at: datetime | None
     # Scopes the app was granted that publishing needs but lacks (empty when all there).
     missing_scopes: list[str] = []
+    # The store's Theme Access password (B4.2, D121): set, and its last four characters. With it
+    # pages can go to Shopify as editable sections.
+    theme_access: bool = False
+    theme_last4: str | None = None
 
 
 class IntegrationsState(BaseModel):
@@ -58,6 +62,16 @@ class ShopifyConnectRequest(BaseModel):
     shop_domain: str = Field(min_length=3, max_length=120)
     client_id: str = Field(min_length=10, max_length=200)
     client_secret: str = Field(min_length=10, max_length=300)
+
+
+class ThemeAccessRequest(BaseModel):
+    """A store's Theme Access password (B4.2, D121), from Shopify's free Theme Access app."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    brand_id: UUID
+    password: str = Field(min_length=10, max_length=200)
 
 
 class TestingSwitchRequest(BaseModel):
@@ -93,6 +107,9 @@ class Publication(BaseModel):
     # (False: the theme's own page layout, until the template is added to the theme).
     admin_url: str | None = None
     full_width: bool | None = None
+    # An editable draft (B4.2, D121): its version and the theme editor on it.
+    version: int | None = None
+    editor_url: str | None = None
 
 
 class PublishingState(BaseModel):
@@ -111,6 +128,10 @@ class PublishingState(BaseModel):
     # The brand's Shopify store, if connected, and the newest draft made there (D90).
     shopify_domain: str | None = None
     shopify_draft: Publication | None = None
+    # The store has a Theme Access password: pages can go as editable sections (B4.2, D121).
+    shopify_theme_access: bool = False
+    # The newest editable draft (B4.2).
+    shopify_editable: Publication | None = None
 
 
 class PublishRequest(BaseModel):
@@ -118,7 +139,7 @@ class PublishRequest(BaseModel):
 
     org_id: UUID
     base_version: int = Field(ge=1)
-    destination: Literal["vercel", "shopify_page"]
+    destination: Literal["vercel", "shopify_page", "shopify_editable"]
     # Publish although the gate lists reasons (each must allow it); recorded on the publication.
     override: bool = False
 

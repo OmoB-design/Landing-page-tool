@@ -50,6 +50,7 @@ import { cn } from "@/lib/utils";
 
 import { useLanderMotion } from "../lander-motion";
 import { ChangeCard, UndoControl, type UndoState } from "./change-card";
+import { TargetChip } from "./composer-parts";
 import { ReplyActions } from "./reply-actions";
 import { LanderMark } from "./lander-mark";
 import { RollingLabel } from "./rolling-label";
@@ -367,9 +368,14 @@ function UserBubble({
         </ul>
       ) : null}
       <div className="relative max-w-4/5">
-        <p className="rounded-item bg-foreground-02 px-3 py-2 text-type-body-small whitespace-pre-line text-heading-01">
-          {request || `Give ${target ? target.label : "the page"} fresh words`}
-        </p>
+        <div className="flex flex-col items-start gap-1.5 rounded-item bg-foreground-02 p-2">
+          {/* What it was about, inside the request at the top (owner, 2026-11-06). */}
+          <TargetChip target={target} />
+          <p className="text-type-body-small whitespace-pre-line text-heading-01">
+            {request ||
+              `Give ${target ? target.label : "the page"} fresh words`}
+          </p>
+        </div>
         {onRestore ? (
           // A round button on the bubble's top-right corner, as Antigravity's agent chat has it;
           // quiet until the request is hovered or focused.
@@ -391,9 +397,6 @@ function UserBubble({
           </Tooltip>
         ) : null}
       </div>
-      <span className="pr-1 text-type-caption-2 text-heading-06">
-        {target ? target.label : "Whole page"}
-      </span>
     </motion.div>
   );
 }

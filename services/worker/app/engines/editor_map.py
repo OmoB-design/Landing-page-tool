@@ -16,6 +16,8 @@ up for the template editor's "Shopify editing" card. Nothing here talks to Shopi
 
 import hashlib
 import re
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any, get_args
 
 from bs4 import BeautifulSoup
@@ -32,21 +34,25 @@ from app.models.editor_map import (
     ImageRole,
     MapIssue,
     MapOverrides,
+    MapPart,
     MapPlan,
     MapReport,
     MapSection,
     MapSectionSummary,
     MediaBlock,
     MediaKind,
+    SectionParts,
     SectionPlan,
     TextBlock,
     TextRole,
     TextSetting,
 )
 
-# Shopify's limits (BUILD_SPEC §12.6).
-MAX_SECTIONS = 24
-MAX_BLOCKS = 600
+# Shopify's limits (BUILD_SPEC §12.6; shopify.dev "Theme limits", 2026-11-06): 25 sections in a
+# template. Blocks placed with `content_for "block"` (static blocks, which B4.2 uses) don't count
+# toward the 50-a-section and 1,250-a-template block limits; the template's size (512 KB) is what
+# bounds them, checked when the files are made.
+MAX_SECTIONS = 25
 MAX_NAME = 25
 MAX_FILE_KEY = 50
 
@@ -304,10 +310,60 @@ def _image_role(img: Tag, section_role: str, rules: list[tuple[set[int], str]]) 
     return "hero" if section_role == "hero" else "image"
 
 
-def plan(html: str, editor_map: EditorMap, *, template: bool = False) -> MapPlan:
+@dataclass
+class WalkSection:
+    """One Shopify section with the page's elements behind it (for B4.2's theme files)."""
+
+    plan: SectionPlan
+    # The marked section's element, or the loose parts gathered into it, in page order.
+    roots: list[Tag] = field(default_factory=list)
+    texts: list[tuple[Tag, TextBlock]] = field(default_factory=list)
+    images: list[tuple[Tag, ImageBlock]] = field(default_factory=list)
+    media: list[tuple[Tag, MediaBlock]] = field(default_factory=list)
+    # Kept together (B4.3): the sections inside, each with its own blocks (they become group
+    # blocks in Shopify, so its sidebar still lists them).
+    members: list["WalkSection"] = field(default_factory=list)
+
+
+@dataclass
+class Walk:
+    soup: BeautifulSoup
+    sections: list[WalkSection]
+    outside_texts: int
+    outside_images: int
+    issues: list[MapIssue]
+
+
+def plan(
+    html: str,
+    editor_map: EditorMap,
+    *,
+    template: bool = False,
+    together: Callable[[Tag], bool] | None = None,
+) -> MapPlan:
     """What would become editable in Shopify for this page. `template`: the page is the template
-    itself, so sections in its list but not on the page, and rules matching nothing, are noted."""
-    soup = parse(html)
+    itself, so sections in its list but not on the page, and rules matching nothing, are noted.
+    `together`: containers whose sections stay one Shopify section (B4.3's layout check)."""
+    walked = walk(parse(html), editor_map, template=template, together=together)
+    return MapPlan(
+        sections=[s.plan for s in walked.sections],
+        outside_texts=walked.outside_texts,
+        outside_images=walked.outside_images,
+        issues=walked.issues,
+    )
+
+
+def walk(
+    soup: BeautifulSoup,
+    editor_map: EditorMap,
+    *,
+    template: bool = False,
+    together: Callable[[Tag], bool] | None = None,
+) -> Walk:
+    """The dry run on a parsed page, keeping each block's element (B4.2 turns them into files).
+    `together` picks containers to keep whole (B4.3): every section and loose part inside the
+    topmost one becomes a single Shopify section made of that container, so columns, grids and
+    sticky parts that span its sections keep working."""
     issues: list[MapIssue] = []
     by_key = {s.key: s for s in editor_map.sections}
 
@@ -357,12 +413,23 @@ def plan(html: str, editor_map: EditorMap, *, template: bool = False) -> MapPlan
         if e.element is not None and id(e.element) not in inside
     ]
     lines = [line for line in lines if line[2]]
+    # A picture or video inside a text (in a paragraph, in a button) is part of that text's words
+    # (kept as HTML), not a block of its own.
+    in_lines = {id(line[1]) for line in lines}
+
+    def inside_a_line(tag: Tag) -> bool:
+        return any(id(parent) in in_lines for parent in tag.parents)
+
     pictures = [
         img
         for img in root.find_all("img")
-        if isinstance(img, Tag) and img.find_parent("svg") is None
+        if isinstance(img, Tag) and img.find_parent("svg") is None and not inside_a_line(img)
     ]
-    media = [m for m in root.find_all(["video", "iframe", "audio"]) if isinstance(m, Tag)]
+    media = [
+        m
+        for m in root.find_all(["video", "iframe", "audio"])
+        if isinstance(m, Tag) and not inside_a_line(m)
+    ]
 
     # Parts outside every section get Shopify sections of their own (owner, 2026-11-06: everything
     # editable): neighbouring loose parts go together, named after the section before them.
@@ -393,26 +460,19 @@ def plan(html: str, editor_map: EditorMap, *, template: bool = False) -> MapPlan
         key=lambda u: u[0],
     )
 
-    owner: dict[int, int] = {}
-    seen: set[str] = set()
-    plans: list[SectionPlan] = []
-    previous: str | None = None
-    for _, kind, tag in units:
-        if kind == "loose":
-            if plans and plans[-1].loose and previous == plans[-1].key:
-                owner[id(tag)] = len(plans) - 1  # next to the last loose part: same section
-                continue
-            name = f"After {short_name(plans[-1].name, MAX_NAME - 6)}" if plans else "Page top"
-            key = f"loose-{sum(1 for p in plans if p.loose) + 1}"
-            plans.append(
-                SectionPlan(
-                    key=key, name=_unique(name, seen), role="other", texts=[], images=[],
-                    loose=True,
-                )
-            )  # fmt: skip
-            owner[id(tag)] = len(plans) - 1
-            previous = key
-            continue
+    def group_of(tag: Tag) -> Tag | None:
+        if together is None:
+            return None
+        found = None
+        for parent in tag.parents:
+            if not isinstance(parent, Tag) or parent is root or parent.name in ("body", "html"):
+                break
+            if together(parent):
+                found = parent  # the topmost one wins
+        return found
+
+    def marked_name(tag: Tag) -> tuple[str, str, str]:
+        """(key, name, role) for a marked section (a copy takes its original's name)."""
         key = str(tag.get("data-lp-section") or "")
         entry = by_key.get(key)
         suffix = ""
@@ -420,18 +480,50 @@ def plan(html: str, editor_map: EditorMap, *, template: bool = False) -> MapPlan
             entry = by_key.get(match.group("base"))
             suffix = f" {match.group('n')}" if entry else ""
         if entry is None:
-            name = _key_name(key)
             issues.append(
                 MapIssue(
                     level="warning",
                     message=f"Section “{key}” isn't in the editor map; it's named from its key.",
                 )
             )
-            role = "other"
-        else:
-            name = short_name(entry.name, MAX_NAME - len(suffix)) + suffix
-            role = entry.role
+            return key, _key_name(key), "other"
+        return key, short_name(entry.name, MAX_NAME - len(suffix)) + suffix, entry.role
+
+    owner: dict[int, int] = {}
+    seen: set[str] = set()
+    plans: list[SectionPlan] = []
+    walks: list[WalkSection] = []
+    previous: str | None = None
+    for _, kind, tag in units:
+        if kind == "loose":
+            if (
+                plans
+                and plans[-1].loose
+                and previous == plans[-1].key
+                and group_of(walks[-1].roots[0]) is group_of(tag)
+            ):
+                owner[id(tag)] = len(plans) - 1  # next to the last loose part: same section
+                walks[-1].roots.append(tag)
+                continue
+            name = (
+                f"After {short_name(plans[-1].name or 'part', MAX_NAME - 6)}"
+                if plans
+                else "Page top"
+            )
+            key = f"loose-{sum(1 for p in plans if p.loose) + 1}"
+            plans.append(
+                SectionPlan(
+                    key=key, name=_unique(name, seen), role="other", texts=[], images=[],
+                    loose=True,
+                )
+            )  # fmt: skip
+            walks.append(WalkSection(plan=plans[-1], roots=[tag]))
+            owner[id(tag)] = len(plans) - 1
+            previous = key
+            continue
+        key, name, role = marked_name(tag)
         plans.append(SectionPlan(key=key, name=_unique(name, seen), role=role, texts=[], images=[]))
+        walks.append(WalkSection(plan=plans[-1], roots=[tag]))
         owner[id(tag)] = len(plans) - 1
         previous = key
     if template:
@@ -467,9 +559,9 @@ def plan(html: str, editor_map: EditorMap, *, template: bool = False) -> MapPlan
         headline_seen[index] = role == "headline" or (
             headline_seen.get(index, False) and role == "subheadline"
         )
-        section.texts.append(
-            TextBlock(line=number, role=role, setting=_setting(element), preview=text[:60])
-        )
+        block = TextBlock(line=number, role=role, setting=_setting(element), preview=text[:60])
+        section.texts.append(block)
+        walks[index].texts.append((element, block))
     for img in pictures:
         index = section_of(img)
         if index is None:
@@ -478,12 +570,11 @@ def plan(html: str, editor_map: EditorMap, *, template: bool = False) -> MapPlan
         if _within(img, keep):
             plans[index].static += 1
             continue
-        plans[index].images.append(
-            ImageBlock(
-                role=_image_role(img, plans[index].role, rules),
-                src=str(img.get("src") or "")[:200],
-            )
+        picture = ImageBlock(
+            role=_image_role(img, plans[index].role, rules), src=str(img.get("src") or "")[:200]
         )
+        plans[index].images.append(picture)
+        walks[index].images.append((img, picture))
     # Videos and embeds: their address becomes something to change in Shopify.
     for item in media:
         index = section_of(item)
@@ -495,9 +586,47 @@ def plan(html: str, editor_map: EditorMap, *, template: bool = False) -> MapPlan
         source = item.get("src") or next(
             (s.get("src") for s in item.find_all("source") if isinstance(s, Tag)), ""
         )
-        plans[index].media.append(
-            MediaBlock(kind=_MEDIA_KINDS[item.name], src=str(source or "")[:300])
-        )
+        clip = MediaBlock(kind=_MEDIA_KINDS[item.name], src=str(source or "")[:300])
+        plans[index].media.append(clip)
+        walks[index].media.append((item, clip))
+
+    # Kept together (B4.3): the sections inside a container become one Shopify section made of it,
+    # each still a part of its own (a group block), named after the first and last of them.
+    if together is not None:
+        grouped: list[WalkSection] = []
+        holders: dict[int, WalkSection] = {}
+        for walked in walks:
+            container = group_of(walked.roots[0])
+            if container is None:
+                grouped.append(walked)
+                continue
+            holder = holders.get(id(container))
+            if holder is None:
+                key = f"group-{len(holders) + 1}"
+                holder = WalkSection(
+                    plan=SectionPlan(key=key, name="", role=walked.plan.role, texts=[], images=[]),
+                    roots=[container],
+                )
+                holders[id(container)] = holder
+                grouped.append(holder)
+            holder.members.append(walked)
+            holder.plan.texts += walked.plan.texts
+            holder.plan.images += walked.plan.images
+            holder.plan.media += walked.plan.media
+            holder.plan.static += walked.plan.static
+            holder.texts += walked.texts
+            holder.images += walked.images
+            holder.media += walked.media
+        for holder in holders.values():
+            names = [m.plan.name for m in holder.members if not m.plan.loose] or [
+                m.plan.name for m in holder.members
+            ]
+            joined = names[0] if len(names) == 1 else f"{names[0]} to {names[-1]}"
+            if len(joined) > MAX_NAME:
+                joined = f"{short_name(names[0], MAX_NAME - 5)} +{len(names) - 1}"
+            holder.plan.name = _unique(short_name(joined), seen)
+        walks = grouped
+        plans = [w.plan for w in walks]
 
     for section in plans:
         if section.loose:
@@ -520,36 +649,16 @@ def plan(html: str, editor_map: EditorMap, *, template: bool = False) -> MapPlan
                 )
             )
 
-    # Shopify's limits: a long section becomes several Shopify sections; past 24 in all, the rest
-    # go into the last one (still editable).
-    for section in plans:
-        blocks = len(section.texts) + len(section.images) + len(section.media)
-        section.parts = max(1, -(-blocks // MAX_BLOCKS))
-        if section.parts > 1:
-            issues.append(
-                MapIssue(
-                    level="info",
-                    message=f"“{section.name}” has {blocks} editable parts, so it becomes "
-                    f"{section.parts} Shopify sections (Shopify takes {MAX_BLOCKS} in one).",
-                )
-            )
-    total = sum(s.parts for s in plans)
-    if total > MAX_SECTIONS:
-        used = 0
-        last: SectionPlan | None = None
-        for section in plans:
-            if used >= MAX_SECTIONS:
-                assert last is not None
-                section.merged_into = last.key
-            else:
-                last = section
-            used += section.parts
-        assert last is not None
+    # Shopify's limits: past 25 sections, the rest go into the last one (still editable).
+    if len(plans) > MAX_SECTIONS:
+        last = plans[MAX_SECTIONS - 1]
+        for extra in plans[MAX_SECTIONS:]:
+            extra.merged_into = last.key
         issues.append(
             MapIssue(
                 level="info",
-                message=f"The page makes {total} Shopify sections; Shopify takes {MAX_SECTIONS}, "
-                f"so the rest go into “{last.name}”, still editable.",
+                message=f"The page has {len(plans)} sections; Shopify takes {MAX_SECTIONS}, so the "
+                f"last {len(plans) - MAX_SECTIONS} go into “{last.name}”, still editable.",
             )
         )
     if not tags:
@@ -560,8 +669,9 @@ def plan(html: str, editor_map: EditorMap, *, template: bool = False) -> MapPlan
                 "Shopify. (A cloned page gets its sections when it's analysed.)",
             )
         )
-    return MapPlan(
-        sections=plans,
+    return Walk(
+        soup=soup,
+        sections=walks,
         outside_texts=outside_texts,
         outside_images=outside_images,
         issues=issues,
@@ -600,3 +710,82 @@ def report(result: MapPlan, slug: str) -> MapReport:
         issues=issues,
         ready=not any(i.level == "error" for i in issues),
     )
+
+
+# ── Names, as Shopify's theme editor shows each block (B4.2) and LP's section tree (B4.4) ──
+
+ROLE_NAMES = {
+    "list_item": "List item", "cta": "Button", "subheadline": "Subheadline",
+    "subheading": "Subheading", "footnote": "Small print",
+}  # fmt: skip
+IMAGE_NAMES = {"hero": "Main picture", "person": "Portrait", "icon": "Icon", "image": "Picture"}
+MEDIA_NAMES = {"video": "Video", "embed": "Embed", "audio": "Sound"}
+
+
+def text_name(role: str) -> str:
+    return ROLE_NAMES.get(role, role.replace("_", " ").capitalize())
+
+
+def image_name(role: str) -> str:
+    return IMAGE_NAMES.get(role, f"{role.capitalize()} picture")
+
+
+def parts(html: str, editor_map: EditorMap) -> list[SectionParts]:
+    """Each section's parts in page order (B4.4, D123): its texts, pictures and videos, named as
+    Shopify names their blocks, so the page editor's tree and Shopify's sidebar agree. Texts carry
+    the editor's line number, pictures their `data-lp-img` number."""
+    walked = walk(parse(html), editor_map)
+    order = {id(tag): i for i, tag in enumerate(walked.soup.find_all(True))}
+    out: list[SectionParts] = []
+    for section in walked.sections:
+        found: list[tuple[int, MapPart]] = []
+        for element, text in section.texts:
+            found.append(
+                (
+                    order.get(id(element), 0),
+                    MapPart(
+                        kind="text",
+                        name=text_name(text.role),
+                        role=text.role,
+                        excerpt=text.preview,
+                        line=text.line,
+                        hidden=element.has_attr("data-lp-hidden"),
+                    ),
+                )
+            )
+        for img, picture in section.images:
+            number = str(img.get("data-lp-img") or "")
+            src = str(img.get("src") or "")
+            found.append(
+                (
+                    order.get(id(img), 0),
+                    MapPart(
+                        kind="image",
+                        name=image_name(picture.role),
+                        role=picture.role,
+                        excerpt=_collapse(str(img.get("alt") or ""))[:60],
+                        image=int(number) if number.isdigit() else None,
+                        thumb=src if src.startswith(("https://", "http://")) else "",
+                        hidden=img.has_attr("data-lp-hidden"),
+                    ),
+                )
+            )
+        for item, clip in section.media:
+            found.append(
+                (
+                    order.get(id(item), 0),
+                    MapPart(
+                        kind="media", name=MEDIA_NAMES[clip.kind], role=clip.kind, excerpt=clip.src
+                    ),
+                )
+            )
+        found.sort(key=lambda pair: pair[0])
+        out.append(
+            SectionParts(
+                key=section.plan.key,
+                name=section.plan.name,
+                loose=section.plan.loose,
+                parts=[part for _, part in found],
+            )
+        )
+    return out

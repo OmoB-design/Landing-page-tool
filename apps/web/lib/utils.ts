@@ -46,6 +46,7 @@ export const cn = createCn({
         "focus",
         "wizard-footer",
         "mover",
+        "chip",
       ],
     },
     classGroups: {

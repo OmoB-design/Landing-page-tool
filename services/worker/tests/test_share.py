@@ -79,7 +79,8 @@ def test_the_client_link_shows_the_approved_version(
     assert state["can_share"] and state["approved_version"] == 1 and not state["changed_since"]
     token = state["link"]["token"]
     expires = datetime.fromisoformat(state["link"]["expires_at"])
-    assert timedelta(days=29) < expires - datetime.now(UTC) <= timedelta(days=30)
+    # The database's clock and this machine's can differ by a second or two.
+    assert timedelta(days=29) < expires - datetime.now(UTC) <= timedelta(days=30, minutes=1)
     # The same link again, not a second one.
     assert link(client, user, finished, "POST").json()["link"]["token"] == token
 

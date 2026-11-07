@@ -17,6 +17,7 @@ import { POLL_ACTIVE_MS } from "@/lib/jobs/progress";
 import { useJob } from "@/lib/queries/jobs";
 import type { JobDetail } from "@/lib/validators/jobs";
 import {
+  type PublishDestination,
   type PublishingState,
   publishingStateSchema,
 } from "@/lib/validators/publishing";
@@ -42,7 +43,7 @@ type PublishContextValue = {
   job: JobDetail | undefined;
   publish: (
     override: boolean,
-    destination?: "vercel" | "shopify_page",
+    destination?: PublishDestination,
   ) => Promise<boolean>;
   /** Fetches the publishing state again (after connecting a store). */
   refresh: () => void;
@@ -116,7 +117,7 @@ export function PublishProvider({
       destination,
     }: {
       override: boolean;
-      destination: "vercel" | "shopify_page";
+      destination: PublishDestination;
     }) =>
       apiFetch(`/api/builds/${buildId}/publish`, publishingStateSchema, {
         method: "POST",
@@ -152,7 +153,23 @@ export function PublishProvider({
     watching.current = null;
     const done = publishing.publications.find((p) => p.id === id);
     void desk?.reload();
-    if (done?.status === "succeeded" && done.destination === "shopify_page") {
+    if (
+      done?.status === "succeeded" &&
+      done.destination === "shopify_editable"
+    ) {
+      setModalOpen(true);
+      toast.success(`Editable draft v${done.version ?? ""} saved in Shopify`, {
+        action: done.editor_url
+          ? {
+              label: "Edit in Shopify",
+              onClick: () => window.open(done.editor_url ?? "", "_blank"),
+            }
+          : undefined,
+      });
+    } else if (
+      done?.status === "succeeded" &&
+      done.destination === "shopify_page"
+    ) {
       setModalOpen(true);
       toast.success("Draft saved in Shopify", {
         action: done.admin_url

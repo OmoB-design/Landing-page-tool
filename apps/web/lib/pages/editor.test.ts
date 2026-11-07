@@ -5,14 +5,29 @@ import type { DeskSection } from "@/lib/validators/desk";
 import { canMoveSection, keepsGroups, textToSave } from "./editor";
 
 const layout: DeskSection[] = [
-  { key: "hero", label: "Hero", removable: false, duplicable: true, group: 0 },
-  { key: "faq", label: "FAQ", removable: true, duplicable: false, group: 0 },
+  {
+    key: "hero",
+    label: "Hero",
+    removable: false,
+    duplicable: true,
+    group: 0,
+    hidden: false,
+  },
+  {
+    key: "faq",
+    label: "FAQ",
+    removable: true,
+    duplicable: false,
+    group: 0,
+    hidden: false,
+  },
   {
     key: "footer",
     label: "Footer",
     removable: true,
     duplicable: false,
     group: 1,
+    hidden: false,
   },
 ];
 

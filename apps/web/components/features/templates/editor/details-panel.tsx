@@ -45,6 +45,7 @@ export function DetailsPanel({
   onAnalyse,
   onRestore,
   onSaved,
+  onState,
 }: {
   state: TemplateEditorState;
   pending: boolean;
@@ -54,6 +55,8 @@ export function DetailsPanel({
   onAnalyse?: () => void;
   onRestore: (version: number) => void;
   onSaved: (details: TemplateDetails) => void;
+  /** The editor reloaded (after a layout check, B4.3). */
+  onState?: (next: TemplateEditorState) => void;
 }) {
   const { template } = state;
   const [saving, startSaving] = useTransition();
@@ -182,7 +185,13 @@ export function DetailsPanel({
         ))}
       </dl>
 
-      {state.shopify ? <ShopifyCard map={state.shopify} /> : null}
+      {state.shopify ? (
+        <ShopifyCard
+          map={state.shopify}
+          templateId={template.id}
+          onState={onState}
+        />
+      ) : null}
 
       <section className="flex flex-col gap-3">
         <h2 className="flex items-center gap-2 text-type-body-small font-medium">

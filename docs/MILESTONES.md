@@ -132,8 +132,10 @@ Goal: the shared foundation and one owned template building end to end in mock m
 ## M4 — Editable Shopify publish
 
 - B4.1 Editor map tooling (backfill, validation). *Done 2026-11-06 (D120): the map from our markers (no AI), the dry run and its check, maps for every template saved, the template editor's Shopify editing card. B4.2 to write theme files through the store's Theme Access password (D121, proposed; no paid Shopify app).*
-- B4.2 Emit files, size guards, two-batch upload, versioned draft pages.
-- B4.3 Parity simulator with retry and coarse fallback.
+- B4.2 Emit files, size guards, two-batch upload, versioned draft pages. *Done 2026-11-06 (D121): through the store's Theme Access password with Shopify CLI; Settings → Connections takes the password; the published modal's Shopify row offers Editable sections or One block; tested on FourU (the owner's BRĒZ page: 15 sections, 113 texts, 18 pictures; 27 s). Found for B4.3: side-by-side and sticky layouts across sections.*
+- B4.3 Parity simulator with retry and coarse fallback. *Done 2026-11-06 (D122): Shopify's render worked out locally and compared with the page at desktop, tablet and phone on every editable publish; shared wrappers made transparent, side-by-side parts kept together as one section with group blocks, then coarse; Check layout on the template editor's Shopify card and `app.cli.shopify_check`. Every template with sections matches.*
+- B4.4 A section tree in the page editor, after Shopify's theme editor (study: `docs/reference/shopify-editor-study.md`). *Done 2026-11-07 (D123): sections open into their parts named as in Shopify; hover and picking shared between the tree and the page (first click picks, second types); a part's panel framed as Buddy's change card with its words to edit; Buddy pointed at one part (chip, panel, pill on the page).*
+- B4.5 Speed pass. *Done 2026-11-07 (D124): the editor's changes and state read cut to the fewest round trips (one storage client kept open, the build and its rules in one read, the state from the page just written, no route rebuild in the editor); from the owner's Mac a hide went from 11.4 s to 2.0 s and reading the editor's state from 4.0 s to 0.55 s.*
 
 ## v3 — Someday
 
