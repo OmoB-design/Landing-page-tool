@@ -95,6 +95,29 @@ describe("Lander (B3.1b, B3.1c)", () => {
     expect(onOpen).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps the floating bar's words while Buddy is busy (B5.4)", () => {
+    const onSend = vi.fn();
+    const view = wrap(
+      <FloatingComposer working onSend={onSend} onOpen={vi.fn()} />,
+    );
+    const field = screen.getByLabelText("Work with Buddy") as HTMLInputElement;
+    fireEvent.change(field, { target: { value: "Warmer headline" } });
+    fireEvent.submit(field.closest("form") as HTMLFormElement);
+    expect(onSend).not.toHaveBeenCalled();
+    expect(field.value).toBe("Warmer headline");
+    // Buddy is free again: the same words go.
+    view.rerender(
+      <TooltipProvider>
+        <LanderMotionProvider onReplay={() => {}}>
+          <FloatingComposer working={false} onSend={onSend} onOpen={vi.fn()} />
+        </LanderMotionProvider>
+      </TooltipProvider>,
+    );
+    fireEvent.submit(field.closest("form") as HTMLFormElement);
+    expect(onSend).toHaveBeenCalledWith("Warmer headline");
+    expect(field.value).toBe("");
+  });
+
   it("sends from the panel's composer and can widen the request to the page", () => {
     const onSend = vi.fn();
     const onClear = vi.fn();

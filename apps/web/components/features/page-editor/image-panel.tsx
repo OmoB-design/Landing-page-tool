@@ -73,6 +73,7 @@ export function ImagePanel({
   busy,
   onBack,
   making,
+  makingElsewhere = false,
   onMake,
   onAdopt,
   matching = null,
@@ -85,6 +86,8 @@ export function ImagePanel({
   onBack: () => void;
   /** The picture being made for this image, if any. */
   making: Making | null;
+  /** A picture is being made for another image (B5.2: one at a time, so neither is lost). */
+  makingElsewhere?: boolean;
   /** Starts an AI picture for the image. */
   onMake: (number: number, input: ImageAiInput) => Promise<void>;
   /** A picture the worker is already making for it (opened after a reload): follow it. */
@@ -170,6 +173,7 @@ export function ImagePanel({
           busy={busy}
           onChange={changeImage}
           making={making}
+          makingElsewhere={makingElsewhere}
           onMake={(input) => onMake(number, input)}
           matching={matching}
           onMatch={onMatch}
@@ -185,6 +189,7 @@ function Studio({
   busy,
   onChange,
   making,
+  makingElsewhere,
   onMake,
   matching,
   onMatch,
@@ -194,6 +199,7 @@ function Studio({
   busy: string | null;
   onChange: ReturnType<typeof useDesk>["changeImage"];
   making: Making | null;
+  makingElsewhere: boolean;
   onMake: (input: ImageAiInput) => Promise<void>;
   matching: { message: string | null } | null;
   onMatch?: () => Promise<void>;
@@ -333,6 +339,7 @@ function Studio({
         photos={data.product_photos}
         ai={data.ai}
         making={making}
+        elsewhere={makingElsewhere}
         disabled={waiting}
         onMake={onMake}
       />
@@ -467,6 +474,7 @@ function MakeWithAi({
   photos,
   ai,
   making,
+  elsewhere,
   disabled,
   onMake,
 }: {
@@ -474,6 +482,7 @@ function MakeWithAi({
   photos: ImageChoice[];
   ai: ImageStudio["ai"];
   making: Making | null;
+  elsewhere: boolean;
   disabled: boolean;
   onMake: (input: ImageAiInput) => Promise<void>;
 }) {
@@ -485,7 +494,7 @@ function MakeWithAi({
   const seconds = useSeconds(making?.startedAt ?? null);
   const prompt = prompts[mode];
   const price = ai.mock ? "free placeholder" : ai.price ? `$${ai.price}` : null;
-  const locked = disabled || sending || making !== null;
+  const locked = disabled || sending || making !== null || elsewhere;
   const make = async () => {
     setSending(true);
     try {
@@ -573,6 +582,12 @@ function MakeWithAi({
             })}
           </ul>
         </div>
+      ) : null}
+      {elsewhere && !making ? (
+        <p className="text-type-caption-1 text-sub-text">
+          A picture is being made for another image. One at a time: this one can
+          start when it’s done.
+        </p>
       ) : null}
       {making ? (
         <p

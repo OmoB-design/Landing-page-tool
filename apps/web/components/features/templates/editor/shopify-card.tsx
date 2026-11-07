@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,7 @@ import {
   WarningIcon,
 } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/spinner";
-import { useJob } from "@/lib/queries/jobs";
+import { useFollowedJob } from "@/lib/queries/jobs";
 import { reloadTemplate, startLayoutCheck } from "@/lib/templates/actions";
 import type {
   LayoutCheck,
@@ -77,36 +77,33 @@ function LayoutCheckRow({
   map,
   templateId,
   onState,
+  jobId: heldJob,
+  onJob,
 }: {
   map: ShopifyMap;
   templateId?: string;
   onState?: (next: TemplateEditorState) => void;
+  /** The check being followed, held by the editor so a tab switch keeps it (B5.4). */
+  jobId?: string | null;
+  onJob?: (id: string | null) => void;
 }) {
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [ownJob, setOwnJob] = useState<string | null>(null);
+  const jobId = heldJob !== undefined ? heldJob : ownJob;
+  const setJobId = onJob ?? setOwnJob;
   const [startError, setStartError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const { data: job } = useJob(jobId);
-  const settled = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (
-      !templateId ||
-      !job ||
-      job.status !== "succeeded" ||
-      settled.current === job.id
-    )
-      return;
-    settled.current = job.id;
-    startTransition(async () => {
-      const result = await reloadTemplate(templateId);
-      if (result.state) onState?.(result.state);
-      setJobId(null);
-    });
-  }, [job, onState, templateId]);
+  const { job, running: following } = useFollowedJob(jobId, {
+    succeeded: () =>
+      startTransition(async () => {
+        if (!templateId) return;
+        const result = await reloadTemplate(templateId);
+        if (result.state) onState?.(result.state);
+        setJobId(null);
+      }),
+  });
 
   const failed = job?.status === "failed" || job?.status === "cancelled";
-  const running =
-    pending || (jobId !== null && job?.status !== "succeeded" && !failed);
+  const running = pending || following;
   const failure =
     startError ??
     (failed
@@ -201,11 +198,16 @@ export function ShopifyCard({
   map,
   templateId,
   onState,
+  layoutJobId,
+  onLayoutJob,
 }: {
   map: ShopifyMap;
   /** The template, for Check layout (B4.3); without it the card only shows the last check. */
   templateId?: string;
   onState?: (next: TemplateEditorState) => void;
+  /** The layout check under way, held by the editor (B5.4). */
+  layoutJobId?: string | null;
+  onLayoutJob?: (id: string | null) => void;
 }) {
   return (
     <section className="flex flex-col gap-3" aria-labelledby="shopify-editing">
@@ -237,7 +239,13 @@ export function ShopifyCard({
         </p>
       ) : null}
       {map.ready ? (
-        <LayoutCheckRow map={map} templateId={templateId} onState={onState} />
+        <LayoutCheckRow
+          map={map}
+          templateId={templateId}
+          onState={onState}
+          jobId={layoutJobId}
+          onJob={onLayoutJob}
+        />
       ) : null}
       {map.issues.length > 0 ? (
         <ul role="list" className="flex flex-col gap-1.5">

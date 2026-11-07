@@ -23,6 +23,8 @@ import {
   agentThreadSchema,
   agentThreadsSchema,
 } from "@/lib/validators/agent";
+import { isActive } from "@/lib/jobs/progress";
+import { useJob } from "@/lib/queries/jobs";
 import type { JobDetail } from "@/lib/validators/jobs";
 
 import { type SettledRedraft, useDesk } from "../../builds/desk-context";
@@ -172,12 +174,54 @@ export function useLander(buildId: string, settle: () => Promise<void>) {
     };
   }, [buildId, firstRunning]);
 
+  // The newest request still waiting for its result also follows its own job (B5.2, D126). The
+  // desk follows the page's running job and settles it when it ends, but if another change
+  // refreshed the desk first (the page no longer names a running job), that settling never comes
+  // and the turn would show "working" for ever, refusing every request after it. Then the
+  // thread settles the turn from its job.
+  const waiting = [...turns]
+    .reverse()
+    .find(
+      (t) =>
+        t.jobId !== null &&
+        !t.saved &&
+        !t.refused &&
+        settledRedrafts[t.jobId] === undefined,
+    );
+  const ownJob = useJob(waiting?.jobId ?? null, true);
+  const [ownSettled, setOwnSettled] = useState<Record<string, SettledRedraft>>(
+    {},
+  );
+  const ownFinished =
+    ownJob.data && !isActive(ownJob.data.status) ? ownJob.data : null;
+  if (
+    ownFinished &&
+    desk.redraft?.job_id !== ownFinished.id &&
+    settledRedrafts[ownFinished.id] === undefined &&
+    ownSettled[ownFinished.id] === undefined
+  ) {
+    setOwnSettled((all) => ({
+      ...all,
+      [ownFinished.id]: {
+        job: ownFinished,
+        paragraphs: null,
+        pageVersion: desk.build.page_version,
+      },
+    }));
+  }
+
   const liveJob = redrafting?.job ?? null;
   const views = turns.map((turn) =>
     viewOf(
       turn,
-      turn.jobId ? settledRedrafts[turn.jobId] : undefined,
-      liveJob && liveJob.id === turn.jobId ? liveJob : null,
+      turn.jobId
+        ? (settledRedrafts[turn.jobId] ?? ownSettled[turn.jobId])
+        : undefined,
+      liveJob && liveJob.id === turn.jobId
+        ? liveJob
+        : ownJob.data && ownJob.data.id === turn.jobId
+          ? ownJob.data
+          : null,
     ),
   );
   const active = views.find(

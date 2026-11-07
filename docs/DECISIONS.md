@@ -571,6 +571,45 @@ Every change in the editor (typing, hiding, moving, formatting, Buddy's results)
 - **The page editor doesn't rebuild its route on the server after a change** (`DeskProvider refreshRoute={false}`): the change's answer already is the new desk. The review desk still refreshes, as its other parts read the route.
 - **Result on the owner's Mac** (a copy of BRĒZ): reading the editor's state 4.0 → 0.55 s; a hide 11.4 → 2.0 s; a typing save about 1.9 s; in the browser, click to screen about 3 s, with no route rebuild. The website's functions already run in Dublin (`dub1`), beside the database.
 
+**D125 — A publish sends only the approved version, and a publication always ends (B5.1).** Locked (owner, 2026-11-07: "go and yes" to the B5.1 plan, the migration push permitted).
+The state-machine audit (2026-11-07) found that a publish job sent whatever page was current when it ran, so an edit made after pressing Publish could go live unapproved; that a worker stopping mid-publish was caught as a failure (the publication marked failed, then the job re-run, making a second Shopify draft); and that a publication whose job crashed stayed pending for ever (the page showed "publishing" and couldn't be unpublished or trashed).
+*As built (B5.1):*
+- **Version check:** each publish job (Vercel, Shopify one-block, Shopify editable) starts by checking the page is still the version approved when Publish was pressed (`publishing.approved_as_pressed`); otherwise it stops with "The page was edited after you pressed Publish. Approve it again, then publish." and nothing goes out.
+- **Shutdown isn't failure:** the jobs re-raise `JobInterrupted` (the job goes back to the queue), and progress messages after the store or Vercel has been changed don't check for shutdown.
+- **A publication always ends:** a trigger (`jobs_publication_failed`, migration `publication_job_failed`) marks a pending publication failed, with the job's message, when its job fails or is cancelled, the reaper's failures included, as `mark_build_failed` does for builds.
+- **Editable drafts can be removed:** "Remove drafts" on the Shopify row deletes every editable draft page of the page still in the store (the theme files stay; deleting them needs the exemption, D90), so a page published editable can go to Trash.
+- **Also fixed:** the section tree's panel and the review desk's line editor save against the words they showed (a change made meanwhile is refused as "changed elsewhere", not overwritten); the page scrolls to every tree pick, and a click on empty space on the page clears the pick in the tree; the worker accepts tokens issued up to 30 s in its future (clock differences).
+
+**D126 — Nothing waits for ever, background jobs don't undo an approval, and Trash isn't undone by an import (B5.2).** Locked (owner, 2026-11-07: "go with your recommendation": 15 minutes; approval refused while a background job runs).
+*As built (B5.2):*
+- **Unclaimed page jobs end:** a rewrite or a request to Buddy that no worker claimed in 15 minutes ends as failed ("No worker picked this up. Try again."; `queue.expire_unclaimed`, on every queue, run with the reaper), so the page it locks unlocks.
+- **A Buddy turn always finishes:** the newest request also follows its own job; if another change refreshed the desk before the desk's own settling, the thread settles the turn from the job.
+- **Approval waits for background jobs:** approving is refused, with the reason, while an AI picture, an edit of one, a product match (a fix, not a look) or a phone fix is queued or running on the page.
+- **The picture spinner can't stick, and pictures are made one at a time:** a finished job is never adopted again; Make with AI is locked, with a note, while a picture is being made for another image.
+- **Trash holds:** importing a product that is in Trash stops with "That product is in Trash. Restore it from Trash to use it again." (one emptied from Trash but kept for its pages comes back whole); pages built from a template in Trash keep working (rewrite, Buddy, retry), while new pages still can't use it.
+- **Double starts:** starting Buddy, a QA check or a product check twice at the same moment answers "already running" (the first job) instead of a server error.
+- **Kept as it is:** a background change drops the redo steps, as any new change does.
+
+**D127 — Members write only what the app's own forms write (B5.3).** Locked (owner, 2026-11-07: "go and yes to the migration").
+Row-level security kept every write inside the member's org, but a signed-in member could still write any column of brands, products and templates, and any row of template sections, template versions, assets and product strategy, straight through the database API: for example clear a template's review, empty a brand from Trash or reset its page numbers, past the worker's checks and snapshots.
+*As built (B5.3, migration `member_write_limits`):*
+- **Brands:** members add a brand and edit the Brand DNA form's fields (name, prefix, emoji, address, tagline, positioning, audience, context, voice, voice examples, language, button text, palette, fonts, sale, promo, support email, meta title and description, monthly budget). Trash, restore, page numbers, the generated profile, logos and deletes are the worker's.
+- **Products:** members edit the product form's fields (name, address, currency, price, sale price, description, selling points, specs, selling context). Products are added by the worker's pull; pictures, variants, Trash and deletes are the worker's.
+- **Templates:** members rename a template and change its description. Review, status, blueprint, editor map, Trash, versions and sections are the worker's.
+- **Read only for members:** template sections, template versions, assets and product strategy; template files in storage (still readable for previews and thumbnails; only the worker uploads, changes or deletes them).
+- Column grants (`grant update (…)`), so a new column is closed until it's granted. The worker (service role) isn't affected. Checked by `supabase/tests/database/member_write_limits.test.sql` (29 checks).
+
+**D128 — Screens follow the job they started, by its id, and handle every ending (B5.4).** Locked (owner, 2026-11-07: "go with your recommendation": the floating bar keeps your words while Buddy works).
+The state-machine audit found six hand-written copies of "follow a job" that read whatever the server echoed back rather than the job they started, and mostly ignored a cancelled job.
+*As built (B5.4):*
+- **One way to follow a job:** `useFollowedJob(id, { succeeded, failed, cancelled })` (`apps/web/lib/queries/jobs.ts`) follows a job by its own id, is "running" from the moment there's an id, and calls each ending once, a job that ended before the first poll included. Used by the phone fix, the clone analysis, the layout check and Export.
+- **Publishing:** Publish and Unpublish follow the publication the button started, from the server's answer (the one running, or the one that wasn't there before when it already finished), so a quick publish still opens the live modal and catches the desk up. "Take it down?" is put away whenever the modal closes or shows another live page.
+- **Phone fix:** "Fixed the page for phones" with Undo only when the fix succeeded; a failed fix says why, without Undo; a cancelled one says nothing.
+- **Clone analysis:** "Analysing…" in Details follows the job's status, so a failed or cancelled analysis offers Analyse again.
+- **Layout check:** held by the template editor, so switching tabs keeps it; the editor finds a check under way again after a reload, as it does for an analysis.
+- **The floating bar:** while Buddy works, sending keeps the words in the bar and says "Buddy is still on the last request."; they're cleared only when Buddy takes them.
+- **Kept as is:** screens that show a job through the shared job steps (products, briefing, brand fetch) already show every ending.
+
 ## Open (ask the owner when the related build starts)
 
 - O1 — Product name and logo (placeholder "LP Platform" until then).

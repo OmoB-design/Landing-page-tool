@@ -295,6 +295,21 @@ def _save(
         )
 
     with transaction() as conn:
+        # A product in Trash stays there (B5.2, D126): importing it again asks for a restore
+        # instead of bringing it back half-way.
+        trashed = conn.execute(
+            """
+            select 1 from products
+            where org_id = %(org)s and brand_id = %(brand)s and handle = %(handle)s
+              and deleted_at is not null and purged_at is null
+            """,
+            {"org": org_id, "brand": brand_id, "handle": pulled.handle[:200]},
+        ).fetchone()
+        if trashed:
+            raise UserFacingError(
+                "That product is in Trash. Restore it from Trash to use it again.",
+                code="product_in_trash",
+            )
         row = conn.execute(
             """
             insert into products (
@@ -314,7 +329,16 @@ def _save(
               usps = excluded.usps, images = excluded.images, variants = excluded.variants,
               pricing_lines = excluded.pricing_lines,
               selling_context = excluded.selling_context, pulled_at = now(),
-              pull_source = excluded.pull_source, deleted_at = null
+              pull_source = excluded.pull_source,
+              -- B5.2 (D126): a product in Trash stays there (restore it from Trash); one emptied
+              -- from Trash but kept for its pages comes back as a fresh product.
+              deleted_at = case when products.purged_at is not null then null
+                                else products.deleted_at end,
+              deleted_by = case when products.purged_at is not null then null
+                                else products.deleted_by end,
+              trashed_with = case when products.purged_at is not null then null
+                                  else products.trashed_with end,
+              purged_at = null
             where products.org_id = excluded.org_id
             returning id, (xmax = 0) as created
             """,

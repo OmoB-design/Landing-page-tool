@@ -17,7 +17,7 @@ Shopify store.
 """
 
 import time
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from psycopg.types.json import Jsonb
@@ -27,7 +27,7 @@ from app import publishing, vault
 from app.db import transaction
 from app.engines.export import export_page
 from app.jobs.context import JobContext
-from app.jobs.errors import UserFacingError
+from app.jobs.errors import JobInterrupted, UserFacingError
 from app.pipeline.runtime import BUCKET
 from app.providers import storage
 from app.providers.shopify import ShopifyError, admin_page_url
@@ -75,6 +75,8 @@ def run(ctx: JobContext) -> dict[str, Any]:
     except UserFacingError as exc:
         _fail(payload.publication_id, org_id, exc.message)
         raise
+    except JobInterrupted:
+        raise  # the worker is stopping: the job goes back to the queue and resumes; not a failure
     except Exception:
         _fail(payload.publication_id, org_id, "Something went wrong while publishing to Shopify.")
         raise
@@ -128,7 +130,8 @@ def _publish(ctx: JobContext, payload: PublishShopifyPayload, org_id: UUID) -> d
     with transaction() as conn:
         build = conn.execute(
             """
-            select b.id, b.key, b.title, b.brand_id, b.working_html_path
+            select b.id, b.key, b.title, b.brand_id, b.working_html_path, b.page_version,
+                   b.status
             from builds b where b.id = %(b)s and b.org_id = %(o)s and b.deleted_at is null
             """,
             {"b": payload.build_id, "o": org_id},
@@ -158,6 +161,8 @@ def _publish(ctx: JobContext, payload: PublishShopifyPayload, org_id: UUID) -> d
         previous = last if last and last["status"] == "succeeded" and last["page_id"] else None
     if build is None or not build["working_html_path"]:
         raise UserFacingError("That page isn't there any more.", code="build_missing")
+    if not publishing.approved_as_pressed(build, payload.page_version):
+        raise UserFacingError(publishing.EDITED_SINCE, code="page_changed")
     if store is None or not secret:
         raise UserFacingError("This brand's Shopify store isn't connected any more.")
     shop = store["shop_domain"]
@@ -201,7 +206,7 @@ def _publish(ctx: JobContext, payload: PublishShopifyPayload, org_id: UUID) -> d
             body=body,
             template_suffix=template,
         )
-        ctx.progress("Saved the draft page", data={"step": 4, "total": TOTAL})
+        ctx.progress("Saved the draft page", data={"step": 4, "total": TOTAL}, check_stop=False)
     finally:
         client.close()
 
@@ -225,7 +230,7 @@ def _publish(ctx: JobContext, payload: PublishShopifyPayload, org_id: UUID) -> d
                 }),
             },
         )  # fmt: skip
-    ctx.progress("The draft is in Shopify", data={"step": 5, "total": TOTAL})
+    ctx.progress("The draft is in Shopify", data={"step": 5, "total": TOTAL}, check_stop=False)
     return {"build_id": str(build["id"]), "admin_url": admin_url, "template": template}
 
 
@@ -237,6 +242,8 @@ class UnpublishShopifyPayload(BaseModel):
 
     build_id: UUID
     publication_id: UUID
+    # "shopify_editable" (B5.1): every editable draft of the page still in the store.
+    destination: Literal["shopify_page", "shopify_editable"] = "shopify_page"
 
 
 def run_unpublish(ctx: JobContext) -> dict[str, Any]:
@@ -253,23 +260,35 @@ def run_unpublish(ctx: JobContext) -> dict[str, Any]:
     except UserFacingError as exc:
         _fail(payload.publication_id, org_id, exc.message)
         raise
+    except JobInterrupted:
+        raise  # the worker is stopping: the job goes back to the queue and resumes; not a failure
     except Exception:
         _fail(payload.publication_id, org_id, "Something went wrong while removing the draft.")
         raise
 
 
 def _unpublish(ctx: JobContext, payload: UnpublishShopifyPayload, org_id: UUID) -> dict[str, Any]:
+    editable = payload.destination == "shopify_editable"
     with transaction() as conn:
-        draft = conn.execute(
+        # The drafts to delete: the newest one-block draft, or every editable draft made since
+        # the editable drafts were last removed (each editable publish makes a page of its own).
+        drafts = conn.execute(
             """
             select p.url, p.details->>'page_id' as page_id, b.brand_id
             from publications p join builds b on b.id = p.build_id
-            where p.build_id = %(b)s and p.org_id = %(o)s and p.destination = 'shopify_page'
+            where p.build_id = %(b)s and p.org_id = %(o)s and p.destination = %(d)s
               and p.status = 'succeeded' and p.details ? 'page_id'
-            order by p.created_at desc limit 1
+              and p.created_at > coalesce((
+                select max(q.created_at) from publications q
+                where q.build_id = p.build_id and q.destination = p.destination
+                  and q.status = 'unpublished'), '-infinity'::timestamptz)
+            order by p.created_at desc
             """,
-            {"b": payload.build_id, "o": org_id},
-        ).fetchone()
+            {"b": payload.build_id, "o": org_id, "d": payload.destination},
+        ).fetchall()
+        if not editable:
+            drafts = drafts[:1]
+        draft = drafts[0] if drafts else None
         store = (
             conn.execute(
                 """
@@ -290,12 +309,20 @@ def _unpublish(ctx: JobContext, payload: UnpublishShopifyPayload, org_id: UUID) 
     token = publishing.shopify_token(shop, store["client_id"], secret)
     client = publishing.shopify_client(shop, token.access_token)
     try:
-        existed = client.delete_page(draft["page_id"])
+        removed = [d["page_id"] for d in drafts if client.delete_page(d["page_id"])]
     finally:
         client.close()
+    existed = bool(removed)
     ctx.progress(
-        "Removed the draft from Shopify" if existed else "The draft was already gone from Shopify",
+        (
+            f"Removed {len(removed)} draft{'s' if len(removed) != 1 else ''} from Shopify"
+            if editable
+            else "Removed the draft from Shopify"
+        )
+        if existed
+        else "The draft was already gone from Shopify",
         data={"step": 1, "total": 1},
+        check_stop=False,
     )
     with transaction() as conn:
         conn.execute(
@@ -308,6 +335,7 @@ def _unpublish(ctx: JobContext, payload: UnpublishShopifyPayload, org_id: UUID) 
                 "url": draft["url"], "p": payload.publication_id, "o": org_id,
                 "d": Jsonb({
                     "page_id": draft["page_id"], "shop": shop, "already_gone": not existed,
+                    "page_ids": [d["page_id"] for d in drafts], "removed": len(removed),
                 }),
             },
         )  # fmt: skip

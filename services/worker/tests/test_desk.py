@@ -469,6 +469,65 @@ def test_the_desk_after_a_change_is_the_desk_read_fresh(
     assert after == desk(client, user, ruled)
 
 
+@needs_db
+def test_approval_waits_for_background_jobs_and_a_trashed_template_still_serves_its_pages(
+    client: TestClient, user: DbUser, ruled: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B5.2 (D126): approving waits while a picture, a match or a phone fix is changing the page
+    (a product check that only looks doesn't count); a page whose template went to Trash still
+    reads it (rewrite, Buddy); a check started twice at the same moment follows the first."""
+    from app import qa
+    from app.jobs import queue
+    from app.pipeline.nodes.load_inputs import read_inputs
+
+    v = desk(client, user, ruled)["build"]["page_version"]
+
+    def background(kind: str, dedupe: str | None = None, **payload: Any) -> Any:
+        job, _ = queue.enqueue(
+            org_id=ruled["org_id"], kind=kind,
+            payload={"build_id": str(ruled["id"]), **payload}, created_by=user.id,
+            build_id=ruled["id"], dedupe_key=dedupe or f"test-{kind}:{ruled['id']}",
+        )  # fmt: skip
+        return job.id
+
+    picture = background("image_generate", number=1)
+    refused = post(client, user, ruled, "status", base_version=v, status="approved")
+    assert refused.status_code == 422 and "new picture" in refused.json()["detail"]
+    looking = background("product_fidelity", fix=False)
+    with transaction() as conn:
+        conn.execute("update jobs set status = 'succeeded' where id = %(j)s", {"j": picture})
+    approved = post(client, user, ruled, "status", base_version=v, status="approved")
+    assert approved.status_code == 200, approved.text
+    with transaction() as conn:
+        conn.execute("update jobs set status = 'cancelled' where id = %(j)s", {"j": looking})
+
+    with transaction() as conn:
+        row = conn.execute(
+            "select template_id from builds where id = %(b)s", {"b": ruled["id"]}
+        ).fetchone()
+        assert row is not None
+        conn.execute(
+            "update templates set deleted_at = now() where id = %(t)s", {"t": row["template_id"]}
+        )
+    inputs, _ = read_inputs(ruled["org_id"], ruled["id"], template_html=False)
+    assert inputs["template"]["id"] == str(row["template_id"])
+
+    # Two QA checks started at the same moment: the second follows the first, without an error.
+    first = background("qa", dedupe=f"qa:{ruled['id']}")
+    real = qa.running
+    calls = {"n": 0}
+
+    def unseen_once(conn: Any, build_id: Any) -> Any:
+        calls["n"] += 1
+        return None if calls["n"] == 1 else real(conn, build_id)
+
+    monkeypatch.setattr(qa, "running", unseen_once)
+    with transaction() as conn:
+        assert qa.enqueue(conn, ruled["org_id"], ruled["id"], user.id) == first
+    with transaction() as conn:
+        conn.execute("update jobs set status = 'cancelled' where id = %(j)s", {"j": first})
+
+
 def typed(
     client: TestClient, user: DbUser, build: dict[str, Any], state: dict[str, Any],
     original: str, text: str,

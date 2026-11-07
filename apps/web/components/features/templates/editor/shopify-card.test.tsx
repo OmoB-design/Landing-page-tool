@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LayoutCheck, ShopifyMap } from "@/lib/validators/template";
@@ -171,5 +171,62 @@ describe("ShopifyCard (B4.1)", () => {
     ).toBeTruthy();
     // Without the template (a read-only view) there's no button.
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("keeps a layout check under way across a tab switch (B5.4)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              id: "job-1",
+              kind: "shopify_layout_check",
+              status: "running",
+              attempts: 1,
+              max_attempts: 1,
+              result: null,
+              error: null,
+              created_by: "me",
+              created_at: "2026-11-07T10:00:00Z",
+              started_at: "2026-11-07T10:00:01Z",
+              finished_at: null,
+              events: [],
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    // The editor holds the check; the card goes away with its tab and comes back.
+    function Editor() {
+      const [tab, setTab] = useState<"details" | "content">("details");
+      const [job, setJob] = useState<string | null>(null);
+      return (
+        <>
+          <button type="button" onClick={() => setTab("content")}>
+            Content
+          </button>
+          <button type="button" onClick={() => setTab("details")}>
+            Details
+          </button>
+          {tab === "details" ? (
+            <ShopifyCard
+              map={MAP}
+              templateId="t-1"
+              layoutJobId={job}
+              onLayoutJob={setJob}
+            />
+          ) : null}
+        </>
+      );
+    }
+    render(<Editor />);
+    fireEvent.click(screen.getByRole("button", { name: "Check layout" }));
+    expect(await screen.findByText("Checking the layout…")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Content" }));
+    expect(screen.queryByText("Checking the layout…")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Details" }));
+    expect(screen.getByText("Checking the layout…")).toBeTruthy();
+    vi.unstubAllGlobals();
   });
 });

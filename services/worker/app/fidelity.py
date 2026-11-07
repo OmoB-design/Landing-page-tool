@@ -27,6 +27,7 @@ from typing import Any
 from uuid import UUID
 
 from PIL import Image, UnidentifiedImageError
+from psycopg import errors
 from psycopg.types.json import Jsonb
 
 from app import desk, image_ai, images
@@ -381,16 +382,23 @@ def running(conn: Any, build_id: UUID) -> dict[str, Any] | None:
 
 
 def _enqueue(conn: Any, org_id: UUID, build_id: UUID, user_id: UUID | None, fix: bool) -> UUID:
-    job, _ = queue.enqueue(
-        org_id=org_id,
-        kind=KIND,
-        payload={"build_id": str(build_id), "fix": fix},
-        created_by=user_id,
-        dedupe_key=f"fidelity:{build_id}",
-        build_id=build_id,
-        max_attempts=1,
-        conn=conn,
-    )
+    try:
+        with conn.transaction():  # a savepoint: a check started at the same moment wins (B5.2)
+            job, _ = queue.enqueue(
+                org_id=org_id,
+                kind=KIND,
+                payload={"build_id": str(build_id), "fix": fix},
+                created_by=user_id,
+                dedupe_key=f"fidelity:{build_id}",
+                build_id=build_id,
+                max_attempts=1,
+                conn=conn,
+            )
+    except errors.UniqueViolation:
+        other = running(conn, build_id)
+        if other is None:
+            raise
+        return UUID(str(other["id"]))
     return job.id
 
 

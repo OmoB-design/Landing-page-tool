@@ -260,12 +260,14 @@ def test_a_build_interrupted_by_a_worker_restart_resumes_where_it_stopped(
 
 
 @needs_db
-def test_a_build_whose_inputs_are_gone_fails_with_a_clear_reason(
+def test_a_build_whose_template_went_to_trash_still_finishes(
     user: DbUser,
     fast_settings: Settings,
     library_template: uuid.UUID,
     brand_and_product: tuple[uuid.UUID, uuid.UUID, str, str],
 ) -> None:
+    """B5.2 (D126): pages built from a template keep working when it goes to Trash (Trash's
+    promise), a build queued before it went included; new pages can't use it (builds.py)."""
     brand_id, product_id, _, _ = brand_and_product
     build_id, job_id = new_build(user, library_template, brand_id, product_id)
     with transaction() as conn:
@@ -280,8 +282,8 @@ def test_a_build_whose_inputs_are_gone_fails_with_a_clear_reason(
                 "update templates set deleted_at = null where id = %(t)s", {"t": library_template}
             )
     job = job_row(job_id)
-    assert job["status"] == "failed" and job["error"]["code"] == "inputs_missing"
-    assert "gone" in job["error"]["message"]
+    assert job["status"] == "succeeded", job["error"]
+    assert build_row(build_id)["status"] == "needs_review"
     get_graph().checkpointer.delete_thread(str(build_id))  # type: ignore[union-attr]
 
 

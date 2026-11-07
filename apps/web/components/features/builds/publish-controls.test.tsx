@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DeskState } from "@/lib/validators/desk";
@@ -104,7 +110,64 @@ function renderPublish(
   return onPublish;
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+/** The app's own publish path (no sample callbacks): requests answered by method and path. */
+function serve(answers: Record<string, () => unknown>) {
+  const fetchMock = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const key = `${init?.method ?? "GET"} ${String(input)}`;
+      const answer = answers[key];
+      return answer
+        ? new Response(JSON.stringify(answer()), { status: 200 })
+        : new Response(JSON.stringify({ error: `Not served: ${key}` }), {
+            status: 500,
+          });
+    },
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+function renderLive(publishing: PublishingState, status = "approved") {
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <DeskProvider
+        buildId="b1"
+        meId="me"
+        initial={{ ...DESK, build: { ...DESK.build, status } }}
+        onChange={vi.fn()}
+      >
+        <PublishProvider
+          buildId="b1"
+          initial={publishing}
+          page={{
+            brandId: "brand-1",
+            key: "LUM-1",
+            title: "Calm skin",
+            brand: "Lumé",
+            product: "Serum",
+            template: "Advertorial",
+          }}
+        >
+          <PublishButton />
+          <LiveButton />
+          <PublishedModal />
+        </PublishProvider>
+      </DeskProvider>
+    </QueryClientProvider>,
+  );
+}
+
+const PUBLISHED: PublishingState = {
+  ...BASE,
+  status: "published",
+  live: LIVE,
+  publications: [LIVE],
+};
 
 describe("Publish", () => {
   it("passes the gate's reasons only after Publish anyway", () => {
@@ -352,6 +415,45 @@ describe("Publish", () => {
     expect(onUnpublish).toHaveBeenCalledWith("shopify_page");
   });
 
+  it("removes every editable draft only after asking (B5.1)", () => {
+    const editable = {
+      ...LIVE,
+      id: "p3",
+      destination: "shopify_editable",
+      url: "https://lume.myshopify.com/pages/lum-1-v2",
+      admin_url: "https://admin.shopify.com/store/lume/pages/78",
+      editor_url: "https://admin.shopify.com/store/lume/themes/1/editor",
+      version: 2,
+      project: null,
+    };
+    const onUnpublish = vi.fn();
+    renderPublish(
+      {
+        ...BASE,
+        status: "published",
+        live: LIVE,
+        publications: [editable, LIVE],
+        shopify_domain: "lume.myshopify.com",
+        shopify_theme_access: true,
+        shopify_editable: editable,
+      },
+      vi.fn(),
+      "published",
+      onUnpublish,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove drafts" }));
+    expect(
+      screen.getByText(
+        "Remove LUM-1’s editable drafts from lume.myshopify.com?",
+      ),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Remove drafts" }).at(-1)!,
+    );
+    expect(onUnpublish).toHaveBeenCalledWith("shopify_editable");
+  });
+
   it("shows Live, with its pulsing dot, instead of the Published chip", () => {
     renderPublish(
       { ...BASE, status: "published", live: LIVE, publications: [LIVE] },
@@ -368,5 +470,66 @@ describe("Publish", () => {
   it("keeps the status chip while the page isn't live", () => {
     renderPublish(BASE);
     expect(screen.getByText("Approved")).toBeTruthy();
+  });
+});
+
+describe("Following a publish (B5.4)", () => {
+  it("opens the live modal for a publish that finished before the first poll", async () => {
+    // The worker was quicker than the answer: nothing is running any more, the page is live.
+    serve({
+      "POST /api/builds/b1/publish": () => PUBLISHED,
+      "GET /api/builds/b1/publishing": () => PUBLISHED,
+      "GET /api/builds/b1/desk": () => ({
+        ...DESK,
+        build: { ...DESK.build, status: "published" },
+      }),
+    });
+    renderLive(BASE);
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Publish" }).at(-1)!);
+    await waitFor(() =>
+      expect(screen.getByText("Your page is live")).toBeTruthy(),
+    );
+  });
+
+  it('doesn\'t ask "take it down?" again on the next publish', async () => {
+    const down = {
+      ...LIVE,
+      id: "p2",
+      action: "unpublish" as const,
+      status: "unpublished" as const,
+    };
+    const again = { ...LIVE, id: "p3", created_at: "2026-10-25T10:00:00.000Z" };
+    // The server remembers: down after Unpublish, live again after Publish (both quick).
+    let now: PublishingState = PUBLISHED;
+    serve({
+      "POST /api/builds/b1/unpublish": () =>
+        (now = { ...BASE, publications: [down, LIVE] }),
+      "POST /api/builds/b1/publish": () =>
+        (now = {
+          ...PUBLISHED,
+          live: again,
+          publications: [again, down, LIVE],
+        }),
+      "GET /api/builds/b1/publishing": () => now,
+      "GET /api/builds/b1/desk": () => DESK,
+    });
+    renderLive(PUBLISHED, "published");
+    fireEvent.click(screen.getByRole("button", { name: "Live" }));
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish" }));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Unpublish" }).at(-1)!,
+    );
+    // Down: the modal closes by itself.
+    await waitFor(() =>
+      expect(screen.queryByText("Your page is live")).toBeNull(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Publish/ }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Publish" }).at(-1)!);
+    await waitFor(() =>
+      expect(screen.getByText("Your page is live")).toBeTruthy(),
+    );
+    expect(screen.queryByText(/Take LUM-1 down from/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Unpublish" })).toBeTruthy();
   });
 });

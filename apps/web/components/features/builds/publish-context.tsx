@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
   type ReactNode,
@@ -48,7 +48,9 @@ type PublishContextValue = {
   /** Fetches the publishing state again (after connecting a store). */
   refresh: () => void;
   /** Takes the page down from Vercel (D89), or removes its Shopify draft. */
-  unpublish: (destination?: "vercel" | "shopify_page") => Promise<boolean>;
+  unpublish: (
+    destination?: "vercel" | "shopify_page" | "shopify_editable",
+  ) => Promise<boolean>;
   starting: boolean;
   /** The published modal (opens by itself when a publish finishes). */
   modalOpen: boolean;
@@ -110,6 +112,19 @@ export function PublishProvider({
   });
   const publishing = query.data ?? initial;
   const job = useJob(onPublish ? null : publishing.job_id);
+  const queryClient = useQueryClient();
+  // The publication followed is the one the button started, from the server's answer (B5.4,
+  // D128): the one running, or, when it finished before the answer was written, the one that
+  // wasn't there before. A publish that ends before the next poll is still seen ending.
+  const watching = useRef<string | null>(initial.running?.id ?? null);
+  const started = (state: PublishingState) => {
+    const before = new Set(publishing.publications.map((p) => p.id));
+    const ours =
+      state.running ?? state.publications.find((p) => !before.has(p.id));
+    if (ours) watching.current = ours.id;
+    queryClient.setQueryData(["publishing", buildId], state);
+    void query.refetch();
+  };
 
   const mutation = useMutation({
     mutationFn: ({
@@ -127,22 +142,21 @@ export function PublishProvider({
           override,
         }),
       }),
-    onSuccess: () => void query.refetch(),
+    onSuccess: (state) => started(state),
     onError: (error) => toast.error(error.message),
   });
   const takeDown = useMutation({
-    mutationFn: (destination: "vercel" | "shopify_page") =>
+    mutationFn: (destination: "vercel" | "shopify_page" | "shopify_editable") =>
       apiFetch(`/api/builds/${buildId}/unpublish`, publishingStateSchema, {
         method: "POST",
         body: JSON.stringify({ destination }),
       }),
-    onSuccess: () => void query.refetch(),
+    onSuccess: (state) => started(state),
     onError: (error) => toast.error(error.message),
   });
 
   // A publish (or unpublish) that was running has finished: catch up, then open the modal (or
   // close it, once the page is down) or say what failed.
-  const watching = useRef<string | null>(initial.running?.id ?? null);
   useEffect(() => {
     if (publishing.running) {
       watching.current = publishing.running.id;

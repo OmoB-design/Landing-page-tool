@@ -42,7 +42,7 @@ def read_inputs(
         template = conn.execute(
             """
             select * from templates
-            where id = %(id)s and (org_id is null or org_id = %(org)s) and deleted_at is null
+            where id = %(id)s and (org_id is null or org_id = %(org)s)
             """,
             {"id": build["template_id"], "org": org},
         ).fetchone()

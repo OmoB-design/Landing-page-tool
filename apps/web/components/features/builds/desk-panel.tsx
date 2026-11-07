@@ -401,6 +401,9 @@ function EditedChip() {
 function ParagraphEditor({ paragraph }: { paragraph: DeskParagraph }) {
   const { saveEdit, setEditing, pending, redraft } = useDesk();
   const [text, setText] = useState(paragraph.text);
+  // The words the editor opened with (B5.1, D125): the save carries them as the original, so a
+  // change made meanwhile (Buddy, a teammate) is refused as "changed elsewhere", not overwritten.
+  const [opened] = useState(paragraph.text);
   const field = useRef<HTMLTextAreaElement>(null);
   const saving = pending === "copy";
   const changed = text.trim() !== paragraph.text && text.trim() !== "";
@@ -414,8 +417,7 @@ function ParagraphEditor({ paragraph }: { paragraph: DeskParagraph }) {
   }, []);
 
   const save = () => {
-    if (changed && !saving)
-      void saveEdit(paragraph.number, paragraph.text, text);
+    if (changed && !saving) void saveEdit(paragraph.number, opened, text);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {

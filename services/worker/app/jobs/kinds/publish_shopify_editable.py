@@ -28,7 +28,7 @@ from app import editor_parts, publishing, vault
 from app.db import transaction
 from app.engines import shopify_theme
 from app.jobs.context import JobContext
-from app.jobs.errors import UserFacingError
+from app.jobs.errors import JobInterrupted, UserFacingError
 from app.jobs.kinds.publish_shopify import STORAGE_FAILED, _fail, _move_files
 from app.pipeline.runtime import BUCKET
 from app.providers import shopify_cli, storage
@@ -64,6 +64,8 @@ def run(ctx: JobContext) -> dict[str, Any]:
     except UserFacingError as exc:
         _fail(payload.publication_id, org_id, exc.message)
         raise
+    except JobInterrupted:
+        raise  # the worker is stopping: the job goes back to the queue and resumes; not a failure
     except Exception:
         _fail(payload.publication_id, org_id, "Something went wrong while publishing to Shopify.")
         raise
@@ -102,7 +104,8 @@ def _publish(ctx: JobContext, payload: PublishEditablePayload, org_id: UUID) -> 
     with transaction() as conn:
         build = conn.execute(
             """
-            select b.id, b.key, b.title, b.brand_id, b.template_id, b.working_html_path
+            select b.id, b.key, b.title, b.brand_id, b.template_id, b.working_html_path,
+                   b.page_version, b.status
             from builds b where b.id = %(b)s and b.org_id = %(o)s and b.deleted_at is null
             """,
             {"b": payload.build_id, "o": org_id},
@@ -128,6 +131,8 @@ def _publish(ctx: JobContext, payload: PublishEditablePayload, org_id: UUID) -> 
         page_map = editor_parts.template_map(conn, build["template_id"]) if build else None
     if build is None or not build["working_html_path"] or page_map is None:
         raise UserFacingError("That page isn't there any more.", code="build_missing")
+    if not publishing.approved_as_pressed(build, payload.page_version):
+        raise UserFacingError(publishing.EDITED_SINCE, code="page_changed")
     if store is None or not secret:
         raise UserFacingError("This brand's Shopify store isn't connected any more.")
     if not password:
@@ -170,7 +175,11 @@ def _publish(ctx: JobContext, payload: PublishEditablePayload, org_id: UUID) -> 
         problems = shopify_cli.push(shop, password, theme["id"], [files.blocks, files.files])
         if problems:
             raise UserFacingError("Shopify didn't take the page's theme files: " + problems[0])
-        ctx.progress("Added the page's files to the theme", data={"step": 4, "total": TOTAL})
+        ctx.progress(
+            "Added the page's files to the theme",
+            data={"step": 4, "total": TOTAL},
+            check_stop=False,
+        )
 
         handle = f"{base}-v{version}"
         page = client.save_page(
@@ -180,7 +189,7 @@ def _publish(ctx: JobContext, payload: PublishEditablePayload, org_id: UUID) -> 
             body="",
             template_suffix=files.suffix,
         )
-        ctx.progress("Saved the draft page", data={"step": 5, "total": TOTAL})
+        ctx.progress("Saved the draft page", data={"step": 5, "total": TOTAL}, check_stop=False)
     finally:
         client.close()
 
@@ -213,5 +222,7 @@ def _publish(ctx: JobContext, payload: PublishEditablePayload, org_id: UUID) -> 
                 }),
             },
         )  # fmt: skip
-    ctx.progress("The editable draft is in Shopify", data={"step": 6, "total": TOTAL})
+    ctx.progress(
+        "The editable draft is in Shopify", data={"step": 6, "total": TOTAL}, check_stop=False
+    )
     return {"build_id": str(build["id"]), "admin_url": admin_url, "editor_url": editor}

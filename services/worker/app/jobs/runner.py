@@ -16,7 +16,7 @@ import psycopg
 import structlog
 from psycopg_pool import PoolTimeout
 
-from app import trash
+from app import desk, trash
 from app.config import Settings
 from app.jobs import queue
 from app.jobs.context import JobContext
@@ -29,6 +29,8 @@ from app.providers.ledger import cost_context
 log = structlog.get_logger()
 
 REAP_EVERY_SECONDS = 15.0
+# A page job no worker claims in this long ends (B5.2, D126).
+UNCLAIMED_AFTER_SECONDS = 15 * 60
 # Trash (D92): what has been there over 7 days is deleted for good, checked hourly (first an hour
 # after the loop starts).
 PURGE_EVERY_SECONDS = 3600.0
@@ -103,6 +105,12 @@ class Runner:
         return True
 
     def reap(self) -> None:
+        # Page jobs (a rewrite, a request to Buddy) nobody claimed in 15 minutes end (B5.2, D126):
+        # the page they lock unlocks.
+        for job in queue.expire_unclaimed(list(desk.PAGE_JOBS), UNCLAIMED_AFTER_SECONDS):
+            queue.add_event(job, queue.UNCLAIMED_MESSAGE, level="error")
+            notify_job_finished(job, self._title(job))
+            log.warning("ended unclaimed job", job=str(job.id), kind=job.kind)
         for job in queue.reap(self.settings.lp_stale_after_seconds):
             if job.status == "queued":
                 queue.add_event(job, "The worker stopped responding; retrying.", level="warn")

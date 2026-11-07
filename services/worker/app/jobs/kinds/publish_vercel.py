@@ -28,7 +28,7 @@ from app.db import transaction
 from app.engines.export import export_page
 from app.engines.share import with_share_image
 from app.jobs.context import JobContext
-from app.jobs.errors import UserFacingError
+from app.jobs.errors import JobInterrupted, UserFacingError
 from app.pipeline.runtime import BUCKET, build_prefix
 from app.providers import storage
 from app.providers.vercel import VercelClient, VercelError, production_host
@@ -131,6 +131,8 @@ def run(ctx: JobContext) -> dict[str, Any]:
     except UserFacingError as exc:
         _fail(payload.publication_id, org_id, exc.message)
         raise
+    except JobInterrupted:
+        raise  # the worker is stopping: the job goes back to the queue and resumes; not a failure
     except Exception:
         _fail(payload.publication_id, org_id, "Something went wrong while publishing.")
         raise
@@ -141,7 +143,8 @@ def _publish(ctx: JobContext, payload: PublishVercelPayload, org_id: UUID) -> di
     with transaction() as conn:
         build = conn.execute(
             """
-            select b.id, b.key, b.brand_id, b.working_html_path, b.page_version, br.prefix
+            select b.id, b.key, b.brand_id, b.working_html_path, b.page_version, b.status,
+                   br.prefix
             from builds b join brands br on br.id = b.brand_id
             where b.id = %(b)s and b.org_id = %(o)s and b.deleted_at is null
             """,
@@ -156,6 +159,8 @@ def _publish(ctx: JobContext, payload: PublishVercelPayload, org_id: UUID) -> di
         others = _brand_pages(conn, org_id, build["brand_id"], build["id"]) if build else {}
     if build is None or not build["working_html_path"]:
         raise UserFacingError("That page isn't there any more.", code="build_missing")
+    if not publishing.approved_as_pressed(build, payload.page_version):
+        raise UserFacingError(publishing.EDITED_SINCE, code="page_changed")
     if integration is None or not token:
         raise UserFacingError("Vercel isn't connected any more. Connect it in Settings.")
 
@@ -191,7 +196,9 @@ def _publish(ctx: JobContext, payload: PublishVercelPayload, org_id: UUID) -> di
         client.close()
     host = production_host(ready, project)
     url = f"https://{host}/{site.page_path(build['key'])}"
-    ctx.progress("Vercel finished the deployment", data={"step": 4, "total": TOTAL})
+    ctx.progress(
+        "Vercel finished the deployment", data={"step": 4, "total": TOTAL}, check_stop=False
+    )
 
     status = _answers(url)
     if status != 200:
@@ -224,7 +231,7 @@ def _publish(ctx: JobContext, payload: PublishVercelPayload, org_id: UUID) -> di
             """,
             {"b": build["id"], "o": org_id, "v": payload.page_version},
         )
-    ctx.progress("The page is live", data={"step": 5, "total": TOTAL})
+    ctx.progress("The page is live", data={"step": 5, "total": TOTAL}, check_stop=False)
     return {"build_id": str(build["id"]), "url": url, "project": project, "seconds": seconds}
 
 
@@ -257,6 +264,8 @@ def run_unpublish(ctx: JobContext) -> dict[str, Any]:
     except UserFacingError as exc:
         _fail(payload.publication_id, org_id, exc.message)
         raise
+    except JobInterrupted:
+        raise  # the worker is stopping: the job goes back to the queue and resumes; not a failure
     except Exception:
         _fail(payload.publication_id, org_id, "Something went wrong while unpublishing.")
         raise
@@ -333,5 +342,5 @@ def _unpublish(ctx: JobContext, payload: UnpublishVercelPayload, org_id: UUID) -
             "and status = 'published'",
             {"b": build["id"], "o": org_id},
         )
-    ctx.progress("The page is down", data={"step": 3, "total": 3})
+    ctx.progress("The page is down", data={"step": 3, "total": 3}, check_stop=False)
     return {"build_id": str(build["id"]), "url": url, "project": project, "seconds": seconds}

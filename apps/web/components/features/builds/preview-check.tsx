@@ -2,7 +2,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { AlertIcon, CheckIcon, RefreshIcon } from "@/components/ui/icons";
 import { SparkleFigmaIcon } from "@/components/ui/lp-icons";
 import { Spinner } from "@/components/ui/spinner";
 import { apiFetch } from "@/lib/api/client";
+import { useFollowedJob } from "@/lib/queries/jobs";
 import { cn } from "@/lib/utils";
 import {
   type PhoneCheck,
@@ -51,27 +52,34 @@ export function PreviewCheck() {
   const data = check.data;
   const running = Boolean(data?.running) || starting;
   const [fixStarting, setFixStarting] = useState(false);
-  const fixing = Boolean(data?.fixing) || fixStarting;
-
-  // A phone fix that finished: the desk catches up with the page it made (B3.3b).
-  const lastFix = useRef<string | null>(null);
-  useEffect(() => {
-    const now = data?.fixing ?? null;
-    if (lastFix.current && !now) {
+  // The phone fix followed: the one this button started, else one under way when the desk
+  // opened (B5.4, D128). Only a fix that worked says "Fixed", with Undo; a failed one says why.
+  const [startedFix, setStartedFix] = useState<string | null>(null);
+  const fix = useFollowedJob(startedFix ?? data?.fixing ?? null, {
+    succeeded: () => {
       void reload();
+      void queryClient.invalidateQueries({ queryKey: key });
       toast.success("Fixed the page for phones", {
         action: { label: "Undo", onClick: () => undo() },
       });
-    }
-    lastFix.current = now;
-  }, [data?.fixing, reload, undo]);
+    },
+    failed: (job) => {
+      void queryClient.invalidateQueries({ queryKey: key });
+      toast.error(job.error?.message ?? "Fix for phone didn’t finish.");
+    },
+    cancelled: () => void queryClient.invalidateQueries({ queryKey: key }),
+  });
+  const fixing = fixStarting || fix.running;
 
   const fixForPhone = async () => {
     setFixStarting(true);
     try {
-      await apiFetch(`/api/builds/${buildId}/phone-fix`, qaStartedSchema, {
-        method: "POST",
-      });
+      const { job_id } = await apiFetch(
+        `/api/builds/${buildId}/phone-fix`,
+        qaStartedSchema,
+        { method: "POST" },
+      );
+      setStartedFix(job_id);
       await queryClient.invalidateQueries({ queryKey: key });
     } catch (error) {
       toast.error(

@@ -19,6 +19,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
+from psycopg import errors
 from psycopg.types.json import Jsonb
 
 from app import desk
@@ -1236,26 +1237,30 @@ def start(org_id: UUID, build_id: UUID, user_id: UUID | None, request: AgentRequ
             },
         ).fetchone()  # fmt: skip
         assert message is not None
-        job, created = queue.enqueue(
-            org_id=org_id,
-            kind="agent_turn",
-            payload={
-                "build_id": str(build_id),
-                "base_version": request.base_version,
-                "thread_id": str(thread_id),
-                "message_id": str(message["id"]),
-                "text": request.text.strip(),
-                "target": target,
-                "images": images,
-                "scope": "agent",
-                "section": target["key"] if target else None,
-            },
-            created_by=user_id,
-            dedupe_key=f"redraft:{build_id}",
-            build_id=build_id,
-            max_attempts=1,
-            conn=conn,
-        )
+        try:
+            job, created = queue.enqueue(
+                org_id=org_id,
+                kind="agent_turn",
+                payload={
+                    "build_id": str(build_id),
+                    "base_version": request.base_version,
+                    "thread_id": str(thread_id),
+                    "message_id": str(message["id"]),
+                    "text": request.text.strip(),
+                    "target": target,
+                    "images": images,
+                    "scope": "agent",
+                    "section": target["key"] if target else None,
+                },
+                created_by=user_id,
+                dedupe_key=f"redraft:{build_id}",
+                build_id=build_id,
+                max_attempts=1,
+                conn=conn,
+            )
+        except errors.UniqueViolation as exc:
+            # Sent twice at the same moment (B5.2): the other request is the one running.
+            raise desk.DeskEditError(desk.REDRAFTING) from exc
         if not created:
             raise desk.DeskEditError(desk.REDRAFTING)
         conn.execute(

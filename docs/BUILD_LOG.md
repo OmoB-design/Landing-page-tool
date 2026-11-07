@@ -1316,3 +1316,74 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** to agree with the owner.
+
+### B5.1 — Hardening: publishing and the B4 regressions
+- **Status:** complete (owner: "go and yes", the migration push permitted, 2026-11-07; not yet committed)
+- **Date:** 2026-11-07
+- **Summary:** The first build of M5 Hardening, from the state-machine audit.
+  - **Only the approved version goes out:** each publish job checks the page is still the version approved when Publish was pressed; an edit since stops it with "approve it again", and nothing is sent.
+  - **A succeeded publish stays succeeded:** a worker stopping mid-publish releases the job (no false failure, no duplicate Shopify draft).
+  - **No publish stuck on "running":** a database trigger marks a publication failed when its job fails, is cancelled or is reaped.
+  - **Remove drafts for editable Shopify pages:** deletes every editable draft page still in the store, so the page can go to Trash.
+  - **No overwritten words:** the part panel and the review desk's line editor save against the words they showed.
+  - **Page and tree in step:** the page scrolls to every tree pick; clicking empty space on the page clears the tree's pick.
+  - **Found while checking:** the worker refused fresh sign-ins for a few seconds when the machine's clock was behind Supabase's; it now allows 30 s.
+- **Key files:** worker `app/jobs/kinds/publish_vercel.py`, `publish_shopify.py` (also Remove drafts), `publish_shopify_editable.py`, `app/publishing.py` (`approved_as_pressed`, `EDITED_SINCE`, editable unpublish, editable state), `app/models/publishing.py`, `app/auth.py` (leeway), `supabase/migrations/20261107034055_publication_job_failed.sql` (new, pushed with the owner's permission), tests `test_publish_editable.py` (`test_hardened_publishing`); web `components/features/builds/publish-controls.tsx` (Remove drafts), `publish-context.tsx`, `app/api/builds/[buildId]/unpublish/route.ts`, `lib/api/worker.ts`, `components/features/page-editor/section-panel.tsx`, `page-canvas.tsx`, `page-editor.tsx`, `components/features/builds/desk-panel.tsx`, `app/preview/[buildId]/route.ts`, tests `publish-controls.test.tsx`, `page-editor.test.tsx`; docs D125, MILESTONES (M5), BUILD_SPEC §12.
+- **Schema changes:** a trigger, `jobs_publication_failed`. **New dependencies:** none.
+- **Decisions:** D125 locked.
+- **Deviations from the plan:** the worker's 30 s token leeway (found while checking; it made the editor fall back to the review page right after signing in).
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B5.2, stuck states and background jobs (plan first).
+
+### B5.2 — Hardening: stuck states and background jobs
+- **Status:** complete (owner: "go with your recommendation", 2026-11-07; not yet committed)
+- **Date:** 2026-11-07
+- **Summary:**
+  - **The page can't stay locked:** a rewrite or Buddy request no worker claims in 15 minutes ends as failed, and the page unlocks.
+  - **Buddy turns always finish:** a turn settles from its own job if the desk's settling was skipped.
+  - **Approval waits:** approving is refused while an AI picture, a product match fix or a phone fix is changing the page, saying what to wait for.
+  - **Pictures:** the "Making a new picture…" spinner can't come back after the picture lands; one picture at a time.
+  - **Trash holds:** importing a product that's in Trash asks for a restore; pages from a template in Trash keep working.
+  - **Double starts:** Buddy, QA and product checks started twice at once answer "already running".
+- **Key files:** worker `app/jobs/queue.py` (`expire_unclaimed`), `app/jobs/runner.py`, `app/desk.py` (`_background` in `set_status`), `app/jobs/kinds/product_pull.py`, `app/pipeline/nodes/load_inputs.py`, `app/agent.py`, `app/qa.py`, `app/fidelity.py`, tests `test_jobs.py`, `test_desk.py`, `test_product_jobs.py`; web `components/features/page-editor/lander/use-lander.ts`, `page-editor.tsx`, `image-panel.tsx`, test `image-panel.test.tsx`; docs D126, MILESTONES.
+- **Schema changes:** none. **New dependencies:** none.
+- **Decisions:** D126 locked.
+- **Deviations from the plan:** importing a trashed product stops with a message rather than updating it quietly in Trash (clearer; the plan said it would stay in Trash, which it does). A pipeline test that expected a queued build to fail when its template went to Trash now checks it finishes (the new rule).
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B5.3, direct database writes (plan first).
+
+### B5.3 — Hardening: direct database writes
+- **Status:** complete (owner: "go and yes to the migration", 2026-11-07; not yet committed)
+- **Date:** 2026-11-07
+- **Summary:**
+  - **What members can do is unchanged in the app:** add brands, edit Brand DNA, edit products, rename templates, and every edit to pages and templates through the editor, Buddy and the worker.
+  - **The back door is closed:** a signed-in member can no longer write other columns or tables straight through the database API (Trash, review, page numbers, pulled pictures, template versions and sections, assets, strategy, template files).
+  - Checked before the push: the new database test failed on all 24 back-door writes, then passed after it.
+- **Key files:** `supabase/migrations/20261107104838_member_write_limits.sql` (new, pushed with the owner's permission), `supabase/tests/database/member_write_limits.test.sql` (new, 29 checks); docs D127, MILESTONES.
+- **Schema changes:** grants and storage policies only (no tables or columns). **New dependencies:** none.
+- **Decisions:** D127 locked.
+- **Deviations from the plan:** none.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B5.4, screens that follow jobs (plan first).
+
+### B5.4 — Hardening: screens that follow jobs
+- **Status:** complete (owner: "go with your recommendation", 2026-11-07; not yet committed)
+- **Date:** 2026-11-07
+- **Summary:** The last build of M5 Hardening.
+  - **One shared way to follow a job** (`useFollowedJob`): by the job's own id, each ending (succeeded, failed, cancelled) handled once.
+  - **Quick publishes aren't missed:** the live modal opens even when the publish finished before the first poll; "Take it down?" doesn't reappear on the next publish.
+  - **Phone fix:** "Fixed" with Undo only when it worked; a failure says why.
+  - **"Analysing…" can't stick** after a failed or cancelled analysis.
+  - **Layout check** survives switching tabs and reloading the template editor.
+  - **Floating bar:** keeps your words while Buddy works.
+- **Key files:** web `lib/queries/jobs.ts` (`useFollowedJob`), `components/features/builds/publish-context.tsx`, `publish-controls.tsx`, `preview-check.tsx`, `export-button.tsx`, `components/features/templates/editor/template-editor.tsx`, `analysis-bar.tsx`, `details-panel.tsx`, `shopify-card.tsx`, `app/(editor)/templates/[templateId]/page.tsx`, `lib/templates/queries.ts`, `components/features/page-editor/lander/floating-composer.tsx`; tests `lib/queries/jobs.test.tsx` (new), `publish-controls.test.tsx`, `preview-check.test.tsx`, `shopify-card.test.tsx`, `lander.test.tsx`; docs D128, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D128 locked.
+- **Deviations from the plan:** `page-editor.tsx` needed no change (the floating bar already had Buddy's busy state).
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner (M5 Hardening is complete).
+

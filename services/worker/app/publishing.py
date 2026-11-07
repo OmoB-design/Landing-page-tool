@@ -30,6 +30,14 @@ from app.providers.vercel import VercelClient, VercelError
 from app.publish import gate
 
 PUBLISHABLE = {"approved", "published"}
+# A publish job starting on a page that changed after Publish was pressed (B5.1, D125).
+EDITED_SINCE = "The page was edited after you pressed Publish. Approve it again, then publish."
+
+
+def approved_as_pressed(build: dict[str, Any], page_version: int) -> bool:
+    """At a publish job's start: the page is still the version that was approved when Publish
+    was pressed, so exactly that goes out (an edit since withdrew the approval)."""
+    return build["page_version"] == page_version and build["status"] in PUBLISHABLE
 
 
 class PublishNotFoundError(Exception):
@@ -399,9 +407,20 @@ def publishing_state(org_id: UUID, build_id: UUID) -> PublishingState:
             {"b": build["brand_id"], "o": org_id},
         ).fetchone()
     running = next((r for r in rows if r["status"] == "pending"), None)
-    editable = next(
-        (r for r in rows if r["destination"] == "shopify_editable" and r["status"] == "succeeded"),
+    # The newest editable draft, unless the drafts were removed since (B5.1).
+    editable_finished = next(
+        (
+            r
+            for r in rows
+            if r["destination"] == "shopify_editable"
+            and r["status"] in ("succeeded", "unpublished")
+        ),
         None,
+    )
+    editable = (
+        editable_finished
+        if editable_finished and editable_finished["status"] == "succeeded"
+        else None
     )
     # Live on Vercel: the newest Vercel publication that finished is a publish, not an unpublish.
     finished = next(
@@ -529,8 +548,9 @@ def start_unpublish(
     org_id: UUID, build_id: UUID, user_id: UUID | None, destination: str = "vercel"
 ) -> PublishingState:
     """Queues taking the page down from Vercel (the brand's other pages stay up; D89), or removing
-    its draft page from the brand's Shopify store; recorded as a publication of its own."""
-    shopify_draft = destination == "shopify_page"
+    its draft page from the brand's Shopify store (editable: every editable draft of it, B5.1);
+    recorded as a publication of its own."""
+    shopify_draft = destination in ("shopify_page", "shopify_editable")
     with transaction() as conn:
         _load(conn, org_id, build_id, lock=True)
         latest = conn.execute(
@@ -566,7 +586,11 @@ def start_unpublish(
             job, _ = queue.enqueue(
                 org_id=org_id,
                 kind="unpublish_shopify_page" if shopify_draft else "unpublish_vercel",
-                payload={"build_id": str(build_id), "publication_id": str(row["id"])},
+                payload={
+                    "build_id": str(build_id),
+                    "publication_id": str(row["id"]),
+                    **({"destination": destination} if destination == "shopify_editable" else {}),
+                },
                 created_by=user_id,
                 dedupe_key=f"publish:{build_id}",
                 build_id=build_id,

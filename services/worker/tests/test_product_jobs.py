@@ -149,18 +149,36 @@ def test_pull_saves_a_shopify_product(
     assert [r["node"] for r in ledger] == ["product_enrich"]
     assert ledger[0]["model"].startswith("mock/")
 
-    # Pulling again updates the same product (no duplicate), even after it was removed.
-    with transaction() as conn:
-        conn.execute(
-            "update products set deleted_at = now() where id = %(id)s", {"id": product["id"]}
-        )
+    # Pulling again updates the same product (no duplicate).
     again = run_job(
         user, fast_settings, "test_product_pull", {"brand_id": str(brand_id), "url": url}
     )
     assert again["status"] == "succeeded", again["error"]
     assert again["result"]["created"] is False
     assert again["result"]["product_id"] == result["product_id"]
-    assert product_row(result["product_id"])["deleted_at"] is None
+
+    # In Trash it stays there (B5.2, D126): pulling it again asks for a restore.
+    with transaction() as conn:
+        conn.execute(
+            "update products set deleted_at = now() where id = %(id)s", {"id": product["id"]}
+        )
+    trashed = run_job(
+        user, fast_settings, "test_product_pull", {"brand_id": str(brand_id), "url": url}
+    )
+    assert trashed["status"] == "failed" and "in Trash" in trashed["error"]["message"]
+    assert product_row(result["product_id"])["deleted_at"] is not None
+
+    # Emptied from Trash but kept for its pages: pulling it again brings it back whole.
+    with transaction() as conn:
+        conn.execute(
+            "update products set purged_at = now() where id = %(id)s", {"id": product["id"]}
+        )
+    revived = run_job(
+        user, fast_settings, "test_product_pull", {"brand_id": str(brand_id), "url": url}
+    )
+    assert revived["status"] == "succeeded", revived["error"]
+    back = product_row(result["product_id"])
+    assert back["deleted_at"] is None and back["purged_at"] is None
     cleanup_images(product)
 
 

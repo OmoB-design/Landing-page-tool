@@ -9,9 +9,15 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { toast } from "@/components/app/toaster";
+import type { JobDetail } from "@/lib/validators/jobs";
 import type { QaState } from "@/lib/validators/qa";
 
 import { PreviewCheck } from "./preview-check";
+
+vi.mock("@/components/app/toaster", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
 
 vi.mock("./desk-context", () => ({
   useDesk: () => ({
@@ -115,5 +121,63 @@ describe("preview check (B3.3a)", () => {
     expect(
       await screen.findByRole("button", { name: "Run the check" }),
     ).toBeTruthy();
+  });
+
+  it("says Fixed only for a phone fix that worked (B5.4)", async () => {
+    const fixJob = (status: JobDetail["status"]): JobDetail => ({
+      id: "j1",
+      kind: "mobile_optimize",
+      status,
+      attempts: 1,
+      max_attempts: 1,
+      result: null,
+      error:
+        status === "failed"
+          ? { code: "not_fixed", message: "The phone check couldn’t run." }
+          : null,
+      created_by: "me",
+      created_at: "2026-11-07T10:00:00Z",
+      started_at: "2026-11-07T10:00:01Z",
+      finished_at: "2026-11-07T10:00:05Z",
+      events: [],
+    });
+    for (const status of ["failed", "succeeded"] as const) {
+      vi.mocked(toast.success).mockClear();
+      vi.mocked(toast.error).mockClear();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string, init?: RequestInit) => {
+          const answer =
+            init?.method === "POST"
+              ? { job_id: "j1" }
+              : url === "/api/jobs/j1"
+                ? fixJob(status)
+                : STATE;
+          return new Response(JSON.stringify(answer), { status: 200 });
+        }),
+      );
+      renderCheck();
+      fireEvent.click(await screen.findByRole("button", { name: /Phone/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Fix for phone/ }));
+      if (status === "failed") {
+        await waitFor(() =>
+          expect(toast.error).toHaveBeenCalledWith(
+            "The phone check couldn’t run.",
+          ),
+        );
+        expect(toast.success).not.toHaveBeenCalled();
+      } else {
+        await waitFor(() =>
+          expect(toast.success).toHaveBeenCalledWith(
+            "Fixed the page for phones",
+            expect.objectContaining({
+              action: expect.objectContaining({ label: "Undo" }),
+            }),
+          ),
+        );
+        expect(toast.error).not.toHaveBeenCalled();
+      }
+      cleanup();
+    }
   });
 });

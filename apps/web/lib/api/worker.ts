@@ -867,7 +867,7 @@ export function startUnpublish(
   accessToken: string,
   buildId: string,
   orgId: string,
-  destination: "vercel" | "shopify_page" = "vercel",
+  destination: "vercel" | "shopify_page" | "shopify_editable" = "vercel",
 ): Promise<PublishingState> {
   return postToWorker(
     `/builds/${encodeURIComponent(buildId)}/unpublish`,

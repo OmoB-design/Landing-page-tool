@@ -173,6 +173,31 @@ def _redraft(conn: Any, build_id: UUID) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
+# Jobs that change the page in the background (B5.2, D126): approving waits for them, or they'd
+# withdraw the approval a moment later by changing the page.
+_BACKGROUND_WAIT = {
+    "image_generate": "Wait for the new picture to finish, then approve.",
+    "image_edit": "Wait for the picture being edited to finish, then approve.",
+    "product_fidelity": "Wait for Match product to finish, then approve.",
+    "mobile_optimize": "Wait for the phone fix to finish, then approve.",
+}
+
+
+def _background(conn: Any, build_id: UUID) -> str | None:
+    """Why approving must wait: a background job is changing the page (a product check that only
+    looks, without fixing, doesn't count)."""
+    row = conn.execute(
+        """
+        select kind from jobs
+        where build_id = %(b)s and kind = any(%(kinds)s) and status in ('queued', 'running')
+          and (kind <> 'product_fidelity' or coalesce((payload->>'fix')::boolean, false))
+        order by created_at desc limit 1
+        """,
+        {"b": build_id, "kinds": list(_BACKGROUND_WAIT)},
+    ).fetchone()
+    return _BACKGROUND_WAIT[row["kind"]] if row else None
+
+
 def _colors(conn: Any, build: dict[str, Any], html: str) -> DeskColors:
     """The page's four colours (as recorded on it; for pages built before the record, the
     brand's colours the build put on it, or the template's when it wasn't recoloured) and the
@@ -665,6 +690,8 @@ def set_status(
             raise DeskConflictError
         if _redraft(conn, build_id) is not None:
             raise DeskEditError(REDRAFTING)
+        if status == "approved" and (waiting := _background(conn, build_id)) is not None:
+            raise DeskEditError(waiting)
         allowed = {"approved": "needs_review", "needs_review": "approved"}
         if build["status"] != allowed[status]:
             raise DeskEditError(

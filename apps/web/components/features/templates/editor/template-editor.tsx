@@ -33,6 +33,7 @@ import {
   startAnalysis,
   undoTemplate,
 } from "@/lib/templates/actions";
+import { useFollowedJob } from "@/lib/queries/jobs";
 import { addedKey, selectionAfterRemove } from "@/lib/templates/editor";
 import type { AnalysisJob } from "@/lib/templates/queries";
 import type {
@@ -77,10 +78,13 @@ function readSavedWidth() {
 export function TemplateEditor({
   initial,
   analysisJob = null,
+  layoutJob = null,
   initialTab = "content",
 }: {
   initial: TemplateEditorState;
   analysisJob?: AnalysisJob | null;
+  /** The newest layout check (B4.3), so one under way is found again after a reload (B5.4). */
+  layoutJob?: AnalysisJob | null;
   /** The tab to open on (the dev states page opens Look or Rules). */
   initialTab?: Tab;
 }) {
@@ -207,7 +211,16 @@ export function TemplateEditor({
       else toast.error(result.error ?? "Couldn’t start the analysis.");
     });
   const finishAnalysis = useCallback(() => setAnalysisJobId(null), []);
-  const analysing = startingAnalysis || analysisJobId !== null;
+  // From the job's own status (B5.4): a failed or cancelled analysis isn't "Analysing…".
+  const analysisRunning = useFollowedJob(analysisJobId).running;
+  const analysing = startingAnalysis || analysisRunning;
+
+  // The layout check (B4.3), held here so switching tabs keeps it (B5.4).
+  const [layoutJobId, setLayoutJobId] = useState<string | null>(
+    layoutJob?.status === "queued" || layoutJob?.status === "running"
+      ? layoutJob.id
+      : null,
+  );
 
   // The panel's width (Figma 722:14843: the Mover on its edge), remembered per browser. Read on the
   // client only; a drag or key press takes over from it.
@@ -375,6 +388,8 @@ export function TemplateEditor({
                 onAnalyse={analyse}
                 onRestore={restore}
                 onState={setState}
+                layoutJobId={layoutJobId}
+                onLayoutJob={setLayoutJobId}
                 onSaved={(details) =>
                   setState((current) => ({
                     ...current,

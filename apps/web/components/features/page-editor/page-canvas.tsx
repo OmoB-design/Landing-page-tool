@@ -106,8 +106,9 @@ export function PageCanvas({
   onSelect: (key: string) => void;
   /** The part picked in the tree or on the page (B4.4): its line is outlined with its name. */
   part?: MapPart | null;
-  /** A line was clicked once on the page: it's picked (a second click types in it). */
-  onPart?: (line: number) => void;
+  /** A line was clicked once on the page: it's picked (a second click types in it); null: a
+   * click on empty space cleared the pick. */
+  onPart?: (line: number | null) => boolean;
   /** What the pointer is over in the tree: outlined on the page with its name. */
   treeHover?: PartPointer;
   /** What the pointer is over on the page, for the tree to light its row. */
@@ -123,7 +124,8 @@ export function PageCanvas({
   /** Set to a function the part's panel types through: the words show on the page and save as
    * typing on the page does. */
   typeRef?: React.RefObject<
-    ((line: number, text: string, done: boolean) => void) | null
+    | ((line: number, text: string, done: boolean, original: string) => void)
+    | null
   >;
   onSaving: (saving: boolean) => void;
   /** A newer page is loading behind the one shown (the top bar says so). */
@@ -212,6 +214,10 @@ export function PageCanvas({
   const flashAt = useRef(0);
   const flashed = useRef(0);
   const fromFrame = useRef(false);
+  // A part picked on the page itself (B5.1): its own flag, so a pick in the tree after a pick on
+  // the page still scrolls the page to it (one shared flag stayed set when the section didn't
+  // change).
+  const partFromFrame = useRef(false);
 
   // What the frame needs whenever it (re)loads or the desk changes: the locked lines, whether
   // typing waits for a redraft, and where you were.
@@ -465,10 +471,9 @@ export function PageCanvas({
           break;
         }
         case "lp-part":
-          if (block !== null) {
-            fromFrame.current = true;
-            onPartRef.current?.(block);
-          }
+          // A line picked on the page, or (null) the pick cleared by a click on empty space. The
+          // flag is set only when the pick changes, so the effect that clears it runs.
+          partFromFrame.current = onPartRef.current?.(block) ?? false;
           break;
         case "lp-hover": {
           const over = data as { key?: unknown; image?: unknown };
@@ -636,8 +641,9 @@ export function PageCanvas({
     post({
       type: "lp-part-select",
       block: pickedLine,
-      scroll: !fromFrame.current,
+      scroll: !partFromFrame.current,
     });
+    partFromFrame.current = false;
   }, [post, pickedLine]);
   const hoverKey = treeHover
     ? `${treeHover.key ?? ""}|${treeHover.line ?? ""}|${treeHover.image ?? ""}`
@@ -658,14 +664,16 @@ export function PageCanvas({
   // does (a pause, or leaving the field).
   useEffect(() => {
     if (!typeRef) return;
-    typeRef.current = (lineNumber, text, done) => {
+    typeRef.current = (lineNumber, text, done, original) => {
       const paragraph = desks.current.paragraphs.find(
         (p) => p.number === lineNumber,
       );
       if (!paragraph) return;
       if (!line.current || line.current.block !== lineNumber) {
         flush();
-        line.current = { block: lineNumber, saved: paragraph.text, text };
+        // Saved against the words the panel started from (B5.1): if the line changed meanwhile,
+        // the save is refused as "changed elsewhere" instead of overwriting it.
+        line.current = { block: lineNumber, saved: original, text };
       }
       line.current.text = text;
       post({ type: "lp-text", block: lineNumber, text });

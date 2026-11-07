@@ -39,6 +39,9 @@ def verify_token(token: str) -> AuthUser:
             audience="authenticated",
             issuer=settings.jwt_issuer,
             options={"require": ["exp", "sub", "aud", "iss"]},
+            # Clocks differ a little between machines (B5.1: Supabase's ran 3 s ahead of a dev
+            # Mac, so a fresh token looked issued in the future and was refused for a moment).
+            leeway=30,
         )
     except (jwt.PyJWTError, jwt.PyJWKClientError) as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired session.") from exc

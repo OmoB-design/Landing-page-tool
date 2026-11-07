@@ -9,11 +9,16 @@ import {
 } from "@/lib/auth/api-session";
 
 const unpublishSchema = z
-  .object({ destination: z.enum(["vercel", "shopify_page"]).default("vercel") })
+  .object({
+    destination: z
+      .enum(["vercel", "shopify_page", "shopify_editable"])
+      .default("vercel"),
+  })
   .default({ destination: "vercel" });
 
 /** POST /api/builds/[buildId]/unpublish: takes the page down from Vercel (D89), or removes its
- * draft from the brand's Shopify store (`{ "destination": "shopify_page" }`). */
+ * draft from the brand's Shopify store (`{ "destination": "shopify_page" }`), or every editable
+ * draft of it (`"shopify_editable"`, B5.1). */
 export async function POST(
   request: Request,
   { params }: RouteContext<"/api/builds/[buildId]/unpublish">,

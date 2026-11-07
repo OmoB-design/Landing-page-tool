@@ -69,6 +69,7 @@ const onMatch = vi.fn(async () => {});
 function renderPanel(
   making: Making | null = null,
   matching: { message: string | null } | null = null,
+  makingElsewhere = false,
 ) {
   const client = new QueryClient();
   return render(
@@ -79,6 +80,7 @@ function renderPanel(
         busy={null}
         onBack={vi.fn()}
         making={making}
+        makingElsewhere={makingElsewhere}
         onMake={onMake}
         onAdopt={vi.fn()}
         matching={matching}
@@ -178,6 +180,15 @@ describe("image studio (B3.2a)", () => {
     expect(
       screen.getByLabelText("Say what to change in the picture"),
     ).toBeTruthy();
+  });
+
+  it("makes one picture at a time (B5.2)", async () => {
+    renderPanel(null, null, true);
+    expect(
+      await screen.findByText(/being made for another image\. One at a time/),
+    ).toBeTruthy();
+    const make = screen.getByRole("button", { name: /Make a new picture/ });
+    expect((make as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("shows the picture being made", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, type Transition } from "motion/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { IconAction } from "@/components/app/icon-action";
 import {
@@ -144,8 +144,9 @@ export function SectionPanel({
   onHover: (target: PartPointer) => void;
   onEdit: (action: SectionAction) => void;
   onAsk: (key: string, part: MapPart | null) => void;
-  /** Words typed in a part's panel: shown on the page at once, saved as typing is. */
-  onType: (line: number, text: string, done: boolean) => void;
+  /** Words typed in a part's panel: shown on the page at once, saved as typing is, against the
+   * words the field started from (`original`). */
+  onType: (line: number, text: string, done: boolean, original: string) => void;
   expanded: string[];
   onExpand: (key: string, open: boolean) => void;
   /** Buddy's panel motion (lander-motion.tsx): the card arrives and leaves as Buddy's panel. */
@@ -803,12 +804,27 @@ function PartDetails({
   busy: string | null;
   onClose: () => void;
   onAsk: () => void;
-  onType: (line: number, text: string, done: boolean) => void;
+  onType: (line: number, text: string, done: boolean, original: string) => void;
 }) {
   const fieldId = `part-${partId(part)}`;
   const locked = Boolean(
     paragraph && (paragraph.locked || paragraph.locked_parts.length > 0),
   );
+  // The field follows the line while you aren't typing (B5.1, D125); typing, it keeps your words
+  // and saves them against the words it started from, so a change made meanwhile (Buddy, undo, a
+  // teammate) is refused as "changed elsewhere" instead of being overwritten. Once your words are
+  // the line's, it follows the line again.
+  const current = paragraph?.text ?? "";
+  const [value, setValue] = useState(current);
+  const [base, setBase] = useState(current);
+  const [typing, setTyping] = useState(false);
+  if (typing && current === value) {
+    setTyping(false);
+    setBase(current);
+  } else if (!typing && current !== base) {
+    setBase(current);
+    setValue(current);
+  }
   return (
     <PanelCard
       icon={
@@ -830,15 +846,19 @@ function PartDetails({
           </label>
           <Textarea
             id={fieldId}
-            defaultValue={paragraph.text}
+            value={value}
             disabled={locked || Boolean(busy)}
             className="max-h-96 min-h-24"
-            onChange={(event) =>
-              part.line != null && onType(part.line, event.target.value, false)
-            }
-            onBlur={(event) =>
-              part.line != null && onType(part.line, event.target.value, true)
-            }
+            onChange={(event) => {
+              setValue(event.target.value);
+              setTyping(true);
+              if (part.line != null)
+                onType(part.line, event.target.value, false, base);
+            }}
+            onBlur={(event) => {
+              if (part.line != null && typing)
+                onType(part.line, event.target.value, true, base);
+            }}
           />
           <span className="text-type-caption-1 text-sub-text">
             {locked

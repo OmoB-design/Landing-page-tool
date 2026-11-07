@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
+import { toast } from "@/components/app/toaster";
 import { ComposerOpenIcon } from "@/components/ui/icons";
 import { MorphText } from "@/components/ui/text-morph";
 import { REQUEST_MAX } from "@/lib/pages/lander";
@@ -73,6 +74,11 @@ export function FloatingComposer({
     if (dictation.listening) dictation.stop();
     if (!typed) {
       onOpen();
+      return;
+    }
+    // Buddy takes one request at a time: the words stay in the bar until he can (B5.4).
+    if (working) {
+      toast("Buddy is still on the last request.");
       return;
     }
     onSend(text.trim());

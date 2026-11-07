@@ -32,10 +32,12 @@ export type AnalysisJob = {
   error: string | null;
 };
 
-/** Each clone's latest analysis job (B2.2), by template id: whether one is running or failed. */
+/** Each clone's latest analysis job (B2.2), by template id: whether one is running or failed.
+ * With `kind`, each template's latest layout check instead (B4.3, B5.4). */
 export async function latestAnalysisJobs(
   orgId: string,
   templateIds: string[],
+  kind: "template_analyze" | "shopify_layout_check" = "template_analyze",
 ): Promise<Map<string, AnalysisJob>> {
   const found = new Map<string, AnalysisJob>();
   if (templateIds.length === 0) return found;
@@ -44,11 +46,12 @@ export async function latestAnalysisJobs(
     .from("jobs")
     .select("id, status, error, template_id:payload->>template_id")
     .eq("org_id", orgId)
-    .eq("kind", "template_analyze")
+    .eq("kind", kind)
     .in("payload->>template_id", templateIds)
     .order("created_at", { ascending: false })
     .limit(200);
-  if (error) throw new Error(`Could not load analyses: ${error.message}`);
+  if (error)
+    throw new Error(`Could not load the template's jobs: ${error.message}`);
   for (const job of data) {
     const templateId = String(job.template_id ?? "");
     if (!templateId || found.has(templateId)) continue;

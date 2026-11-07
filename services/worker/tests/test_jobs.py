@@ -347,3 +347,28 @@ def test_the_loop_waits_out_a_dropped_database_connection(
         thread.join(timeout=10)
     assert drops["left"] == 0 and not thread.is_alive()
     assert job_row(job_id)["status"] == "succeeded"
+
+
+@needs_db
+def test_page_jobs_nobody_claims_end_after_a_while(user: DbUser) -> None:
+    """B5.2 (D126): a rewrite or a request to Buddy that no worker claimed in 15 minutes ends as
+    failed (it would lock its page for ever); fresh ones and other kinds wait as before."""
+    old = enqueue(user, "redraft", dedupe_key=f"test-old:{uuid.uuid4()}")
+    fresh = enqueue(user, "agent_turn", dedupe_key=f"test-fresh:{uuid.uuid4()}")
+    other = enqueue(user, "noop_demo")
+    with transaction() as conn:
+        conn.execute(
+            """update jobs set created_at = now() - interval '20 minutes',
+                               run_after = now() - interval '20 minutes'
+               where id = any(%(ids)s)""",
+            {"ids": [old, other]},
+        )
+    ended = {job.id for job in queue.expire_unclaimed(["redraft", "agent_turn"], 15 * 60)}
+    assert old in ended and fresh not in ended and other not in ended
+    row = job_row(old)
+    assert row["status"] == "failed" and row["error"]["message"] == queue.UNCLAIMED_MESSAGE
+    with transaction() as conn:
+        conn.execute(
+            "update jobs set status = 'cancelled' where id = any(%(ids)s)",
+            {"ids": [fresh, other]},
+        )

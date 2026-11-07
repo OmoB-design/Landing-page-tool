@@ -244,7 +244,8 @@ function Editor({
   const settleRef = useRef<(() => Promise<void>) | null>(null);
   // Words typed in a part's panel go to the canvas, which shows them and saves them as typing.
   const typeRef = useRef<
-    ((line: number, text: string, done: boolean) => void) | null
+    | ((line: number, text: string, done: boolean, original: string) => void)
+    | null
   >(null);
   const settle = useCallback(async () => {
     await settleRef.current?.();
@@ -588,19 +589,20 @@ function Editor({
     },
     [build.id, settle],
   );
-  const adoptPicture = useCallback(
-    (number: number, job: ImageJob) =>
-      setMaking(
-        (current) =>
-          current ?? {
-            number,
-            jobId: job.job_id,
-            mode: job.mode,
-            startedAt: Date.now(),
-          },
-      ),
-    [],
-  );
+  const adoptPicture = useCallback((number: number, job: ImageJob) => {
+    // Never a picture that already finished (B5.2): the studio's data from before it ended can
+    // still list it as being made, which would bring the spinner back for good.
+    if (job.job_id === finishedJob.current) return;
+    setMaking(
+      (current) =>
+        current ?? {
+          number,
+          jobId: job.job_id,
+          mode: job.mode,
+          startedAt: Date.now(),
+        },
+    );
+  }, []);
 
   const first = lander.views[0]?.turn;
   const title = first
@@ -676,6 +678,9 @@ function Editor({
                         busy={busy}
                         onBack={backToSections}
                         making={making?.number === image ? making : null}
+                        makingElsewhere={
+                          making !== null && making.number !== image
+                        }
                         onMake={makePicture}
                         onAdopt={adoptPicture}
                         matching={matching}
@@ -698,8 +703,8 @@ function Editor({
                         onHover={setTreeHover}
                         onEdit={(action) => void edit(action)}
                         onAsk={askAbout}
-                        onType={(line, text, done) =>
-                          typeRef.current?.(line, text, done)
+                        onType={(line, text, done, original) =>
+                          typeRef.current?.(line, text, done, original)
                         }
                         card={{
                           enter: motionConfig.panelEnter,
@@ -748,8 +753,16 @@ function Editor({
               onSelect={select}
               part={panelOpen || image !== null ? part : null}
               onPart={(line) => {
+                // Whether the picked line changes (the canvas scrolls only for picks made
+                // elsewhere). Null: a click on empty space on the page cleared the pick.
+                const picked = part?.kind === "text" ? part.line : null;
+                if (line === null) {
+                  if (picked !== null) setPart(null);
+                  return picked !== null;
+                }
                 const found = partOfLine(line);
                 if (found) selectPart(found.key, found.part);
+                return Boolean(found) && picked !== line;
               }}
               treeHover={treeHover}
               onHover={setPointer}

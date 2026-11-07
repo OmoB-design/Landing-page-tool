@@ -323,6 +323,33 @@ def reap(stale_after_seconds: float) -> list[Job]:
     return [Job.model_validate(row) for row in rows]
 
 
+# A page job no worker claimed (B5.2, D126): it ends instead of locking the page for ever.
+UNCLAIMED_MESSAGE = "No worker picked this up. Try again."
+UNCLAIMED_ERROR = {"code": "unclaimed", "message": UNCLAIMED_MESSAGE, "user_facing": True}
+
+
+def expire_unclaimed(kinds: list[str], after_seconds: float) -> list[Job]:
+    """Fails queued jobs of these kinds that no worker has claimed for `after_seconds`, on every
+    queue (a job queued where no worker listens would otherwise wait for ever). Returns them."""
+    with transaction() as conn:
+        rows = conn.execute(
+            """
+            with stuck as (
+              select id from jobs
+              where status = 'queued' and kind = any(%(kinds)s)
+                and greatest(created_at, coalesce(run_after, created_at))
+                    < now() - make_interval(secs => %(after)s)
+              for update skip locked
+            )
+            update jobs j set status = 'failed', finished_at = now(), error = %(err)s
+            from stuck where j.id = stuck.id
+            returning j.*
+            """,
+            {"kinds": kinds, "after": after_seconds, "err": Jsonb(UNCLAIMED_ERROR)},
+        ).fetchall()
+    return [Job.model_validate(row) for row in rows]
+
+
 def add_event(
     job: Job,
     message: str,

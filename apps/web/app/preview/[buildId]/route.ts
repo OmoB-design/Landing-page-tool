@@ -502,7 +502,11 @@ const WRITE_BRIDGE = `(function () {
       return;
     }
     if (image) { image = null; send({ type: "lp-image", number: null }); }
-    if (!b) { pick = null; finish(false); paint(); return; }
+    if (!b) {
+      // A click on empty space clears the pick here and in the editor's tree (B5.1).
+      if (pick) send({ type: "lp-part", block: null });
+      pick = null; finish(false); paint(); return;
+    }
     // The first click picks the line (Shopify's: its outline, its name and its panel); a second
     // click, or a double click, types in it on the page.
     var n = String(number(b));

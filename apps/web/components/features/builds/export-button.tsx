@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { ExportFigmaIcon } from "@/components/ui/lp-icons";
@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useJob, useStartJob } from "@/lib/queries/jobs";
+import { useFollowedJob, useStartJob } from "@/lib/queries/jobs";
 
 /**
  * Export (Figma Build, the header's button): 32 px, Surface-Primary in a 0.5 px Stroke-Strong
@@ -30,24 +30,17 @@ export function ExportButton({
 }) {
   const startJob = useStartJob();
   const [jobId, setJobId] = useState<string | null>(null);
-  const { data: job } = useJob(jobId);
-  const handled = useRef<string | null>(null);
-  const busy =
-    startJob.isPending || job?.status === "queued" || job?.status === "running";
-
-  useEffect(() => {
-    if (!job || handled.current === job.id) return;
-    if (job.status === "succeeded") {
-      handled.current = job.id;
+  const { running } = useFollowedJob(jobId, {
+    succeeded: () => {
       const link = document.createElement("a");
       link.href = `/api/builds/${buildId}/export`;
       link.download = `${buildKey}.html`;
       link.click();
-    } else if (job.status === "failed") {
-      handled.current = job.id;
-      toast.error(job.error?.message ?? "Couldn’t export the page.");
-    }
-  }, [job, buildId, buildKey]);
+    },
+    failed: (job) =>
+      toast.error(job.error?.message ?? "Couldn’t export the page."),
+  });
+  const busy = startJob.isPending || running;
 
   return (
     <ExportButtonView

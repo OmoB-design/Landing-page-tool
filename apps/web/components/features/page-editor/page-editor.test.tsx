@@ -150,12 +150,19 @@ function panel(props: Partial<React.ComponentProps<typeof SectionPanel>>) {
     },
     ...props,
   };
-  render(
+  const view = render(
     <TooltipProvider>
       <SectionPanel {...all} />
     </TooltipProvider>,
   );
-  return all;
+  // Renders again with some props changed (the desk moving on underneath).
+  const rerender = (more: Partial<React.ComponentProps<typeof SectionPanel>>) =>
+    view.rerender(
+      <TooltipProvider>
+        <SectionPanel {...all} {...more} />
+      </TooltipProvider>,
+    );
+  return { ...all, rerender };
 }
 
 describe("page editor's section tree (B3.1a, B4.4)", () => {
@@ -215,14 +222,44 @@ describe("page editor's section tree (B3.1a, B4.4)", () => {
     });
   });
 
-  it("edits a part's words in its panel, shown and saved as typing", () => {
+  it("edits a part's words in its panel, saved against the words it started from", () => {
     const props = panel({ part: HEADLINE, expanded: ["hero"] });
     const field = screen.getByRole("textbox", { name: "Headline" });
     fireEvent.change(field, { target: { value: "Glow in a week" } });
-    expect(props.onType).toHaveBeenLastCalledWith(1, "Glow in a week", false);
+    expect(props.onType).toHaveBeenLastCalledWith(
+      1,
+      "Glow in a week",
+      false,
+      "Glow in 7 days",
+    );
     fireEvent.blur(field);
-    expect(props.onType).toHaveBeenLastCalledWith(1, "Glow in a week", true);
+    expect(props.onType).toHaveBeenLastCalledWith(
+      1,
+      "Glow in a week",
+      true,
+      "Glow in 7 days",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Ask Buddy to edit" }));
     expect(props.onAsk).toHaveBeenCalledWith("hero", HEADLINE);
+  });
+
+  it("follows the line while you aren't typing, and keeps your words while you are (B5.1)", () => {
+    const props = panel({ part: HEADLINE, expanded: ["hero"] });
+    const changed = (text: string) =>
+      DESK.paragraphs.map((p) => (p.number === 1 ? { ...p, text } : p));
+    // Buddy rewrote the line: the field shows it.
+    props.rerender({ paragraphs: changed("Glow fast") });
+    const field = screen.getByRole("textbox", { name: "Headline" });
+    expect((field as HTMLTextAreaElement).value).toBe("Glow fast");
+    // Typing, then the line changes elsewhere: your words stay, saved against "Glow fast".
+    fireEvent.change(field, { target: { value: "Glow fast, truly" } });
+    props.rerender({ paragraphs: changed("Someone else's words") });
+    expect((field as HTMLTextAreaElement).value).toBe("Glow fast, truly");
+    expect(props.onType).toHaveBeenLastCalledWith(
+      1,
+      "Glow fast, truly",
+      false,
+      "Glow fast",
+    );
   });
 });

@@ -15,6 +15,7 @@ from typing import Any
 from uuid import UUID
 
 import structlog
+from psycopg import errors
 from psycopg.types.json import Jsonb
 
 from app import desk
@@ -53,16 +54,23 @@ def enqueue(conn: Any, org_id: UUID, build_id: UUID, user_id: UUID | None) -> UU
     busy = running(conn, build_id)
     if busy is not None:
         return busy
-    job, _ = queue.enqueue(
-        org_id=org_id,
-        kind=KIND,
-        payload={"build_id": str(build_id)},
-        created_by=user_id,
-        dedupe_key=f"qa:{build_id}",
-        build_id=build_id,
-        max_attempts=2,
-        conn=conn,
-    )
+    try:
+        with conn.transaction():  # a savepoint: a check started at the same moment wins
+            job, _ = queue.enqueue(
+                org_id=org_id,
+                kind=KIND,
+                payload={"build_id": str(build_id)},
+                created_by=user_id,
+                dedupe_key=f"qa:{build_id}",
+                build_id=build_id,
+                max_attempts=2,
+                conn=conn,
+            )
+    except errors.UniqueViolation:
+        other = running(conn, build_id)
+        if other is None:
+            raise
+        return other
     return job.id
 
 

@@ -641,6 +641,8 @@ Inline every asset as a data URI and every stylesheet into `<style>`; strip edit
 5. Create an **unpublished** page with handle = build key, using the full-width template when installed.
 6. Record in `publications`.
 
+*B5.1 (D125), every publish:* the job starts by checking the page is still the version approved when Publish was pressed, or stops with "approve it again"; a worker stopping mid-publish releases the job instead of failing it; a trigger fails a pending publication when its job fails or is cancelled. Editable drafts can be removed ("Remove drafts": every editable draft page still in the store).
+
 ### 12.6 Shopify editable sections (job `publish_shopify_editable`) — M4 *(ref)*
 
 Turns a build into native theme sections where every text node and image is an individually editable block.

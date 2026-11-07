@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { z } from "zod";
 
 import { apiFetch } from "@/lib/api/client";
@@ -11,6 +12,7 @@ import {
   isActive,
 } from "@/lib/jobs/progress";
 import {
+  type JobDetail,
   type StartJobInput,
   enqueueResponseSchema,
   jobDetailSchema,
@@ -48,6 +50,48 @@ export function useJob(id: string | null, fast = false) {
       return fast ? POLL_FAST_MS : POLL_ACTIVE_MS;
     },
   });
+}
+
+/** What a screen does when the job it started ends: each runs once per job. */
+export type JobOutcomes = {
+  succeeded?: (job: JobDetail) => void;
+  failed?: (job: JobDetail) => void;
+  cancelled?: (job: JobDetail) => void;
+};
+
+/**
+ * Follows the job a screen started, by its own id (B5.4, D128): the job while it runs, whether
+ * it's still running (true from the moment there is an id, before the first poll lands), why it
+ * failed, and one call of `on.succeeded`, `on.failed` or `on.cancelled` when it ends. A job seen
+ * already finished (a fast one, or one found on load) still gets its call, once.
+ */
+export function useFollowedJob(
+  id: string | null,
+  on: JobOutcomes = {},
+  fast = false,
+) {
+  const query = useJob(id, fast);
+  const job = id !== null && query.data?.id === id ? query.data : undefined;
+  const handled = useRef<string | null>(null);
+  const settle = useEffectEvent((ended: JobDetail) => {
+    if (ended.status === "succeeded") on.succeeded?.(ended);
+    else if (ended.status === "failed") on.failed?.(ended);
+    else if (ended.status === "cancelled") on.cancelled?.(ended);
+  });
+  useEffect(() => {
+    if (!job || isActive(job.status) || handled.current === job.id) return;
+    handled.current = job.id;
+    settle(job);
+  }, [job]);
+  return {
+    job,
+    running: id !== null && (!job || isActive(job.status)),
+    failure:
+      job?.status === "failed"
+        ? (job.error?.message ?? "It didn’t finish.")
+        : null,
+    cancelled: job?.status === "cancelled",
+  };
 }
 
 /** Jobs → Mark all as read: finished jobs stop counting as unread, straight away. */

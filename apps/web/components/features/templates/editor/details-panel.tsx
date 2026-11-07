@@ -46,6 +46,8 @@ export function DetailsPanel({
   onRestore,
   onSaved,
   onState,
+  layoutJobId,
+  onLayoutJob,
 }: {
   state: TemplateEditorState;
   pending: boolean;
@@ -57,6 +59,9 @@ export function DetailsPanel({
   onSaved: (details: TemplateDetails) => void;
   /** The editor reloaded (after a layout check, B4.3). */
   onState?: (next: TemplateEditorState) => void;
+  /** The layout check under way, held by the editor so a tab switch keeps it (B5.4). */
+  layoutJobId?: string | null;
+  onLayoutJob?: (id: string | null) => void;
 }) {
   const { template } = state;
   const [saving, startSaving] = useTransition();
@@ -190,6 +195,8 @@ export function DetailsPanel({
           map={state.shopify}
           templateId={template.id}
           onState={onState}
+          layoutJobId={layoutJobId}
+          onLayoutJob={onLayoutJob}
         />
       ) : null}
 

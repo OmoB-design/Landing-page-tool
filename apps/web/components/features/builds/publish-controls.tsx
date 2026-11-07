@@ -328,8 +328,12 @@ function ShopifyRow() {
   const removingNow = running && publishing.running?.action === "unpublish";
   const editable = publishing.shopify_editable;
   const draft = publishing.shopify_draft;
+  // The draft Remove draft takes away: the one-block draft, or (editable, B5.1) every editable
+  // draft of the page still in the store.
+  const removable = editableMode ? editable : draft;
   const remove = async () => {
-    if (await unpublish("shopify_page")) setRemoving(false);
+    if (await unpublish(editableMode ? "shopify_editable" : "shopify_page"))
+      setRemoving(false);
   };
   const stuck = publishing.gate.filter((b) => !b.overridable);
   const passable = publishing.gate.filter((b) => b.overridable);
@@ -396,7 +400,7 @@ function ShopifyRow() {
             </a>
           </Button>
         ) : null}
-        {!editableMode && draft && !running ? (
+        {removable && !running ? (
           <Button
             type="button"
             variant="outline"
@@ -405,7 +409,7 @@ function ShopifyRow() {
             disabled={starting}
             onClick={() => setRemoving(true)}
           >
-            Remove draft
+            {editableMode ? "Remove drafts" : "Remove draft"}
           </Button>
         ) : null}
         {!editableMode && draft?.admin_url ? (
@@ -486,15 +490,16 @@ function ShopifyRow() {
           </button>
         </p>
       ) : null}
-      {removing && draft ? (
+      {removing && removable ? (
         <RowConfirm>
           <p className="text-heading-02">
-            Remove {page.key}’s draft from{" "}
-            {publishing.shopify_domain ?? "the store"}?
+            Remove {page.key}’s {editableMode ? "editable drafts" : "draft"}{" "}
+            from {publishing.shopify_domain ?? "the store"}?
           </p>
           <p className="text-heading-05">
-            The draft page is deleted from the store. You can publish it again
-            any time.
+            {editableMode
+              ? "Every editable draft page of it is deleted from the store (its theme files stay, unused). You can publish it again any time."
+              : "The draft page is deleted from the store. You can publish it again any time."}
           </p>
           <div className="flex justify-end gap-1.5">
             <Button
@@ -516,7 +521,7 @@ function ShopifyRow() {
               {starting ? (
                 <Spinner className="size-3.5" label="Removing" />
               ) : null}
-              Remove draft
+              {editableMode ? "Remove drafts" : "Remove draft"}
             </Button>
           </div>
         </RowConfirm>
@@ -581,6 +586,14 @@ export function PublishedModal() {
   // Copy morphs to "Copied" for a moment after the link is copied (torph).
   const [copied, setCopied] = useState(false);
   const live = publishing.live;
+  // "Take it down?" belongs to the modal it was asked in: closing the modal (also when the page
+  // went down and the modal closed itself) or a new live page puts it away (B5.4).
+  const shown = modalOpen ? (live?.id ?? "") : null;
+  const [askedIn, setAskedIn] = useState(shown);
+  if (askedIn !== shown) {
+    setAskedIn(shown);
+    setConfirming(false);
+  }
   if (!live?.url) return null;
   const url = live.url;
   const unpublishing =

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useTransition } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { useJob } from "@/lib/queries/jobs";
+import { useFollowedJob } from "@/lib/queries/jobs";
 import { confirmAnalysis, reloadTemplate } from "@/lib/templates/actions";
 import type { TemplateEditorState } from "@/lib/validators/template";
 
@@ -42,27 +42,21 @@ export function AnalysisBar({
 }) {
   const { template } = state;
   const [pending, startTransition] = useTransition();
-  const { data: job } = useJob(jobId);
-  const settled = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!job || job.status !== "succeeded" || settled.current === job.id)
-      return;
-    settled.current = job.id;
-    startTransition(async () => {
-      const result = await reloadTemplate(template.id);
-      if (result.state) onState(result.state);
-      onFinished();
-      toast.success(
-        `Analysis saved: ${result.state?.sections.length ?? 0} sections to check`,
-      );
-    });
-  }, [job, onFinished, onState, template.id]);
+  const { job, running: following } = useFollowedJob(jobId, {
+    succeeded: () =>
+      startTransition(async () => {
+        const result = await reloadTemplate(template.id);
+        if (result.state) onState(result.state);
+        onFinished();
+        toast.success(
+          `Analysis saved: ${result.state?.sections.length ?? 0} sections to check`,
+        );
+      }),
+  });
 
   if (template.origin !== "cloned") return null;
   const failed = job?.status === "failed" || job?.status === "cancelled";
-  const running =
-    starting || (jobId !== null && job?.status !== "succeeded" && !failed);
+  const running = starting || following;
   const failure =
     jobId === null
       ? earlierFailure

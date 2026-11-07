@@ -176,3 +176,100 @@ def test_publishing_editable_sections_makes_a_new_draft_each_time(
     assert failed["status"] == "failed"
     assert "Liquid syntax error" in failed["error"]["message"]
     assert len(store.saved) == pages
+
+
+def unpublish(client: TestClient, user: DbUser, build: dict[str, Any], destination: str) -> Any:
+    return client.post(
+        f"/builds/{build['id']}/unpublish",
+        json={"org_id": build["org_id"], "destination": destination},
+        headers=bearer(user),
+    )
+
+
+@needs_db
+def test_hardened_publishing(
+    client: TestClient,
+    user: DbUser,
+    finished: dict[str, Any],
+    shop: tuple[EditableStore, FakeTheme],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """B5.1 (D125): a publish sends only the version that was approved when Publish was pressed;
+    a publication always ends (its job failing fails it); a worker stopping mid-publish isn't a
+    failure; editable drafts can be removed (every one still in the store), which lets the page
+    go to Trash."""
+    from app import trash
+    from app.jobs.errors import JobInterrupted
+    from app.jobs.kinds import publish_shopify_editable
+
+    store, _ = shop
+    with transaction() as conn:
+        conn.execute(
+            "update builds set status = 'approved' where id = %(b)s", {"b": finished["id"]}
+        )
+    version = state(client, user, finished)["page_version"]
+    assert connect(client, user, finished).status_code == 200
+    assert theme_access(client, user, finished, PASSWORD).status_code == 200
+
+    def publish() -> Any:
+        return post(client, user, finished, "publish", base_version=version,
+                    destination="shopify_editable")  # fmt: skip
+
+    for _ in range(2):  # two editable drafts in the store
+        assert publish().status_code == 200
+        assert run_job("publish_shopify_editable")["status"] == "succeeded"
+
+    # Edited after Publish was pressed: nothing goes out, and the publication ends as failed.
+    assert publish().status_code == 200
+    with transaction() as conn:
+        conn.execute(
+            "update builds set page_version = page_version + 1 where id = %(b)s",
+            {"b": finished["id"]},
+        )
+    pages = len(store.saved)
+    stopped = run_job("publish_shopify_editable")
+    assert (
+        stopped["status"] == "failed" and "edited after you pressed" in stopped["error"]["message"]
+    )
+    assert len(store.saved) == pages
+    newest = state(client, user, finished)["publications"][0]
+    assert newest["status"] == "failed" and "Approve it again" in (newest["error"] or "")
+    with transaction() as conn:
+        conn.execute(
+            "update builds set page_version = page_version - 1 where id = %(b)s",
+            {"b": finished["id"]},
+        )
+
+    # A worker stopping mid-publish: the job goes back to the queue, the publication waits.
+    def stop(*_: Any) -> Any:
+        raise JobInterrupted
+
+    monkeypatch.setattr(publish_shopify_editable, "_publish", stop)
+    assert publish().status_code == 200
+    released = run_job("publish_shopify_editable")
+    assert released["status"] == "queued"
+    assert state(client, user, finished)["publications"][0]["status"] == "pending"
+    # Its job failing (here: cancelled) fails the publication too (the trigger).
+    with transaction() as conn:
+        conn.execute(
+            """update jobs set status = 'failed', error = '{"message": "The worker died."}'
+               where id = %(j)s""",
+            {"j": released["id"]},
+        )
+    ended = state(client, user, finished)["publications"][0]
+    assert ended["status"] == "failed" and ended["error"] == "The worker died."
+
+    # Remove the editable drafts: every one still in the store goes, and the page can be trashed.
+    deleted = len(store.deleted)
+    removing = unpublish(client, user, finished, "shopify_editable")
+    assert removing.status_code == 200, removing.text
+    assert run_job("unpublish_shopify_page")["status"] == "succeeded"
+    assert len(store.deleted) == deleted + 2
+    assert state(client, user, finished)["shopify_editable"] is None
+    with transaction() as conn:
+        still = conn.execute(
+            trash.PUBLISHED, {"o": finished["org_id"], "ids": [finished["id"]]}
+        ).fetchall()
+    assert still == []
+    again = unpublish(client, user, finished, "shopify_editable")
+    assert again.status_code == 422

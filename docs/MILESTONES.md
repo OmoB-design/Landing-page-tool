@@ -137,6 +137,15 @@ Goal: the shared foundation and one owned template building end to end in mock m
 - B4.4 A section tree in the page editor, after Shopify's theme editor (study: `docs/reference/shopify-editor-study.md`). *Done 2026-11-07 (D123): sections open into their parts named as in Shopify; hover and picking shared between the tree and the page (first click picks, second types); a part's panel framed as Buddy's change card with its words to edit; Buddy pointed at one part (chip, panel, pill on the page).*
 - B4.5 Speed pass. *Done 2026-11-07 (D124): the editor's changes and state read cut to the fewest round trips (one storage client kept open, the build and its rules in one read, the state from the page just written, no route rebuild in the editor); from the owner's Mac a hide went from 11.4 s to 2.0 s and reading the editor's state from 4.0 s to 0.55 s.*
 
+## M5 — Hardening
+
+From the state-machine audit (2026-11-07): the app behaves the same, but stops misbehaving when things fail or happen at once.
+
+- B5.1 Publishing and the B4 regressions. *Done 2026-11-07 (D125): a publish sends only the approved version; a worker stopping isn't a failure; a publication always ends (trigger); Remove drafts for editable Shopify pages; the part panel and the review desk save against what they showed; the page and the tree stay in step; tokens tolerate 30 s of clock difference.*
+- B5.2 Stuck states and background jobs. *Done 2026-11-07 (D126): unclaimed page jobs end after 15 minutes; a Buddy turn settles from its own job; approval waits for background picture, match and phone jobs; the picture spinner can't stick and pictures are made one at a time; a trashed product stays in Trash on import; pages from a trashed template keep working; double starts answer "already running".*
+- B5.3 Direct database writes. *Done 2026-11-07 (D127): members write only what the app's forms write (add a brand, the Brand DNA and product forms, a template's name and description); everything else on brands, products, templates, sections, versions, assets, strategy and template files is the worker's.*
+- B5.4 Screens that follow jobs. *Done 2026-11-07 (D128): one shared way of following a job by its id; a quick publish opens the live modal; "Take it down?" doesn't come back; "Fixed" only for a phone fix that worked; "Analysing…" ends with a failed analysis; the layout check survives tab switches and reloads; the floating bar keeps your words while Buddy works.* M5 Hardening complete.
+
 ## v3 — Someday
 
 Blank-canvas block builder.

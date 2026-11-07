@@ -40,11 +40,26 @@ async function Editor({ params }: { params: Promise<{ templateId: string }> }) {
     throw cause;
   });
   if (!state) notFound();
-  const analysisJob =
+  const [analysisJob, layoutJob] = await Promise.all([
     state.template.origin === "cloned"
-      ? ((await latestAnalysisJobs(currentOrg.id, [templateId])).get(
-          templateId,
-        ) ?? null)
-      : null;
-  return <TemplateEditor initial={state} analysisJob={analysisJob} />;
+      ? latestAnalysisJobs(currentOrg.id, [templateId]).then(
+          (found) => found.get(templateId) ?? null,
+        )
+      : null,
+    // A layout check under way is found again after a reload (B5.4).
+    state.shopify?.ready
+      ? latestAnalysisJobs(
+          currentOrg.id,
+          [templateId],
+          "shopify_layout_check",
+        ).then((found) => found.get(templateId) ?? null)
+      : null,
+  ]);
+  return (
+    <TemplateEditor
+      initial={state}
+      analysisJob={analysisJob}
+      layoutJob={layoutJob}
+    />
+  );
 }

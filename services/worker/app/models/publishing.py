@@ -148,8 +148,9 @@ class UnpublishRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     org_id: UUID
-    # Vercel: take the page down (D89). Shopify: delete the draft page from the store.
-    destination: Literal["vercel", "shopify_page"] = "vercel"
+    # Vercel: take the page down (D89). Shopify: delete the draft page from the store; editable
+    # (B5.1): delete every editable draft of the page still in the store.
+    destination: Literal["vercel", "shopify_page", "shopify_editable"] = "vercel"
 
 
 class ThemeFile(BaseModel):
