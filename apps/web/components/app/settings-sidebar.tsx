@@ -87,7 +87,8 @@ export function SettingsSidebar() {
   // Places from the top for the rail's staggered labels: Back to app is 0.
   let place = 0;
   return (
-    <div className="flex h-full w-full flex-col gap-5 px-2 py-3">
+    // 17 px down, so Back to app sits on the page header's line, level with its title (owner, B6.6).
+    <div className="flex h-full w-full flex-col gap-5 px-2 pt-4.25 pb-3">
       <RailTooltip label="Back to app">
         <Link
           href={back}

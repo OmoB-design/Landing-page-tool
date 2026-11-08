@@ -14,7 +14,7 @@ from psycopg.types.json import Jsonb
 
 from app import vault
 from app.config import get_settings
-from app.db import transaction
+from app.db import read, transaction
 from app.jobs import queue
 from app.models.publishing import (
     GateBlocker,
@@ -69,7 +69,8 @@ def _role(conn: Any, org_id: UUID, user_id: UUID) -> str:
 
 
 def integrations_state(org_id: UUID, user_id: UUID) -> IntegrationsState:
-    with transaction() as conn:
+    # Reads only: no transaction, so no BEGIN and COMMIT round trips (B6.6).
+    with read() as conn:
         row = conn.execute(
             """
             select i.token_last4, i.meta, i.created_at, o.allow_placeholder_publish,
@@ -317,7 +318,7 @@ def set_testing_switch(org_id: UUID, allow: bool) -> None:
 
 
 def role_of(org_id: UUID, user_id: UUID) -> str:
-    with transaction() as conn:
+    with read() as conn:
         return _role(conn, org_id, user_id)
 
 

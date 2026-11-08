@@ -18,7 +18,7 @@ from uuid import UUID
 import structlog
 
 from app import vault
-from app.db import transaction
+from app.db import read, transaction
 from app.models.trash import TrashItem, TrashKind
 from app.pipeline.runtime import BUCKET as BUILDS_BUCKET
 from app.providers import storage
@@ -286,7 +286,8 @@ def _with(pages: int, products: int) -> str | None:
 
 def list_trash(org_id: UUID) -> list[TrashItem]:
     cutoff = _now() - RETENTION
-    with transaction() as conn:
+    # Reads only: no transaction, so no BEGIN and COMMIT round trips (B6.6).
+    with read() as conn:
         rows = conn.execute(
             """
             select 'page' as kind, b.id, b.key || ' · ' || b.title as name, br.name as detail,

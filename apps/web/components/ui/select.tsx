@@ -58,7 +58,7 @@ function SelectTrigger({
 
 /**
  * LP: `variant="menu"` is the app's floating menu (the sidebar's workspace menu, B6.4): it opens
- * below its field at the field's width, on Surface-Modal with 2 px all round, the float shadow and
+ * below its field at the field's width, on the field's own surface (owner, B6.6) with 2 px all round, the float shadow and
  * the hairline edge, so it stands out on a modal; pair it with SelectItem's `variant="menu"`.
  */
 function SelectContent({
@@ -85,7 +85,7 @@ function SelectContent({
           menu
             ? // On a modal's white it needs more lift than the workspace menu gets on the grey
               // canvas: the float shadow at 2.5 times its strength, over the hairline edge.
-              "w-(--radix-select-trigger-width) rounded-sm bg-surface-modal p-0.5 text-heading-02 shadow-float edge-hairline [--float-intensity:2.5]"
+              "w-(--radix-select-trigger-width) rounded-sm bg-surface-primary p-0.5 text-heading-02 shadow-float edge-hairline [--float-intensity:2.5]"
             : "min-w-36 rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10",
           className,
         )}

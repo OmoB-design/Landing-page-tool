@@ -11,7 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from app.config import get_settings
-from app.db import fetch_one
+from app.db import read
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -60,10 +60,12 @@ CurrentUser = Annotated[AuthUser, Depends(current_user)]
 
 
 def require_org_member(user: AuthUser, org_id: UUID) -> None:
-    """403 unless the user is a member of the org."""
-    row = fetch_one(
-        "select 1 from org_members where org_id = %(org_id)s and user_id = %(user_id)s",
-        {"org_id": org_id, "user_id": user.id},
-    )
+    """403 unless the user is a member of the org. One statement outside a transaction (B6.6): no
+    BEGIN and COMMIT round trips on every request that checks membership."""
+    with read() as conn:
+        row = conn.execute(
+            "select 1 from org_members where org_id = %(org_id)s and user_id = %(user_id)s",
+            {"org_id": org_id, "user_id": user.id},
+        ).fetchone()
     if row is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not a member of this organisation.")

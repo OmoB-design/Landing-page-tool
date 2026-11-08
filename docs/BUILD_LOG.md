@@ -1490,3 +1490,21 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** B6.6 settings speed, then B6.7 profile photo, then B3.5d the build page's steps frame.
+
+
+### B6.6 — Settings speed
+- **Status:** complete (owner: "go", 2026-11-08; committed and pushed, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **Measured live:** content 510–580 ms after opening a settings page (Connections 930 ms), first visits about 0.9 s, cold switches 410–520 ms, from here (about 130 ms from Vercel). The website's functions are in Dublin beside the database; sign-in checks are local (ES256).
+  - **The worker's share** was about 150 ms per read, mostly round trips: its membership check, on every request, opened a transaction (3 round trips where 1 does), and so did the members, integrations and Trash reads.
+  - **Fixed:** those now read without a transaction: Members about 8 round trips → 4, General and Connections 8 → 4, Trash 9 → 3, every worker request 2 fewer (about 20 ms each on Railway).
+  - **Also, from the owner's messages during the build:** Back to app sits level with the header's "Settings" (measured equal); the invite modal's Role menu is the field's colour.
+  - **Tried and reverted:** prefetching the settings links fully (and on hover): Next leaves pages that read the session after `connection()` out of prefetches, so it added requests without making switches faster.
+- **Key files:** worker `app/auth.py`, `app/members.py`, `app/publishing.py`, `app/trash.py`; web `components/app/settings-sidebar.tsx`, `components/ui/select.tsx`; docs D135, MILESTONES.
+- **Schema changes:** none. **New dependencies:** none.
+- **Decisions:** D135 locked.
+- **Deviations from the plan:** the session-read change that instant switches would need is left to the owner (app-wide, more server work per visible link).
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B6.7 profile photo, then B3.5d the build page's steps frame.

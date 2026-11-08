@@ -23,7 +23,7 @@ import secrets
 from typing import Any
 from uuid import UUID
 
-from app.db import transaction
+from app.db import read, transaction
 from app.models.members import (
     Accepted,
     Invite,
@@ -161,7 +161,8 @@ def _state(conn: Any, org_id: UUID, user_id: UUID) -> MembersState:
 
 
 def members_state(org_id: UUID, user_id: UUID) -> MembersState:
-    with transaction() as conn:
+    # Reads only: no transaction, so no BEGIN and COMMIT round trips (B6.6).
+    with read() as conn:
         return _state(conn, org_id, user_id)
 
 

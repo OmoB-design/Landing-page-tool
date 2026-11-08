@@ -154,6 +154,7 @@ From the state-machine audit (2026-11-07): the app behaves the same, but stops m
 - B6.3 Account and Members, reorganised. *Done 2026-11-08 (D131): Account as Quality's (name saved on leaving the field, the theme as three pictures of the app, Password in a modal); Members as one table with Search, a filter, Invite in a modal and each row's actions in a ⋯ menu.*
 - B6.4 Theme and modal polish. *Done 2026-11-08 (D133): Light, Dark, System; on hover the lights come on in macOS's colours and a shimmer crosses the page; a 1.3 px blue edge; the frames inside redrawn; the dropdowns inside modals padded and lifted.*
 - B6.5 Back to app and the resizable edit card. *Done 2026-11-08 (D134): Back to app returns to the last page outside Settings; the editor's edit card resizes from its top edge (remembered); settings headers without Jobs and Notifications; the Everyone filter and the modal fields matched to the menus.*
+- B6.6 Settings speed. *Done 2026-11-08 (D135): measured live; the worker's membership check and the settings reads no longer open transactions (2 to 6 fewer database round trips per page, about 20 ms each); Back to app level with the header's title; the in-modal menu on the field's surface.*
 
 ## v3 — Someday
 
