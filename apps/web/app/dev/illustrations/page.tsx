@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { ThemeScene } from "@/components/app/illustrations/theme";
 import { ConnectPreview } from "@/components/features/dev/connect-preview";
 import { Welcome } from "@/components/features/home/welcome";
 
@@ -14,7 +15,10 @@ const WATCH = [
   "Create a page: Quality's browser frame to the decimal; the page builds in the brand (parts spring in 70 ms apart), Needs review lands, it holds, and it builds again.",
   "The pictures stay light in dark mode, as drawn.",
   "Connect pictures (I4): a page in the brand, a line to the service's mark, a green tick, a line on, then the result (Vercel's live address, Shopify's draft page). Once when seen, then they hold; reduced motion shows the end. They follow the theme.",
+  "Theme pictures (I5, Settings → Account): LP's window in miniature, light, dark, and System (light with its right side dark). Still; the window rises 2 px while its card is hovered. Light and Dark keep their own look in either theme.",
 ];
+
+const THEMES = ["system", "light", "dark"] as const;
 
 /**
  * /dev/illustrations (development only): the Home getting-started cards with their Stageshow
@@ -39,6 +43,16 @@ export default function IllustrationsPage() {
         </div>
         <Welcome name="Bolaji" />
         <ConnectPreview />
+        <div className="grid max-w-settings grid-cols-3 gap-2">
+          {THEMES.map((theme) => (
+            <span
+              key={theme}
+              className="ith-hover overflow-hidden rounded-lg border border-stroke"
+            >
+              <ThemeScene theme={theme} />
+            </span>
+          ))}
+        </div>
       </div>
     </main>
   );

@@ -148,8 +148,8 @@ export function BuildLog({
 /**
  * Build steps (Figma Build, Stepper and Completion chip): a Foreground-01 card with 10 px corners
  * and a 0.7 px Surface/Stroke line; a 36 px Surface-Primary header ("Build steps", 13 px medium
- * Heading-02, and the count chip: 11 px Heading-04 on Foreground-01 in a 0.5 px line, Surface/Stroke
- * while counting and Spot-500-Blue once every step is done); then the steps 2 px apart, the last one
+ * Heading-02, and the count chip, StepCount: "01/13", then "13/13 completed" with a Spot-500-Blue
+ * line once every step is done); then the steps 2 px apart, the last one
  * on the card's foot (the frame's 4 px below it taken off, owner). `done`
  * null shows the count loading.
  */
@@ -163,7 +163,6 @@ export function BuildStepsCard({
   /** The card's heading: "Build steps", or a batch frame's template (B3.5b). */
   title?: string;
 }) {
-  const complete = done === steps.length;
   return (
     <section
       aria-labelledby="build-steps-title"
@@ -179,24 +178,45 @@ export function BuildStepsCard({
         {done === null ? (
           <SkeletonText className="text-type-caption-2" width={72} />
         ) : (
-          <span
-            className={cn(
-              "rounded-lg bg-foreground-01 px-1.5 py-0.5 text-type-caption-2 font-medium text-heading-04 tabular-nums ring-half transition-shadow duration-200 ease-out ring-inset",
-              complete ? "ring-spot-500-blue" : "ring-stroke",
-            )}
-          >
-            <MorphText className="whitespace-nowrap">
-              {`${done}/${steps.length} completed`}
-            </MorphText>
-          </span>
+          <StepCount done={done} total={steps.length} />
         )}
       </div>
-      <ol className="flex flex-col gap-0.5">
-        {steps.map((step) => (
-          <StepRow key={step.id} step={step} />
-        ))}
-      </ol>
+      <BuildStepList steps={steps} />
     </section>
+  );
+}
+
+/**
+ * How many steps are done, as a chip (Figma Build, Completion chip; B3.5c, owner 2026-11-08): the
+ * count padded to the total's digits ("01/13"), its numbers rolling as steps finish (torph); once
+ * every step is done it reads "13/13 completed" and its line turns Spot-500-Blue, the pill growing
+ * to fit the word.
+ */
+export function StepCount({ done, total }: { done: number; total: number }) {
+  const complete = total > 0 && done >= total;
+  const count = String(done).padStart(String(total).length, "0");
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-lg bg-foreground-01 px-1.5 py-0.5 text-type-caption-2 font-medium text-heading-04 tabular-nums ring-half transition-shadow duration-200 ease-out ring-inset",
+        complete ? "ring-spot-500-blue" : "ring-stroke",
+      )}
+    >
+      <MorphText className="whitespace-nowrap">
+        {complete ? `${total}/${total} completed` : `${count}/${total}`}
+      </MorphText>
+    </span>
+  );
+}
+
+/** The steps, one under another, 2 px apart (the card's list; a batch frame's folded list). */
+export function BuildStepList({ steps }: { steps: BuildStep[] }) {
+  return (
+    <ol className="flex flex-col gap-0.5">
+      {steps.map((step) => (
+        <StepRow key={step.id} step={step} />
+      ))}
+    </ol>
   );
 }
 

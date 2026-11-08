@@ -42,7 +42,8 @@ import {
   buildCreatedSchema,
 } from "@/lib/validators/build";
 
-import { BuildStepsCard, useBuildSteps } from "./build-steps";
+import { BatchFrameCard, ordinal } from "./batch-frame";
+import { useBuildSteps } from "./build-steps";
 import { PageRowMenu } from "../pages/page-row-menu";
 
 const POLL_MS = 3000;
@@ -52,12 +53,6 @@ const ACTIVE = new Set(["queued", "building"]);
 const SHEET_GAP = 6;
 
 const noSubscribe = () => () => {};
-
-function ordinal(n: number): string {
-  const tens = n % 100;
-  if (tens >= 11 && tens <= 13) return `${n}th`;
-  return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
-}
 
 /** m:ss since a moment, ticking while `live`. */
 function useElapsed(from: string | null, live: boolean): string | null {
@@ -460,8 +455,8 @@ function StatusPill({
 /**
  * The batch's side panel (B3.5b; no Figma frame yet, drawn as the page editor's Buddy panel): a
  * white panel 6 px right of the page panel, which narrows to make room, 356 px; its 48 px header
- * says how many are ready over a ×; then each page's build steps (the build page's Build steps
- * card, titled with the template), building first, then waiting, failed and ready. It opens by
+ * says how many are ready over a ×; then a frame per page (BatchFrame: the build happening, its
+ * step in words, every step a click away), building first, then waiting, failed and ready. It opens by
  * widening (0.36 s on the editor's settle) as the panel fades in, and closes faster (0.24 s).
  */
 function BatchSheet({
@@ -554,28 +549,13 @@ function BatchSheet({
   );
 }
 
-/** One page's build steps in the side panel: the build page's card, titled with the template. */
+/** One page in the Builds panel: its frame, from its job's steps (BatchFrameCard). */
 function BatchFrame({ page }: { page: BatchPage }): ReactNode {
-  const isReady = READY.has(page.status);
   const { steps, done } = useBuildSteps(
     page.status === "queued" ? null : page.job_id,
-    isReady,
+    READY.has(page.status),
     page.origin,
     page.template_type,
   );
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="px-0.5 text-type-caption-2 font-medium text-heading-06">
-        {page.key}
-        {page.status === "queued" && page.waiting
-          ? ` · waiting, ${ordinal(page.waiting)} in line`
-          : ""}
-      </span>
-      <BuildStepsCard
-        title={page.template_name}
-        steps={steps}
-        done={page.status === "queued" ? 0 : done}
-      />
-    </div>
-  );
+  return <BatchFrameCard page={page} steps={steps} done={done} />;
 }

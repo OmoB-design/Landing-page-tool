@@ -116,13 +116,15 @@ const BREATH = 2400;
  * own pointer handling reads it. With a progress (0–1, read from `progress.current` every frame),
  * the pointer glides to that point of the path and, short of the end, bobs slowly there, so the
  * figure follows real work; without one it walks the lap. A real pointer takes over while it is on
- * the figure; the lap starts again when it leaves. Off screen it does nothing; under reduced motion
- * it never starts.
+ * the figure; the lap starts again when it leaves. `still` (a waiting or finished build): no bob,
+ * and once the pointer has reached its point the loop sends nothing more. Off screen it does
+ * nothing; under reduced motion it never starts.
  */
 function startSweep(
   el: HTMLElement,
   sweep: Sweep,
   progress: { current: number | undefined },
+  still: { current: boolean },
 ): () => void {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
     return () => {};
@@ -131,6 +133,8 @@ function startSweep(
   let at = progress.current ?? 0;
   let held = false;
   let visible = true;
+  // Whether the pointer has been put on the figure since it mounted.
+  let placed = false;
   let raf = 0;
   const frame = (now: number) => {
     raf = requestAnimationFrame(frame);
@@ -138,10 +142,18 @@ function startSweep(
     last = now;
     if (held || !visible) return;
     const target = progress.current;
+    // Still (waiting or finished): once the pointer has reached its point, nothing to do.
+    if (still.current && target !== undefined && placed) {
+      if (Math.abs(at - target) < 0.002) return;
+    }
+    placed = true;
     if (target === undefined) {
       at = lapAt(sweep, now - start);
     } else {
-      const bob = target < 1 ? BOB * Math.sin((now / BREATH) * 2 * Math.PI) : 0;
+      const bob =
+        target < 1 && !still.current
+          ? BOB * Math.sin((now / BREATH) * 2 * Math.PI)
+          : 0;
       at +=
         (Math.min(1, Math.max(0, target + bob)) - at) *
         (1 - Math.exp(-dt / GLIDE));
@@ -163,6 +175,8 @@ function startSweep(
   const release = (event: PointerEvent) => {
     if (!event.isTrusted) return;
     held = false;
+    // The figure went back to rest when the real pointer left: put it back where it was.
+    placed = false;
     start = performance.now();
   };
   const seen = new IntersectionObserver(([entry]) => {
@@ -203,6 +217,7 @@ export function HairlineFigure({
   play = false,
   sweep,
   progress,
+  still = false,
   stroke,
   className,
 }: {
@@ -215,6 +230,9 @@ export function HairlineFigure({
   /** With a `sweep`, how far along its path the figure should stand (0–1), e.g. a build's progress;
    * undefined walks the lap. */
   progress?: number;
+  /** With a `sweep` and a `progress`: stand at that point and stay still (a build that is waiting
+   * or finished), with no frame loop running. */
+  still?: boolean;
   stroke?: number;
   className?: string;
 }) {
@@ -227,6 +245,8 @@ export function HairlineFigure({
   const latest = useRef(intensity);
   // The progress the sweep reads each frame (a ref, so a new value never remounts the figure).
   const progressRef = useRef(progress);
+  // Whether to stop once there (read by the sweep, so a change never remounts the figure).
+  const stillRef = useRef(still);
 
   useEffect(() => {
     const el = host.current;
@@ -251,7 +271,9 @@ export function HairlineFigure({
         const walking =
           play && !sweep ? HL.tour(el, figure.tour ?? HL.LAP) : null;
         const stopSweep =
-          play && sweep ? startSweep(el, sweep, progressRef) : () => {};
+          play && sweep
+            ? startSweep(el, sweep, progressRef, stillRef)
+            : () => {};
         cleanup = () => {
           walking?.stop();
           stopSweep();
@@ -274,6 +296,10 @@ export function HairlineFigure({
   useEffect(() => {
     progressRef.current = progress;
   }, [progress]);
+
+  useEffect(() => {
+    stillRef.current = still;
+  }, [still]);
 
   useEffect(() => {
     latest.current = intensity;

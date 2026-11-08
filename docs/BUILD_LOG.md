@@ -1318,7 +1318,7 @@ as new entries.
 - **Next:** to agree with the owner.
 
 ### B5.1 — Hardening: publishing and the B4 regressions
-- **Status:** complete (owner: "go and yes", the migration push permitted, 2026-11-07; not yet committed)
+- **Status:** complete (owner: "go and yes", the migration push permitted, 2026-11-07; committed and pushed in 4a26510, 2026-11-08)
 - **Date:** 2026-11-07
 - **Summary:** The first build of M5 Hardening, from the state-machine audit.
   - **Only the approved version goes out:** each publish job checks the page is still the version approved when Publish was pressed; an edit since stops it with "approve it again", and nothing is sent.
@@ -1337,7 +1337,7 @@ as new entries.
 - **Next:** B5.2, stuck states and background jobs (plan first).
 
 ### B5.2 — Hardening: stuck states and background jobs
-- **Status:** complete (owner: "go with your recommendation", 2026-11-07; not yet committed)
+- **Status:** complete (owner: "go with your recommendation", 2026-11-07; committed in 89ed5a1)
 - **Date:** 2026-11-07
 - **Summary:**
   - **The page can't stay locked:** a rewrite or Buddy request no worker claims in 15 minutes ends as failed, and the page unlocks.
@@ -1370,7 +1370,7 @@ as new entries.
 - **Next:** B5.4, screens that follow jobs (plan first).
 
 ### B5.4 — Hardening: screens that follow jobs
-- **Status:** complete (owner: "go with your recommendation", 2026-11-07; not yet committed)
+- **Status:** complete (owner: "go with your recommendation", 2026-11-07; committed in 89ed5a1)
 - **Date:** 2026-11-07
 - **Summary:** The last build of M5 Hardening.
   - **One shared way to follow a job** (`useFollowedJob`): by the job's own id, each ending (succeeded, failed, cancelled) handled once.
@@ -1388,7 +1388,7 @@ as new entries.
 - **Next:** to agree with the owner (M5 Hardening is complete).
 
 ### B6.1 — Members and invites
-- **Status:** complete (owner: "go", the migration push permitted, 2026-11-07; not yet committed)
+- **Status:** complete (owner: "go", the migration push permitted, 2026-11-07; committed and pushed in 4a26510, 2026-11-08)
 - **Date:** 2026-11-07
 - **Summary:**
   - **Settings → Members** is built: everyone in the workspace, roles changed and people removed by owners and admins, Leave for anyone (not the last owner).
@@ -1405,7 +1405,7 @@ as new entries.
 
 
 ### B6.2 — Account page
-- **Status:** complete (owner: "go and yes", the migration push permitted, 2026-11-07; not yet committed)
+- **Status:** complete (owner: "go and yes", the migration push permitted, 2026-11-07; committed and pushed in 4a26510, 2026-11-08)
 - **Date:** 2026-11-07
 - **Summary:**
   - **Settings → Account** is built (no longer Soon): your name, your sign-in email (shown, not changeable yet), a new password, and the theme for this browser.
@@ -1417,6 +1417,40 @@ as new entries.
 - **Schema changes:** profile policies and grants (no new columns). **Worker changes:** none. **New dependencies:** none.
 - **Decisions:** D130 locked.
 - **Deviations from the plan:** two phone fixes outside the Account page, found while checking it: the shared settings column (every settings page overflowed by 21 px) and the Members invite field (B6.1). No name-length rule in the database (it could have failed an unusual sign-up); the app checks 1–80 characters.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner.
+
+
+### B6.3 — Account and Members, reorganised
+- **Status:** complete (owner: "1. yes. 2. the rise and … a blue ring … 3. always", 2026-11-08; committed and pushed with B3.5c, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **Account** is laid out as Quality's Account (read from its app): your initial in a 64 px circle, then Name and Email as labelled full-width fields; the name saves when you leave the field or press Enter, Escape puts it back.
+  - **Theme** is three pictures of the app (I5, drawn with the Stageshow kit after the owner's reference): System, Light, Dark. The chosen one has the open dropdown's blue edge and halo; the little window rises 2 px on hover; it applies at once. Light and Dark keep their own look in either theme; System is light with its right side dark.
+  - **Password** is one row with Change password, which opens a modal (the same checks as B6.2; errors by their field, anything else in the modal's footer).
+  - **Members** is one table in the 544 px column (Quality's Members, narrowed): Search, a filter (Everyone, Owners, Admins, Members, Invites) and Invite above; Name with email, Role, Status (the date on hover); each row's actions in its ⋯ menu (Role with a tick, Remove from workspace or Leave workspace; for invites Copy link, Invite again, Revoke invite).
+  - **Invite** is a modal: email and role, then "Invite ready" with the link, Copy, Invite someone else and Done.
+- **Key files:** `components/app/illustrations/theme/` (new: scene, css, index, test), `components/app/illustrations/look.css` (`lp-look-dark`, fixed dark), `components/features/settings/account.tsx` (+ test), `components/features/settings/members.tsx` (+ test), `app/dev/illustrations/page.tsx`; docs D131, DESIGN.md, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D131 locked.
+- **Deviations from the plan:** none in scope. The settings width is unchanged (owner, during the build). Nothing is chosen in the theme pictures until the page knows this browser's choice (a moment after load), so the wrong card never flashes as chosen.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B3.5c, the batch build's Builds panel (the owner's request of 2026-11-08).
+
+
+### B3.5c — Builds panel frames
+- **Status:** complete (owner: "go" to the plan and its three recommendations, 2026-11-08; committed and pushed with B6.3, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **Each page in a batch's Builds panel** is now its build happening, not a list of steps: the header as before (the template and the count), the build page's illustration following that page's build, and a footer card with the spinner, the step it's on in words that morph, and a chevron that unfolds every step.
+  - **The count** reads "01/13", its numbers rolling as steps finish, and "13/13 completed" with a blue line once done (on the full-screen build page too).
+  - **Waiting and built pages** hold the illustration still (at the start, at the end), so only building pages animate; a waiting page says its place in line; a failed page unfolds its steps by itself, showing the failed step and its reason.
+- **Key files:** `components/features/builds/batch-frame.tsx` (new: `BatchFrameCard`), `build-figure.tsx` (new: `BuildFigure`, the Assemble settings moved here from `building-illustration.tsx`), `build-steps.tsx` (`StepCount`, `BuildStepList`; + `build-steps.test.tsx`), `batch-view.tsx` (+ test), `components/app/hairline-figure.tsx` (`still`), `app/(app)/dev/build-states/page.tsx` (state 22: the panel's four kinds of frame); docs D132, DESIGN.md, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D132 locked.
+- **Deviations from the plan:** the frame's drawing is its own component (`BatchFrameCard`) so the dev states page can show every kind with sample steps; checked there rather than with real builds, which would cost real AI calls.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** to agree with the owner.

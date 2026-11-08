@@ -5,7 +5,9 @@ import type { ResolvedValues } from "dialkit";
 import type { CSSProperties } from "react";
 
 import { Dial, DialPanel } from "@/components/ui/dial";
-import { type Sweep, HairlineFigure } from "@/components/app/hairline-figure";
+import { HairlineFigure } from "@/components/app/hairline-figure";
+
+import { ASSEMBLE_SWEEP, TRIM } from "./build-figure";
 
 type Range = [number, number, number, number];
 
@@ -31,26 +33,6 @@ const DIAL = {
     progress: [0.4, 0, 1, 0.01] as Range,
   },
 };
-
-/**
- * Assemble's lap: the build line sweeps down the page from above its top to below its foot (the
- * viewBox points over the page's middle, y −12 and 190), holds with every section in place, then
- * sweeps back up, so the page assembles and comes apart in one continuous motion.
- */
-const ASSEMBLE_SWEEP: Sweep = {
-  from: [304, 111],
-  to: [96, 214],
-  downMs: 6500,
-  holdMs: 1400,
-  upMs: 3200,
-  restMs: 900,
-};
-
-/**
- * How much of Assemble's 5:4 box is empty above and below its drawing at rest (the drawing spans
- * viewBox y 89.5 to 242.5 of 320), so the gap to the caption is measured from the drawing itself.
- */
-const TRIM = { top: 89.5 / 320, bottom: (320 - 242.5) / 320 };
 
 /**
  * The preview well while a page builds (Figma: the preview while the page builds; the dashed frame

@@ -4,6 +4,7 @@ import { type ReactNode, Suspense } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
 import { StatusGlyph } from "@/components/app/status-glyph";
+import { BatchFrameCard } from "@/components/features/builds/batch-frame";
 import { BuildPreview } from "@/components/features/builds/build-preview";
 import {
   Competitors,
@@ -45,6 +46,56 @@ const FAILED_STEPS: BuildStep[] = OWNED_BUILD_STEPS.map((step, index) => ({
   state: index < 3 ? "done" : index === 3 ? "failed" : "idle",
   note: index === 3 ? "The brand’s logo couldn’t be downloaded." : undefined,
 }));
+
+/** A batch's pages in the Builds panel (B3.5c): steps at each moment of a build. */
+const stepsAt = (done: number, running: boolean): BuildStep[] =>
+  OWNED_BUILD_STEPS.map((step, index) => ({
+    ...step,
+    state:
+      index < done ? "done" : index === done && running ? "running" : "idle",
+  }));
+const BATCH_FRAMES = [
+  {
+    page: {
+      key: "LUM-14",
+      template_name: "Story",
+      status: "building",
+      waiting: null,
+    },
+    steps: stepsAt(5, true),
+    done: 5,
+  },
+  {
+    page: {
+      key: "LUM-15",
+      template_name: "Listicle",
+      status: "queued",
+      waiting: 2,
+    },
+    steps: stepsAt(0, false),
+    done: 0,
+  },
+  {
+    page: {
+      key: "LUM-13",
+      template_name: "Advertorial",
+      status: "needs_review",
+      waiting: null,
+    },
+    steps: stepsAt(OWNED_BUILD_STEPS.length, false),
+    done: OWNED_BUILD_STEPS.length,
+  },
+  {
+    page: {
+      key: "LUM-16",
+      template_name: "Top 5",
+      status: "failed",
+      waiting: null,
+    },
+    steps: FAILED_STEPS,
+    done: 3,
+  },
+];
 
 /** Every kind of reminder at once. */
 const ALL_REMINDERS = [
@@ -793,6 +844,30 @@ export default function BuildStatesPage() {
               />
             </PanelFrame>
           </Labeled>
+        </State>
+
+        <State
+          number={22}
+          title="A batch’s Builds panel"
+          when="While the pages of a batch build (Create several pages at once), the panel beside the batch page shows a frame per page: building first, then waiting, failed and built."
+          shows={[
+            "The header as the build page’s steps card: the template and the count, “05/13” rolling up as steps finish, then “13/13 completed” with a blue line.",
+            "The build page’s illustration, following this page’s build; still while it waits and once it’s built.",
+            "A footer card: the spinner (a tick when built, red when it failed), the step it’s on in words that morph as it moves on, and a chevron that unfolds every step.",
+            "A failed page unfolds its steps by itself, so the failed step and its reason show.",
+          ]}
+          design={["The frame’s look in Figma, when the owner draws it"]}
+        >
+          <div className="flex w-lander-panel flex-col gap-3 rounded-panel bg-surface-primary p-3 edge">
+            {BATCH_FRAMES.map((frame) => (
+              <BatchFrameCard
+                key={frame.page.key}
+                page={frame.page}
+                steps={frame.steps}
+                done={frame.done}
+              />
+            ))}
+          </div>
         </State>
       </div>
     </>

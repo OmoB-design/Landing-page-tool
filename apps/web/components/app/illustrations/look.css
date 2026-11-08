@@ -118,3 +118,42 @@
   --ss-shadow-float: var(--shadow-float);
   --ss-shadow-lift: var(--shadow-float);
 }
+
+/* LP's dark theme whatever the app's theme is (I5, the Dark theme thumbnail): the dark values of
+   Surface-Primary, Dashboard, the Foregrounds and the Strokes, read from LP's primitives. Also a
+   scope inside another look (`lp-look-dark-scope`), for the dark half of the System thumbnail. */
+.lp-look-dark .ss-stage,
+.lp-look-dark-scope {
+  --ss-font: var(--font-sans);
+  --ss-mono: var(--font-mono);
+
+  --ss-surface: var(--grey-950);
+  --ss-raised: var(--grey-900);
+  --ss-chrome: var(--grey-950);
+  --ss-canvas: var(--base-black);
+  --ss-well: var(--grey-900);
+  --ss-fill: var(--grey-900);
+
+  --ss-ink-1: var(--grey-900);
+  --ss-ink-2: var(--grey-850);
+  --ss-ink-3: var(--grey-800);
+  --ss-ink-4: var(--grey-700);
+  --ss-ink-5: var(--grey-600);
+
+  --ss-line: var(--grey-850);
+  --ss-line-faint: var(--grey-900);
+
+  --ss-text-strong: var(--grey-50);
+  --ss-text: var(--grey-300);
+  --ss-text-faint: var(--grey-500);
+  --ss-icon: var(--grey-500);
+  --ss-icon-faint: var(--grey-700);
+
+  --ss-accent: var(--button-blue-fill);
+  --ss-radius-sm: var(--radius-sm);
+  --ss-radius-md: var(--radius-md);
+  --ss-radius-lg: var(--radius-lg);
+  --ss-radius-window: var(--radius-lg);
+  --ss-control: 30px;
+  --ss-row: 28px;
+}

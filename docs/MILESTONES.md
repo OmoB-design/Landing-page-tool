@@ -127,6 +127,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 - B3.3 Mobile optimise + QA screenshots + OG image. *Split (owner, 2026-11-05, D111):* **B3.3a** the preview check (screenshots at desktop and phone widths after every build and on Refresh) and the share image (the top of the page, written into exports and publishes), done 2026-11-05; **B3.3b** automatic phone rules and an automatic phone check in every build, with Fix for phone (Claude) on the review desk and in Lander, done 2026-11-05 (D112).
 - B3.4 Edit agent chat. *Moved up as B3.1b (owner, 2026-11-04).*
 - B3.5 Batch build (all templates for one product). *Done 2026-11-06 (D115): the wizard's "Build with every template", all-or-nothing starts within the hourly cap, and the batch screen.*
+- B3.5c Builds panel frames. *Done 2026-11-08 (D132): each page in a batch's Builds panel is its build happening (the build page's illustration), the step it's on in words, and its steps a click away; the count chip reads "01/13" rolling up to "13/13 completed" (on the build page too).*
 - B3.6 Client review link (BUILD_SPEC §11.4, D55). *Done 2026-11-06 (D119): Approve keeps the approved copy; the review desk's Client link (one link per page that follows re-approvals, 30 days, opens counted, Turn off); `/review/<token>` without sign-in, Desktop / Phone, scripts off.*
 
 ## M4 — Editable Shopify publish
@@ -150,6 +151,7 @@ From the state-machine audit (2026-11-07): the app behaves the same, but stops m
 
 - B6.1 Members and invites. *Done 2026-11-07 (D129): Settings → Members (roles, remove, leave; the last owner stays; owners make owners); invites by email and role as a link to copy (7 days, revocable); someone new signs up from the link straight into the workspace; someone with an account signs in and joins with the invited email.*
 - B6.2 Account page. *Done 2026-11-07 (D130): Settings → Account: your name, your email (shown), a new password once the current one checks out (other devices signed out), the theme; people can change only their name and current workspace in their profile.*
+- B6.3 Account and Members, reorganised. *Done 2026-11-08 (D131): Account as Quality's (name saved on leaving the field, the theme as three pictures of the app, Password in a modal); Members as one table with Search, a filter, Invite in a modal and each row's actions in a ⋯ menu.*
 
 ## v3 — Someday
 

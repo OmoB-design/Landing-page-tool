@@ -119,7 +119,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("batch page (B3.5b)", () => {
+describe("batch page (B3.5b, B3.5c)", () => {
   it("lists the pages with live status pills and opens the builds panel while one builds", async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -152,6 +152,54 @@ describe("batch page (B3.5b)", () => {
     expect(
       await screen.findByRole("complementary", { name: "Builds" }),
     ).toBeTruthy();
+  });
+
+  it("draws each page in the builds panel as its build, its step in words and a fold of its steps", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <BatchView batchId="b1" me={{ id: "me", name: "Ada" }} />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+    const panel = within(
+      await screen.findByRole("complementary", { name: "Builds" }),
+    );
+    const frame = (name: string) => within(panel.getByRole("region", { name }));
+
+    // Building: the count from zero, padded; the step it's on; its steps folded.
+    const building = frame("BTC-2 · Listicle");
+    expect(building.getByText(/^0+\/\d+$/)).toBeTruthy();
+    expect(building.getByRole("img")).toBeTruthy();
+    const toggle = building.getByRole("button", { name: "Show the steps" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(building.queryByRole("list")).toBeNull();
+    fireEvent.click(toggle);
+    expect(
+      building
+        .getByRole("button", { name: "Hide the steps" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(building.getByRole("list")).toBeTruthy();
+
+    // Waiting: its place in line, in the footer.
+    expect(
+      frame("BTC-3 · Top 5").getByText("Waiting · 2nd in line"),
+    ).toBeTruthy();
+
+    // Built: every step done, and the chip says so.
+    const ready = frame("BTC-1 · Story");
+    expect(ready.getByText(/^(\d+)\/\1 completed$/)).toBeTruthy();
+    expect(ready.getByText("Ready to review")).toBeTruthy();
+
+    // Failed: its steps unfold by themselves.
+    const failed = frame("BTC-4 · Clone");
+    expect(
+      failed
+        .getByRole("button", { name: "Hide the steps" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(failed.getByRole("list")).toBeTruthy();
   });
 
   it("puts the folder on top with circles that colour it for the team", async () => {

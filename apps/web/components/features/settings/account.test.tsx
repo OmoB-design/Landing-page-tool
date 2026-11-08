@@ -39,40 +39,63 @@ function type(label: string, value: string) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
+/** Opens the password modal from its row. */
+function openPassword() {
+  fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+  return screen.getByRole("dialog");
+}
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
 
-describe("Settings → Account (B6.2)", () => {
-  it("saves a new name, trimmed, and only when it changed", async () => {
+describe("Settings → Account (B6.2, B6.3)", () => {
+  it("saves a new name, trimmed, when you leave the field, and only when it changed", async () => {
     renderAccount();
-    const save = screen.getByRole("button", { name: "Save" });
-    expect(save).toHaveProperty("disabled", true);
-    expect(screen.getByText("ada@lume.test")).toBeTruthy();
+    expect(screen.getByLabelText("Email")).toHaveProperty(
+      "value",
+      "ada@lume.test",
+    );
+    const name = screen.getByLabelText("Name");
+    fireEvent.blur(name);
+    expect(saveDisplayName).not.toHaveBeenCalled();
 
     type("Name", "  Ada Lovelace ");
-    expect(save).toHaveProperty("disabled", false);
-    fireEvent.click(save);
+    fireEvent.blur(name);
     await waitFor(() =>
       expect(saveDisplayName).toHaveBeenCalledWith({ name: "Ada Lovelace" }),
     );
     await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith("Name saved"),
     );
-    expect(screen.getByLabelText("Name")).toHaveProperty(
-      "value",
-      "Ada Lovelace",
+    expect(name).toHaveProperty("value", "Ada Lovelace");
+    fireEvent.blur(name);
+    expect(saveDisplayName).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves on Enter, and Escape puts the name back without saving", async () => {
+    renderAccount();
+    const name = screen.getByLabelText("Name") as HTMLInputElement;
+    name.focus();
+    type("Name", "Ada L");
+    fireEvent.keyDown(name, { key: "Escape" });
+    expect(name.value).toBe("Ada");
+    expect(saveDisplayName).not.toHaveBeenCalled();
+
+    name.focus();
+    type("Name", "Ada King");
+    fireEvent.keyDown(name, { key: "Enter" });
+    await waitFor(() =>
+      expect(saveDisplayName).toHaveBeenCalledWith({ name: "Ada King" }),
     );
-    expect(save).toHaveProperty("disabled", true);
   });
 
   it("won't save an empty name", async () => {
     renderAccount();
     type("Name", "   ");
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByRole("alert")).toHaveProperty(
-      "textContent",
+    fireEvent.blur(screen.getByLabelText("Name"));
+    expect((await screen.findByRole("alert")).textContent).toBe(
       "Enter your name.",
     );
     expect(saveDisplayName).not.toHaveBeenCalled();
@@ -80,6 +103,7 @@ describe("Settings → Account (B6.2)", () => {
 
   it("checks the new password before sending it", async () => {
     renderAccount();
+    openPassword();
     type("Current password", "old-password");
     type("New password", "short");
     type("Confirm new password", "short");
@@ -93,8 +117,9 @@ describe("Settings → Account (B6.2)", () => {
     expect(changePassword).not.toHaveBeenCalled();
   });
 
-  it("changes the password and clears the form", async () => {
+  it("changes the password and closes the modal", async () => {
     renderAccount();
+    openPassword();
     type("Current password", "old-password");
     type("New password", "a-new-password");
     type("Confirm new password", "a-new-password");
@@ -112,6 +137,9 @@ describe("Settings → Account (B6.2)", () => {
         expect.anything(),
       ),
     );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // Opened again, the form is empty.
+    openPassword();
     expect(screen.getByLabelText("Current password")).toHaveProperty(
       "value",
       "",
@@ -125,6 +153,7 @@ describe("Settings → Account (B6.2)", () => {
       field: "current",
     });
     renderAccount();
+    openPassword();
     type("Current password", "wrong-password");
     type("New password", "a-new-password");
     type("Confirm new password", "a-new-password");
@@ -136,17 +165,24 @@ describe("Settings → Account (B6.2)", () => {
       "ariaInvalid",
       "true",
     );
+    expect(screen.getByRole("dialog")).toBeTruthy();
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it("shows the theme and changes it", () => {
-    // jsdom has no scrolling; the open list scrolls to the chosen option.
-    Element.prototype.scrollIntoView ??= () => {};
+  it("shows the theme as three pictures and changes it", () => {
     renderAccount();
-    const theme = screen.getByLabelText("Theme");
-    expect(theme.textContent).toContain("System");
-    fireEvent.keyDown(theme, { key: "ArrowDown" });
-    fireEvent.click(screen.getByRole("option", { name: "Dark" }));
+    const system = screen.getByRole("radio", { name: "System" });
+    expect(system).toHaveProperty("checked", true);
+    expect(screen.getByRole("radio", { name: "Light" })).toHaveProperty(
+      "checked",
+      false,
+    );
+    for (const theme of ["system", "light", "dark"]) {
+      expect(
+        document.querySelector(`[data-illustration="theme-${theme}"]`),
+      ).toBeTruthy();
+    }
+    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
     expect(setThemePreference).toHaveBeenCalledWith("dark");
   });
 });

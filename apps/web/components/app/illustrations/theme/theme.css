@@ -1,0 +1,156 @@
+/*
+ * The theme thumbnails (I5, B6.3), drawn on a 174 × 110 stage: a ground, then LP's window inset
+ * 22 px from the left and 20 px from the top and running off the right and bottom, so the card's
+ * own rounded clip crops it. Colours come from the look on the stage (lp-look-light, lp-look-dark)
+ * or the dark scope inside it (the System thumbnail's right side). Every rule is scoped to `.ith`.
+ */
+
+/* The picture keeps its shape at any card width before the stage has measured (no jump). */
+.ith {
+  aspect-ratio: 174 / 110;
+  overflow: hidden;
+}
+
+.ith .ss-stage {
+  overflow: hidden;
+}
+
+.ith-ground {
+  position: absolute;
+  inset: 0;
+  background: var(--ss-fill);
+}
+
+/* System: the dark copy over the light one, cut on a slant. */
+.ith-half {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
+}
+
+/* The window: LP's grey canvas, 8 px corners, a 0.5 px edge. It rises 2 px while its card is
+   hovered (the card carries `ith-hover`), on the app's ease-out (Emil: under 300 ms). */
+.ith-window {
+  position: absolute;
+  left: 22px;
+  top: 20px;
+  width: 200px;
+  height: 120px;
+  border-radius: 8px;
+  background: var(--ss-canvas);
+  box-shadow: 0 0 0 0.5px var(--ss-line);
+  transition: transform 200ms var(--ease-out);
+}
+
+.ith-hover:hover .ith-window {
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ith-window {
+    transition: none;
+  }
+}
+
+.ith-lights {
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  display: flex;
+  gap: 2.5px;
+}
+
+.ith-lights > span {
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 50%;
+  background: var(--ss-ink-3);
+}
+
+.ith-sidebar {
+  position: absolute;
+  left: 8px;
+  top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ith-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ith-profile {
+  position: absolute;
+  left: 8px;
+  top: 74px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ith-avatar {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ss-ink-4);
+}
+
+/* The page: LP's floating panel, 5 px in from the window's top, after the 44 px sidebar. */
+.ith-panel {
+  position: absolute;
+  left: 44px;
+  top: 5px;
+  width: 160px;
+  height: 120px;
+  border-radius: 6px;
+  background: var(--ss-surface);
+  box-shadow: 0 0 0 0.5px var(--ss-line);
+}
+
+.ith-header {
+  position: absolute;
+  left: 9px;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* The page header's line under it. */
+.ith-header::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: -9px;
+  width: 160px;
+  height: 0.5px;
+  background: var(--ss-line);
+}
+
+.ith-cards {
+  position: absolute;
+  left: 9px;
+  top: 30px;
+  display: flex;
+  gap: 6px;
+}
+
+.ith-cards > span {
+  width: 32px;
+  height: 19px;
+  border-radius: 3px;
+  background: var(--ss-well);
+  box-shadow: 0 0 0 0.5px var(--ss-line-faint);
+}
+
+.ith-lines {
+  position: absolute;
+  left: 9px;
+  top: 57px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
