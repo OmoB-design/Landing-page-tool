@@ -25,4 +25,12 @@ describe("Theme pictures (I5)", () => {
     ).toBeTruthy();
     expect(container.querySelectorAll(".ith-window")).toHaveLength(2);
   });
+
+  it("draws the page's frames as shapes the shimmer crosses", () => {
+    const { container } = render(<ThemeScene theme="light" />);
+    const frames = container.querySelectorAll(".ith-panel .ith-s.ith-f");
+    // The header, title and subtitle, three cards of three parts, two lines.
+    expect(frames).toHaveLength(14);
+    expect(container.querySelectorAll(".ith-lights > span")).toHaveLength(3);
+  });
 });

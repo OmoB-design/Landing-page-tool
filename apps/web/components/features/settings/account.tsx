@@ -54,9 +54,9 @@ const THEME_HINT = "For this browser. Also in the account menu.";
 const PASSWORD_HINT = "Change the password you sign in with.";
 const NEW_HINT = "At least 8 characters.";
 const THEMES: { value: ThemePreference; label: string }[] = [
-  { value: "system", label: "System" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
 ];
 
 /**
@@ -188,7 +188,8 @@ function ProfileSection({ name, email }: { name: string; email: string }) {
 
 /**
  * The theme as three pictures of the app (I5): System, Light, Dark. The chosen one has the open
- * dropdown's blue edge and halo (Spot-500-Blue, Shadow/Focus); hovering lifts the little window.
+ * dropdown's blue edge, 1.3 px (owner, B6.4), and halo (Spot-500-Blue, Shadow/Focus); hovering lights
+ * the little window's dots in macOS's colours and runs a shimmer across its page (theme.css).
  * It applies at once. Nothing shows as chosen until the page knows this browser's choice.
  */
 function ThemeSection({ inert = false }: { inert?: boolean }) {
@@ -250,7 +251,7 @@ function ThemeCard({
         className={cn(
           "overflow-hidden rounded-lg border bg-surface-primary transition duration-150 ease-out peer-focus-visible:ring-2 peer-focus-visible:ring-ring",
           checked
-            ? "border-spot-500-blue shadow-focus"
+            ? "border-spot-500-blue ring-chosen"
             : "border-stroke shadow-light group-hover:border-stroke-strong",
         )}
       >

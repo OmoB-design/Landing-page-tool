@@ -536,7 +536,9 @@ function BatchSheet({
                 <CloseIcon aria-hidden className="size-3.5" />
               </Button>
             </header>
-            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+            {/* Room kept for the scrollbar, so the frames don't narrow when one unfolds into a
+                scroll (where scrollbars take space). */}
+            <div className="flex min-h-0 flex-1 scrollbar-stable flex-col gap-3 overflow-y-auto p-3">
               {sorted.map((page) => (
                 <BatchFrame key={page.id} page={page} />
               ))}

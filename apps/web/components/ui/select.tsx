@@ -56,26 +56,41 @@ function SelectTrigger({
   );
 }
 
+/**
+ * LP: `variant="menu"` is the app's floating menu (the sidebar's workspace menu, B6.4): it opens
+ * below its field at the field's width, on Surface-Modal with 2 px all round, the float shadow and
+ * the hairline edge, so it stands out on a modal; pair it with SelectItem's `variant="menu"`.
+ */
 function SelectContent({
   className,
   children,
-  position = "item-aligned",
+  position,
   align = "center",
+  variant = "default",
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Content>) {
+}: React.ComponentProps<typeof SelectPrimitive.Content> & {
+  variant?: "default" | "menu";
+}) {
+  const menu = variant === "menu";
+  const placed = position ?? (menu ? "popper" : "item-aligned");
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
         data-slot="select-content"
-        data-align-trigger={position === "item-aligned"}
+        data-align-trigger={placed === "item-aligned"}
         className={cn(
-          "relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-150 ease-out data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:duration-100 data-closed:fade-out-0 data-closed:zoom-out-95",
-          position === "popper" &&
+          "relative z-50 max-h-(--radix-select-content-available-height) origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto duration-150 ease-out data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:duration-100 data-closed:fade-out-0 data-closed:zoom-out-95",
+          placed === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+          menu
+            ? // On a modal's white it needs more lift than the workspace menu gets on the grey
+              // canvas: the float shadow at 2.5 times its strength, over the hairline edge.
+              "w-(--radix-select-trigger-width) rounded-sm bg-surface-modal p-0.5 text-heading-02 shadow-float edge-hairline [--float-intensity:2.5]"
+            : "min-w-36 rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10",
           className,
         )}
-        position={position}
-        align={align}
+        position={placed}
+        align={menu ? "start" : align}
         {...props}
       >
         <SelectScrollUpButton />
@@ -113,20 +128,34 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
+  variant = "default",
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Item>) {
+}: React.ComponentProps<typeof SelectPrimitive.Item> & {
+  /** LP: the floating menu's row (the workspace menu's: 4 px in, 12 px medium Heading-02). */
+  variant?: "default" | "menu";
+}) {
+  const menu = variant === "menu";
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
         "relative flex w-full cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-type-caption-1 outline-hidden select-none focus:bg-foreground-02 focus:text-body not-data-[variant=destructive]:focus:**:text-body data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        menu &&
+          "gap-1 rounded-xsm p-1 pr-6 font-medium text-heading-02 focus:text-heading-02 not-data-[variant=destructive]:focus:**:text-heading-02",
         className,
       )}
       {...props}
     >
-      <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
+      <span
+        className={cn(
+          "pointer-events-none absolute right-2 flex size-4 items-center justify-center",
+          menu && "right-1.5 size-3.5 text-icon-system",
+        )}
+      >
         <SelectPrimitive.ItemIndicator>
-          <CheckIcon className="pointer-events-none" />
+          <CheckIcon
+            className={cn("pointer-events-none", menu && "size-3.5")}
+          />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

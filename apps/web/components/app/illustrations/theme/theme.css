@@ -1,8 +1,9 @@
 /*
- * The theme thumbnails (I5, B6.3), drawn on a 174 × 110 stage: a ground, then LP's window inset
- * 22 px from the left and 20 px from the top and running off the right and bottom, so the card's
- * own rounded clip crops it. Colours come from the look on the stage (lp-look-light, lp-look-dark)
- * or the dark scope inside it (the System thumbnail's right side). Every rule is scoped to `.ith`.
+ * The theme thumbnails (I5, B6.3; redrawn B6.4, D133), drawn on a 348 × 220 canvas zoomed to the
+ * 174 × 110 stage: a ground, then LP's window inset 44 px from the left and 40 px from the top and
+ * running off the right and bottom, so the card's own rounded clip crops it. Colours come from the
+ * look on the stage (lp-look-light, lp-look-dark) or the dark scope inside it (the System
+ * thumbnail's right side). Every rule is scoped to `.ith`.
  */
 
 /* The picture keeps its shape at any card width before the stage has measured (no jump). */
@@ -13,6 +14,23 @@
 
 .ith .ss-stage {
   overflow: hidden;
+  /* The shimmer's light: bright on the light frames, dim on the dark ones. */
+  --ith-glint: rgb(255 255 255 / 0.85);
+}
+
+.ith .lp-look-dark-scope,
+.ith .lp-look-dark .ss-stage {
+  --ith-glint: rgb(255 255 255 / 0.09);
+}
+
+/* The canvas at twice the stage's size, zoomed to it: laid out and drawn at its final size, so a
+   1 px canvas line is half a pixel, one device pixel on a 2× screen. */
+.ith-canvas {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 348px;
+  height: 220px;
+  zoom: 0.5;
 }
 
 .ith-ground {
@@ -28,129 +46,120 @@
   clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
 }
 
-/* The window: LP's grey canvas, 8 px corners, a 0.5 px edge. It rises 2 px while its card is
-   hovered (the card carries `ith-hover`), on the app's ease-out (Emil: under 300 ms). */
+/* The window: LP's grey canvas, 16 px corners (8 on the stage), a 1 px edge (half a pixel). */
 .ith-window {
   position: absolute;
-  left: 22px;
-  top: 20px;
-  width: 200px;
-  height: 120px;
-  border-radius: 8px;
+  left: 44px;
+  top: 40px;
+  width: 420px;
+  height: 260px;
+  border-radius: 16px;
   background: var(--ss-canvas);
-  box-shadow: 0 0 0 0.5px var(--ss-line);
-  transition: transform 200ms var(--ease-out);
+  box-shadow:
+    0 0 0 1px var(--ss-line),
+    0 4px 12px 0 rgb(0 0 0 / 0.05);
 }
 
-.ith-hover:hover .ith-window {
-  transform: translateY(-2px);
+/* A shape: placed and sized by its style; `--f` is its fill. */
+.ith-s {
+  position: absolute;
+  background-color: var(--f);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ith-window {
-    transition: none;
-  }
+/* A card's well has the panel's faint line round it. */
+.ith-card {
+  box-shadow: 0 0 0 1px var(--ss-line-faint);
 }
 
+/* The lights, grey at rest; while the card is hovered (or its choice has keyboard focus) they come
+   on in macOS's red, yellow and green. */
 .ith-lights {
   position: absolute;
-  left: 7px;
-  top: 7px;
+  left: 16px;
+  top: 16px;
   display: flex;
-  gap: 2.5px;
+  gap: 6px;
 }
 
 .ith-lights > span {
-  width: 3.5px;
-  height: 3.5px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--ss-ink-3);
+  transition: background-color 150ms var(--ease-out);
 }
 
-.ith-sidebar {
-  position: absolute;
-  left: 8px;
-  top: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+:is(.ith-hover:hover, .ith-hover:has(:focus-visible))
+  .ith-lights
+  > span:nth-child(1) {
+  background: #ff5f57;
+}
+:is(.ith-hover:hover, .ith-hover:has(:focus-visible))
+  .ith-lights
+  > span:nth-child(2) {
+  background: #febc2e;
+}
+:is(.ith-hover:hover, .ith-hover:has(:focus-visible))
+  .ith-lights
+  > span:nth-child(3) {
+  background: #28c840;
 }
 
-.ith-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.ith-profile {
-  position: absolute;
-  left: 8px;
-  top: 74px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.ith-avatar {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ss-ink-4);
-}
-
-/* The page: LP's floating panel, 5 px in from the window's top, after the 44 px sidebar. */
+/* The page: LP's floating panel, 10 px in from the window's top, after the 92 px sidebar. */
 .ith-panel {
   position: absolute;
-  left: 44px;
-  top: 5px;
-  width: 160px;
-  height: 120px;
-  border-radius: 6px;
+  left: 92px;
+  top: 10px;
+  width: 360px;
+  height: 300px;
+  border-radius: 12px;
   background: var(--ss-surface);
-  box-shadow: 0 0 0 0.5px var(--ss-line);
+  box-shadow:
+    0 0 0 1px var(--ss-line),
+    0 1px 3px 0 rgb(0 0 0 / 0.03);
 }
 
-.ith-header {
+/* The page header's line. */
+.ith-rule {
   position: absolute;
-  left: 9px;
-  top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-/* The page header's line under it. */
-.ith-header::after {
-  content: "";
-  position: absolute;
-  top: 14px;
-  left: -9px;
-  width: 160px;
-  height: 0.5px;
+  top: 32px;
+  left: 0;
+  width: 100%;
+  height: 1px;
   background: var(--ss-line);
 }
 
-.ith-cards {
-  position: absolute;
-  left: 9px;
-  top: 30px;
-  display: flex;
-  gap: 6px;
+/* The shimmer: a band of light that crosses the page's frames once, left to right, 80 ms after the
+   lights come on (700 ms, the app's ease-in-out). Each frame draws its piece of one band: the band
+   is 636 px (three times the 212 px of panel in view) and `--x` is the frame's place in the panel,
+   so the pieces line up. Under reduced motion only the lights change. */
+@keyframes ith-shimmer {
+  from {
+    background-position: calc(-358px - var(--x)) 0;
+  }
+  to {
+    background-position: calc(-66px - var(--x)) 0;
+  }
 }
 
-.ith-cards > span {
-  width: 32px;
-  height: 19px;
-  border-radius: 3px;
-  background: var(--ss-well);
-  box-shadow: 0 0 0 0.5px var(--ss-line-faint);
+:is(.ith-hover:hover, .ith-hover:has(:focus-visible)) .ith-f {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0 40%,
+    var(--ith-glint) 50%,
+    transparent 60% 100%
+  );
+  background-size: 636px 100%;
+  background-repeat: no-repeat;
+  animation: ith-shimmer 700ms var(--ease-in-out) 80ms both;
 }
 
-.ith-lines {
-  position: absolute;
-  left: 9px;
-  top: 57px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+@media (prefers-reduced-motion: reduce) {
+  :is(.ith-hover:hover, .ith-hover:has(:focus-visible)) .ith-f {
+    animation: none;
+    background-image: none;
+  }
+  .ith-lights > span {
+    transition: none;
+  }
 }

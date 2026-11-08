@@ -1661,6 +1661,14 @@
   border-radius: inherit;
 }
 
+/* A chosen picture (Account's theme cards, B6.4): the open dropdown's blue edge 0.3 px wider than
+   its 1 px border (owner: 1.3 px in all), drawn as a ring so the fraction renders, then its halo. */
+@utility ring-chosen {
+  box-shadow:
+    0 0 0 0.3px var(--color-spot-500-blue),
+    var(--shadow-focus);
+}
+
 /* The content panel keeps room for its scrollbar, so content doesn't shift sideways between short
    and long pages (or when a step grows into a scroll) where scrollbars take space. */
 @utility scrollbar-stable {

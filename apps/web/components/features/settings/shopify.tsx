@@ -195,9 +195,9 @@ export function ShopifyConnectForm({
                 <SelectTrigger id={ids.brand} className="h-8 w-full">
                   <SelectValue placeholder="Choose a brand" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent variant="menu">
                   {brands.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
+                    <SelectItem key={b.id} value={b.id} variant="menu">
                       {b.name}
                     </SelectItem>
                   ))}

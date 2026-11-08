@@ -1451,6 +1451,25 @@ as new entries.
 - **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
 - **Decisions:** D132 locked.
 - **Deviations from the plan:** the frame's drawing is its own component (`BatchFrameCard`) so the dev states page can show every kind with sample steps; checked there rather than with real builds, which would cost real AI calls.
+- **Follow-up (2026-11-08, owner: "the scroller shifts it when it appears"):** the panel's list keeps room for its scrollbar (`scrollbar-stable`, as the page panel does), so the frames no longer narrow by the scrollbar's width (10 px) when one unfolds into a scroll. Measured with real scrollbars: 330 → 320 px before, 320 → 320 after.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** to agree with the owner.
+
+
+### B6.4 — Theme and modal polish
+- **Status:** complete (owner: "1. yes. 2. yes, as you recommend. 3. … the dropdown modals inside the main modals. 4. yes.", 2026-11-08; committed and pushed, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **Theme order:** Light, Dark, System.
+  - **Hover:** no more rise; the little window's lights come on in macOS's red, yellow and green, and a beat later a shimmer crosses the page's frames once (dimmer in Dark); keyboard focus does the same; under reduced motion only the lights.
+  - **Chosen card:** the blue edge is 1.3 px (1 px border and a 0.3 px ring) with the halo.
+  - **The frames inside** are redrawn on a double-size canvas: the sidebar's workspace, rows with Pages current and the profile; the page's header line, title, three cards with a picture and a caption, and lines.
+  - **Dropdowns inside modals** (the invite modal's Role, the Shopify modal's brand) open below their field like the workspace menu: 2 px padding all round, the raised surface, a stronger float shadow over the hairline edge.
+- **Key files:** `components/app/illustrations/theme/{theme-scene.tsx,theme.css,theme-scene.test.tsx}`, `components/features/settings/account.tsx`, `components/ui/select.tsx` (`variant="menu"`), `components/features/settings/{members,shopify}.tsx`, `app/globals.css` (`ring-chosen`); docs D133, DESIGN.md, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D133 locked.
+- **Deviations from the plan:** none. Found while checking: the Stageshow kit switches off every animation in a stage without a script, so the pictures get an empty one (played once); under reduced motion the kit still switches them off.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B6.5 Back to app returning to the last page and the editor's resizable edit frame (owner: "yes" to the order), then B6.6 settings speed, B6.7 profile photo, B3.5d the build page's steps frame.

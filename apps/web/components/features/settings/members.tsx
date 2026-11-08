@@ -863,9 +863,9 @@ function InviteDialog({
                   <SelectTrigger id={ids.role} className="h-8 w-full">
                     <SelectValue>{ROLE_LABELS[role]}</SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent variant="menu">
                     {choosable(you).map((r) => (
-                      <SelectItem key={r} value={r}>
+                      <SelectItem key={r} value={r} variant="menu">
                         {ROLE_LABELS[r]}
                       </SelectItem>
                     ))}

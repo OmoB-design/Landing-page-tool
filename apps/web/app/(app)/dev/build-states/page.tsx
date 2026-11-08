@@ -858,7 +858,7 @@ export default function BuildStatesPage() {
           ]}
           design={["The frame’s look in Figma, when the owner draws it"]}
         >
-          <div className="flex w-lander-panel flex-col gap-3 rounded-panel bg-surface-primary p-3 edge">
+          <div className="flex max-h-160 w-lander-panel scrollbar-stable flex-col gap-3 overflow-y-auto rounded-panel bg-surface-primary p-3 edge">
             {BATCH_FRAMES.map((frame) => (
               <BatchFrameCard
                 key={frame.page.key}
