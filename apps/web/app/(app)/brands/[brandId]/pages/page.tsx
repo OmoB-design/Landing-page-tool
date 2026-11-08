@@ -23,8 +23,8 @@ export const metadata: Metadata = { title: "Pages" };
 /**
  * A brand's Pages tab (B6.9; a placeholder since B0.5): the pages built for this brand, as the
  * Pages screen lists them (grouped by status, a batch's pages in its folder, each row's ⋯), under
- * a bar with how many there are and New page, which opens the wizard with this brand chosen.
- * Without pages, the empty state offers New page.
+ * a bar with how many there are and New page (14 px above its line, owner), which opens the
+ * wizard with this brand chosen. Without pages, the empty state offers New page.
  */
 export default function BrandPagesPage({
   params,
@@ -34,7 +34,7 @@ export default function BrandPagesPage({
       fallback={
         <BrandFrame>
           <BrandColumn width="list">
-            <div className="flex h-9 items-center justify-between gap-4 divider-b-thin">
+            <div className="flex items-center justify-between gap-4 pb-3.5 divider-b-thin">
               <SkeletonText className="text-type-body-small" width={56} />
               <SkeletonButton width={96} height={30} />
             </div>
@@ -74,7 +74,7 @@ async function BrandPages({
           </EmptyState>
         ) : (
           <>
-            <div className="flex h-9 items-center justify-between gap-4 divider-b-thin">
+            <div className="flex items-center justify-between gap-4 pb-3.5 divider-b-thin">
               <p className="text-type-body-small font-medium text-sub-text">
                 {pages.length === 1 ? "1 page" : `${pages.length} pages`}
               </p>
