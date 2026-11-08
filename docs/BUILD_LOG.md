@@ -1500,6 +1500,7 @@ as new entries.
   - **The worker's share** was about 150 ms per read, mostly round trips: its membership check, on every request, opened a transaction (3 round trips where 1 does), and so did the members, integrations and Trash reads.
   - **Fixed:** those now read without a transaction: Members about 8 round trips → 4, General and Connections 8 → 4, Trash 9 → 3, every worker request 2 fewer (about 20 ms each on Railway).
   - **Also, from the owner's messages during the build:** Back to app sits level with the header's "Settings" (measured equal); the invite modal's Role menu is the field's colour.
+  - **After the deploy (measured live, 2026-11-08):** the worker's own time per read fell from about 140–195 ms to 58–83 ms (Members 83, Integrations 79, Trash 58). Whole settings pages timed from the developer's machine vary by a few hundred milliseconds from run to run (distance and connection set-up), more than the saving, so they don't show it cleanly.
   - **Tried and reverted:** prefetching the settings links fully (and on hover): Next leaves pages that read the session after `connection()` out of prefetches, so it added requests without making switches faster.
 - **Key files:** worker `app/auth.py`, `app/members.py`, `app/publishing.py`, `app/trash.py`; web `components/app/settings-sidebar.tsx`, `components/ui/select.tsx`; docs D135, MILESTONES.
 - **Schema changes:** none. **New dependencies:** none.
@@ -1524,3 +1525,21 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** B6.7 profile photo, then B3.5d the build page's steps frame.
+
+
+### B3.1i — Buddy polish, and the lag fix
+- **Status:** complete (owner: "go", 2026-11-08; committed and pushed, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **The lag:** B3.1h had Buddy set his eyes' sizes and colours on every frame, so each mouse move made the browser redo layout once per Buddy on screen. He's back to transforms only (sizes and colours only while morphing or listening); measured, his own work now causes no layout.
+  - **Over Sections:** his face sits on his left and his eyes follow the pointer up, down and across; the eyes' angles are an exact mirror (+28.7° and +26.7° against −26.7° and −28.7°).
+  - **The morph:** body, eyes and outer bars on their own springs a beat apart, an S-curve, no grey middle, and the bars only rise and fall once he's settled; filmed and traced (the body narrows 44 → 4.8 px over about 0.55 s).
+  - **"Listening…"** with the app's shimmer, in the bar and Buddy's panel.
+  - **The recorder:** keeps listening until Stop (the browser ends sessions after a pause; it starts a new one), keeps words still being heard, and says why when it can't listen.
+- **Key files:** `lander/lander-mark.tsx`, `lander/use-dictation.ts` (+ new `use-dictation.test.tsx`), `lander/floating-composer.tsx` (+ test), `lander/lander-composer.tsx`, `components/features/dev/buddy-lab.tsx` (the real bar added); docs D137, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D137 locked.
+- **Deviations from the plan:** the real-speech test: in headless Chrome the recognizer doesn't take a fake microphone; in a visible Chrome window it listened through the Mac's real microphone, not the fake one, and transcribed ambient speech ("hello how are you doing") correctly into the field. Nothing was stored; the owner was told and it won't be repeated.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B6.8 the whole app's speed (measure, then fix), then B6.7 profile photo, B3.5d the build page's steps frame.

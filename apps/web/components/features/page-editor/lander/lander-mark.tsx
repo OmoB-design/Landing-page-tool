@@ -42,13 +42,16 @@ const SPRING = 1600;
 const WIDE = 0.8; // the portfolio's eyes.wide
 const BLINK_MIN = 2.5;
 const BLINK_MAX = 6;
-// The face turning across the body (a soft, critically damped spring: about 0.7 s) and the look it
-// holds over the Sections panel (toward his left, in the turned face's frame).
+// The face turning across the body (a soft, critically damped spring: about 0.7 s).
 const TURN_SPRING = 70;
-const FOCUS_LOOK = 0.55;
-// Listening: the morph's spring (about 0.45 s, no overshoot), the bars' layout in body radii and
-// their resting heights (outer to middle), and how they rise and fall.
-const LISTEN_SPRING = 150;
+// Listening: the morph's springs (about 0.55 s, no overshoot; the body, then the eyes, then the
+// outer bars, a beat apart, reversed on the way back), the bars' layout in body radii, their
+// resting heights (outer to middle), and how they rise and fall once the morph has settled.
+const LISTEN_SPRING = 110;
+const LISTEN_DELAYS = { on: [0, 60, 130], off: [100, 50, 0] } as const; // body, eyes, outer (ms)
+const WAVE_IN = 28; // the rise and fall fades in slowly once he's the signal…
+const WAVE_OUT = 260; // …and settles fast when he stops
+const REST = 0.8; // a bar's height at rest, of its full height
 const BAR_W = 0.22;
 const BAR_SPAN = 1.84; // the five bars, outer edge to outer edge
 const BAR_H = [0.62, 1.0, 1.36, 1.0, 0.62] as const;
@@ -174,8 +177,17 @@ export function LanderMark({
       moved: 0,
       turn: 1, turnV: 0, // the face's side: 1 on his right (as drawn), -1 mirrored on his left
       focus: false, // the pointer is over the Sections panel
-      listen: live.current.listening ? 1 : 0, listenV: 0, // face 0 → recording signal 1
+      // The morph, face 0 → recording signal 1, in three parts: body, eyes, outer bars.
+      lb: live.current.listening ? 1 : 0, lbV: 0,
+      le: live.current.listening ? 1 : 0, leV: 0,
+      lo: live.current.listening ? 1 : 0, loV: 0,
+      amp: 0, ampV: 0, // how much the bars rise and fall
+      listenTo: live.current.listening, listenAt: 0,
+      sized: live.current.listening, // sizes and colours written inline (only while morphed)
     }; // prettier-ignore
+    // Where Buddy is on screen, read at most every 250 ms (not on every pointer move).
+    let box: DOMRect | null = null;
+    let boxAt = 0;
     let frame = 0;
     let last = performance.now();
     let blinkTimer = 0;
@@ -188,10 +200,20 @@ export function LanderMark({
     const barGap = (BAR_SPAN * r - 5 * barW) / 4;
     const barX = (k: number) => r + (k - 2) * (barW + barGap);
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const clamp = (x: number) => Math.min(1, Math.max(0, x));
+    // An S-curve over the spring's progress: it starts and lands softly.
+    const smooth = (x: number) => x * x * (3 - 2 * x);
+    // Each eye's tilt as the face turns: drawn on his right (TILT), an exact mirror on his left
+    // (the left eye takes the right eye's tilt, reversed, and the other way round).
+    const angleFor = (i: number, t: number) =>
+      lerp(-TILT[1 - i]!, TILT[i]!, (t + 1) / 2);
 
     const draw = (lidNow: number, now: number) => {
       const w = s.wide * WIDE;
-      const l = Math.min(1, Math.max(0, s.listen));
+      const lb = smooth(clamp(s.lb));
+      const le = smooth(clamp(s.le));
+      const lo = clamp(s.lo);
+      const morphing = s.lb > 0 || s.le > 0 || s.lo > 0;
       // The face's side: its anchor and its tilt mirror as it turns (the eyes travel across).
       const t = s.turn;
       const tiltNow = tilt * t;
@@ -202,70 +224,89 @@ export function LanderMark({
       // Wide eyes, kept apart at Buddy's small sizes (the portfolio's 1 + 0.9w is for a 90 px face).
       const sx = (1 + 0.45 * w) * (1 - 0.16 * nx);
       // A blink doesn't squash a bar.
-      const sy = lerp(lidNow, 1, l) * (1 + 0.25 * w) * (1 - 0.1 * ny);
+      const sy = lerp(lidNow, 1, le) * (1 + 0.25 * w) * (1 - 0.1 * ny);
       // With the pointer close, the eyes converge: each moves a little toward the other.
       const cross = 0.05 * r * s.near;
-      // The bars rise and fall out of step while he listens.
+      // A bar's height: at rest until the morph has settled, then rising and falling out of step.
       const height = (k: number) => {
         const wave =
           0.5 +
           0.5 * Math.sin((now / BAR_PERIOD) * 2 * Math.PI + BAR_PHASE[k]!);
-        return BAR_H[k]! * r * (reduced ? 0.8 : 0.5 + 0.5 * wave);
+        return BAR_H[k]! * r * lerp(REST, 0.5 + 0.5 * wave, s.amp);
       };
-      const mix = (l * 100).toFixed(1);
+      // The colour turns in the first half of the eyes' move, so there's no grey middle.
+      const mix = (smooth(clamp(s.le / 0.5)) * 100).toFixed(1);
       eyes.current.forEach((eye, i) => {
         if (!eye) return;
+        const seat = seats[i]!;
         const side = i === 0 ? -1 : 1;
         const toward = -side * cross;
         // The eye's centre on the turned face, plus the gaze.
-        const cx =
-          fxNow +
-          Math.cos(tiltNow) * ((side * EYE.gap * r) / 2 + toward) +
-          s.ex;
-        const cy =
-          fy + Math.sin(tiltNow) * ((side * EYE.gap * r) / 2 + toward) + s.ey;
+        const along = (side * EYE.gap * r) / 2 + toward;
+        const cx = fxNow + Math.cos(tiltNow) * along + s.ex;
+        const cy = fy + Math.sin(tiltNow) * along + s.ey;
+        if (!morphing) {
+          // Himself: transforms only, as cheap as moving gets.
+          const x = cx - seat.left - eyeW / 2;
+          const y = cy - seat.top - eyeH / 2;
+          eye.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${angleFor(i, t).toFixed(2)}deg) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`;
+          return;
+        }
         const k = i === 0 ? 1 : 3;
-        const wNow = lerp(eyeW * sx, barW, l);
-        const hNow = lerp(eyeH * sy, height(k), l);
-        const x = lerp(cx, barX(k), l) - seats[i]!.left - wNow / 2;
-        const y = lerp(cy, r, l) - seats[i]!.top - hNow / 2;
-        const angle = lerp(TILT[i]! * t, 0, l);
+        const wNow = lerp(eyeW * sx, barW, le);
+        const hNow = lerp(eyeH * sy, height(k), le);
+        const x = lerp(cx, barX(k), le) - seat.left - wNow / 2;
+        const y = lerp(cy, r, le) - seat.top - hNow / 2;
         eye.style.width = `${wNow.toFixed(2)}px`;
         eye.style.height = `${hNow.toFixed(2)}px`;
-        eye.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${angle.toFixed(2)}deg)`;
+        eye.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${lerp(angleFor(i, t), 0, le).toFixed(2)}deg)`;
         // As he listens the eyes take the body's colour, so the five bars match.
-        eye.style.backgroundColor =
-          l > 0
-            ? `color-mix(in srgb, var(--color-buddy-body) ${mix}%, var(--color-buddy-eye))`
-            : "";
+        eye.style.backgroundColor = `color-mix(in srgb, var(--color-buddy-body) ${mix}%, var(--color-buddy-eye))`;
       });
       if (shape.current) {
-        // The body narrows into the middle bar.
-        const hMid = height(2);
-        const bw = lerp(2 * r, barW, l);
-        const bh = lerp(2 * r, hMid, l);
-        shape.current.style.width = `${bw.toFixed(2)}px`;
-        shape.current.style.height = `${bh.toFixed(2)}px`;
-        shape.current.style.left = `${(lerp(r, barX(2), l) - bw / 2).toFixed(2)}px`;
-        shape.current.style.top = `${(r - bh / 2).toFixed(2)}px`;
+        if (morphing) {
+          // The body narrows into the middle bar.
+          const bw = lerp(2 * r, barW, lb);
+          const bh = lerp(2 * r, height(2), lb);
+          shape.current.style.width = `${bw.toFixed(2)}px`;
+          shape.current.style.height = `${bh.toFixed(2)}px`;
+          shape.current.style.left = `${(lerp(r, barX(2), lb) - bw / 2).toFixed(2)}px`;
+          shape.current.style.top = `${(r - bh / 2).toFixed(2)}px`;
+        }
       }
       bars.current.forEach((bar, j) => {
-        if (!bar) return;
-        // The outer bars grow out from behind, a beat after the morph starts.
+        if (!bar || !morphing) return;
+        // The outer bars grow out from behind; small, they're narrow and faint, never a dash.
         const k = j === 0 ? 0 : 4;
-        const grow = Math.min(1, Math.max(0, (l - 0.2) / 0.8));
-        const eased = 1 - (1 - grow) * (1 - grow);
-        // Small, it shrinks in width too and fades, so it never reads as a dash.
+        const eased = smooth(lo);
         const wNow = barW * Math.min(1, 0.4 + eased);
         const hNow = Math.max(wNow, height(k) * eased);
         bar.style.width = `${wNow.toFixed(2)}px`;
         bar.style.height = `${hNow.toFixed(2)}px`;
         bar.style.left = `${(barX(k) - wNow / 2).toFixed(2)}px`;
         bar.style.top = `${(r - hNow / 2).toFixed(2)}px`;
-        bar.style.opacity = Math.min(1, grow * 2.5).toFixed(3);
+        bar.style.opacity = Math.min(1, lo * 2.5).toFixed(3);
       });
+      if (morphing) s.sized = true;
+      else if (s.sized) {
+        // Back to himself: the inline sizes and colours go, once.
+        s.sized = false;
+        eyes.current.forEach((eye) => {
+          if (!eye) return;
+          eye.style.width = `${eyeW}px`;
+          eye.style.height = `${eyeH}px`;
+          eye.style.backgroundColor = "";
+        });
+        if (shape.current) {
+          for (const key of ["width", "height", "left", "top"] as const)
+            shape.current.style[key] = "";
+        }
+        bars.current.forEach((bar) => {
+          if (bar) bar.style.opacity = "0";
+        });
+      }
       if (mouthEl.current) {
-        const open = s.open * (1 - Math.min(1, l * 3));
+        const open = s.open * (1 - Math.min(1, lb * 3));
         // The face turns less than the eyes: the mouth follows at 60 % (depth), on the turned face.
         // Where the mouth sits under the turned face, against where it's drawn (the face on the
         // right).
@@ -340,24 +381,50 @@ export function LanderMark({
         s.turn = turnTo;
         s.turnV = 0;
       }
-      const listenTo = live.current.listening ? 1 : 0;
-      if (reduced) {
-        s.listen = listenTo;
-        s.listenV = 0;
-      } else {
-        [s.listen, s.listenV] = spring(
-          s.listen,
-          s.listenV,
-          listenTo,
-          LISTEN_SPRING,
-        );
-        if (
-          Math.abs(listenTo - s.listen) < 0.002 &&
-          Math.abs(s.listenV) < 0.01
-        ) {
-          s.listen = listenTo;
-          s.listenV = 0;
+      // The morph: each part springs to its side a beat after the last (reversed on the way back).
+      const listening = live.current.listening;
+      if (listening !== s.listenTo) {
+        s.listenTo = listening;
+        s.listenAt = now;
+      }
+      const since = now - s.listenAt;
+      const delays = listening ? LISTEN_DELAYS.on : LISTEN_DELAYS.off;
+      const goal = (delay: number) =>
+        since >= delay || reduced ? (listening ? 1 : 0) : listening ? 0 : 1;
+      const parts = [
+        ["lb", "lbV"],
+        ["le", "leV"],
+        ["lo", "loV"],
+      ] as const;
+      let unsettled = false;
+      parts.forEach(([key, vel], n) => {
+        const to = goal(delays[n]!);
+        if (reduced) {
+          s[key] = to;
+          s[vel] = 0;
+          return;
         }
+        [s[key], s[vel]] = spring(s[key], s[vel], to, LISTEN_SPRING);
+        if (Math.abs(to - s[key]) < 0.002 && Math.abs(s[vel]) < 0.01) {
+          s[key] = to;
+          s[vel] = 0;
+        } else unsettled = true;
+      });
+      if (since < 140 && !reduced) unsettled = true;
+      // The bars rise and fall only once he's fully the signal; they settle before he changes back.
+      const ampTo =
+        listening && !reduced && s.lb > 0.98 && s.le > 0.98 && s.lo > 0.98
+          ? 1
+          : 0;
+      [s.amp, s.ampV] = spring(
+        s.amp,
+        s.ampV,
+        ampTo,
+        ampTo ? WAVE_IN : WAVE_OUT,
+      );
+      if (Math.abs(ampTo - s.amp) < 0.002 && Math.abs(s.ampV) < 0.01) {
+        s.amp = ampTo;
+        s.ampV = 0;
       }
       let lidNow = 1;
       if (s.blink) {
@@ -375,9 +442,9 @@ export function LanderMark({
         Math.abs(wideTo - s.wide) > 0.004 ||
         Math.abs(openTo - s.open) > 0.004 ||
         s.turn !== turnTo ||
-        s.listen !== listenTo ||
+        unsettled ||
         // Listening, the bars never rest.
-        (s.listen > 0 && !reduced);
+        s.amp > 0;
       if (moving || s.jump || s.blink || glancing)
         frame = requestAnimationFrame(tick);
     };
@@ -396,20 +463,12 @@ export function LanderMark({
         s.focus = focus;
         wake();
       }
-      if (focus) {
-        // Over the Sections panel: a soft, steady look toward his left, followed smoothly (no
-        // saccades, no glances) while the face glides across.
-        s.dx = -FOCUS_LOOK * span;
-        s.dy = 0.1 * span;
-        s.near = 0;
-        s.seen = true;
-        s.moved = now;
-        s.glance = null;
-        s.jump = null;
-        wake();
-        return;
+      // Over the Sections panel his face is on his left; his eyes follow the pointer there as
+      // they do anywhere (owner, B3.1i).
+      if (!box || now - boxAt > 250) {
+        box = el.getBoundingClientRect();
+        boxAt = now;
       }
-      const box = el.getBoundingClientRect();
       const px = clientX - (box.left + box.width / 2);
       const py = clientY - (box.top + box.height / 2);
       const d = Math.hypot(px, py) || 1;
@@ -436,13 +495,7 @@ export function LanderMark({
       driftTimer = window.setTimeout(
         () => {
           const now = performance.now();
-          if (
-            !reduced &&
-            !s.focus &&
-            !s.glance &&
-            !s.jump &&
-            now - s.moved > 1500
-          ) {
+          if (!reduced && !s.glance && !s.jump && now - s.moved > 1500) {
             const a = Math.random() * Math.PI * 2;
             const m = 0.035 * r * (0.5 + Math.random());
             s.jump = {
@@ -473,11 +526,7 @@ export function LanderMark({
       glanceTimer = window.setTimeout(
         () => {
           const now = performance.now();
-          if (
-            !reduced &&
-            !s.focus &&
-            (busy || !s.seen || now - s.moved > 2500)
-          ) {
+          if (!reduced && (busy || !s.seen || now - s.moved > 2500)) {
             const angle = Math.random() * Math.PI * 2;
             const reach = TRAVEL * r * (0.6 + 0.4 * Math.random());
             const x = Math.cos(angle) * reach;

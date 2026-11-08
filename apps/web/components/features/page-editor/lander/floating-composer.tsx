@@ -5,6 +5,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { ComposerOpenIcon } from "@/components/ui/icons";
+import { ShimmerText } from "@/components/ui/shimmer-loader";
 import { MorphText } from "@/components/ui/text-morph";
 import { REQUEST_MAX } from "@/lib/pages/lander";
 import { cn } from "@/lib/utils";
@@ -147,7 +148,7 @@ export function FloatingComposer({
             aria-hidden
             className="pointer-events-none absolute inset-y-0 left-0.5 flex items-center text-type-body-small whitespace-nowrap text-bar-hint"
           >
-            {/* Recording, the hint morphs into "Listening" beside Buddy, who has become the
+            {/* Recording, the hint morphs into "Listening…" beside Buddy, who has become the
                 signal (B3.1h); stopped, back to the hints. */}
             <span
               className="buddy-hint"
@@ -161,9 +162,18 @@ export function FloatingComposer({
                       : "buddy-glint-b",
               }}
             >
-              <MorphText>
-                {dictation.listening ? "Listening" : (HINTS[hint] ?? HINTS[0])}
-              </MorphText>
+              {/* Listening, a light passes through the words, round and round (B3.1i). */}
+              <ShimmerText
+                mode="mask"
+                active={dictation.listening}
+                duration={1.6}
+              >
+                <MorphText>
+                  {dictation.listening
+                    ? "Listening…"
+                    : (HINTS[hint] ?? HINTS[0])}
+                </MorphText>
+              </ShimmerText>
             </span>
           </span>
         ) : null}

@@ -5,6 +5,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { toast } from "@/components/app/toaster";
 import { AttachImageIcon, CloseIcon } from "@/components/ui/icons";
+import { ShimmerText } from "@/components/ui/shimmer-loader";
 import { MorphText } from "@/components/ui/text-morph";
 import { ATTACHABLE, attachable, shrink } from "@/lib/pages/attachments";
 import { type LanderTarget, REQUEST_MAX } from "@/lib/pages/lander";
@@ -210,7 +211,9 @@ export function LanderComposer({
             className="pointer-events-none absolute inset-x-0.5 top-0 flex h-5 items-center gap-1.5 text-type-body-small text-caption-1"
           >
             <ListeningBars />
-            Listening
+            <ShimmerText mode="mask" duration={1.6}>
+              Listening…
+            </ShimmerText>
           </span>
         ) : null}
       </div>

@@ -52,8 +52,10 @@ describe("the bar while dictating (B3.1h)", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Dictate" }));
     expect(document.querySelector(".buddy-hint")?.textContent).toContain(
-      "Listening",
+      "Listening…",
     );
+    // A light passes through the words while listening.
+    expect(document.querySelector(".buddy-hint .ui-shm-mask")).toBeTruthy();
     const stop = screen.getByRole("button", { name: "Stop dictating" });
     // The Stop Buddy disc in the bar's text colour, not the red ring.
     expect(stop.className).toContain("bg-heading-01");

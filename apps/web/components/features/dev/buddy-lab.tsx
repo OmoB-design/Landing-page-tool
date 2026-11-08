@@ -3,10 +3,12 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ShimmerText } from "@/components/ui/shimmer-loader";
 import { MorphText } from "@/components/ui/text-morph";
 import { cn } from "@/lib/utils";
 
 import { MicButton } from "../page-editor/lander/composer-parts";
+import { FloatingComposer } from "../page-editor/lander/floating-composer";
 import { LanderMark } from "../page-editor/lander/lander-mark";
 
 /**
@@ -76,9 +78,11 @@ export function BuddyLab() {
                   aria-hidden
                   className="pointer-events-none absolute inset-y-0 left-0.5 flex items-center text-type-body-small whitespace-nowrap text-bar-hint"
                 >
-                  <MorphText>
-                    {listening ? "Listening" : "Work with Buddy"}
-                  </MorphText>
+                  <ShimmerText mode="mask" active={listening} duration={1.6}>
+                    <MorphText>
+                      {listening ? "Listening…" : "Work with Buddy"}
+                    </MorphText>
+                  </ShimmerText>
                 </span>
               </div>
               <MicButton
@@ -87,6 +91,17 @@ export function BuddyLab() {
               />
             </div>
           ))}
+          {/* The real bar, with real dictation (the browser's), to try the recorder. */}
+          <div data-testid="buddy-real" className="flex flex-col gap-2">
+            <span className="text-type-caption-1 text-sub-text">
+              The real bar (dictation uses your microphone):
+            </span>
+            <FloatingComposer
+              working={false}
+              onSend={() => {}}
+              onOpen={() => {}}
+            />
+          </div>
           <div className="flex items-center gap-8">
             <span
               data-testid="buddy-large"
