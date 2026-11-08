@@ -49,15 +49,19 @@ export type BuildDetail = NonNullable<Awaited<ReturnType<typeof getBuild>>>;
 export async function getOrgPages(
   orgId: string,
   me: { id: string; name: string },
+  /** Only one brand's pages (the brand's Pages tab, B6.9). */
+  options: { brandId?: string } = {},
 ): Promise<PageListItem[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("builds")
     .select(
       "id, key, title, status, origin, cost_usd, created_at, updated_at, parent_build_id, created_by, batch_id, template_id, residue:report->residue->>score, template:templates(type), product:products(name), brand:brands(name)",
     )
     .eq("org_id", orgId)
-    .is("deleted_at", null)
+    .is("deleted_at", null);
+  if (options.brandId) query = query.eq("brand_id", options.brandId);
+  const { data, error } = await query
     .order("created_at", { ascending: false })
     .limit(500);
   if (error) throw new Error(`Could not load pages: ${error.message}`);

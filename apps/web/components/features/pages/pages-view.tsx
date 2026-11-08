@@ -25,6 +25,7 @@ import {
   pagesHref,
 } from "@/lib/pages/list";
 import { samplePages } from "@/lib/pages/sample";
+import { cn } from "@/lib/utils";
 
 import { NewPageButton } from "./new-page-button";
 import { PagesDisplay } from "./pages-display";
@@ -159,43 +160,48 @@ export function PagesViewSkeleton() {
           </div>
         </SkeletonViewTabs>
         <SkeletonStatus label="Loading pages" />
-        <div aria-hidden className="mt-3 flex flex-col gap-4">
-          {[3, 2].map((rows, group) => (
-            <section key={group}>
-              <div className="flex h-9 items-center gap-1.5 bg-foreground-02 px-4 divider-b-thin">
-                <SkeletonMark size={14} round />
-                <SkeletonText
-                  className="text-type-body-small"
-                  width={group === 0 ? 72 : 56}
-                />
-              </div>
-              <ul className="flex flex-col gap-0.5 pt-0.5">
-                {Array.from({ length: rows }, (_, index) => (
-                  <SkeletonRow
-                    key={index}
-                    leading={
-                      <span className="flex w-23.75 shrink-0 items-center gap-1.5">
-                        <Skeleton
-                          width={23}
-                          height={24}
-                          radius="var(--radius-xsm)"
-                        />
-                        <SkeletonText
-                          className="text-type-body-small"
-                          width={48}
-                        />
-                      </span>
-                    }
-                    name={[260, 200, 232][index] ?? 220}
-                    meta={[40, 48, 36, 80]}
-                    metaEnd={<SkeletonMark size={22} round />}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <PagesListSkeleton className="mt-3" />
       </div>
     </>
+  );
+}
+
+/** The grouped list while it loads: two status bands and their page rows (Pages; a brand's Pages
+ * tab, B6.9). */
+export function PagesListSkeleton({ className }: { className?: string }) {
+  return (
+    <div aria-hidden className={cn("flex flex-col gap-4", className)}>
+      {[3, 2].map((rows, group) => (
+        <section key={group}>
+          <div className="flex h-9 items-center gap-1.5 bg-foreground-02 px-4 divider-b-thin">
+            <SkeletonMark size={14} round />
+            <SkeletonText
+              className="text-type-body-small"
+              width={group === 0 ? 72 : 56}
+            />
+          </div>
+          <ul className="flex flex-col gap-0.5 pt-0.5">
+            {Array.from({ length: rows }, (_, index) => (
+              <SkeletonRow
+                key={index}
+                leading={
+                  <span className="flex w-23.75 shrink-0 items-center gap-1.5">
+                    <Skeleton
+                      width={23}
+                      height={24}
+                      radius="var(--radius-xsm)"
+                    />
+                    <SkeletonText className="text-type-body-small" width={48} />
+                  </span>
+                }
+                name={[260, 200, 232][index] ?? 220}
+                meta={[40, 48, 36, 80]}
+                metaEnd={<SkeletonMark size={22} round />}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }

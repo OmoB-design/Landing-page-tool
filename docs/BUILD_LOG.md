@@ -1624,3 +1624,17 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** to agree with the owner.
+
+### B6.9 — A brand's Pages tab (and Live first on the build page)
+- **Status:** complete (owner: "go. make the change and push.", 2026-11-08; committed and pushed, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **The brand's Pages tab** (a placeholder since B0.5, always empty): now the brand's pages, as Pages lists them: grouped by status, a batch's pages in its folder, each row's ⋯; a bar with the count and **New page**, which opens the wizard with the brand chosen. The empty state (with New page) only when the brand has none.
+  - **The build page's top bar:** ● Live now comes first, before Approve / Publish (the owner's request).
+- **Key files:** `app/(app)/brands/[brandId]/pages/page.tsx`, `lib/builds/queries.ts` (`getOrgPages` `brandId`), `components/features/pages/new-page-button.tsx` (`brandId`), `components/features/pages/pages-view.tsx` (`PagesListSkeleton`), `app/(app)/pages/[buildId]/page.tsx` (Live first); docs D141 (updated), D143, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D143 locked; D141 updated (Live first).
+- **Deviations from the plan:** I'd said Pages could already filter by brand; it couldn't (its filters are status, origin and type), so the query gained a brand filter instead.
+- **Verification:** typecheck, lint, token check, 309 web tests; in the browser with a mock-mode build: a brand with one page (the list, the count, the row opens the page), a brand with none (the empty state; New page opens the wizard with that brand chosen).
+- **Owner confirmed:** no
+- **Next:** to agree with the owner.

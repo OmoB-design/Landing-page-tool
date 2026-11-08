@@ -157,12 +157,18 @@ async function Build({
         }
         tools={false}
         actions={
-          // The owner's order (D141): the next step as the one filled button (Approve, then
-          // Publish), Live, Edit page, Client link, then ⋯ (Back to review, Export, Copy key, Move
-          // to Trash). Jobs and Notifications aren't on this page.
+          // The owner's order (D141): Live (while the page is live), the next step as the one
+          // filled button (Approve, then Publish), Edit page, Client link, then ⋯ (Back to review,
+          // Export, Copy key, Move to Trash). Jobs and Notifications aren't on this page.
           <div className="flex items-center gap-2.5">
             {desk ? (
               <>
+                {publish ? (
+                  <>
+                    <LiveButton />
+                    <PublishedModal />
+                  </>
+                ) : null}
                 <ApproveAction
                   fixCount={
                     build.report
@@ -172,13 +178,7 @@ async function Build({
                       : 0
                   }
                 />
-                {publish ? (
-                  <>
-                    <PublishButton />
-                    <LiveButton />
-                    <PublishedModal />
-                  </>
-                ) : null}
+                {publish ? <PublishButton /> : null}
                 {/* B3.1a: the page editor, full screen. */}
                 <Button
                   asChild

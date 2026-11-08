@@ -129,7 +129,7 @@ Goal: the shared foundation and one owned template building end to end in mock m
 - B3.5 Batch build (all templates for one product). *Done 2026-11-06 (D115): the wizard's "Build with every template", all-or-nothing starts within the hourly cap, and the batch screen.*
 - B3.5c Builds panel frames. *Done 2026-11-08 (D132): each page in a batch's Builds panel is its build happening (the build page's illustration), the step it's on in words, and its steps a click away; the count chip reads "01/13" rolling up to "13/13 completed" (on the build page too).*
 - B3.5d The build page's steps frame. *Done 2026-11-08 (D140): one StepsFrame for both screens; on the build page a list while it builds, folding into the batch frame (the finished illustration, "Ready to review") as the page appears, or open on the failed step.*
-- B3.5e The build page's top bar. *Done 2026-11-08 (D141): the status chip by a shortened title; one filled button for the next step (Approve, Publish; black in light, white in dark), then Live, Edit page, Client link and a ⋯ menu (Back to review, Export, Copy key, Move to Trash); no Jobs or Notifications there. The chosen theme's picture keeps its coloured lights.*
+- B3.5e The build page's top bar. *Done 2026-11-08 (D141): the status chip by a shortened title; one filled button for the next step (Approve, Publish; black in light, white in dark), Live first (owner, later that day), Edit page, Client link and a ⋯ menu (Back to review, Export, Copy key, Move to Trash); no Jobs or Notifications there. The chosen theme's picture keeps its coloured lights.*
 - B3.6 Client review link (BUILD_SPEC §11.4, D55). *Done 2026-11-06 (D119): Approve keeps the approved copy; the review desk's Client link (one link per page that follows re-approvals, 30 days, opens counted, Turn off); `/review/<token>` without sign-in, Desktop / Phone, scripts off.*
 
 ## M4 — Editable Shopify publish
@@ -159,6 +159,7 @@ From the state-machine audit (2026-11-07): the app behaves the same, but stops m
 - B6.6 Settings speed. *Done 2026-11-08 (D135): measured live; the worker's membership check and the settings reads no longer open transactions (2 to 6 fewer database round trips per page, about 20 ms each); Back to app level with the header's title; the in-modal menu on the field's surface.*
 - B6.7 Profile photo. *Done 2026-11-08 (D139): upload a photo on Account (cropped to a 256 px square in the browser), shown on Account, the sidebar, the account menu, Home and Members; your own folder of a public bucket, and the profile can point only there.*
 - B6.8 App speed. *Done 2026-11-08 (D138): the main pages measured live; Home's looping scenes rest after two loops (its idle CPU from a fifth of a core to none); dictation keeps the newest words in view.*
+- B6.9 A brand's Pages tab. *Done 2026-11-08 (D143): the brand's pages as Pages lists them (by status, batches as folders, each row's ⋯), their count and New page with the brand chosen; the empty state only when there are none (it was a placeholder since B0.5).*
 
 ## v3 — Someday
 
