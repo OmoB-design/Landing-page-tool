@@ -1508,3 +1508,19 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** B6.7 profile photo, then B3.5d the build page's steps frame.
+
+
+### B3.1h — Buddy listens, and reacts
+- **Status:** complete (owner: answers to the plan's questions, 2026-11-08; committed and pushed, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **Sections panel:** pointing anywhere over it, Buddy's face glides across to his left side, mirrored (as it sits on his right), and holds a soft look there; away, he's himself.
+  - **Clicking into the bar:** a very small shake as his mouth opens (not when the mic puts the cursor there).
+  - **Recording:** he morphs into the recording signal: his eyes straighten into the second and fourth bars, his body narrows into the middle one, the outer two grow out, and the five rise and fall; the hint morphs to "Listening" beside him; the mic becomes the stop disc (white on the dark bar, black on the light). Stop: your words stay in the field and he morphs back. Buddy's panel composer shows small bars and "Listening".
+- **Key files:** `lander/lander-mark.tsx`, `lander/floating-composer.tsx` (+ new `floating-composer.test.tsx`), `lander/composer-parts.tsx` (stop disc, `ListeningBars`), `lander/lander-composer.tsx`, `page-editor.tsx` (`data-buddy-look`), `app/globals.css` (`listen-bar`), `app/(app)/dev/buddy` + `components/features/dev/buddy-lab.tsx` (review page); docs D136, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D136 locked.
+- **Deviations from the plan:** a development page, /dev/buddy, to review the morph (filmed frame by frame there).
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B6.7 profile photo, then B3.5d the build page's steps frame.

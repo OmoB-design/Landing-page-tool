@@ -54,8 +54,10 @@ export function FloatingComposer({
   const { text, setText, dictation } = useComposerText();
   const field = useRef<HTMLInputElement>(null);
   const [pointed, setPointed] = useState(false);
-  // Clicked into: Buddy opens his mouth (owner, 2026-11-06).
+  // Clicked into: Buddy opens his mouth (owner, 2026-11-06); the field itself, a small shake
+  // (B3.1h; not when the mic puts the cursor there).
   const [focused, setFocused] = useState(false);
+  const [shake, setShake] = useState(0);
   const typed = text.trim().length > 0;
   const reduced = useReducedMotion() ?? false;
   const [hint, setHint] = useState(0);
@@ -104,7 +106,13 @@ export function FloatingComposer({
         "lander-aura pointer-events-auto relative flex h-12.5 w-lander-bar max-w-full items-center gap-1.5 rounded-full bg-surface-primary pr-2.5 pl-3 shadow-lander-bar ring-thin ring-stroke transition-shadow duration-200 ease-out focus-within:shadow-lander-bar-lift",
       )}
     >
-      <LanderMark working={working} excited={pointed} mouth={focused} />
+      <LanderMark
+        working={working}
+        excited={pointed}
+        mouth={focused}
+        listening={dictation.listening}
+        shake={shake}
+      />
       <label className="sr-only" htmlFor="lander-bar">
         Work with Buddy
       </label>
@@ -125,6 +133,12 @@ export function FloatingComposer({
           onKeyDown={(event) => {
             if (event.key === "Escape" && dictation.listening) dictation.stop();
           }}
+          onPointerDown={() => setShake((n) => n + 1)}
+          onFocus={(event) => {
+            // Tabbed into (a keyboard's focus ring), as clicked into.
+            if (event.currentTarget.matches(":focus-visible"))
+              setShake((n) => n + 1);
+          }}
           className="h-full w-full min-w-0 bg-transparent px-0.5 text-type-body-small text-heading-01 outline-none"
         />
         {hinting ? (
@@ -133,24 +147,24 @@ export function FloatingComposer({
             aria-hidden
             className="pointer-events-none absolute inset-y-0 left-0.5 flex items-center text-type-body-small whitespace-nowrap text-bar-hint"
           >
-            {dictation.listening ? (
-              "Listening…"
-            ) : (
-              <span
-                className="buddy-hint"
-                // A new glint with each hint: two names for the same sweep restart it in place.
-                style={{
-                  animationName:
-                    hint === 0
-                      ? "none"
-                      : hint % 2
-                        ? "buddy-glint-a"
-                        : "buddy-glint-b",
-                }}
-              >
-                <MorphText>{HINTS[hint] ?? HINTS[0]}</MorphText>
-              </span>
-            )}
+            {/* Recording, the hint morphs into "Listening" beside Buddy, who has become the
+                signal (B3.1h); stopped, back to the hints. */}
+            <span
+              className="buddy-hint"
+              // A new glint with each hint: two names for the same sweep restart it in place.
+              style={{
+                animationName:
+                  dictation.listening || hint === 0
+                    ? "none"
+                    : hint % 2
+                      ? "buddy-glint-a"
+                      : "buddy-glint-b",
+              }}
+            >
+              <MorphText>
+                {dictation.listening ? "Listening" : (HINTS[hint] ?? HINTS[0])}
+              </MorphText>
+            </span>
           </span>
         ) : null}
       </div>

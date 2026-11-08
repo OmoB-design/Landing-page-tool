@@ -13,6 +13,7 @@ import { AGENT_IMAGES_MAX } from "@/lib/validators/agent";
 
 import {
   IconButton,
+  ListeningBars,
   MicButton,
   SendButton,
   StopButton,
@@ -164,42 +165,55 @@ export function LanderComposer({
       <label className="sr-only" htmlFor="lander-composer">
         Ask Buddy
       </label>
-      <textarea
-        id="lander-composer"
-        ref={field}
-        rows={2}
-        value={text}
-        maxLength={REQUEST_MAX}
-        readOnly={dictation.listening}
-        placeholder={
-          dictation.listening
-            ? "Listening…"
-            : hasThread
-              ? "Add a follow-up"
-              : "Ask Buddy to change the page"
-        }
-        onChange={(event) => setText(event.target.value)}
-        onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 2)}
-        onPaste={(event) => {
-          const files = Array.from(event.clipboardData.files);
-          if (files.some(attachable)) {
-            event.preventDefault();
-            void attach(files);
+      <div className="relative flex flex-col">
+        <textarea
+          id="lander-composer"
+          ref={field}
+          rows={2}
+          value={text}
+          maxLength={REQUEST_MAX}
+          readOnly={dictation.listening}
+          placeholder={
+            dictation.listening
+              ? ""
+              : hasThread
+                ? "Add a follow-up"
+                : "Ask Buddy to change the page"
           }
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            submit();
-          }
-          if (event.key === "Escape" && dictation.listening) dictation.stop();
-        }}
-        className={cn(
-          "field-sizing-content max-h-40 min-h-10 resize-none bg-transparent px-0.5 text-type-body-small text-heading-01 outline-none placeholder:text-caption-1",
-          // Once it scrolls, its top edge fades rather than cutting a line in half.
-          scrolled && "lander-field-fade",
-        )}
-      />
+          onChange={(event) => setText(event.target.value)}
+          onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 2)}
+          onPaste={(event) => {
+            const files = Array.from(event.clipboardData.files);
+            if (files.some(attachable)) {
+              event.preventDefault();
+              void attach(files);
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              submit();
+            }
+            if (event.key === "Escape" && dictation.listening) dictation.stop();
+          }}
+          className={cn(
+            "field-sizing-content max-h-40 min-h-10 resize-none bg-transparent px-0.5 text-type-body-small text-heading-01 outline-none placeholder:text-caption-1",
+            // Once it scrolls, its top edge fades rather than cutting a line in half.
+            scrolled && "lander-field-fade",
+          )}
+        />
+        {dictation.listening && !text && !dictation.interim ? (
+          // The recording signal and "Listening" on the field's first line, where the
+          // placeholder was (B3.1h).
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0.5 top-0 flex h-5 items-center gap-1.5 text-type-body-small text-caption-1"
+          >
+            <ListeningBars />
+            Listening
+          </span>
+        ) : null}
+      </div>
       {dictation.listening && dictation.interim ? (
         <p className="-mt-1 px-0.5 text-type-caption-1 text-caption-1">
           {dictation.interim}

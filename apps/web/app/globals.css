@@ -1669,6 +1669,25 @@
     var(--shadow-focus);
 }
 
+/* The recording signal in small (B3.1h): each bar rises and falls, out of step (delays set inline);
+   still and mid-height under reduced motion. */
+@keyframes listen-bar {
+  0%,
+  100% {
+    height: 35%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+@utility listen-bar {
+  height: 60%;
+  animation: listen-bar 900ms var(--ease-in-out) infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 /* The content panel keeps room for its scrollbar, so content doesn't shift sideways between short
    and long pages (or when a step grows into a scroll) where scrollbars take space. */
 @utility scrollbar-stable {

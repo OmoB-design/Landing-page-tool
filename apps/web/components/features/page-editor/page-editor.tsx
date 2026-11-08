@@ -639,6 +639,8 @@ function Editor({
             animate={{ width: drawerOpen ? sectionsWidth : 0 }}
             transition={motionConfig.sectionsToggle}
             className="relative shrink-0"
+            // Over it, Buddy turns his face to it (B3.1h).
+            data-buddy-look="left"
           >
             <div className="absolute inset-0 overflow-hidden">
               {/* The divider to the preview (owner, 2026-11-06): a line drawn over the drawer's

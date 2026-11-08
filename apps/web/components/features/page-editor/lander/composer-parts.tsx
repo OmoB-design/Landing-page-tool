@@ -150,17 +150,13 @@ export function MicButton({
       label={listening ? "Stop dictating" : "Dictate"}
       onClick={onToggle}
       className={cn(
-        "relative",
+        "relative transition-colors duration-200 ease-out",
+        // Listening (B3.1h, owner): the Stop Buddy disc, in the bar's text colour (white on a dark
+        // bar, black on a light one), with its square; no red, no pulsing ring.
         listening &&
-          "bg-highlight-red-50 text-spot-500-red hover:bg-highlight-red-50 hover:text-spot-500-red",
+          "bg-heading-01 text-surface-primary hover:bg-heading-02 hover:text-surface-primary",
       )}
     >
-      {listening ? (
-        <span
-          aria-hidden
-          className="absolute inset-0 animate-live-pulse rounded-full ring-2 ring-highlight-red-150 motion-reduce:animate-none"
-        />
-      ) : null}
       <AnimatePresence initial={false} mode="popLayout">
         <motion.span
           key={listening ? "stop" : "mic"}
@@ -175,6 +171,28 @@ export function MicButton({
         </motion.span>
       </AnimatePresence>
     </IconButton>
+  );
+}
+
+/**
+ * The recording signal in small (B3.1h, the owner's reference): five rounded bars that rise and fall
+ * out of step, beside "Listening" where Buddy isn't there to become them (his panel's composer).
+ * Still bars under reduced motion.
+ */
+export function ListeningBars({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("flex h-3 items-center gap-0.5", className)}
+    >
+      {[0, 1, 2, 3, 4].map((k) => (
+        <span
+          key={k}
+          className="listen-bar w-0.5 rounded-full bg-current"
+          style={{ animationDelay: `${[-120, -480, -240, -600, -360][k]}ms` }}
+        />
+      ))}
+    </span>
   );
 }
 

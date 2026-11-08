@@ -19,6 +19,14 @@ import { cn } from "@/lib/utils";
  * he looks around and breathes. Geometry is in body radii (the portfolio's, scaled up a little so
  * the eyes read at 16 and 24 px); one animation loop writes the transforms and sleeps when he's
  * still. Reduced motion: he only blinks.
+ *
+ * B3.1h (owner, 2026-11-08): his face can sit anywhere on his body. Over the editor's Sections
+ * panel (anything marked `data-buddy-look="left"`) it glides across to his left side, mirrored,
+ * as it sits on his right, and holds a soft steady look there; away from it, he's himself again.
+ * Clicked into, he gives a small shake as his mouth opens. Listening, he becomes the recording
+ * signal: his eyes straighten and slide apart into the second and fourth bars, his body narrows
+ * into the middle one, the first and last grow out from behind, and the five rise and fall out of
+ * step; stopping reverses it. All of it on springs in the same loop.
  */
 const EYE = { w: 0.17, h: 0.46, gap: 0.35 }; // width, height, centre to centre
 const FACE = { x: 0.2, y: -0.1 }; // the eyes' midpoint from the body's centre
@@ -34,6 +42,20 @@ const SPRING = 1600;
 const WIDE = 0.8; // the portfolio's eyes.wide
 const BLINK_MIN = 2.5;
 const BLINK_MAX = 6;
+// The face turning across the body (a soft, critically damped spring: about 0.7 s) and the look it
+// holds over the Sections panel (toward his left, in the turned face's frame).
+const TURN_SPRING = 70;
+const FOCUS_LOOK = 0.55;
+// Listening: the morph's spring (about 0.45 s, no overshoot), the bars' layout in body radii and
+// their resting heights (outer to middle), and how they rise and fall.
+const LISTEN_SPRING = 150;
+const BAR_W = 0.22;
+const BAR_SPAN = 1.84; // the five bars, outer edge to outer edge
+const BAR_H = [0.62, 1.0, 1.36, 1.0, 0.62] as const;
+const BAR_PERIOD = 900; // ms, one rise and fall
+const BAR_PHASE = [0, 2.1, 0.9, 3.2, 1.6] as const;
+/** Where the Sections panel is marked, for the face to turn to it. */
+const LOOK_LEFT = '[data-buddy-look="left"]';
 
 const SIZES = { xs: 16, sm: 24, md: 28, lg: 44 } as const;
 /** The pointer over the page in the canvas's frame, as the editor relays it (page-canvas.tsx):
@@ -59,10 +81,16 @@ export function LanderMark({
   working = false,
   excited = false,
   mouth = false,
+  listening = false,
+  shake = 0,
   className,
 }: {
   size?: "xs" | "sm" | "md" | "lg";
   working?: boolean;
+  /** Dictation is on (B3.1h): he becomes the recording signal until it stops. */
+  listening?: boolean;
+  /** Counts up each time the bar's field is clicked into: he gives a small shake (B3.1h). */
+  shake?: number;
   /** The pointer is over what he belongs to (the bar): eyes wide and a hop. */
   excited?: boolean;
   /** His mouth is open (owner, 2026-11-06: in the bar once you click into it; always on Improve
@@ -76,7 +104,9 @@ export function LanderMark({
   const body = useRef<HTMLSpanElement>(null);
   const eyes = useRef<(HTMLSpanElement | null)[]>([null, null]);
   const mouthEl = useRef<SVGSVGElement>(null);
-  const live = useRef({ working, excited, mouth });
+  const shape = useRef<HTMLSpanElement>(null);
+  const bars = useRef<(HTMLSpanElement | null)[]>([null, null]);
+  const live = useRef({ working, excited, mouth, listening });
   const kick = useRef<() => void>(() => {});
 
   // The face: the eyes' midpoint, and where each eye and the mouth sit around it.
@@ -103,7 +133,7 @@ export function LanderMark({
 
   useEffect(() => {
     const was = live.current;
-    live.current = { ...was, working, excited, mouth };
+    live.current = { ...was, working, excited, mouth, listening };
     kick.current();
     if (excited && !was.excited && !reduced && body.current)
       // The portfolio's hop: up and stretched, then an elastic settle.
@@ -112,7 +142,20 @@ export function LanderMark({
         { y: [0, -0.15 * r, 0], scaleX: [1, 0.96, 1], scaleY: [1, 1.06, 1] },
         { duration: 0.66, times: [0, 0.24, 1], ease: ["easeOut", "backOut"] },
       );
-  }, [working, excited, mouth, reduced, r]);
+  }, [working, excited, mouth, listening, reduced, r]);
+
+  // The field clicked into: a small, quick shake (owner: very subtle). Not while he listens.
+  const shaken = useRef(shake);
+  useEffect(() => {
+    if (shake === shaken.current) return;
+    shaken.current = shake;
+    if (reduced || live.current.listening || !body.current) return;
+    animate(
+      body.current,
+      { x: [0, -0.07 * r, 0.07 * r, -0.04 * r, 0.02 * r, 0] },
+      { duration: 0.35, ease: "easeInOut" },
+    );
+  }, [shake, reduced, r]);
 
   useEffect(() => {
     const el = body.current;
@@ -129,6 +172,9 @@ export function LanderMark({
       glance: null as { until: number; x: number; y: number } | null,
       seen: false,
       moved: 0,
+      turn: 1, turnV: 0, // the face's side: 1 on his right (as drawn), -1 mirrored on his left
+      focus: false, // the pointer is over the Sections panel
+      listen: live.current.listening ? 1 : 0, listenV: 0, // face 0 → recording signal 1
     }; // prettier-ignore
     let frame = 0;
     let last = performance.now();
@@ -137,27 +183,96 @@ export function LanderMark({
     let driftTimer = 0;
     const span = TRAVEL * r;
 
-    const draw = (lidNow: number) => {
+    // The bars' places (wrapper px): five, centred, BAR_SPAN radii wide.
+    const barW = Math.max(2, BAR_W * r);
+    const barGap = (BAR_SPAN * r - 5 * barW) / 4;
+    const barX = (k: number) => r + (k - 2) * (barW + barGap);
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+    const draw = (lidNow: number, now: number) => {
       const w = s.wide * WIDE;
+      const l = Math.min(1, Math.max(0, s.listen));
+      // The face's side: its anchor and its tilt mirror as it turns (the eyes travel across).
+      const t = s.turn;
+      const tiltNow = tilt * t;
+      const fxNow = r + FACE.x * r * t;
       // Turned away, an eye foreshortens a little (narrower looking sideways, shorter up or down).
       const nx = Math.min(1, Math.abs(s.ex) / span);
       const ny = Math.min(1, Math.abs(s.ey) / span);
       // Wide eyes, kept apart at Buddy's small sizes (the portfolio's 1 + 0.9w is for a 90 px face).
       const sx = (1 + 0.45 * w) * (1 - 0.16 * nx);
-      const sy = lidNow * (1 + 0.25 * w) * (1 - 0.1 * ny);
+      // A blink doesn't squash a bar.
+      const sy = lerp(lidNow, 1, l) * (1 + 0.25 * w) * (1 - 0.1 * ny);
       // With the pointer close, the eyes converge: each moves a little toward the other.
       const cross = 0.05 * r * s.near;
+      // The bars rise and fall out of step while he listens.
+      const height = (k: number) => {
+        const wave =
+          0.5 +
+          0.5 * Math.sin((now / BAR_PERIOD) * 2 * Math.PI + BAR_PHASE[k]!);
+        return BAR_H[k]! * r * (reduced ? 0.8 : 0.5 + 0.5 * wave);
+      };
+      const mix = (l * 100).toFixed(1);
       eyes.current.forEach((eye, i) => {
         if (!eye) return;
-        const toward = (i === 0 ? 1 : -1) * cross;
-        const x = s.ex + Math.cos(tilt) * toward;
-        const y = s.ey + Math.sin(tilt) * toward;
-        eye.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${TILT[i]}deg) scale(${sx.toFixed(3)}, ${sy.toFixed(3)})`;
+        const side = i === 0 ? -1 : 1;
+        const toward = -side * cross;
+        // The eye's centre on the turned face, plus the gaze.
+        const cx =
+          fxNow +
+          Math.cos(tiltNow) * ((side * EYE.gap * r) / 2 + toward) +
+          s.ex;
+        const cy =
+          fy + Math.sin(tiltNow) * ((side * EYE.gap * r) / 2 + toward) + s.ey;
+        const k = i === 0 ? 1 : 3;
+        const wNow = lerp(eyeW * sx, barW, l);
+        const hNow = lerp(eyeH * sy, height(k), l);
+        const x = lerp(cx, barX(k), l) - seats[i]!.left - wNow / 2;
+        const y = lerp(cy, r, l) - seats[i]!.top - hNow / 2;
+        const angle = lerp(TILT[i]! * t, 0, l);
+        eye.style.width = `${wNow.toFixed(2)}px`;
+        eye.style.height = `${hNow.toFixed(2)}px`;
+        eye.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${angle.toFixed(2)}deg)`;
+        // As he listens the eyes take the body's colour, so the five bars match.
+        eye.style.backgroundColor =
+          l > 0
+            ? `color-mix(in srgb, var(--color-buddy-body) ${mix}%, var(--color-buddy-eye))`
+            : "";
+      });
+      if (shape.current) {
+        // The body narrows into the middle bar.
+        const hMid = height(2);
+        const bw = lerp(2 * r, barW, l);
+        const bh = lerp(2 * r, hMid, l);
+        shape.current.style.width = `${bw.toFixed(2)}px`;
+        shape.current.style.height = `${bh.toFixed(2)}px`;
+        shape.current.style.left = `${(lerp(r, barX(2), l) - bw / 2).toFixed(2)}px`;
+        shape.current.style.top = `${(r - bh / 2).toFixed(2)}px`;
+      }
+      bars.current.forEach((bar, j) => {
+        if (!bar) return;
+        // The outer bars grow out from behind, a beat after the morph starts.
+        const k = j === 0 ? 0 : 4;
+        const grow = Math.min(1, Math.max(0, (l - 0.2) / 0.8));
+        const eased = 1 - (1 - grow) * (1 - grow);
+        // Small, it shrinks in width too and fades, so it never reads as a dash.
+        const wNow = barW * Math.min(1, 0.4 + eased);
+        const hNow = Math.max(wNow, height(k) * eased);
+        bar.style.width = `${wNow.toFixed(2)}px`;
+        bar.style.height = `${hNow.toFixed(2)}px`;
+        bar.style.left = `${(barX(k) - wNow / 2).toFixed(2)}px`;
+        bar.style.top = `${(r - hNow / 2).toFixed(2)}px`;
+        bar.style.opacity = Math.min(1, grow * 2.5).toFixed(3);
       });
       if (mouthEl.current) {
-        const open = s.open;
-        // The face turns less than the eyes: the mouth follows at 60 % (depth).
-        mouthEl.current.style.transform = `translate(${(s.ex * 0.6).toFixed(2)}px, ${(s.ey * 0.6).toFixed(2)}px) rotate(${(tilt * 180) / Math.PI}deg) scale(1, ${open.toFixed(3)})`;
+        const open = s.open * (1 - Math.min(1, l * 3));
+        // The face turns less than the eyes: the mouth follows at 60 % (depth), on the turned face.
+        // Where the mouth sits under the turned face, against where it's drawn (the face on the
+        // right).
+        const d = MOUTH.below * r;
+        const mx = fxNow - Math.sin(tiltNow) * d - (fx + m.x);
+        const my = Math.cos(tiltNow) * d - m.y;
+        mouthEl.current.style.transform = `translate(${(s.ex * 0.6 + mx).toFixed(2)}px, ${(s.ey * 0.6 + my).toFixed(2)}px) rotate(${(tiltNow * 180) / Math.PI}deg) scale(1, ${open.toFixed(3)})`;
         // Shut, it's gone: a squashed path still paints a hairline.
         mouthEl.current.style.opacity = open > 0.02 ? "1" : "0";
       }
@@ -213,13 +328,44 @@ export function LanderMark({
       const openTo = live.current.mouth ? 1 : 0;
       s.open += (openTo - s.open) * (1 - Math.pow(1 - 0.25, steps));
       if (Math.abs(openTo - s.open) < 0.004) s.open = openTo;
+      // The face's side and the morph ride critically damped springs (no overshoot).
+      const turnTo = s.focus && !reduced ? -1 : 1;
+      const spring = (x: number, v: number, to: number, k: number) => {
+        const a = k * (to - x) - 2 * Math.sqrt(k) * v;
+        const nv = v + a * dt;
+        return [x + nv * dt, nv] as const;
+      };
+      [s.turn, s.turnV] = spring(s.turn, s.turnV, turnTo, TURN_SPRING);
+      if (Math.abs(turnTo - s.turn) < 0.002 && Math.abs(s.turnV) < 0.01) {
+        s.turn = turnTo;
+        s.turnV = 0;
+      }
+      const listenTo = live.current.listening ? 1 : 0;
+      if (reduced) {
+        s.listen = listenTo;
+        s.listenV = 0;
+      } else {
+        [s.listen, s.listenV] = spring(
+          s.listen,
+          s.listenV,
+          listenTo,
+          LISTEN_SPRING,
+        );
+        if (
+          Math.abs(listenTo - s.listen) < 0.002 &&
+          Math.abs(s.listenV) < 0.01
+        ) {
+          s.listen = listenTo;
+          s.listenV = 0;
+        }
+      }
       let lidNow = 1;
       if (s.blink) {
         const v = lid(now - s.blink.at, s.blink.double);
         if (v === null) s.blink = null;
         else lidNow = v;
       }
-      draw(lidNow);
+      draw(lidNow, now);
       const moving =
         Math.abs(s.gx - s.ex) > 0.01 ||
         Math.abs(s.gy - s.ey) > 0.01 ||
@@ -227,7 +373,11 @@ export function LanderMark({
         Math.abs(s.vy) > 0.02 ||
         (!glancing && Math.hypot(s.dx - s.gx, s.dy - s.gy) > 0.01) ||
         Math.abs(wideTo - s.wide) > 0.004 ||
-        Math.abs(openTo - s.open) > 0.004;
+        Math.abs(openTo - s.open) > 0.004 ||
+        s.turn !== turnTo ||
+        s.listen !== listenTo ||
+        // Listening, the bars never rest.
+        (s.listen > 0 && !reduced);
       if (moving || s.jump || s.blink || glancing)
         frame = requestAnimationFrame(tick);
     };
@@ -239,8 +389,26 @@ export function LanderMark({
     };
     kick.current = wake;
 
-    const look = (clientX: number, clientY: number) => {
+    const look = (clientX: number, clientY: number, focus = false) => {
       if (reduced) return;
+      const now = performance.now();
+      if (focus !== s.focus) {
+        s.focus = focus;
+        wake();
+      }
+      if (focus) {
+        // Over the Sections panel: a soft, steady look toward his left, followed smoothly (no
+        // saccades, no glances) while the face glides across.
+        s.dx = -FOCUS_LOOK * span;
+        s.dy = 0.1 * span;
+        s.near = 0;
+        s.seen = true;
+        s.moved = now;
+        s.glance = null;
+        s.jump = null;
+        wake();
+        return;
+      }
       const box = el.getBoundingClientRect();
       const px = clientX - (box.left + box.width / 2);
       const py = clientY - (box.top + box.height / 2);
@@ -251,12 +419,14 @@ export function LanderMark({
       s.dy = (py / d) * reach;
       s.near = Math.max(0, Math.min(1, 1 - (d - r) / (2 * r)));
       s.seen = true;
-      const now = performance.now();
       s.moved = now;
       if (!s.glance) aim(s.dx, s.dy, now);
       wake();
     };
-    const onMove = (event: PointerEvent) => look(event.clientX, event.clientY);
+    const onMove = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      look(event.clientX, event.clientY, Boolean(target?.closest?.(LOOK_LEFT)));
+    };
     const onRelayed = (event: Event) => {
       const at = (event as CustomEvent<{ x: number; y: number }>).detail;
       if (at && typeof at.x === "number") look(at.x, at.y);
@@ -266,7 +436,13 @@ export function LanderMark({
       driftTimer = window.setTimeout(
         () => {
           const now = performance.now();
-          if (!reduced && !s.glance && !s.jump && now - s.moved > 1500) {
+          if (
+            !reduced &&
+            !s.focus &&
+            !s.glance &&
+            !s.jump &&
+            now - s.moved > 1500
+          ) {
             const a = Math.random() * Math.PI * 2;
             const m = 0.035 * r * (0.5 + Math.random());
             s.jump = {
@@ -297,7 +473,11 @@ export function LanderMark({
       glanceTimer = window.setTimeout(
         () => {
           const now = performance.now();
-          if (!reduced && (busy || !s.seen || now - s.moved > 2500)) {
+          if (
+            !reduced &&
+            !s.focus &&
+            (busy || !s.seen || now - s.moved > 2500)
+          ) {
             const angle = Math.random() * Math.PI * 2;
             const reach = TRAVEL * r * (0.6 + 0.4 * Math.random());
             const x = Math.cos(angle) * reach;
@@ -317,7 +497,7 @@ export function LanderMark({
       );
     };
 
-    draw(1);
+    draw(1, performance.now());
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener(BUDDY_POINTER, onRelayed);
     blink();
@@ -332,6 +512,8 @@ export function LanderMark({
       if (frame) cancelAnimationFrame(frame);
       kick.current = () => {};
     };
+    // The seats, eye size, face and mouth anchors are all worked out from r and the tilt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [r, reduced, tilt]);
 
   return (
@@ -353,11 +535,21 @@ export function LanderMark({
           : { duration: 0.3 }
       }
     >
-      <span
-        ref={body}
-        data-buddy=""
-        className="absolute inset-0 rounded-full bg-buddy-body"
-      >
+      <span ref={body} data-buddy="" className="absolute inset-0">
+        {/* His body, which narrows into the middle bar as he listens. */}
+        <span
+          ref={shape}
+          className="absolute top-0 left-0 block size-full rounded-full bg-buddy-body"
+        />
+        {[0, 1].map((j) => (
+          <span
+            key={`bar-${j}`}
+            ref={(node) => {
+              bars.current[j] = node;
+            }}
+            className="absolute block rounded-full bg-buddy-body opacity-0"
+          />
+        ))}
         {seats.map((seat, i) => (
           <span
             key={i}
