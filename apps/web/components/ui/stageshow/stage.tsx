@@ -44,6 +44,10 @@ export interface StageProps<S> {
    */
   cursor?: { at: Target | { wide: Target; compact: Target }; kind?: CursorKind; style?: CursorStyle; still?: boolean; ripple?: boolean; idle?: number | false; /** LP change: a name tag beside the pointer. */ label?: string }
   play?: Play
+  /** LP change: with play 'loop', rest after this many loops (held at the loop's start, its
+   * seam) until the pointer is over the stage, which plays it again while it stays there. Saves a
+   * looping scene's CPU once it has been seen (B6.8). */
+  rest?: number
   /**
    * A second, smaller design for narrow containers. Below `below` px of
    * container width the stage uses this size, the render's `layout` argument
@@ -97,6 +101,7 @@ export function Stage<S extends object>({
   cursor,
   hover,
   play: playProp = 'loop',
+  rest,
   compact,
   keys: keysAt = 'bottom',
   palette = 'accent',
@@ -422,6 +427,8 @@ export function Stage<S extends object>({
     let onScreen = false
     let hovering = false
     let done = false
+    // LP change (rest): resting after its loops, until the pointer comes back over the stage
+    let resting = false
 
     // Idle: a cursor waiting to start reads as a stuck one, so before its
     // first move it steps out of the shot. Once it has acted, resting to
@@ -483,6 +490,8 @@ export function Stage<S extends object>({
     const start = () => {
       if (ctrl || done || !onScreen || document.hidden) return
       if (play === 'hover' && !hovering) return
+      if (resting && !hovering) return
+      resting = false
       cancelReset()
       if (cursor) place(resolve(restAt()))
       ctrl = new AbortController()
@@ -490,6 +499,7 @@ export function Stage<S extends object>({
       watchIdle()
       const act = makeAct(signal)
       ;(async () => {
+        let loops = 0
         do {
           beginLoop()
           try {
@@ -504,6 +514,14 @@ export function Stage<S extends object>({
             return
           }
           if (play === 'loop' && isDev()) checkSeam(stateRef.current, initial, pos.current, cursor ? resolve(restAt()) : null)
+          loops += 1
+          // LP change (rest): after its loops it holds at the seam, unless the pointer is over it.
+          if (play === 'loop' && rest && loops >= rest && !hovering && !signal.aborted) {
+            resting = true
+            ctrl = null
+            unwatchIdle()
+            return
+          }
         } while (play === 'loop' && !signal.aborted)
         // Once holds its end state for good; hover holds it until the pointer leaves.
         if (play === 'once' && !signal.aborted) {
@@ -542,22 +560,36 @@ export function Stage<S extends object>({
       hovering = false
       stop(true)
     }
+    // LP change (rest): a resting loop plays again while the pointer is over it, and finishes its
+    // loop when the pointer leaves (then rests again).
+    const enterRest = () => {
+      hovering = true
+      if (resting) start()
+    }
+    const leaveRest = () => {
+      hovering = false
+    }
     if (play === 'hover') {
       root.addEventListener('pointerenter', enter)
       root.addEventListener('pointerleave', leave)
+    } else if (play === 'loop' && rest) {
+      root.addEventListener('pointerenter', enterRest)
+      root.addEventListener('pointerleave', leaveRest)
     }
     return () => {
       io.disconnect()
       document.removeEventListener('visibilitychange', onVisibility)
       root.removeEventListener('pointerenter', enter)
       root.removeEventListener('pointerleave', leave)
+      root.removeEventListener('pointerenter', enterRest)
+      root.removeEventListener('pointerleave', leaveRest)
       unwatchIdle()
       ctrl?.abort()
       ctrl = null
       autoRef.current = null
       cancelReset()
     }
-  }, [still, script, makeAct, play, layout]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [still, script, makeAct, play, layout, rest]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
     if (cursor && !still && !dragging.current) autoRef.current?.(pos.current)

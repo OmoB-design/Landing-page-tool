@@ -55,6 +55,12 @@ export function LanderComposer({
 }) {
   const { text, setText, dictation } = useComposerText();
   const field = useRef<HTMLTextAreaElement>(null);
+  // While you speak, the field keeps its newest line in view (owner, B6.8).
+  useEffect(() => {
+    const el = field.current;
+    if (!el || !dictation.listening) return;
+    el.scrollTop = el.scrollHeight;
+  }, [text, dictation.listening]);
   const [scrolled, setScrolled] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<string[]>([]);

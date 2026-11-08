@@ -1543,3 +1543,20 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** B6.8 the whole app's speed (measure, then fix), then B6.7 profile photo, B3.5d the build page's steps frame.
+
+
+### B6.8 — App speed
+- **Status:** complete (owner: "commit and push, and go to the next build", 2026-11-08; the recording-text request added during it; committed and pushed, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **Measured live** (after B3.1i): content in 0.9–1.35 s, 450–485 KB of JavaScript, no freezes while loading, switching from Home 0.56–0.82 s, servers alike (data 250–360 ms after the first byte). Idle CPU about 1 ms per 5 s on every page except Home: about 1 s per 5 s, from its three looping scenes.
+  - **Fixed:** the Home cards loop twice when Home opens, then hold still; hovering a card plays it again. Home's idle CPU: about 1 s per 5 s → 0.
+  - **Dictation** (the owner's request during the build): when your words fill the bar, it follows them so the newest stay in view, earlier ones sliding off left and fading at that edge; Buddy's panel keeps its newest line in view.
+  - **Earlier causes:** Buddy's per-frame layout (B3.1h), fixed in B3.1i.
+- **Key files:** `components/ui/stageshow/stage.tsx` (`rest`, LP change 4 in `LP-CHANGES.md`), `components/app/illustrations/home/{add-brand,pick-template,create-page}.tsx`, `lander/floating-composer.tsx`, `lander/lander-composer.tsx`, `app/globals.css` (`lander-bar-fade`); docs D138, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D138 locked.
+- **Deviations from the plan:** the recording-text request added. Not done: trimming the shared JavaScript (about 300 KB per page; a larger refactor).
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B6.7 profile photo, then B3.5d the build page's steps frame.

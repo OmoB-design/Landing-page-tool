@@ -1,7 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { toast } from "@/components/app/toaster";
 import { ComposerOpenIcon } from "@/components/ui/icons";
@@ -61,6 +67,23 @@ export function FloatingComposer({
   const [shake, setShake] = useState(0);
   const typed = text.trim().length > 0;
   const reduced = useReducedMotion() ?? false;
+  const shown =
+    dictation.listening && dictation.interim
+      ? `${text}${text ? " " : ""}${dictation.interim}`
+      : text;
+  // Words run past the bar's end while you speak: it follows them, so the newest stay in view and
+  // the earlier ones slide off to the left, fading at that edge (owner, B6.8).
+  const [clipped, setClipped] = useState(false);
+  useLayoutEffect(() => {
+    const el = field.current;
+    if (!el || !dictation.listening) return;
+    if (typeof el.scrollTo === "function")
+      el.scrollTo({
+        left: el.scrollWidth,
+        behavior: reduced ? "auto" : "smooth",
+      });
+    else el.scrollLeft = el.scrollWidth;
+  }, [shown, dictation.listening, reduced]);
   const [hint, setHint] = useState(0);
   const hinting = !text && !(dictation.listening && dictation.interim);
   useEffect(() => {
@@ -121,11 +144,8 @@ export function FloatingComposer({
         <input
           id="lander-bar"
           ref={field}
-          value={
-            dictation.listening && dictation.interim
-              ? `${text}${text ? " " : ""}${dictation.interim}`
-              : text
-          }
+          value={shown}
+          onScroll={(event) => setClipped(event.currentTarget.scrollLeft > 1)}
           maxLength={REQUEST_MAX}
           readOnly={dictation.listening}
           enterKeyHint="send"
@@ -140,7 +160,10 @@ export function FloatingComposer({
             if (event.currentTarget.matches(":focus-visible"))
               setShake((n) => n + 1);
           }}
-          className="h-full w-full min-w-0 bg-transparent px-0.5 text-type-body-small text-heading-01 outline-none"
+          className={cn(
+            "h-full w-full min-w-0 bg-transparent px-0.5 text-type-body-small text-heading-01 outline-none",
+            clipped && "lander-bar-fade",
+          )}
         />
         {hinting ? (
           // The hint, drawn over the empty field so it can morph (a placeholder can't).

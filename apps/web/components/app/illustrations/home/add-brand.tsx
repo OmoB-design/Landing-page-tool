@@ -45,6 +45,8 @@ export function AddBrandScene() {
       width={STAGE.width}
       height={STAGE.height}
       script={script}
+      // Twice through when Home opens, then still until hovered (B6.8: the loop's CPU).
+      rest={2}
       hover={["brands"]}
       cursor={{ at: REST, style: "large", idle: false }}
       className="lp-look-light ih ih-brand"

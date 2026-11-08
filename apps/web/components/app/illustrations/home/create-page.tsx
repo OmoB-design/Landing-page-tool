@@ -76,6 +76,8 @@ export function CreatePageScene() {
       initial={initial}
       poster={poster}
       script={script}
+      // Twice through when Home opens, then still until hovered (B6.8: the loop's CPU).
+      rest={2}
       className="lp-look-light ih ih-page"
     >
       {(s) => {

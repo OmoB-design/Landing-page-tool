@@ -17,6 +17,12 @@ The `kit/` folder of Benji Taylor's Stageshow skill (github.com/benjitaylor/skil
    collaborator's cursor carries one (after Quality's homepage). Without `label` nothing changes;
    the Home cards don't use it (your own cursor carries no name), it waits for a scene with teammates.
 
+4. **Rest after a few loops.** `Stage` takes `rest` (with `play="loop"`): after that many loops
+   it holds at the loop's start (its seam) and stops its clock, until the pointer is over the
+   stage, which plays it again while it stays there (it finishes the loop it's in when the pointer
+   leaves, then rests). The Home cards loop twice, then rest (B6.8): a looping scene kept about a
+   fifth of a CPU core busy while Home was open.
+
 Kept in the skill's own format (no Prettier, no ESLint) so a newer version diffs cleanly:
 `git diff --no-index ~/.claude/skills/stageshow/kit apps/web/components/ui/stageshow`.
 

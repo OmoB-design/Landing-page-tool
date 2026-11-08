@@ -1901,6 +1901,12 @@
   }
 }
 
+/* The bar's field scrolled sideways while you speak: earlier words fade as they slide out (B6.8). */
+.lander-bar-fade {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 28px);
+  mask-image: linear-gradient(to right, transparent 0, #000 28px);
+}
+
 .lander-field-fade {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
   mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
