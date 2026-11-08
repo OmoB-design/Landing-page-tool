@@ -102,18 +102,29 @@ export function BuddyLab() {
               onOpen={() => {}}
             />
           </div>
-          <div className="flex items-center gap-8">
+          {/* The big ones roam (B3.1j): their faces travel toward the pointer inside this row. */}
+          <div data-buddy-frame="" className="flex items-center gap-8 p-6">
             <span
               data-testid="buddy-large"
               className="theme-light rounded-lg bg-surface-primary p-4"
             >
-              <LanderMark size="lg" mouth={focused} listening={listening} />
+              <LanderMark
+                size="lg"
+                roam
+                mouth={focused}
+                listening={listening}
+              />
             </span>
             <span
               data-testid="buddy-large-dark"
               className="theme-dark rounded-lg bg-surface-primary p-4"
             >
-              <LanderMark size="lg" mouth={focused} listening={listening} />
+              <LanderMark
+                size="lg"
+                roam
+                mouth={focused}
+                listening={listening}
+              />
             </span>
           </div>
         </div>

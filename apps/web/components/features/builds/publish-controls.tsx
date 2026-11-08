@@ -54,10 +54,11 @@ function hostAndPath(url: string) {
 }
 
 /**
- * Publish (D87; the build page header, after Approve): asks first in a card naming the
- * destination, then lists what blocks it. Reasons that may be passed need "Publish anyway";
- * placeholder images pass only with the owner's testing switch. While it runs, the button shows
- * the step it's on; when it finishes, the published modal opens. To be designed in Figma.
+ * Publish (D87; the build page header): asks first in a card naming the destination, then lists
+ * what blocks it. Reasons that may be passed need "Publish anyway"; placeholder images pass only
+ * with the owner's testing switch. While it runs, the button shows the step it's on; when it
+ * finishes, the published modal opens. The header's one filled button once the page is approved
+ * (D141); not shown while the live page is the latest version (Live is there instead).
  */
 export function PublishButton() {
   const { desk, pending, redrafting } = useDesk();
@@ -67,6 +68,12 @@ export function PublishButton() {
   const anywayId = useId();
   const status = desk.build.status;
   if (status !== "approved" && status !== "published") return null;
+  const live = publishing.live;
+  const current =
+    live !== null &&
+    (live.page_version === null ||
+      live.page_version === publishing.page_version);
+  if (current && publishing.running?.action !== "publish") return null;
   const running = publishing.running !== null;
   const stuck = publishing.gate.filter((b) => !b.overridable);
   const passable = publishing.gate.filter((b) => b.overridable);
@@ -87,7 +94,7 @@ export function PublishButton() {
       <PopoverTrigger asChild>
         <Button
           type="button"
-          variant="outline"
+          variant="ink"
           size="compact"
           disabled={
             running || starting || pending !== null || redrafting !== null
@@ -197,7 +204,7 @@ export function LiveDot() {
   );
 }
 
-/** Live (the header, once a page is published, in place of the status chip): opens the published
+/** Live (the header, while the page is live, before Edit page; D89, D141): opens the published
  * modal. */
 export function LiveButton() {
   const { publishing, setModalOpen } = usePublish();

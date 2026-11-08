@@ -71,8 +71,8 @@
   box-shadow: 0 0 0 1px var(--ss-line-faint);
 }
 
-/* The lights, grey at rest; while the card is hovered (or its choice has keyboard focus) they come
-   on in macOS's red, yellow and green. */
+/* The lights, grey at rest; on the chosen theme's card (owner, 2026-11-08), and while a card is
+   hovered or its choice has keyboard focus, they're on in macOS's red, yellow and green. */
 .ith-lights {
   position: absolute;
   left: 16px;
@@ -89,17 +89,17 @@
   transition: background-color 150ms var(--ease-out);
 }
 
-:is(.ith-hover:hover, .ith-hover:has(:focus-visible))
+:is(.ith-hover:hover, .ith-hover:has(:focus-visible), .ith-hover:has(:checked))
   .ith-lights
   > span:nth-child(1) {
   background: #ff5f57;
 }
-:is(.ith-hover:hover, .ith-hover:has(:focus-visible))
+:is(.ith-hover:hover, .ith-hover:has(:focus-visible), .ith-hover:has(:checked))
   .ith-lights
   > span:nth-child(2) {
   background: #febc2e;
 }
-:is(.ith-hover:hover, .ith-hover:has(:focus-visible))
+:is(.ith-hover:hover, .ith-hover:has(:focus-visible), .ith-hover:has(:checked))
   .ith-lights
   > span:nth-child(3) {
   background: #28c840;

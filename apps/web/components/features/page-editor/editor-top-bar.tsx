@@ -29,15 +29,15 @@ import { DESKTOP_WIDTH, type Viewport } from "./page-canvas";
  * Desktop / Phone, the zoom when the page is zoomed out to fit (Desktop keeps a 1280 px layout),
  * then Undo and Redo (Shopify's pill, icons only). The two sides share the width equally so the
  * middle stays centred. The save status morphs (torph) between "Saving…", "Updating the page…"
- * (the canvas loading the newer page behind the one shown) and "Saved · version N", its number
- * rolling.
+ * (the canvas loading the newer page behind the one shown) and "Saved" (no version number since
+ * B3.1j: it counted every save and meant nothing; going back is Undo, or History on the review
+ * desk).
  */
 export function EditorTopBar({
   build,
   saving,
   updating,
   zoom,
-  version,
   rewriting,
   sectionsOpen,
   onToggleSections,
@@ -53,7 +53,6 @@ export function EditorTopBar({
   updating: boolean;
   /** How far the page is zoomed out to fit (1 when it isn't). */
   zoom: number;
-  version: number;
   rewriting: boolean;
   sectionsOpen: boolean;
   onToggleSections: () => void;
@@ -128,7 +127,7 @@ export function EditorTopBar({
                 ? "Saving…"
                 : status === "updating"
                   ? "Updating the page…"
-                  : `Saved · version ${version}`}
+                  : "Saved"}
             </MorphText>
           </span>
         </p>

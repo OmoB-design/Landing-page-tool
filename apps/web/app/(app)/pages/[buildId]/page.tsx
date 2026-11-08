@@ -22,8 +22,8 @@ import {
   DeskChoices,
   DeskPanel,
 } from "@/components/features/builds/desk-panel";
-import { ExportButton } from "@/components/features/builds/export-button";
 import { InksCard } from "@/components/features/builds/inks-card";
+import { PageMenu } from "@/components/features/builds/page-menu";
 import { PanelStack } from "@/components/features/builds/panel-section";
 import { PreviewCheck } from "@/components/features/builds/preview-check";
 import { PublishProvider } from "@/components/features/builds/publish-context";
@@ -34,8 +34,8 @@ import {
   Publications,
 } from "@/components/features/builds/publish-controls";
 import {
-  HeaderDivider,
-  StatusActions,
+  ApproveAction,
+  DeskStatusChip,
 } from "@/components/features/builds/status-actions";
 import { Button } from "@/components/ui/button";
 import { PagesIcon, RenameIcon } from "@/components/ui/icons";
@@ -66,8 +66,9 @@ export default function BuildPage({
         <div className="flex h-full flex-col">
           <PageHeader
             icon={PagesIcon}
-            mark={<SkeletonText className="text-type-body-small" width={320} />}
+            mark={<SkeletonText className="text-type-body-small" width={192} />}
             title=""
+            tools={false}
           />
           <SkeletonStatus label="Loading the page" />
           <BuildWorkspace
@@ -133,6 +134,7 @@ async function Build({
         finished={Boolean(build.report)}
         origin={build.origin}
         templateType={build.templateType}
+        status={build.status}
       />
       {build.report ? <BuildReport report={build.report} /> : null}
     </>
@@ -142,6 +144,9 @@ async function Build({
       <PageHeader
         icon={PagesIcon}
         title={`${build.key} · ${build.title}`}
+        // A long title is cut short (owner, D141); the whole of it is in its tooltip.
+        titleClassName="xl:max-w-56"
+        status={desk ? <DeskStatusChip /> : undefined}
         back={
           build.batch_id
             ? {
@@ -150,14 +155,15 @@ async function Build({
               }
             : undefined
         }
+        tools={false}
         actions={
-          // Figma Review desk, as the owner ordered it (2026-11-06): the status then Approve, a rule,
-          // Edit page (black in light), Live and Publish, a rule, Client link with Export, a rule
-          // (then Jobs and Notifications), 10 px apart.
+          // The owner's order (D141): the next step as the one filled button (Approve, then
+          // Publish), Live, Edit page, Client link, then ⋯ (Back to review, Export, Copy key, Move
+          // to Trash). Jobs and Notifications aren't on this page.
           <div className="flex items-center gap-2.5">
             {desk ? (
               <>
-                <StatusActions
+                <ApproveAction
                   fixCount={
                     build.report
                       ? reportClaims(build.report).filter(
@@ -166,36 +172,29 @@ async function Build({
                       : 0
                   }
                 />
-                <HeaderDivider />
+                {publish ? (
+                  <>
+                    <PublishButton />
+                    <LiveButton />
+                    <PublishedModal />
+                  </>
+                ) : null}
                 {/* B3.1a: the page editor, full screen. */}
                 <Button
                   asChild
                   variant="outline"
                   size="compact"
-                  className="bg-button-ink px-3 text-button-ink-text ring-0 hover:bg-button-ink-hover aria-expanded:bg-button-ink-hover"
+                  className="px-3"
                 >
                   <Link href={`/pages/${build.id}/editor`}>
                     <RenameIcon aria-hidden className="size-3.5" />
                     Edit page
                   </Link>
                 </Button>
-                {publish ? (
-                  <>
-                    <LiveButton />
-                    <PublishButton />
-                    <PublishedModal />
-                  </>
-                ) : null}
-                <HeaderDivider />
                 <ClientLink />
               </>
             ) : null}
-            <ExportButton
-              buildId={build.id}
-              buildKey={build.key}
-              ready={ready}
-            />
-            <HeaderDivider />
+            <PageMenu buildId={build.id} buildKey={build.key} ready={ready} />
           </div>
         }
       />

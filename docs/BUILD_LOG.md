@@ -1577,3 +1577,50 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** B3.5d the build page's steps frame.
+
+
+### B3.5d — The build page's steps frame
+- **Status:** complete (owner: "let's build the next phase", 2026-11-08; committed and pushed with B3.5e and B3.1j, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **One frame for both screens** (`StepsFrame`): the batch panel's frames and the build page's steps card are now the same component.
+  - **On the build page** the steps stay a list while the page builds (the preview keeps the big illustration). When the page is built, as the preview shows it, the card folds into the batch frame: "13/13 completed", the illustration assembled, "Ready to review" (or Approved, Published), the steps behind the chevron. A failed build gets the frame with the failed step and the steps open. A page already built opens on the frame.
+  - **The hand-off:** the list folds as the illustration and footer unfold, 0.42 s on the drawer's curve; traced in the browser (530 → 196 px, continuous).
+- **Key files:** `components/features/builds/build-steps.tsx` (`StepsFrame`, `SETTLED`, `BuildSteps` status), `batch-frame.tsx` (uses it), `build-demo.tsx` (the replay uses it), `app/(app)/pages/[buildId]/page.tsx` (status), `build-steps.test.tsx`; docs D140, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D140 locked.
+- **Deviations from the plan:** the illustration's "fly across" from the preview wasn't built (see D140); the fold carries the hand-off.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner.
+
+### B3.5e — The build page's top bar
+- **Status:** complete (owner: "go", 2026-11-08; committed and pushed with B3.5d and B3.1j, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **Left:** the key and title, cut short (224 px, 192 px on smaller screens; the whole title on hover), then the status chip.
+  - **Right, in order:** the next step as the one filled button, black in light and white in dark (Approve, then Publish, or Publish again when the live page is behind); ● Live while live; Edit page (white); Client link (once approved, as before); ⋯ with Back to review (once approved), Export, Copy key, Move to Trash.
+  - **Gone from this page:** Jobs, Notifications, the rules between buttons, the Export button.
+  - **Settings → Account:** the chosen theme's picture keeps its window lights coloured (the owner's request during the build).
+- **Key files:** web `components/ui/button.tsx` (`ink` variant), `components/app/page-header.tsx` (`status`, `titleClassName`), `components/features/builds/status-actions.tsx` (`DeskStatusChip`, `ApproveAction`), `page-menu.tsx` (+ test, new), `use-export-page.ts` (was `export-button.tsx`), `publish-controls.tsx` (+ test), `build-demo.tsx`, `app/(app)/pages/[buildId]/page.tsx`, the dev states page; `components/app/illustrations/theme/theme.css`; `scripts/e2e.py` (Approve then Publish; Export from ⋯); docs D141, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D141 locked (changes D84's and D89's header).
+- **Deviations from the plan:** Publish again (a live page that's behind) is the filled button too; Back to review moved into ⋯.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner.
+
+### B3.1j — The big Buddy's roaming face; "Saved"
+- **Status:** complete (owner: "go ahead", 2026-11-08; committed and pushed with B3.5d and B3.5e, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **Found first:** every Buddy's eyes already followed the pointer, but only a little, with the face kept on his right; the bar's Buddy looks free because his face slides to his left over Sections.
+  - **The chat's big Buddy** (the empty state): while the pointer is anywhere in the chat panel, his face travels across his body toward it: on his left when it's to his left, on his right when it's to his right, up and down too, the eyes' tilt mirroring exactly as it crosses; about 0.5 s on a spring. Off the panel (also onto the page) it settles home. The small Buddies are unchanged.
+  - **The editor's top bar** says "Saved" (no "· version N"); Undo and Redo stay (the owner agreed).
+- **Key files:** `lander/lander-mark.tsx` (`roam`), `lander/lander-thread.tsx`, `lander/lander-panel.tsx` (`data-buddy-frame`), `lander/lander-mark.test.tsx` (new), `editor-top-bar.tsx`, `page-editor.tsx`, the Buddy lab (its big Buddies roam); docs D142, MILESTONES, DESIGN.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D142 locked.
+- **Deviations from the plan:** none.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner.

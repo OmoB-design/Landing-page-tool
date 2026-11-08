@@ -37,7 +37,11 @@ export function LanderPanel({
 }) {
   return (
     <>
-      <div className="flex h-full flex-col overflow-hidden rounded-panel bg-surface-primary edge">
+      {/* The big Buddy's frame: his face roams toward the pointer anywhere in it (B3.1j). */}
+      <div
+        data-buddy-frame=""
+        className="flex h-full flex-col overflow-hidden rounded-panel bg-surface-primary edge"
+      >
         <header className="flex h-12 shrink-0 items-center gap-2 pr-2 pl-4">
           <div className="relative flex min-w-0 flex-1 items-center">
             <AnimatePresence initial={false} mode="popLayout">

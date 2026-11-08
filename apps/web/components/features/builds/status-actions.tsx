@@ -21,48 +21,29 @@ import { Spinner } from "@/components/ui/spinner";
 import { STATUS_LABELS } from "@/lib/builds/desk";
 
 import { useDesk } from "./desk-context";
-import { usePublishOptional } from "./publish-context";
+
+/** The page's status by its title (D84; by the title since D141): Needs review, Approved,
+ * Published. */
+export function DeskStatusChip() {
+  const { desk } = useDesk();
+  return <StatusChip status={desk.build.status} />;
+}
 
 /**
- * The page's status in the header (D84; Figma Review desk): Approve (blue) while it needs review,
- * or Back to review once approved, then the status chip. With claims marked Fix, Approve asks
- * first: approving is allowed, publishing is where they block (B1.5).
+ * Approve (D84), the header's one filled button while the page needs review (D141). With claims
+ * marked Fix it asks first: approving is allowed, publishing is where they block (B1.5). Back to
+ * review is in the page's ⋯ menu.
  */
-export function StatusActions({ fixCount }: { fixCount: number }) {
+export function ApproveAction({ fixCount }: { fixCount: number }) {
   const { desk, setStatus, pending, redrafting } = useDesk();
-  const publish = usePublishOptional();
-  const status = desk.build.status;
-  const busy = pending !== null || redrafting !== null;
+  if (desk.build.status !== "needs_review") return null;
   return (
-    <div className="flex items-center gap-1.5">
-      {/* The status first, then what to do about it (owner, 2026-11-06). A live page shows Live
-          instead (D89); without publishing, the chip says Published. */}
-      {status === "published" && publish?.publishing.live ? null : (
-        <StatusChip status={status} />
-      )}
-      {status === "needs_review" ? (
-        <ApproveButton
-          fixCount={fixCount}
-          busy={pending === "status"}
-          disabled={busy}
-          onApprove={() => setStatus("approved")}
-        />
-      ) : status === "approved" ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="compact"
-          disabled={busy}
-          onClick={() => setStatus("needs_review")}
-          className="px-3"
-        >
-          {pending === "status" ? (
-            <Spinner className="size-3.5" label="Saving" />
-          ) : null}
-          Back to review
-        </Button>
-      ) : null}
-    </div>
+    <ApproveButton
+      fixCount={fixCount}
+      busy={pending === "status"}
+      disabled={pending !== null || redrafting !== null}
+      onApprove={() => setStatus("approved")}
+    />
   );
 }
 
@@ -71,7 +52,7 @@ export function StatusActions({ fixCount }: { fixCount: number }) {
  * On a phone only the glyph shows (the name stays for screen readers). */
 export function StatusChip({ status }: { status: string }) {
   return (
-    <span className="flex h-6 items-center gap-1 rounded-sm bg-foreground-01 pr-1 pl-1 text-type-caption-1 font-medium whitespace-nowrap text-heading-02 sm:pr-1.5">
+    <span className="flex h-6 shrink-0 items-center gap-1 rounded-sm bg-foreground-01 pr-1 pl-1 text-type-caption-1 font-medium whitespace-nowrap text-heading-02 sm:pr-1.5">
       <span
         aria-hidden
         className="flex size-4 shrink-0 items-center justify-center text-spot-500-blue"
@@ -93,11 +74,6 @@ export function StatusChip({ status }: { status: string }) {
   );
 }
 
-/** The thin rule between header actions (Figma Review desk: 1.5 × 15 px, Foreground-02). */
-export function HeaderDivider() {
-  return <span aria-hidden className="header-divider" />;
-}
-
 function ApproveButton({
   fixCount,
   busy,
@@ -113,6 +89,7 @@ function ApproveButton({
   const button = (
     <Button
       type="button"
+      variant="ink"
       size="compact"
       disabled={disabled}
       onClick={fixCount > 0 ? undefined : onApprove}

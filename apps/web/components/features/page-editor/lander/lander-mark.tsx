@@ -27,6 +27,12 @@ import { cn } from "@/lib/utils";
  * signal: his eyes straighten and slide apart into the second and fourth bars, his body narrows
  * into the middle one, the first and last grow out from behind, and the five rise and fall out of
  * step; stopping reverses it. All of it on springs in the same loop.
+ *
+ * B3.1j (owner, 2026-11-08): the big Buddy in the chat's empty state roams (`roam`): while the
+ * pointer is inside his frame (the closest `data-buddy-frame`, the chat panel), his face travels
+ * across his body toward it, as the bar's does over Sections: on his left when the pointer is to
+ * his left, on his right when it's to his right, up and down too, and everything between, the
+ * eyes' tilt mirroring exactly as it crosses. Leaving the frame, his face settles home.
  */
 const EYE = { w: 0.17, h: 0.46, gap: 0.35 }; // width, height, centre to centre
 const FACE = { x: 0.2, y: -0.1 }; // the eyes' midpoint from the body's centre
@@ -44,6 +50,12 @@ const BLINK_MIN = 2.5;
 const BLINK_MAX = 6;
 // The face turning across the body (a soft, critically damped spring: about 0.7 s).
 const TURN_SPRING = 70;
+// Roaming in his frame (B3.1j): a quicker spring (about 0.5 s) so the face keeps up with the
+// pointer; how far away, in radii, the face is most of the way to a side; how far it rises or
+// drops, in radii.
+const ROAM = { spring: 120, reach: 2.5, lift: 0.2 } as const;
+/** Where a roaming Buddy's frame is marked. */
+const FRAME = "[data-buddy-frame]";
 // Listening: the morph's springs (about 0.55 s, no overshoot; the body, then the eyes, then the
 // outer bars, a beat apart, reversed on the way back), the bars' layout in body radii, their
 // resting heights (outer to middle), and how they rise and fall once the morph has settled.
@@ -86,9 +98,13 @@ export function LanderMark({
   mouth = false,
   listening = false,
   shake = 0,
+  roam = false,
   className,
 }: {
   size?: "xs" | "sm" | "md" | "lg";
+  /** His face travels across his body toward the pointer while it's in his frame (the closest
+   * `data-buddy-frame`; B3.1j). The chat's big empty-state Buddy. */
+  roam?: boolean;
   working?: boolean;
   /** Dictation is on (B3.1h): he becomes the recording signal until it stops. */
   listening?: boolean;
@@ -177,6 +193,8 @@ export function LanderMark({
       moved: 0,
       turn: 1, turnV: 0, // the face's side: 1 on his right (as drawn), -1 mirrored on his left
       focus: false, // the pointer is over the Sections panel
+      lift: 0, liftV: 0, // the face raised (−) or lowered (+), in radii (roaming)
+      inFrame: false, rx: 0, ry: 0, // roaming: the pointer is in his frame, and where (px from his centre)
       // The morph, face 0 → recording signal 1, in three parts: body, eyes, outer bars.
       lb: live.current.listening ? 1 : 0, lbV: 0,
       le: live.current.listening ? 1 : 0, leV: 0,
@@ -218,6 +236,7 @@ export function LanderMark({
       const t = s.turn;
       const tiltNow = tilt * t;
       const fxNow = r + FACE.x * r * t;
+      const fyNow = fy + s.lift * r;
       // Turned away, an eye foreshortens a little (narrower looking sideways, shorter up or down).
       const nx = Math.min(1, Math.abs(s.ex) / span);
       const ny = Math.min(1, Math.abs(s.ey) / span);
@@ -244,7 +263,7 @@ export function LanderMark({
         // The eye's centre on the turned face, plus the gaze.
         const along = (side * EYE.gap * r) / 2 + toward;
         const cx = fxNow + Math.cos(tiltNow) * along + s.ex;
-        const cy = fy + Math.sin(tiltNow) * along + s.ey;
+        const cy = fyNow + Math.sin(tiltNow) * along + s.ey;
         if (!morphing) {
           // Himself: transforms only, as cheap as moving gets.
           const x = cx - seat.left - eyeW / 2;
@@ -312,7 +331,7 @@ export function LanderMark({
         // right).
         const d = MOUTH.below * r;
         const mx = fxNow - Math.sin(tiltNow) * d - (fx + m.x);
-        const my = Math.cos(tiltNow) * d - m.y;
+        const my = Math.cos(tiltNow) * d - m.y + s.lift * r;
         mouthEl.current.style.transform = `translate(${(s.ex * 0.6 + mx).toFixed(2)}px, ${(s.ey * 0.6 + my).toFixed(2)}px) rotate(${(tiltNow * 180) / Math.PI}deg) scale(1, ${open.toFixed(3)})`;
         // Shut, it's gone: a squashed path still paints a hairline.
         mouthEl.current.style.opacity = open > 0.02 ? "1" : "0";
@@ -370,16 +389,32 @@ export function LanderMark({
       s.open += (openTo - s.open) * (1 - Math.pow(1 - 0.25, steps));
       if (Math.abs(openTo - s.open) < 0.004) s.open = openTo;
       // The face's side and the morph ride critically damped springs (no overshoot).
-      const turnTo = s.focus && !reduced ? -1 : 1;
+      // Roaming in his frame, the face goes toward the pointer: its side from how far left or
+      // right it is, its height from how far up or down (B3.1j).
+      const roaming = s.inFrame && !reduced;
+      const turnTo = roaming
+        ? Math.tanh(s.rx / (ROAM.reach * r))
+        : s.focus && !reduced
+          ? -1
+          : 1;
+      const liftTo = roaming
+        ? ROAM.lift * Math.tanh(s.ry / (ROAM.reach * r))
+        : 0;
+      const turnK = roaming ? ROAM.spring : TURN_SPRING;
       const spring = (x: number, v: number, to: number, k: number) => {
         const a = k * (to - x) - 2 * Math.sqrt(k) * v;
         const nv = v + a * dt;
         return [x + nv * dt, nv] as const;
       };
-      [s.turn, s.turnV] = spring(s.turn, s.turnV, turnTo, TURN_SPRING);
+      [s.turn, s.turnV] = spring(s.turn, s.turnV, turnTo, turnK);
       if (Math.abs(turnTo - s.turn) < 0.002 && Math.abs(s.turnV) < 0.01) {
         s.turn = turnTo;
         s.turnV = 0;
+      }
+      [s.lift, s.liftV] = spring(s.lift, s.liftV, liftTo, turnK);
+      if (Math.abs(liftTo - s.lift) < 0.002 && Math.abs(s.liftV) < 0.01) {
+        s.lift = liftTo;
+        s.liftV = 0;
       }
       // The morph: each part springs to its side a beat after the last (reversed on the way back).
       const listening = live.current.listening;
@@ -442,6 +477,7 @@ export function LanderMark({
         Math.abs(wideTo - s.wide) > 0.004 ||
         Math.abs(openTo - s.open) > 0.004 ||
         s.turn !== turnTo ||
+        s.lift !== liftTo ||
         unsettled ||
         // Listening, the bars never rest.
         s.amp > 0;
@@ -456,11 +492,17 @@ export function LanderMark({
     };
     kick.current = wake;
 
-    const look = (clientX: number, clientY: number, focus = false) => {
+    const look = (
+      clientX: number,
+      clientY: number,
+      focus = false,
+      inFrame = false,
+    ) => {
       if (reduced) return;
       const now = performance.now();
-      if (focus !== s.focus) {
+      if (focus !== s.focus || inFrame !== s.inFrame) {
         s.focus = focus;
+        s.inFrame = inFrame;
         wake();
       }
       // Over the Sections panel his face is on his left; his eyes follow the pointer there as
@@ -471,6 +513,8 @@ export function LanderMark({
       }
       const px = clientX - (box.left + box.width / 2);
       const py = clientY - (box.top + box.height / 2);
+      s.rx = px;
+      s.ry = py;
       const d = Math.hypot(px, py) || 1;
       // The farther the pointer, the farther he looks, easing out toward the edge of the eye.
       const reach = span * (1 - Math.exp(-d / (REACH * r * 0.6)));
@@ -482,9 +526,22 @@ export function LanderMark({
       if (!s.glance) aim(s.dx, s.dy, now);
       wake();
     };
+    // Roaming, his frame: the pointer in it moves his face; leaving it (also into the page's
+    // frame, which keeps its own pointer moves) sends it home.
+    const home = roam ? el.closest(FRAME) : null;
     const onMove = (event: PointerEvent) => {
       const target = event.target as Element | null;
-      look(event.clientX, event.clientY, Boolean(target?.closest?.(LOOK_LEFT)));
+      look(
+        event.clientX,
+        event.clientY,
+        Boolean(target?.closest?.(LOOK_LEFT)),
+        home !== null && target instanceof Node && home.contains(target),
+      );
+    };
+    const onLeave = () => {
+      if (!s.inFrame) return;
+      s.inFrame = false;
+      wake();
     };
     const onRelayed = (event: Event) => {
       const at = (event as CustomEvent<{ x: number; y: number }>).detail;
@@ -549,12 +606,14 @@ export function LanderMark({
     draw(1, performance.now());
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener(BUDDY_POINTER, onRelayed);
+    home?.addEventListener("pointerleave", onLeave);
     blink();
     glance();
     drift();
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener(BUDDY_POINTER, onRelayed);
+      home?.removeEventListener("pointerleave", onLeave);
       window.clearTimeout(blinkTimer);
       window.clearTimeout(glanceTimer);
       window.clearTimeout(driftTimer);
@@ -563,7 +622,7 @@ export function LanderMark({
     };
     // The seats, eye size, face and mouth anchors are all worked out from r and the tilt.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [r, reduced, tilt]);
+  }, [r, reduced, tilt, roam]);
 
   return (
     <motion.span

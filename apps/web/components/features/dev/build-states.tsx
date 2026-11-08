@@ -17,7 +17,10 @@ import {
   Publications,
 } from "@/components/features/builds/publish-controls";
 import { Connections } from "@/components/features/settings/connections";
-import { StatusActions } from "@/components/features/builds/status-actions";
+import {
+  ApproveAction,
+  DeskStatusChip,
+} from "@/components/features/builds/status-actions";
 import {
   SAMPLE_DESK_COLORS,
   SAMPLE_LIVE_URL,
@@ -283,7 +286,7 @@ export function SampleDeskPanel({
   );
 }
 
-/** /dev/build-states: the header's status and Approve / Back to review (D84); changes only toast. */
+/** /dev/build-states: the status chip (by the title) and Approve (D84, D141); changes only toast. */
 export function SampleStatusActions({
   status,
   fixCount = 0,
@@ -298,7 +301,10 @@ export function SampleStatusActions({
       initial={{ ...SAMPLE_DESK, build: { ...SAMPLE_DESK.build, status } }}
       onChange={sampleChange}
     >
-      <StatusActions fixCount={fixCount} />
+      <div className="flex items-center gap-2.5">
+        <DeskStatusChip />
+        <ApproveAction fixCount={fixCount} />
+      </div>
     </DeskProvider>
   );
 }

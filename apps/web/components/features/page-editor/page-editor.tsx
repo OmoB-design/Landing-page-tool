@@ -622,7 +622,6 @@ function Editor({
           saving={saving || pending !== null}
           updating={updating}
           zoom={zoom}
-          version={desk.build.page_version}
           rewriting={desk.redraft !== null}
           sectionsOpen={drawerOpen}
           onToggleSections={toggleSections}

@@ -10,9 +10,9 @@ import type { BuildReport as Report } from "@/lib/validators/build";
 
 import { BuildPreview } from "./build-preview";
 import { BuildReport } from "./build-report";
-import { type BuildStep, BuildLog, BuildStepsCard } from "./build-steps";
+import { type BuildStep, BuildLog, StepsFrame } from "./build-steps";
 import { BuildWorkspace } from "./build-workspace";
-import { ExportButton } from "./export-button";
+import { PageMenu } from "./page-menu";
 import { PanelStack } from "./panel-section";
 
 /** Waiting in the queue before the first step starts. */
@@ -124,8 +124,9 @@ export function BuildDemo({
       <PageHeader
         icon={PagesIcon}
         title={`${build.key} · ${build.title}`}
+        tools={false}
         actions={
-          <ExportButton buildId={build.id} buildKey={build.key} ready={ready} />
+          <PageMenu buildId={build.id} buildKey={build.key} ready={ready} />
         }
       />
       <BuildWorkspace
@@ -153,9 +154,32 @@ export function BuildDemo({
         }
         panel={
           <PanelStack>
-            <BuildStepsCard
+            {/* The page's steps as the real build page draws them (B3.5d): a list while it
+                builds, the frame once the page shows (or the build failed). */}
+            <StepsFrame
+              title="Build steps"
               steps={steps}
               done={steps.filter((step) => step.state === "done").length}
+              folded={ready || failed}
+              defaultOpen={failed}
+              state={failed ? "failed" : ready ? "done" : "building"}
+              status={
+                failed
+                  ? `Failed · ${OWNED_BUILD_STEPS[phase - 1]?.label ?? ""}`
+                  : ready
+                    ? "Ready to review"
+                    : (steps.find((step) => step.state === "running")?.label ??
+                      "Starting")
+              }
+              progress={
+                ready
+                  ? 1
+                  : (finished +
+                      (steps.some((step) => step.state === "running")
+                        ? 0.5
+                        : 0)) /
+                    OWNED_BUILD_STEPS.length
+              }
             />
             {log.length > 0 ? <BuildLog messages={log} /> : null}
             {revealed && build.report ? (

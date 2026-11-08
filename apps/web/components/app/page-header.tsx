@@ -26,7 +26,12 @@ type PageHeaderProps = {
   /** A back arrow before the title, to the page this one came from (owner, 2026-11-06: a batch's
    * page back to its batch); `label` names it for screen readers and in a tooltip. */
   back?: { label: string; href: string };
-  /** Jobs and Notifications on the right; off on settings pages (owner, B6.5). */
+  /** Shown just after the title (the build page's status chip, D141). */
+  status?: ReactNode;
+  /** The title's width cap, when a page wants it shorter than TruncatedTitle's (D141). */
+  titleClassName?: string;
+  /** Jobs and Notifications on the right; off on settings pages (owner, B6.5) and the build page
+   * (D141). */
   tools?: boolean;
 };
 
@@ -41,6 +46,8 @@ export function PageHeader({
   actions,
   crumb,
   back,
+  status,
+  titleClassName,
   tools = true,
 }: PageHeaderProps) {
   return (
@@ -91,14 +98,16 @@ export function PageHeader({
             </span>
           ) : null}
           <TruncatedTitle
-            className={
+            className={cn(
               crumb
                 ? "text-type-caption-1 font-medium text-heading-01"
-                : "text-type-body-small font-medium text-heading-01"
-            }
+                : "text-type-body-small font-medium text-heading-01",
+              titleClassName,
+            )}
           >
             {title}
           </TruncatedTitle>
+          {status}
         </div>
       </div>
       {tabs ? (

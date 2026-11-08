@@ -1,7 +1,14 @@
 "use client";
 
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useId, useState } from "react";
+
 import { SkeletonText } from "@/components/app/skeletons";
-import { BuildSpinnerIcon, BuildStepIcon } from "@/components/ui/lp-icons";
+import {
+  BuildSpinnerIcon,
+  BuildStepIcon,
+  ChevronDownFigmaIcon,
+} from "@/components/ui/lp-icons";
 import { MorphText } from "@/components/ui/text-morph";
 import { buildStepsFor } from "@/lib/builds/steps";
 import type { StepDefinition } from "@/lib/jobs/steps";
@@ -11,6 +18,7 @@ import { useJob } from "@/lib/queries/jobs";
 import { cn } from "@/lib/utils";
 import type { JobDetail } from "@/lib/validators/jobs";
 
+import { BuildFigure } from "./build-figure";
 import { CollapsibleSection } from "./panel-section";
 
 export type BuildStep = {
@@ -81,6 +89,7 @@ export function BuildSteps({
   finished,
   origin = "owned",
   templateType = null,
+  status = "needs_review",
 }: {
   jobId: string | null;
   /** The build has a report, so its steps are done even before the job loads. */
@@ -89,6 +98,8 @@ export function BuildSteps({
   origin?: string;
   /** A Top 5 ranking build reads its competitors too (B2.4a). */
   templateType?: string | null;
+  /** The build's status, for the finished frame's footer ("Ready to review", B3.5d). */
+  status?: string;
 }) {
   const { data: job } = useJob(jobId);
   usePageRefresh(
@@ -106,14 +117,198 @@ export function BuildSteps({
       (event) =>
         !(event.level === "error" && event.message === job.error?.message),
     ) ?? [];
+  const done = steps.filter((step) => step.state === "done").length;
+  const failedStep = steps.find((step) => step.state === "failed");
+  const failed = job?.status === "failed" || Boolean(failedStep);
+  const running = steps.some((step) => step.state === "running");
+  const current =
+    steps.find((step) => step.state === "running") ??
+    steps.find((step) => step.state === "idle");
   return (
     <>
-      <BuildStepsCard
+      {/* While it builds, the steps as a list (the preview has the illustration); once the page
+          is built (the preview shows it) or the build failed, the frame the batch panel draws
+          (B3.5d, D140): the illustration settles into the card as the list folds away. */}
+      <StepsFrame
+        title="Build steps"
         steps={steps}
-        done={steps.filter((step) => step.state === "done").length}
+        done={done}
+        folded={finished || failed}
+        defaultOpen={failed}
+        state={failed ? "failed" : finished ? "done" : "building"}
+        status={
+          failed
+            ? failedStep
+              ? `Failed · ${failedStep.label}`
+              : "Failed"
+            : finished
+              ? (SETTLED[status] ?? "Built")
+              : (current?.label ?? "Starting")
+        }
+        progress={
+          finished
+            ? 1
+            : steps.length
+              ? (done + (running ? 0.5 : 0)) / steps.length
+              : 0
+        }
       />
       {events.length > 0 ? <BuildLog messages={events} /> : null}
     </>
+  );
+}
+
+/** What a finished frame's footer says: the page's status, as the Pages list says it. */
+export const SETTLED: Record<string, string> = {
+  needs_review: "Ready to review",
+  approved: "Approved",
+  published: "Published",
+};
+
+export type FrameState = "building" | "waiting" | "done" | "failed";
+
+/**
+ * A build's steps as a card (B3.5c, B3.5d; D132, D140): the build steps card's header (the title
+ * and the count chip, "01/13" rolling to "13/13 completed"), then either the steps as a list
+ * (`folded` false: a build page while it builds) or, folded, the build illustration following the
+ * build (still while it waits or once it's done), a footer step card (the spinner, a tick when
+ * built, the red mark when it failed; the step it's on in words that morph) and a chevron that
+ * unfolds every step (open by itself when `defaultOpen`, as for a failed build). Going from the
+ * list to the frame, the list folds away as the illustration and the footer unfold (0.42 s on the
+ * drawer's curve).
+ */
+export function StepsFrame({
+  title,
+  label,
+  heading = "h2",
+  steps,
+  done,
+  folded,
+  state,
+  status,
+  progress,
+  defaultOpen = false,
+}: {
+  title: string;
+  /** The card's name for screen readers, when it isn't the title (a batch: key · template). */
+  label?: string;
+  heading?: "h2" | "h3";
+  steps: BuildStep[];
+  done: number;
+  folded: boolean;
+  state: FrameState;
+  status: string;
+  progress: number;
+  defaultOpen?: boolean;
+}) {
+  const reduced = useReducedMotion() ?? false;
+  const id = useId();
+  // The chevron decides once pressed; until then, open when asked (a failed build).
+  const [chosen, setChosen] = useState<boolean | null>(null);
+  const open = chosen ?? defaultOpen;
+  const showList = !folded || open;
+  const Heading = heading;
+  const fold = {
+    initial: { height: 0, opacity: 0 },
+    animate: { height: "auto", opacity: 1 },
+    exit: { height: 0, opacity: 0 },
+    // The drawer's curve (softer than the app's strong ease-out): a whole list folding away
+    // reads as one change rather than a snap (traced: 530 → 196 px).
+    transition: reduced
+      ? { duration: 0 }
+      : { duration: 0.42, ease: [0.32, 0.72, 0, 1] as const },
+  };
+  return (
+    <section
+      aria-label={label}
+      aria-labelledby={label ? undefined : `${id}-title`}
+      className="stroke-inside-thin flex flex-col overflow-hidden rounded-lg bg-foreground-01"
+    >
+      <div className="flex items-center gap-1.5 bg-surface-primary px-2.5 py-2 divider-b-thin">
+        <Heading
+          id={`${id}-title`}
+          className="min-w-0 flex-1 truncate text-type-body-small leading-5 font-medium text-heading-02"
+        >
+          {title}
+        </Heading>
+        <StepCount done={done} total={steps.length} />
+      </div>
+      <AnimatePresence initial={false}>
+        {folded ? (
+          <motion.div key="figure" {...fold} className="overflow-hidden">
+            <div className="mt-0.5 flex justify-center bg-foreground-02 py-4">
+              <BuildFigure progress={progress} still={state !== "building"} />
+            </div>
+          </motion.div>
+        ) : null}
+        {folded ? (
+          <motion.div key="footer" {...fold} className="overflow-hidden">
+            <div className="mt-0.5 flex items-center gap-1.5 step-card p-2">
+              {state === "building" ? (
+                <BuildSpinnerIcon className="size-3.5 shrink-0 animate-step-spin text-icon-nav-active motion-reduce:animate-step-spin-slow" />
+              ) : (
+                <BuildStepIcon
+                  state={
+                    state === "failed"
+                      ? "failed"
+                      : state === "done"
+                        ? "done"
+                        : "idle"
+                  }
+                  className={cn(
+                    "size-3.5 shrink-0",
+                    state === "failed"
+                      ? "text-step-failed"
+                      : state === "done"
+                        ? "text-highlight-blue-500"
+                        : "text-icon-system",
+                  )}
+                  dotClassName={
+                    state === "failed"
+                      ? "fill-step-failed-dot"
+                      : state === "done"
+                        ? "fill-surface-primary"
+                        : "fill-foreground-01"
+                  }
+                />
+              )}
+              <span
+                className={cn(
+                  "min-w-0 flex-1 overflow-hidden text-type-body-small leading-5 font-medium whitespace-nowrap",
+                  state === "building" || state === "done"
+                    ? "text-heading-02"
+                    : "text-heading-06",
+                )}
+              >
+                <MorphText>{status}</MorphText>
+              </span>
+              <button
+                type="button"
+                aria-expanded={open}
+                aria-controls={`${id}-steps`}
+                aria-label={open ? "Hide the steps" : "Show the steps"}
+                onClick={() => setChosen(!open)}
+                className="group flex size-6 shrink-0 items-center justify-center rounded-sm outline-none hover:bg-foreground-02 focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ChevronDownFigmaIcon className="size-3.5 text-icon-explainer transition-transform duration-200 ease-out group-aria-expanded:rotate-180 motion-reduce:transition-none" />
+              </button>
+            </div>
+          </motion.div>
+        ) : null}
+        {showList ? (
+          <motion.div
+            key="steps"
+            id={`${id}-steps`}
+            {...fold}
+            className="overflow-hidden"
+          >
+            <div className="pt-0.5">
+              <BuildStepList steps={steps} />
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </section>
   );
 }
 

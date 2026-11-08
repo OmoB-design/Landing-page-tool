@@ -17,7 +17,7 @@ import {
   BuildStepsCard,
 } from "@/components/features/builds/build-steps";
 import { BuildWorkspace } from "@/components/features/builds/build-workspace";
-import { ExportButtonView } from "@/components/features/builds/export-button";
+import { PageMenu } from "@/components/features/builds/page-menu";
 import {
   ConflictToastButton,
   ExportErrorToastButton,
@@ -31,7 +31,9 @@ import {
   SampleUnwrittenReminder,
 } from "@/components/features/dev/build-states";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { AlertIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/spinner";
 import { getSessionContext } from "@/lib/auth/session";
 import { OWNED_BUILD_STEPS } from "@/lib/builds/steps";
 import { STATUS_GROUPS } from "@/lib/pages/list";
@@ -178,7 +180,7 @@ export default function BuildStatesPage() {
             "The steps after it stay at rest, and the chip shows how far it got (3/13).",
             "Designed (Build/Fail): the well shows a dashed card, “This build failed.” and the step that failed; Retry build sits beside Open in new tab (disabled).",
             "Retry build queues the build again; it picks up after the last step that finished, so only the rest runs (and costs) again.",
-            "Export is unavailable (greyed, with a tooltip).",
+            "Export, in the header's ⋯ menu, is unavailable (greyed).",
           ]}
           design={[
             "The failed step and how the reason reads",
@@ -217,29 +219,37 @@ export default function BuildStatesPage() {
         <State
           number={3}
           title="Exporting"
-          when="Clicking Export in the header on a finished page. It runs an export (images and fonts put inside one file, then saved), which takes a few seconds; then the browser downloads <KEY>.html. If the export fails, a toast says why."
+          when="Choosing Export in the header's ⋯ menu on a finished page (D141). It runs an export (images and fonts put inside one file, then saved), which takes a few seconds; then the browser downloads <KEY>.html. If the export fails, a toast says why."
           shows={[
-            "Ready: the button as drawn.",
-            "Before the page exists: greyed out; hovering says “Available when the build finishes”.",
-            "Exporting: a spinner in place of the icon and “Exporting…”, not clickable.",
+            "Ready: the ⋯ menu with Export, Copy key and Move to Trash (and Back to review once a page is approved).",
+            "Before the page exists: Export greyed out in the menu.",
+            "Exporting: a spinner in place of the ⋯, and “Exporting…” in the menu, not clickable.",
             "Failed: a red toast at the bottom with the reason.",
             "Done: nothing on the page; the file appears in the browser’s downloads.",
           ]}
           design={[
-            "The exporting state of the button",
+            "The exporting state of the ⋯",
             "A “done” moment (e.g. a tick, or “Downloaded”), if you want one",
             "The error toast (toasts are still the stock style)",
           ]}
         >
           <div className="flex flex-wrap items-center gap-8">
             <Labeled label="Ready">
-              <ExportButtonView ready busy={false} />
+              <PageMenu buildId="sample" buildKey="LUM-1" ready />
             </Labeled>
             <Labeled label="Before the page exists">
-              <ExportButtonView ready={false} busy={false} />
+              <PageMenu buildId="sample" buildKey="LUM-1" ready={false} />
             </Labeled>
             <Labeled label="Exporting">
-              <ExportButtonView ready busy />
+              <Button
+                type="button"
+                variant="outline"
+                size="compact"
+                aria-label="More (exporting)"
+                className="w-6.5 px-0"
+              >
+                <Spinner className="size-3.5" label="Exporting" />
+              </Button>
             </Labeled>
             <Labeled label="Failed">
               <ExportErrorToastButton />
@@ -355,9 +365,9 @@ export default function BuildStatesPage() {
           title="The page’s status and Approve"
           when="Every page has a status: Building (queued or building), Needs review (finished), Approved, Published or Failed. Pages groups by it. B1.4a (the review desk, D84) puts it back in the header with Approve; B1.5 adds Publish (Approved → Published, after the publish check)."
           shows={[
-            "Designed (Figma Review desk — editing copy): Approve (the blue button), then the status chip (the glyph alone on a phone), a rule, Export, a rule.",
+            "The status chip sits by the title (the glyph alone on a phone); the next step is the header's one filled button, black in light and white in dark (D141): Approve, then Publish.",
             "Needs review: Approve. With claims marked Fix it asks first (“Approve anyway”); publishing is where they block.",
-            "Approved: Back to review (outline). Any change to the page sends it back to Needs review on its own.",
+            "Approved: Publish; Back to review is in the ⋯ menu. Any change to the page sends it back to Needs review on its own.",
           ]}
           design={[
             "Done: the status chip, Approve and Back to review",

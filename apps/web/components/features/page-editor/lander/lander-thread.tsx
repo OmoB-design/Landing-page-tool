@@ -283,7 +283,8 @@ function Empty({
         transition={arrive}
         className="flex flex-col items-center gap-3 text-center"
       >
-        <LanderMark size="lg" />
+        {/* His face roams toward the pointer anywhere in the chat panel (B3.1j). */}
+        <LanderMark size="lg" roam />
         <h2 className="text-type-h5 font-medium tracking-tight text-heading-01">
           What should we change?
         </h2>

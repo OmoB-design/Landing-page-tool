@@ -15,7 +15,7 @@ import type { PublishingState } from "@/lib/validators/publishing";
 import { DeskProvider } from "./desk-context";
 import { PublishProvider } from "./publish-context";
 import { LiveButton, PublishButton, PublishedModal } from "./publish-controls";
-import { StatusActions } from "./status-actions";
+import { ApproveAction, DeskStatusChip } from "./status-actions";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -99,7 +99,8 @@ function renderPublish(
             template: "Advertorial",
           }}
         >
-          <StatusActions fixCount={0} />
+          <DeskStatusChip />
+          <ApproveAction fixCount={0} />
           <PublishButton />
           <LiveButton />
           <PublishedModal />
@@ -454,17 +455,47 @@ describe("Publish", () => {
     expect(onUnpublish).toHaveBeenCalledWith("shopify_editable");
   });
 
-  it("shows Live, with its pulsing dot, instead of the Published chip", () => {
+  it("shows Live, with its pulsing dot, and no Publish while the live page is the latest (D141)", () => {
     renderPublish(
       { ...BASE, status: "published", live: LIVE, publications: [LIVE] },
       vi.fn(),
       "published",
     );
-    expect(screen.queryByText("Published")).toBeNull();
+    // The status chip (by the title) still says where the review stands.
+    expect(screen.getByText("Published")).toBeTruthy();
     const live = screen.getByRole("button", { name: "Live" });
     expect(
       live.querySelector(".motion-safe\\:animate-live-pulse"),
     ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Publish/ })).toBeNull();
+  });
+
+  it("offers Publish again beside Live when the page changed since (D141)", () => {
+    renderPublish(
+      {
+        ...BASE,
+        status: "published",
+        page_version: 4,
+        live: LIVE,
+        publications: [LIVE],
+      },
+      vi.fn(),
+      "published",
+    );
+    expect(screen.getByRole("button", { name: "Publish again" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Live" })).toBeTruthy();
+  });
+
+  it("makes the next step the one filled (ink) button (D141)", () => {
+    renderPublish(BASE, vi.fn(), "needs_review");
+    expect(screen.getByRole("button", { name: "Approve" }).className).toContain(
+      "bg-button-ink",
+    );
+    cleanup();
+    renderPublish(BASE);
+    expect(screen.getByRole("button", { name: "Publish" }).className).toContain(
+      "bg-button-ink",
+    );
   });
 
   it("keeps the status chip while the page isn't live", () => {

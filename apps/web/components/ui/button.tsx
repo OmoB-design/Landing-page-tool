@@ -15,6 +15,8 @@ const buttonVariants = cva(
         // border: Chrome draws a 0.5 px border a whole pixel wide.
         outline:
           "border-0 bg-surface-primary text-body shadow-light ring-half ring-stroke-strong hover:bg-foreground-02 aria-expanded:bg-foreground-02",
+        // The ink button (D141): black in light, white in dark; a header's one filled button.
+        ink: "border-0 bg-button-ink text-button-ink-text shadow-light hover:bg-button-ink-hover aria-expanded:bg-button-ink-hover",
         secondary:
           "bg-foreground-02 text-body hover:bg-foreground-03 aria-expanded:bg-foreground-03",
         ghost:

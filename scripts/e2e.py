@@ -216,13 +216,16 @@ def approve(page: Page) -> None:
     anyway = page.get_by_role("button", name="Approve anyway")
     if anyway.count():
         anyway.click()
-    expect(page.get_by_role("button", name="Back to review")).to_be_visible(timeout=60_000)
+    # Approved: the status chip says so and Publish is the next step (D141).
+    expect(page.get_by_role("button", name="Publish")).to_be_visible(timeout=60_000)
     step("Approved the page")
 
 
 def export(page: Page, key: str) -> None:
     with page.expect_download(timeout=300_000) as download:
-        page.get_by_role("button", name="Export").click()
+        # Export is in the header's ⋯ menu (D141).
+        page.get_by_role("button", name="More", exact=True).click()
+        page.get_by_role("menuitem", name="Export").click()
     path = download.value.path()
     html = Path(path).read_text(encoding="utf-8") if path else ""
     assert download.value.suggested_filename == f"{key}.html", download.value.suggested_filename
