@@ -10,8 +10,10 @@ import { redirect } from "next/navigation";
 import { authErrorMessage } from "@/lib/auth/errors";
 import { publicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { AVATAR_BUCKET, avatarUrl } from "@/lib/account/avatar";
 import {
   type AccountResult,
+  type AvatarResult,
   displayNameSchema,
   type PasswordChange,
   passwordChangeSchema,
@@ -138,4 +140,78 @@ function failure(error: unknown): AccountResult {
     default:
       return { ok: false, error: authErrorMessage(error, "sign-in") };
   }
+}
+
+const PHOTO_TYPES: Record<string, string> = {
+  "image/webp": "webp",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+};
+const PHOTO_FAILED = "Your photo couldn’t be saved. Try again.";
+
+/**
+ * Your profile photo (B6.7, D139): the square the browser made (`photo`, a few tens of KB) goes
+ * into your folder of the avatars bucket under a new name, your profile points at it, and the
+ * photo it replaces is deleted. Storage and the profile only allow your own folder.
+ */
+export async function saveAvatar(form: FormData): Promise<AvatarResult> {
+  const photo = form.get("photo");
+  if (!(photo instanceof Blob) || photo.size === 0)
+    return { ok: false, error: "Choose a picture." };
+  const ext = PHOTO_TYPES[photo.type];
+  if (!ext || photo.size > 512 * 1024)
+    return { ok: false, error: "That picture couldn’t be used. Try another." };
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims.sub;
+  if (!userId) redirect("/sign-in");
+
+  const path = `${userId}/${crypto.randomUUID().replaceAll("-", "")}.${ext}`;
+  const bucket = supabase.storage.from(AVATAR_BUCKET);
+  const { error: uploadError } = await bucket.upload(path, photo, {
+    contentType: photo.type,
+    cacheControl: "31536000",
+    upsert: false,
+  });
+  if (uploadError) return { ok: false, error: PHOTO_FAILED };
+  const { data: before } = await supabase
+    .from("profiles")
+    .select("avatar_url")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_url: path })
+    .eq("user_id", userId);
+  if (error) {
+    await bucket.remove([path]);
+    return { ok: false, error: PHOTO_FAILED };
+  }
+  if (before?.avatar_url && before.avatar_url !== path)
+    await bucket.remove([before.avatar_url]);
+  refresh();
+  return { ok: true, url: avatarUrl(path) };
+}
+
+/** Removes your profile photo: the profile forgets it and the file is deleted. */
+export async function removeAvatar(): Promise<AvatarResult> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims.sub;
+  if (!userId) redirect("/sign-in");
+  const { data: before } = await supabase
+    .from("profiles")
+    .select("avatar_url")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_url: null })
+    .eq("user_id", userId);
+  if (error)
+    return { ok: false, error: "Your photo couldn’t be removed. Try again." };
+  if (before?.avatar_url)
+    await supabase.storage.from(AVATAR_BUCKET).remove([before.avatar_url]);
+  refresh();
+  return { ok: true, url: null };
 }

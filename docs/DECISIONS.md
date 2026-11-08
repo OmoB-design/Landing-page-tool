@@ -665,6 +665,10 @@ The state-machine audit found six hand-written copies of "follow a job" that rea
 *Not done:* trimming the shared JavaScript (a larger refactor; no page blocks the browser while loading).
 *Why:* the owner felt the app lag; Buddy's regression (fixed in B3.1i) and Home's scenes were the measurable causes.
 
+**D139 — Profile photos (B6.7).** Locked (owner, 2026-11-08: "I should be able to change my avatar from the Account page"; the migration push permitted).
+*As built (migration `avatars`):* a public Storage bucket `avatars` (512 KB a file; WebP, JPEG, PNG), a folder per person (`<user id>/<random>.webp`); people read, write and delete only in their own folder. `profiles.avatar_url` holds the photo's path; a person may set it only to a path in their own folder (`^<uid>/[A-Za-z0-9_-]+\.(webp|jpe?g|png)$`), so it can't point at an outside address or at someone else's photo. On Account the 64 px circle opens your files (hover: darkened, "Add" or "Change"); JPG, PNG, WebP or GIF up to 5 MB; the browser takes the middle square, shrinks it to 256 px and makes WebP (JPEG where it can't); a server action (`saveAvatar`) uploads it under a new name, points the profile at it and deletes the photo it replaces; Remove photo (`removeAvatar`) clears it and deletes the file. `PersonMark` shows the photo (`src`) wherever it showed the initial: Account, the sidebar's profile card and the account menu, Home, and Members (the worker's members list carries each `avatar_url`). The session carries `avatarUrl`.
+*Why:* the owner's request; a public bucket with random names is how avatars are usually shared with a team, without signing every address.
+
 ## Open (ask the owner when the related build starts)
 
 - O1 — Product name and logo (placeholder "LP Platform" until then).

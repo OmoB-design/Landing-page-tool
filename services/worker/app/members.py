@@ -107,7 +107,7 @@ def _state(conn: Any, org_id: UUID, user_id: UUID) -> MembersState:
         raise MembersForbiddenError
     rows = conn.execute(
         """
-        select m.user_id, m.role::text as role, m.created_at, u.email,
+        select m.user_id, m.role::text as role, m.created_at, u.email, p.avatar_url,
                coalesce(nullif(p.display_name, ''), split_part(u.email, '@', 1)) as name
         from org_members m
         join auth.users u on u.id = m.user_id
@@ -125,6 +125,7 @@ def _state(conn: Any, org_id: UUID, user_id: UUID) -> MembersState:
                 role=r["role"],
                 joined_at=r["created_at"],
                 you=r["user_id"] == user_id,
+                avatar_url=r["avatar_url"],
             )
             for r in rows
         ),

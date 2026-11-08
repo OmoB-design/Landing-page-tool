@@ -21,7 +21,14 @@ import {
  * step in 13 px below. (A done state is to come from the owner's design.) With no name yet (the
  * session is loading) the mark and the name shimmer in place; the cards are already there.
  */
-export function Welcome({ name }: { name: string | null }) {
+export function Welcome({
+  name,
+  avatarUrl = null,
+}: {
+  name: string | null;
+  /** The profile photo (B6.7), or null for the initial. */
+  avatarUrl?: string | null;
+}) {
   const first = name ? name.trim().split(/\s+/)[0] || name : null;
   return (
     <section
@@ -33,6 +40,7 @@ export function Welcome({ name }: { name: string | null }) {
           {name ? (
             <PersonMark
               name={name}
+              src={avatarUrl}
               className="size-10 font-sans text-type-h5"
             />
           ) : (

@@ -233,3 +233,15 @@ def test_leaving_or_removal_rehomes_the_person(
     assert roles(profile["default_org_id"]) == {solo.id: "owner"}
     # Someone outside the workspace can't see or change it.
     assert client.get(f"/orgs/{owner.org_id}/members", headers=bearer(solo)).status_code == 403
+
+
+def test_members_carry_their_photos(client: TestClient, people: list[DbUser]) -> None:
+    """B6.7: each member's profile photo path comes with them, for Members to show."""
+    person = sign_up(people)
+    with transaction() as conn:
+        conn.execute(
+            "update profiles set avatar_url = %s where user_id = %s",
+            (f"{person.id}/abc123.webp", person.id),
+        )
+    seen = client.get(f"/orgs/{person.org_id}/members", headers=bearer(person)).json()
+    assert seen["members"][0]["avatar_url"] == f"{person.id}/abc123.webp"

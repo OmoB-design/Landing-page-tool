@@ -17,6 +17,8 @@ class Member(BaseModel):
     joined_at: datetime
     # The person asking.
     you: bool
+    # Their profile photo's path in the avatars bucket (B6.7), if they have one.
+    avatar_url: str | None = None
 
 
 class Invite(BaseModel):

@@ -53,6 +53,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { avatarUrl } from "@/lib/account/avatar";
 import { apiFetch } from "@/lib/api/client";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
@@ -519,6 +520,7 @@ function MemberRow({
         <div className="flex min-w-0 items-center gap-2.5">
           <PersonMark
             name={member.name}
+            src={avatarUrl(member.avatar_url)}
             className="size-6 font-sans text-type-caption-1"
           />
           <div className="min-w-0">

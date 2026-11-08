@@ -169,6 +169,17 @@ describe("Settings → Members (B6.1, B6.3)", () => {
     ).toBeTruthy();
   });
 
+  it("shows each person's photo when they have one (B6.7)", () => {
+    renderMembers({
+      ...OWNER_VIEW,
+      members: [{ ...ADA, avatar_url: "u-ada/me.webp" }, SAM],
+    });
+    const photo = document.querySelector<HTMLImageElement>("tbody img");
+    expect(photo?.src).toContain(
+      "/storage/v1/object/public/avatars/u-ada/me.webp",
+    );
+  });
+
   it("searches and filters the table", () => {
     Element.prototype.scrollIntoView ??= () => {};
     renderMembers(OWNER_VIEW);

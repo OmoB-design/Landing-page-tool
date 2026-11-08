@@ -55,10 +55,13 @@ const ITEM =
 export function UserMenu({
   name,
   email,
+  avatarUrl = null,
   setup,
 }: {
   name: string;
   email: string;
+  /** The profile photo (B6.7), or null for the initial. */
+  avatarUrl?: string | null;
   setup: UserMenuSetup;
 }) {
   const router = useRouter();
@@ -80,7 +83,11 @@ export function UserMenu({
             aria-hidden
             className="rail-gone card-layer bg-surface-primary rail-fade edge group-hover:edge-strong group-aria-expanded:edge-strong"
           />
-          <PersonMark name={name} className="relative rail-avatar" />
+          <PersonMark
+            name={name}
+            src={avatarUrl}
+            className="relative rail-avatar"
+          />
           <span className="relative flex min-w-0 flex-1 rail-label items-center gap-2.5 overflow-hidden">
             <span className="flex min-w-0 flex-1 flex-col font-medium">
               <span className="truncate text-type-caption-1 text-heading-01">
@@ -102,7 +109,7 @@ export function UserMenu({
         className="flex w-menu-account flex-col gap-3 rounded-md bg-surface-primary px-1.5 pt-1.5 pb-3.5 shadow-float edge-hairline"
       >
         <DropdownMenuLabel className="flex items-center gap-2.5 p-0 font-medium">
-          <PersonMark name={name} />
+          <PersonMark name={name} src={avatarUrl} />
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-type-caption-1 text-heading-01">
               {name}

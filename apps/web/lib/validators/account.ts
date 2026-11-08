@@ -31,3 +31,7 @@ export type PasswordChange = z.infer<typeof passwordChangeSchema>;
 export type AccountResult =
   | { ok: true }
   | { ok: false; error: string; field?: "name" | "current" | "next" };
+
+/** A profile photo saved or removed (B6.7): its new address, or null once removed. */
+export type AvatarResult =
+  { ok: true; url: string | null } | { ok: false; error: string };

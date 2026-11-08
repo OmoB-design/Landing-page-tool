@@ -26,6 +26,8 @@ export const memberSchema = z.object({
   role: roleSchema,
   joined_at: z.string(),
   you: z.boolean(),
+  /** Their profile photo's path in the avatars bucket (B6.7). */
+  avatar_url: z.string().nullish(),
 });
 export type Member = z.infer<typeof memberSchema>;
 

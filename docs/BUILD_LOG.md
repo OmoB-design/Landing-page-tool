@@ -1560,3 +1560,20 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** B6.7 profile photo, then B3.5d the build page's steps frame.
+
+
+### B6.7 — Profile photo
+- **Status:** complete (owner: "commit and push, and then start next build", 2026-11-08; the migration push permitted earlier; committed and pushed, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **On Account:** click the circle to add a photo (JPG, PNG, WebP or GIF, up to 5 MB); hover shows "Add", or "Change" once there is one; Remove photo puts the initial back.
+  - **In the browser** the picture's middle square is shrunk to 256 px WebP (a few KB) before it's sent.
+  - **Shown** on Account, the sidebar's profile card and account menu, Home, and Members.
+  - **Stored** in your own folder of a new public `avatars` bucket; the photo it replaces is deleted; your profile can point only at a photo in your folder.
+- **Key files:** `supabase/migrations/20261108150355_avatars.sql` (pushed), `supabase/tests/database/avatars.test.sql` (new, 9 checks), `supabase/tests/database/profile_writes.test.sql`; web `lib/account/avatar.ts` (new), `lib/account/actions.ts` (`saveAvatar`, `removeAvatar`), `lib/auth/session.ts`, `lib/validators/{account,members}.ts`, `components/app/mark.tsx` (`PersonMark src`), `components/app/{user-menu,sidebar}.tsx`, `components/features/home/welcome.tsx`, `app/(app)/home/page.tsx`, `components/features/settings/{account,members}.tsx` (+ tests), `app/(app)/settings/account/page.tsx`; worker `app/members.py`, `app/models/members.py`, `tests/test_members.py`; docs D139, MILESTONES.
+- **Schema changes:** the `avatars` bucket and its policies; `profiles.avatar_url` writable by its owner (own folder only). **New dependencies:** none.
+- **Decisions:** D139 locked.
+- **Deviations from the plan:** none.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B3.5d the build page's steps frame.

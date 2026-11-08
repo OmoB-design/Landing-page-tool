@@ -33,5 +33,11 @@ export default function AccountPage() {
 
 async function Account() {
   const { user } = await getSessionContext();
-  return <AccountSettings name={user.displayName} email={user.email} />;
+  return (
+    <AccountSettings
+      name={user.displayName}
+      email={user.email}
+      avatarUrl={user.avatarUrl}
+    />
+  );
 }

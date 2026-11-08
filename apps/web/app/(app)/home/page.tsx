@@ -24,5 +24,5 @@ export default function HomePage() {
 
 async function HomeContent() {
   const { user } = await getSessionContext();
-  return <Welcome name={user.displayName} />;
+  return <Welcome name={user.displayName} avatarUrl={user.avatarUrl} />;
 }

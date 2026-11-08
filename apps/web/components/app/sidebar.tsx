@@ -65,6 +65,7 @@ export async function SidebarNav() {
             <UserMenu
               name={user.displayName}
               email={user.email}
+              avatarUrl={user.avatarUrl}
               setup={{
                 done: setup.done,
                 total: setup.total,

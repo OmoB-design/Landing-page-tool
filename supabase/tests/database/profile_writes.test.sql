@@ -36,7 +36,7 @@ select throws_ok(
   '42501', null, 'but not one she doesn''t belong to');
 select throws_ok(
   $$ update profiles set avatar_url = 'https://example.test/x.png' where user_id = '00000000-0000-4000-8000-0000000000b1' $$,
-  '42501', null, 'Jo cannot change other columns directly');
+  '42501', null, 'Jo cannot point her photo at an outside address');
 select throws_ok(
   $$ delete from profiles where user_id = '00000000-0000-4000-8000-0000000000b1' $$,
   '42501', null, 'Jo cannot delete her profile');

@@ -58,14 +58,31 @@ export function BrandNavMark({ name }: { name: string }) {
   );
 }
 
-/** A round avatar with a person's initial (profile card and account menu: 30 px; Home: larger). */
+/** A round avatar with a person's initial (profile card and account menu: 30 px; Home: larger),
+ * or their profile photo when they have one (`src`, B6.7). */
 export function PersonMark({
   name,
+  src,
   className,
 }: {
   name: string;
+  src?: string | null;
   className?: string;
 }) {
+  if (src)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- a 256 px photo from Storage, already small
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        draggable={false}
+        className={cn(
+          "size-7.5 shrink-0 rounded-full bg-foreground-02 object-cover",
+          className,
+        )}
+      />
+    );
   return (
     <span
       aria-hidden

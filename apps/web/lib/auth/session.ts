@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { cache } from "react";
 
+import { avatarUrl } from "@/lib/account/avatar";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 
@@ -12,7 +13,13 @@ export type SessionOrg = {
 };
 
 export type SessionContext = {
-  user: { id: string; email: string; displayName: string };
+  /** `avatarUrl`: the profile photo's address (B6.7), or null for the initial. */
+  user: {
+    id: string;
+    email: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
   orgs: SessionOrg[];
   /** The org the user is working in: profiles.default_org_id, or their first org. */
   currentOrg: SessionOrg;
@@ -25,7 +32,7 @@ export async function loadMembership(supabase: ServerClient, userId: string) {
   const [profileResult, membershipsResult] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, default_org_id")
+      .select("display_name, default_org_id, avatar_url")
       .eq("user_id", userId)
       .maybeSingle(),
     supabase
@@ -55,6 +62,7 @@ export async function loadMembership(supabase: ServerClient, userId: string) {
     throw new Error("Your account does not belong to any organisation.");
   return {
     displayName: profileResult.data?.display_name ?? null,
+    avatarPath: profileResult.data?.avatar_url ?? null,
     orgs,
     currentOrg,
   };
@@ -73,13 +81,18 @@ export const getSessionContext = cache(async (): Promise<SessionContext> => {
   const claims = data?.claims;
   if (!claims) redirect("/sign-in");
 
-  const { displayName, orgs, currentOrg } = await loadMembership(
+  const { displayName, avatarPath, orgs, currentOrg } = await loadMembership(
     supabase,
     claims.sub,
   );
   const email = claims.email ?? "";
   return {
-    user: { id: claims.sub, email, displayName: displayName ?? email },
+    user: {
+      id: claims.sub,
+      email,
+      displayName: displayName ?? email,
+      avatarUrl: avatarUrl(avatarPath),
+    },
     orgs,
     currentOrg,
   };

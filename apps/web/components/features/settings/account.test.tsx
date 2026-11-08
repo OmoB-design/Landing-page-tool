@@ -11,7 +11,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { setThemePreference } from "@/components/app/theme-preference";
 import { toast } from "@/components/app/toaster";
-import { changePassword, saveDisplayName } from "@/lib/account/actions";
+import {
+  changePassword,
+  removeAvatar,
+  saveAvatar,
+  saveDisplayName,
+} from "@/lib/account/actions";
 
 import { AccountSettings } from "./account";
 
@@ -21,6 +26,16 @@ vi.mock("@/components/app/toaster", () => ({
 vi.mock("@/lib/account/actions", () => ({
   saveDisplayName: vi.fn(async () => ({ ok: true })),
   changePassword: vi.fn(async () => ({ ok: true })),
+  saveAvatar: vi.fn(async () => ({
+    ok: true,
+    url: "https://example.test/avatars/u/new.webp",
+  })),
+  removeAvatar: vi.fn(async () => ({ ok: true, url: null })),
+}));
+// jsdom draws no pictures: the square photo is a stand-in.
+vi.mock("@/lib/account/avatar", async (actual) => ({
+  ...(await actual<typeof import("@/lib/account/avatar")>()),
+  squarePhoto: vi.fn(async () => new Blob(["x"], { type: "image/webp" })),
 }));
 vi.mock("@/components/app/theme-preference", () => ({
   useThemePreference: () => "system",
@@ -184,5 +199,43 @@ describe("Settings → Account (B6.2, B6.3)", () => {
     }
     fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
     expect(setThemePreference).toHaveBeenCalledWith("dark");
+  });
+
+  it("saves a photo chosen from your files, and removes it (B6.7)", async () => {
+    renderAccount();
+    const picker =
+      document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    expect(screen.getByRole("button", { name: "Add a photo" })).toBeTruthy();
+    // Too big, or not a picture: told, nothing sent.
+    fireEvent.change(picker, {
+      target: {
+        files: [new File(["x"], "notes.pdf", { type: "application/pdf" })],
+      },
+    });
+    expect(
+      await screen.findByText("Choose a JPG, PNG, WebP or GIF."),
+    ).toBeTruthy();
+    expect(saveAvatar).not.toHaveBeenCalled();
+
+    fireEvent.change(picker, {
+      target: { files: [new File(["x"], "me.png", { type: "image/png" })] },
+    });
+    await waitFor(() => expect(saveAvatar).toHaveBeenCalledTimes(1));
+    const sent = vi.mocked(saveAvatar).mock.calls[0]![0];
+    expect((sent.get("photo") as Blob).type).toBe("image/webp");
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith("Photo saved"),
+    );
+    expect(
+      document.querySelector(
+        'img[src="https://example.test/avatars/u/new.webp"]',
+      ),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove photo" }));
+    await waitFor(() => expect(removeAvatar).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Add a photo" })).toBeTruthy(),
+    );
   });
 });

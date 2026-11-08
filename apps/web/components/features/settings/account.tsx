@@ -34,7 +34,17 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { changePassword, saveDisplayName } from "@/lib/account/actions";
+import {
+  changePassword,
+  removeAvatar,
+  saveAvatar,
+  saveDisplayName,
+} from "@/lib/account/actions";
+import {
+  AVATAR_MAX_BYTES,
+  AVATAR_TYPES,
+  squarePhoto,
+} from "@/lib/account/avatar";
 import type { ThemePreference } from "@/lib/preferences";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
@@ -67,13 +77,16 @@ const THEMES: { value: ThemePreference; label: string }[] = [
 export function AccountSettings({
   name,
   email,
+  avatarUrl = null,
 }: {
   name: string;
   email: string;
+  /** The profile photo's address (B6.7), or null for the initial. */
+  avatarUrl?: string | null;
 }) {
   return (
     <SettingsPage title={TITLE} description={DESCRIPTION}>
-      <ProfileSection name={name} email={email} />
+      <ProfileSection name={name} email={email} avatarUrl={avatarUrl} />
       <ThemeSection />
       <SettingsDivider />
       <PasswordSection email={email} />
@@ -85,7 +98,15 @@ export function AccountSettings({
  * Your initial, name and email, labels over full-width fields (Quality's Profile). The name saves
  * when you leave the field or press Enter; Escape puts it back.
  */
-function ProfileSection({ name, email }: { name: string; email: string }) {
+function ProfileSection({
+  name,
+  email,
+  avatarUrl,
+}: {
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+}) {
   const queryClient = useQueryClient();
   const ids = { name: useId(), email: useId(), error: useId() };
   const [saved, setSaved] = useState(name);
@@ -141,7 +162,7 @@ function ProfileSection({ name, email }: { name: string; email: string }) {
   };
   return (
     <section aria-label="Profile" className="flex flex-col gap-6">
-      <PersonMark name={saved} className="size-16 font-sans text-type-h4" />
+      <PhotoField name={saved} initial={avatarUrl} />
       <Field data-invalid={error ? true : undefined}>
         <FieldLabel htmlFor={ids.name}>Name</FieldLabel>
         <Input
@@ -183,6 +204,137 @@ function ProfileSection({ name, email }: { name: string; email: string }) {
         </FieldDescription>
       </Field>
     </section>
+  );
+}
+
+const PHOTO_HINT = "JPG, PNG, WebP or GIF, up to 5 MB.";
+
+/**
+ * Your photo (B6.7, D139): the 64 px circle opens your files (on hover it darkens and says Add, or
+ * Change once there's a photo);
+ * the picture's middle square is shrunk to 256 px in the browser and saved; Remove photo puts the
+ * initial back. The sidebar, the account menu, Home and Members show it.
+ */
+function PhotoField({
+  name,
+  initial,
+}: {
+  name: string;
+  initial: string | null;
+}) {
+  const queryClient = useQueryClient();
+  const picker = useRef<HTMLInputElement>(null);
+  const [url, setUrl] = useState(initial);
+  const [error, setError] = useState<string | null>(null);
+  const done =
+    (message: string) => (result: Awaited<ReturnType<typeof saveAvatar>>) => {
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setUrl(result.url);
+      setError(null);
+      // Members shows photos too.
+      void queryClient.invalidateQueries({ queryKey: ["members"] });
+      toast.success(message);
+    };
+  const save = useMutation({
+    mutationFn: async (file: File) => {
+      if (!AVATAR_TYPES.includes(file.type))
+        throw new Error("Choose a JPG, PNG, WebP or GIF.");
+      if (file.size > AVATAR_MAX_BYTES)
+        throw new Error("Choose a picture under 5 MB.");
+      const photo = new FormData();
+      photo.append("photo", await squarePhoto(file), "photo");
+      return saveAvatar(photo);
+    },
+    onSuccess: done("Photo saved"),
+    onError: (failure) =>
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Your photo couldn’t be saved. Try again.",
+      ),
+  });
+  const remove = useMutation({
+    mutationFn: () => removeAvatar(),
+    onSuccess: done("Photo removed"),
+    onError: () => setError("Your photo couldn’t be removed. Try again."),
+  });
+  const busy = save.isPending || remove.isPending;
+  return (
+    <div className="flex items-center gap-4">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => picker.current?.click()}
+        aria-label={url ? "Change your photo" : "Add a photo"}
+        className="group relative size-16 shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-progress"
+      >
+        <PersonMark
+          name={name}
+          src={url}
+          // The initial steps aside for the overlay's word.
+          className={cn(
+            "size-16 font-sans text-type-h4 transition-colors duration-150 ease-out group-hover:text-transparent group-focus-visible:text-transparent",
+            busy && "text-transparent",
+          )}
+        />
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-0 flex items-center justify-center rounded-full bg-overlay/45 text-type-caption-1 font-medium text-button-primary-text transition-opacity duration-150 ease-out",
+            busy
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100",
+          )}
+        >
+          {busy ? (
+            <Spinner className="size-4" label="Saving" />
+          ) : url ? (
+            "Change"
+          ) : (
+            "Add"
+          )}
+        </span>
+      </button>
+      <input
+        ref={picker}
+        type="file"
+        accept={AVATAR_TYPES.join(",")}
+        tabIndex={-1}
+        aria-hidden
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) save.mutate(file);
+        }}
+      />
+      <div className="flex min-w-0 flex-col items-start gap-0.5">
+        <span className="text-type-body-small font-medium text-heading-01">
+          Photo
+        </span>
+        <span className="text-type-caption-1 text-heading-05">
+          {PHOTO_HINT}
+        </span>
+        {error ? (
+          <p role="alert" className="text-type-caption-1 text-text-danger">
+            {error}
+          </p>
+        ) : null}
+        {url ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => remove.mutate()}
+            className="mt-1 rounded-xsm text-type-caption-1 font-medium text-heading-04 outline-none hover:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            Remove photo
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -522,7 +674,17 @@ export function AccountSettingsSkeleton() {
   return (
     <SettingsPage title={TITLE} description={DESCRIPTION}>
       <section aria-hidden className="flex flex-col gap-6">
-        <SkeletonMark size={64} round />
+        <div className="flex items-center gap-4">
+          <SkeletonMark size={64} round />
+          <div className="flex min-w-0 flex-col items-start gap-0.5">
+            <span className="text-type-body-small font-medium text-heading-01">
+              Photo
+            </span>
+            <span className="text-type-caption-1 text-heading-05">
+              {PHOTO_HINT}
+            </span>
+          </div>
+        </div>
         <Field>
           <FieldLabel>Name</FieldLabel>
           <FieldFrame value={96} />
