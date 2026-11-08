@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Trash · Settings" };
 export default function TrashPage() {
   return (
     <>
-      <PageHeader icon={SettingsIcon} title="Settings" />
+      <PageHeader icon={SettingsIcon} title="Settings" tools={false} />
       <Suspense fallback={<TrashSettings loading />}>
         <Trash />
       </Suspense>

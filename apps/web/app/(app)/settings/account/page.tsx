@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Account · Settings" };
 export default function AccountPage() {
   return (
     <>
-      <PageHeader icon={SettingsIcon} title="Settings" />
+      <PageHeader icon={SettingsIcon} title="Settings" tools={false} />
       <Suspense
         fallback={
           <>

@@ -1473,3 +1473,20 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** B6.5 Back to app returning to the last page and the editor's resizable edit frame (owner: "yes" to the order), then B6.6 settings speed, B6.7 profile photo, B3.5d the build page's steps frame.
+
+
+### B6.5 — Back to app and the resizable edit card
+- **Status:** complete (owner: "yes" to the order and the plan, 2026-11-08; points 1–3 of the owner's later message added in this build; committed and pushed, 2026-11-08)
+- **Date:** 2026-11-08
+- **Summary:**
+  - **Back to app** returns to the page you were on before Settings in this tab (with its filters), however many settings pages you went through; Home in a tab that opened Settings directly.
+  - **The editor's edit card** resizes from its top edge: a row-resize cursor and a small grip on hover; drag it up or down (the tree keeps a heading and two rows, the card 200 px); arrow keys, Home and End when focused; a double click resets; remembered in this browser.
+  - **Settings headers** no longer show Jobs and Notifications.
+  - **Members' Everyone filter** opens the padded menu; **the invite modal's Role** (and the Shopify modal's brand) shows its value as dark as the options.
+- **Key files:** `components/app/remember-path.tsx`, `components/app/settings-sidebar.tsx` (+ new `settings-sidebar.test.tsx`), `components/features/page-editor/section-panel.tsx` (+ `page-editor.test.tsx`), `components/app/page-header.tsx` (`tools`), `app/(app)/settings/*/page.tsx`, `components/features/settings/{members,shopify}.tsx`; docs D134, DESIGN.md, MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D134 locked.
+- **Deviations from the plan:** the owner's three later points (role field colour, Everyone menu, header icons) were added here. Found while testing: a keyboard or double-click resize saved the previous height; fixed before hand-over.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B6.6 settings speed, then B6.7 profile photo, then B3.5d the build page's steps frame.

@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Connections · Settings" };
 export default function ConnectionsPage() {
   return (
     <>
-      <PageHeader icon={SettingsIcon} title="Settings" />
+      <PageHeader icon={SettingsIcon} title="Settings" tools={false} />
       <Suspense
         fallback={
           <>

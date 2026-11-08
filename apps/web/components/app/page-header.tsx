@@ -26,10 +26,12 @@ type PageHeaderProps = {
   /** A back arrow before the title, to the page this one came from (owner, 2026-11-06: a batch's
    * page back to its batch); `label` names it for screen readers and in a tooltip. */
   back?: { label: string; href: string };
+  /** Jobs and Notifications on the right; off on settings pages (owner, B6.5). */
+  tools?: boolean;
 };
 
 /** The page panel's header (DESIGN.md §2; Figma: Home): 49 px with its border, 16 px in counting the panel's border; a mark if
- * any, the 13 px medium Heading-01 title (every Figma page header), a divider, then tabs; actions, Jobs and Notifications on the right. Opens the sidebar on small screens or when it's collapsed.
+ * any, the 13 px medium Heading-01 title (every Figma page header), a divider, then tabs; actions, Jobs and Notifications on the right (not on settings pages, `tools={false}`). Opens the sidebar on small screens or when it's collapsed.
  * It stays at the top of the page panel (sticky in its scroll) and the page scrolls under it. */
 export function PageHeader({
   title,
@@ -39,6 +41,7 @@ export function PageHeader({
   actions,
   crumb,
   back,
+  tools = true,
 }: PageHeaderProps) {
   return (
     <header className="sticky top-0 z-20 flex h-header shrink-0 items-center gap-3 bg-surface-primary px-3.75 edge-b">
@@ -108,7 +111,7 @@ export function PageHeader({
         {actions ? (
           <div className="flex items-center gap-1">{actions}</div>
         ) : null}
-        <HeaderTools />
+        {tools ? <HeaderTools /> : null}
       </div>
     </header>
   );

@@ -191,6 +191,29 @@ describe("page editor's section tree (B3.1a, B4.4)", () => {
     expect(props.onClose).toHaveBeenCalled();
   });
 
+  it("lets the card's top edge resize it, remembered in this browser (B6.5)", () => {
+    localStorage.removeItem("lp-editor-strip");
+    panel({});
+    const edge = () =>
+      screen.getByRole("separator", { name: "Resize the edit panel" });
+    expect(edge().getAttribute("aria-valuenow")).toBe("172");
+    fireEvent.keyDown(edge(), { key: "ArrowDown" });
+    expect(edge().getAttribute("aria-valuenow")).toBe("188");
+    expect(localStorage.getItem("lp-editor-strip")).toBe("188");
+    fireEvent.keyDown(edge(), { key: "Home" });
+    // Never under the heading and two rows.
+    expect(edge().getAttribute("aria-valuenow")).toBe("108");
+    fireEvent.doubleClick(edge());
+    expect(edge().getAttribute("aria-valuenow")).toBe("172");
+    expect(localStorage.getItem("lp-editor-strip")).toBe("172");
+    cleanup();
+
+    localStorage.setItem("lp-editor-strip", "240");
+    panel({});
+    expect(edge().getAttribute("aria-valuenow")).toBe("240");
+    localStorage.removeItem("lp-editor-strip");
+  });
+
   it("opens a section into its parts, named as in Shopify", () => {
     const props = panel({ open: false, expanded: ["hero"] });
     expect(screen.queryByText(/Section 1 of 2/)).toBeNull(); // no panel

@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { type ComponentType, type ReactNode, useId } from "react";
+import {
+  type ComponentType,
+  type ReactNode,
+  useId,
+  useSyncExternalStore,
+} from "react";
 
 import {
   AccountIcon,
@@ -17,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 import { noteNavClick, useNavPath } from "./pending-nav";
 import { railIndex } from "./rail";
+import { lastAppPage } from "./remember-path";
 import { RailTooltip } from "./sidebar-parts";
 import { WithPathname } from "./with-pathname";
 
@@ -61,6 +67,8 @@ export const SETTINGS_GROUPS: { label: string; items: SettingsItem[] }[] = [
   },
 ];
 
+const noSubscribe = () => () => {};
+
 const ROW =
   "flex w-full items-center gap-1.5 rounded-sm px-1.5 py-1 text-type-body-small leading-5 font-medium outline-none";
 
@@ -73,13 +81,16 @@ const ROW =
  */
 export function SettingsSidebar() {
   const id = useId();
+  // Back to where you were before Settings (B6.5, owner); Home while the page loads, or in a tab
+  // that came straight to Settings.
+  const back = useSyncExternalStore(noSubscribe, lastAppPage, () => "/home");
   // Places from the top for the rail's staggered labels: Back to app is 0.
   let place = 0;
   return (
     <div className="flex h-full w-full flex-col gap-5 px-2 py-3">
       <RailTooltip label="Back to app">
         <Link
-          href="/home"
+          href={back}
           style={railIndex(place)}
           className={cn(
             ROW,

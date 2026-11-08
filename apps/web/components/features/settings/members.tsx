@@ -429,10 +429,14 @@ function Toolbar({
             {FILTERS.find((option) => option.value === filter)?.label}
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent variant="menu" className="min-w-36">
           {FILTERS.filter((option) => manager || !option.managers).map(
             (option) => (
-              <SelectItem key={option.value} value={option.value}>
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                variant="menu"
+              >
                 {option.label}
               </SelectItem>
             ),
@@ -860,7 +864,10 @@ function InviteDialog({
                   value={role}
                   onValueChange={(next) => setRole(next as Role)}
                 >
-                  <SelectTrigger id={ids.role} className="h-8 w-full">
+                  <SelectTrigger
+                    id={ids.role}
+                    className="h-8 w-full text-heading-02"
+                  >
                     <SelectValue>{ROLE_LABELS[role]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent variant="menu">

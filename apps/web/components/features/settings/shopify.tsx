@@ -192,7 +192,10 @@ export function ShopifyConnectForm({
           {brandId ? null : (
             <Field id={ids.brand} label="Brand">
               <Select value={brand} onValueChange={setBrand}>
-                <SelectTrigger id={ids.brand} className="h-8 w-full">
+                <SelectTrigger
+                  id={ids.brand}
+                  className="h-8 w-full text-heading-02"
+                >
                   <SelectValue placeholder="Choose a brand" />
                 </SelectTrigger>
                 <SelectContent variant="menu">

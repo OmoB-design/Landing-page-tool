@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "General · Settings" };
 export default function GeneralPage() {
   return (
     <>
-      <PageHeader icon={SettingsIcon} title="Settings" />
+      <PageHeader icon={SettingsIcon} title="Settings" tools={false} />
       <Suspense
         fallback={
           <>

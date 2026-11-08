@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, type Transition } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { IconAction } from "@/components/app/icon-action";
 import {
@@ -47,9 +47,103 @@ const CROSS_CONTAINER =
   "That section can't move there: it sits in a different part of the page.";
 
 /** The tree's height while a panel is open (owner's recording of Shopify, 2026-11-06: the tree
- * shrinks to a strip of about four rows and the panel rises under it). */
+ * shrinks to a strip of about four rows and the panel rises under it). Its top edge drags to
+ * change that (B6.5, owner 2026-11-08): never under the heading and two rows, never leaving the
+ * panel less than 200 px; remembered in this browser. */
 const STRIP = 172;
+const MIN_STRIP = 108;
+const MIN_CARD = 200;
+const STRIP_KEY = "lp-editor-strip";
 const INSTANT: Transition = { duration: 0 };
+
+const noSubscribe = () => () => {};
+
+/** The strip's height from the owner's last drag in this browser, or STRIP. */
+function savedStrip(): number {
+  try {
+    const saved = Number(localStorage.getItem(STRIP_KEY));
+    return saved > 0 ? saved : STRIP;
+  } catch {
+    return STRIP;
+  }
+}
+
+/** The strip's height between its limits, given the panel's room (0 while unmeasured). */
+function clampStrip(height: number, room: number): number {
+  const max = room > 0 ? Math.max(MIN_STRIP, room - MIN_CARD) : height;
+  return Math.round(Math.min(Math.max(height, MIN_STRIP), max));
+}
+
+/**
+ * The edit card's top edge as a handle (B6.5): a row-resize cursor and a short grip on hover or
+ * focus; dragging moves the edge (the tree above grows or shrinks), arrow keys move it 16 px,
+ * Home and End go to the limits, a double click puts it back.
+ */
+function StripHandle({
+  strip,
+  room,
+  onDrag,
+  onRelease,
+  onSet,
+}: {
+  strip: number;
+  room: number;
+  /** While dragging: the height the pointer asks for. */
+  onDrag: (height: number) => void;
+  /** The drag ended: keep where it is. */
+  onRelease: () => void;
+  /** A key or a double click: go to this height and keep it. */
+  onSet: (height: number) => void;
+}) {
+  const start = useRef<{ y: number; strip: number } | null>(null);
+  const max = room > 0 ? Math.max(MIN_STRIP, room - MIN_CARD) : strip;
+  return (
+    <div
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize the edit panel"
+      aria-valuemin={MIN_STRIP}
+      aria-valuemax={max}
+      aria-valuenow={strip}
+      tabIndex={0}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        start.current = { y: event.clientY, strip };
+      }}
+      onPointerMove={(event) => {
+        if (!start.current) return;
+        onDrag(start.current.strip + event.clientY - start.current.y);
+      }}
+      onPointerUp={(event) => {
+        if (!start.current) return;
+        start.current = null;
+        event.currentTarget.releasePointerCapture(event.pointerId);
+        onRelease();
+      }}
+      onDoubleClick={() => onSet(STRIP)}
+      onKeyDown={(event) => {
+        const to =
+          event.key === "ArrowUp"
+            ? strip - 16
+            : event.key === "ArrowDown"
+              ? strip + 16
+              : event.key === "Home"
+                ? MIN_STRIP
+                : event.key === "End"
+                  ? max
+                  : null;
+        if (to === null) return;
+        event.preventDefault();
+        onSet(to);
+      }}
+      className="group absolute inset-x-2 -top-1 z-10 flex h-2 cursor-row-resize touch-none items-center justify-center outline-none"
+    >
+      <span className="h-0.75 w-8 rounded-max bg-stroke-strong opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-visible:bg-spot-500-blue group-focus-visible:opacity-100 group-active:opacity-100" />
+    </div>
+  );
+}
 
 /** Something the tree or the page points at: a section, a line or a picture. */
 export type PartPointer = {
@@ -161,6 +255,42 @@ export function SectionPanel({
   const index = layout.findIndex((s) => s.key === selected);
   const section = layout[index] ?? null;
   const tree = useRef<HTMLDivElement>(null);
+  // The strip's height while a card is open: the owner's last drag in this browser, or STRIP.
+  const root = useRef<HTMLDivElement>(null);
+  const saved = useSyncExternalStore(noSubscribe, savedStrip, () => STRIP);
+  const [moved, setMoved] = useState<number | null>(null);
+  const [room, setRoom] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    // Reports the panel's height on observing and whenever it changes.
+    const seen = new ResizeObserver(() => setRoom(el.clientHeight));
+    seen.observe(el);
+    return () => seen.disconnect();
+  }, []);
+  const height = clampStrip(moved ?? saved, room);
+  const keep = (value: number) => {
+    try {
+      localStorage.setItem(STRIP_KEY, String(value));
+    } catch {
+      // Storage blocked: it lasts until the page is closed.
+    }
+  };
+  const drag = (next: number) => {
+    setDragging(true);
+    setMoved(clampStrip(next, room));
+  };
+  const release = () => {
+    setDragging(false);
+    keep(height);
+  };
+  const set = (next: number) => {
+    const value = clampStrip(next, room);
+    setDragging(false);
+    setMoved(value);
+    keep(value);
+  };
   const partsOf = (key: string) =>
     parts?.find((s) => s.key === key)?.parts ?? [];
 
@@ -197,11 +327,17 @@ export function SectionPanel({
     : [];
 
   return (
-    <div className="relative flex h-full flex-col bg-surface-primary">
+    <div
+      ref={root}
+      className={cn(
+        "relative flex h-full flex-col bg-surface-primary",
+        dragging && "cursor-row-resize select-none",
+      )}
+    >
       <motion.div
         initial={false}
-        animate={{ height: open ? STRIP : "100%" }}
-        transition={reduced ? INSTANT : { ...card.enter, delay: 0 }}
+        animate={{ height: open ? height : "100%" }}
+        transition={reduced || dragging ? INSTANT : { ...card.enter, delay: 0 }}
         className="flex min-h-0 shrink-0 flex-col"
       >
         <h2 className="flex h-11 shrink-0 items-center px-4 text-type-body-small font-medium">
@@ -329,8 +465,15 @@ export function SectionPanel({
               transition: card.exit,
             }}
             style={{ transformOrigin: "top center" }}
-            className="flex min-h-0 flex-1 flex-col px-2 pb-2"
+            className="relative flex min-h-0 flex-1 flex-col px-2 pb-2"
           >
+            <StripHandle
+              strip={height}
+              room={room}
+              onDrag={drag}
+              onRelease={release}
+              onSet={set}
+            />
             {part ? (
               <PartDetails
                 key={partId(part)}
