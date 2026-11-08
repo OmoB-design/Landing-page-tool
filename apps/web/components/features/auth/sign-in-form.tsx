@@ -11,17 +11,22 @@ import { FormStatus, SubmitButton } from "./form-status";
 
 const initialState: AuthFormState = {};
 
-export function SignInForm() {
+/** `next`: where to go once signed in (an invite brings people back to itself, B6.1). */
+export function SignInForm({ next }: { next?: string }) {
   return (
     <div className="flex flex-col gap-5">
-      <PasswordForm />
+      <PasswordForm next={next} />
       <FieldSeparator>or</FieldSeparator>
-      <MagicLinkForm />
+      <MagicLinkForm next={next} />
     </div>
   );
 }
 
-function PasswordForm() {
+function NextField({ next }: { next?: string }) {
+  return next ? <input type="hidden" name="next" value={next} /> : null;
+}
+
+function PasswordForm({ next }: { next?: string }) {
   const { form, state, pending, formProps } = useActionForm({
     schema: signInSchema,
     action: signIn,
@@ -32,6 +37,7 @@ function PasswordForm() {
 
   return (
     <form {...formProps} aria-label="Sign in with password">
+      <NextField next={next} />
       <FieldGroup className="gap-4">
         <AuthTextField
           id="email"
@@ -60,7 +66,7 @@ function PasswordForm() {
   );
 }
 
-function MagicLinkForm() {
+function MagicLinkForm({ next }: { next?: string }) {
   const { form, state, pending, formProps } = useActionForm({
     schema: magicLinkSchema,
     action: sendMagicLink,
@@ -71,6 +77,7 @@ function MagicLinkForm() {
 
   return (
     <form {...formProps} aria-label="Email me a sign-in link">
+      <NextField next={next} />
       <FieldGroup className="gap-4">
         <AuthTextField
           id="magic-link-email"

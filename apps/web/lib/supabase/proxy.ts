@@ -5,8 +5,9 @@ import { publicEnv } from "@/lib/env";
 import type { Database } from "@/types/database";
 
 // "/review": the client review link (B3.6, D119), opened by clients without an account; the link's
-// token is what lets them in, checked by the worker.
-const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth", "/review"];
+// token is what lets them in, checked by the worker. "/invite": an invite to a workspace (B6.1,
+// D129), opened before the person has an account (or while signed in as someone else).
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth", "/review", "/invite"];
 // Review pages that hold no data and render no account (D101): open in development only, so the
 // Stageshow filming tool, which can't sign in, can reach them. They don't exist in production.
 const DEV_PUBLIC_PATHS =

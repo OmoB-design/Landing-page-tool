@@ -18,20 +18,24 @@ export function SettingsPage({
   wide?: boolean;
   children: ReactNode;
 }) {
+  // The gutter sits outside the column, so on a phone the column is the panel less its gutter
+  // (a padded full-width column ran past the panel's edge).
   return (
-    <div
-      className={cn(
-        "mx-auto box-content flex w-full flex-col gap-10 px-4 pt-10 pb-24 md:px-6",
-        wide ? "max-w-settings-wide" : "max-w-settings",
-      )}
-    >
-      <header className="flex flex-col gap-2">
-        <h1 className="font-serif text-type-h4 font-medium text-heading-01">
-          {title}
-        </h1>
-        <p className="text-type-body-small text-heading-05">{description}</p>
-      </header>
-      {children}
+    <div className="w-full px-4 pt-10 pb-24 md:px-6">
+      <div
+        className={cn(
+          "mx-auto flex w-full flex-col gap-10",
+          wide ? "max-w-settings-wide" : "max-w-settings",
+        )}
+      >
+        <header className="flex flex-col gap-2">
+          <h1 className="font-serif text-type-h4 font-medium text-heading-01">
+            {title}
+          </h1>
+          <p className="text-type-body-small text-heading-05">{description}</p>
+        </header>
+        {children}
+      </div>
     </div>
   );
 }

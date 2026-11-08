@@ -18,6 +18,7 @@ from app import (
     fidelity,
     image_ai,
     images,
+    members,
     mobile,
     publishing,
     qa,
@@ -71,6 +72,14 @@ from app.models.images import (
     ImageUpload,
     MatchStarted,
     UploadedImage,
+)
+from app.models.members import (
+    Accepted,
+    AcceptRequest,
+    InviteInfo,
+    InviteRequest,
+    MembersState,
+    RoleRequest,
 )
 from app.models.publishing import (
     IntegrationsState,
@@ -647,6 +656,85 @@ def _publish_call(fn: Any, *args: Any) -> Any:
 def _require_role(user_id: UUID, org_id: UUID, roles: set[str], what: str) -> None:
     if publishing.role_of(org_id, user_id) not in roles:
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"Only {what} can do that.")
+
+
+# ── Members and invites (B6.1, D129) ────────────────────────────────────────
+
+
+def _members_call(fn: Any, *args: Any) -> Any:
+    try:
+        return fn(*args)
+    except members.MembersForbiddenError as exc:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Only owners and admins can do that."
+        ) from exc
+    except members.MembersNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "That person or invite isn't in this workspace."
+        ) from exc
+    except members.MembersRefusedError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    except share.ShareUnavailableError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Invites aren't set up yet: the worker needs LP_SHARE_SECRET.",
+        ) from exc
+
+
+@app.get("/orgs/{org_id}/members")
+def get_members(org_id: UUID, user: CurrentUser) -> MembersState:
+    """Everyone in the workspace; open invites for owners and admins."""
+    require_org_member(user, org_id)
+    state: MembersState = _members_call(members.members_state, org_id, user.id)
+    return state
+
+
+@app.post("/orgs/{org_id}/invites")
+def invite_member(org_id: UUID, body: InviteRequest, user: CurrentUser) -> MembersState:
+    """Invites an email with a role (owners and admins), or refreshes its open invite."""
+    require_org_member(user, org_id)
+    state: MembersState = _members_call(members.invite, org_id, user.id, body.email, body.role)
+    return state
+
+
+@app.delete("/orgs/{org_id}/invites/{invite_id}")
+def revoke_invite(org_id: UUID, invite_id: UUID, user: CurrentUser) -> MembersState:
+    require_org_member(user, org_id)
+    state: MembersState = _members_call(members.revoke, org_id, user.id, invite_id)
+    return state
+
+
+@app.patch("/orgs/{org_id}/members/{member_id}")
+def change_role(
+    org_id: UUID, member_id: UUID, body: RoleRequest, user: CurrentUser
+) -> MembersState:
+    require_org_member(user, org_id)
+    state: MembersState = _members_call(members.set_role, org_id, user.id, member_id, body.role)
+    return state
+
+
+@app.delete("/orgs/{org_id}/members/{member_id}")
+def remove_member(org_id: UUID, member_id: UUID, user: CurrentUser) -> MembersState | None:
+    """Removes someone (owners and admins), or leaves (oneself): then the answer is empty."""
+    require_org_member(user, org_id)
+    state: MembersState | None = _members_call(members.remove, org_id, user.id, member_id)
+    return state
+
+
+@app.get("/invites/{token}")
+def invite_info(token: str) -> InviteInfo:
+    """The invite page (no sign-in): the workspace, the email it's for, the role, its state."""
+    found: InviteInfo | None = _members_call(members.invite_info, token)
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, GONE)
+    return found
+
+
+@app.post("/invites/accept")
+def accept_invite(body: AcceptRequest, user: CurrentUser) -> Accepted:
+    """Joins the signed-in person (with the invited email) to the workspace and opens it."""
+    accepted: Accepted = _members_call(members.accept, body.token, user.id)
+    return accepted
 
 
 @app.get("/integrations")

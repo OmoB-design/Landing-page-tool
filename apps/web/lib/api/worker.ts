@@ -61,6 +61,14 @@ import {
   shareStateSchema,
 } from "@/lib/validators/share";
 import {
+  type InviteInfo,
+  type MembersState,
+  type Role,
+  acceptedSchema,
+  inviteInfoSchema,
+  membersStateSchema,
+} from "@/lib/validators/members";
+import {
   type IntegrationsState,
   type PublishingState,
   type ShopifyTemplate,
@@ -442,6 +450,126 @@ export async function getReviewInfo(token: string): Promise<ReviewInfo | null> {
 export async function getReviewHtml(token: string): Promise<string | null> {
   const response = await fromReviewLink(token, "/html");
   return response ? response.text() : null;
+}
+
+// ── Members and invites (worker /orgs/{id}/members, /invites; B6.1, D129) ─────
+
+function orgPath(orgId: string, rest: string): string {
+  return `/orgs/${encodeURIComponent(orgId)}${rest}`;
+}
+
+/** Everyone in the workspace; open invites (with their tokens) for owners and admins. */
+export function getMembers(
+  accessToken: string,
+  orgId: string,
+): Promise<MembersState> {
+  return callWorker(
+    "GET",
+    orgPath(orgId, "/members"),
+    accessToken,
+    undefined,
+    membersStateSchema,
+    "Couldn't load the members.",
+  );
+}
+
+/** Invites an email with a role, or refreshes its open invite. */
+export function inviteMember(
+  accessToken: string,
+  orgId: string,
+  email: string,
+  role: Role,
+): Promise<MembersState> {
+  return postToWorker(
+    orgPath(orgId, "/invites"),
+    accessToken,
+    { email, role },
+    membersStateSchema,
+    "Couldn't make the invite.",
+  );
+}
+
+export function revokeInvite(
+  accessToken: string,
+  orgId: string,
+  inviteId: string,
+): Promise<MembersState> {
+  return callWorker(
+    "DELETE",
+    orgPath(orgId, `/invites/${encodeURIComponent(inviteId)}`),
+    accessToken,
+    undefined,
+    membersStateSchema,
+    "Couldn't turn the invite off.",
+  );
+}
+
+export function changeMemberRole(
+  accessToken: string,
+  orgId: string,
+  memberId: string,
+  role: Role,
+): Promise<MembersState> {
+  return callWorker(
+    "PATCH",
+    orgPath(orgId, `/members/${encodeURIComponent(memberId)}`),
+    accessToken,
+    { role },
+    membersStateSchema,
+    "Couldn't change the role.",
+  );
+}
+
+/** Removes someone, or leaves (oneself): then the answer is null. */
+export function removeMember(
+  accessToken: string,
+  orgId: string,
+  memberId: string,
+): Promise<MembersState | null> {
+  return callWorker(
+    "DELETE",
+    orgPath(orgId, `/members/${encodeURIComponent(memberId)}`),
+    accessToken,
+    undefined,
+    membersStateSchema.nullable(),
+    "Couldn't remove them.",
+  );
+}
+
+/** The invite page's facts (no sign-in); null when the link isn't one of ours. */
+export async function getInviteInfo(token: string): Promise<InviteInfo | null> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `${workerUrl}/invites/${encodeURIComponent(token)}`,
+      {
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+  } catch {
+    throw new WorkerError(UNREACHABLE, 503);
+  }
+  if (response.status === 404) return null;
+  const json: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new WorkerError(
+      detailMessage(json) ?? "Couldn't open the invite.",
+      response.status,
+    );
+  }
+  return inviteInfoSchema.parse(json);
+}
+
+/** Joins the signed-in person (with the invited email) to the invite's workspace. */
+export function acceptInvite(accessToken: string, token: string) {
+  return postToWorker(
+    "/invites/accept",
+    accessToken,
+    { token },
+    acceptedSchema,
+    "Couldn't accept the invite.",
+  );
 }
 
 // ── The preview check (worker /builds/{id}/qa, B3.3a, D111) ──────────────────

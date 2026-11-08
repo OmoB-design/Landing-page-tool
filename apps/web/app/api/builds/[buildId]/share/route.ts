@@ -7,6 +7,7 @@ import {
   turnOffShare,
 } from "@/lib/api/worker";
 import { getApiSession, unauthorized } from "@/lib/auth/api-session";
+import { publicBase } from "@/lib/links/public-base";
 import type { ShareAnswer, ShareState } from "@/lib/validators/share";
 
 /**
@@ -16,10 +17,6 @@ import type { ShareAnswer, ShareState } from "@/lib/validators/share";
  * login covers previews and generated addresses, so a link copied from anywhere opens for the
  * client. Locally it's this server's own address.
  */
-function base(request: Request): string {
-  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  return production ? `https://${production}` : new URL(request.url).origin;
-}
 
 async function answer(
   request: Request,
@@ -38,7 +35,7 @@ async function answer(
     const body: ShareAnswer = {
       ...state,
       url: state.link
-        ? `${base(request)}/review/${encodeURIComponent(state.link.token)}`
+        ? `${publicBase(request)}/review/${encodeURIComponent(state.link.token)}`
         : null,
     };
     return NextResponse.json(body);

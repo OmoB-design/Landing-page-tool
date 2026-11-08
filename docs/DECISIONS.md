@@ -118,7 +118,7 @@ The web app uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the worker uses `SUPABA
 Tenants, including org owners and admins, can only update `orgs.name` and `orgs.slug` (column-level grants). `orgs.settings` (`clone_enabled`, `proxy_fetch_enabled`, `ai_images_enabled`) and `clone_terms_accepted_*` are written by the worker / service role only. Clone-terms acceptance will go through a worker endpoint or a security-definer function at M2.
 *Why:* `proxy_fetch_enabled` turns on bot-wall evasion, which carries platform-level legal exposure (D4); a tenant admin must not be able to switch it on.
 
-**D34 — Invites deferred to the members build (B1.6).** Default (B0.2, 2026-10-07).
+**D34 — Invites deferred to the members build (B1.6).** Default (B0.2, 2026-10-07). *Resolved by D129 (B6.1).*
 No invites table or invite-accept route yet. When added, invited sign-ups must skip the personal-org trigger.
 
 **D35 — Auth forms are server actions validated with zod; react-hook-form arrives with shadcn.** Default (B0.2, 2026-10-07).
@@ -609,6 +609,23 @@ The state-machine audit found six hand-written copies of "follow a job" that rea
 - **Layout check:** held by the template editor, so switching tabs keeps it; the editor finds a check under way again after a reload, as it does for an analysis.
 - **The floating bar:** while Buddy works, sending keeps the words in the bar and says "Buddy is still on the last request."; they're cleared only when Buddy takes them.
 - **Kept as is:** screens that show a job through the shared job steps (products, briefing, brand fetch) already show every ending.
+
+**D129 — Members and invites (B6.1).** Locked (owner, 2026-11-07: "go": copy-the-link invites for now, roles as BUILD_SPEC §3 defines them). Resolves D34.
+*As built (B6.1, migration `members_invites`):*
+- **Roles** stay as the spec defines them: owners and admins manage members, invites and connections; members do everything else (brands, products, templates, pages, publishing); only an owner flips the testing switch. Only owners make someone an owner, change an owner's role or remove an owner; a workspace always keeps at least one owner (checked under a lock, so two changes can't both leave it without one).
+- **Settings → Members** (no longer Soon): everyone in the workspace (name, email, role, when they joined); owners and admins change roles and remove people (asks first); anyone can leave (the last owner can't). "Invite and manage members" in the workspace menu opens it. While invites are open the list looks again every 15 s, so a join shows up.
+- **Invites:** an email and a role; the link is copied as the invite is made (no email is sent: Supabase's built-in email only reaches the project's team; an email service such as Resend can come later). One open invite per email per workspace; inviting again refreshes it (a new week, the new role). It lasts 7 days and can be revoked. The link's token is the invite's id with a signature made from the worker's `LP_SHARE_SECRET` (as client links, D119), so Copy works any time and the database holds nothing that opens it. Invites are written by the worker only; owners and admins can read their workspace's.
+- **Joining:** `/invite/<token>` needs no sign-in. Someone new creates an account there (name and password; the email is the invite's): the sign-up names the invite, and the sign-up trigger puts them straight into the workspace with the invite's role when it names an open, unexpired invite for that same email; otherwise they sign up as before, with a workspace of their own. Someone with an account signs in (they come back to the invite) and joins with one button, only with the invited email; signed in as someone else, they're told whose invite it is and can sign out. Joining opens the workspace.
+- **Leaving or being removed:** the person's profile moves to another of their workspaces, or to a new one of their own when they have none (as a sign-up gets), so the app always has one to open.
+- **Members are changed by the worker only:** members' direct writes to `org_members` (the admins' policy) are revoked.
+- *Note:* this project doesn't confirm emails at sign-up (`mailer_autoconfirm`), so an invite link works for whoever has it, as long as they sign up with that email: treat a link like a password, and revoke one sent to the wrong place.
+
+**D130 — Settings → Account (B6.2).** Locked (owner, 2026-11-07: "go and yes": email read-only for now; the profile hardening migration).
+*As built (B6.2, migration `profile_writes`):*
+- **Settings → Account** (no longer Soon): your name (what the sidebar, Members and invites show), your sign-in email (shown; changing it waits for an email service, since a change needs a confirmation email and Supabase's built-in email only reaches the project's team), a new password, and the theme for this browser (the same setting as Themes in the account menu, D39).
+- **Password:** the current password is checked first, on a Supabase client of its own with no cookies, so a wrong password can't touch the browser's session; that check's own session is then ended. The change is made on the browser's session, which stays signed in; Supabase ends the person's other sessions, so other devices are signed out once their access token runs out (within the hour). New passwords: at least 8 characters, not the current one.
+- **Profiles:** made by the sign-up trigger and changed by the worker; a person reads their own row and may change only their name and current workspace, the workspace only to one they belong to (column grants plus the update policy). Insert and delete are revoked, so nobody can break their account by deleting their profile through the database API.
+- **The settings column on phones:** the gutter now sits outside the 544 px (929 px) column; a padded full-width column ran 21 px past the panel's edge on every settings page. Desktop is unchanged.
 
 ## Open (ask the owner when the related build starts)
 

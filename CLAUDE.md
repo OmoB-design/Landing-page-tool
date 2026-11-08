@@ -120,11 +120,12 @@ lp-platform/
 │       │   │   ├── brands/            ← brand list; [brandId] with tabs
 │       │   │   ├── library/           ← all builds archive + ledger
 │       │   │   ├── analytics/
-│       │   │   └── settings/          ← org, members, integrations (Vercel, Shopify)
+│       │   │   └── settings/          ← account, org, members, integrations (Vercel, Shopify), trash
 │       │   ├── (editor)/templates/[templateId]/ ← full-screen section editor (no workspace shell)
 │       │   ├── (studio)/pages/[buildId]/editor/ ← full-screen page editor with Lander (B3.1a, B3.1b; canvas only)
 │       │   ├── preview/[buildId]/route.ts ← serves built HTML into a sandboxed iframe
 │       │   ├── review/[token]/        ← the client review link (B3.6): no sign-in; html/route.ts serves the approved page sandboxed
+│       │   ├── invite/[token]/        ← an invite to a workspace (B6.1): no sign-in; sign up or sign in, then join
 │       │   └── api/                   ← thin route handlers that call the worker API
 │       ├── components/
 │       │   ├── ui/                    ← shadcn primitives (replaced from Figma later)

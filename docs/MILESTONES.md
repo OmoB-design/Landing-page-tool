@@ -146,6 +146,11 @@ From the state-machine audit (2026-11-07): the app behaves the same, but stops m
 - B5.3 Direct database writes. *Done 2026-11-07 (D127): members write only what the app's forms write (add a brand, the Brand DNA and product forms, a template's name and description); everything else on brands, products, templates, sections, versions, assets, strategy and template files is the worker's.*
 - B5.4 Screens that follow jobs. *Done 2026-11-07 (D128): one shared way of following a job by its id; a quick publish opens the live modal; "Take it down?" doesn't come back; "Fixed" only for a phone fix that worked; "Analysing…" ends with a failed analysis; the layout check survives tab switches and reloads; the floating bar keeps your words while Buddy works.* M5 Hardening complete.
 
+## M6 — Team
+
+- B6.1 Members and invites. *Done 2026-11-07 (D129): Settings → Members (roles, remove, leave; the last owner stays; owners make owners); invites by email and role as a link to copy (7 days, revocable); someone new signs up from the link straight into the workspace; someone with an account signs in and joins with the invited email.*
+- B6.2 Account page. *Done 2026-11-07 (D130): Settings → Account: your name, your email (shown), a new password once the current one checks out (other devices signed out), the theme; people can change only their name and current workspace in their profile.*
+
 ## v3 — Someday
 
 Blank-canvas block builder.

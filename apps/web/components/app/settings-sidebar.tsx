@@ -32,25 +32,13 @@ type SettingsItem = {
 export const SETTINGS_GROUPS: { label: string; items: SettingsItem[] }[] = [
   {
     label: "Personal",
-    items: [
-      {
-        href: "/settings/account",
-        label: "Account",
-        icon: AccountIcon,
-        soon: true,
-      },
-    ],
+    items: [{ href: "/settings/account", label: "Account", icon: AccountIcon }],
   },
   {
     label: "Workspace",
     items: [
       { href: "/settings/general", label: "General", icon: WorkspaceIcon },
-      {
-        href: "/settings/members",
-        label: "Members",
-        icon: MembersIcon,
-        soon: true,
-      },
+      { href: "/settings/members", label: "Members", icon: MembersIcon },
       { href: "/settings/usage", label: "Usage", icon: UsageIcon, soon: true },
       {
         href: "/settings/billing",

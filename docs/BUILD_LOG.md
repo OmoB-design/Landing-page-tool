@@ -1387,3 +1387,36 @@ as new entries.
 - **Owner confirmed:** no
 - **Next:** to agree with the owner (M5 Hardening is complete).
 
+### B6.1 — Members and invites
+- **Status:** complete (owner: "go", the migration push permitted, 2026-11-07; not yet committed)
+- **Date:** 2026-11-07
+- **Summary:**
+  - **Settings → Members** is built: everyone in the workspace, roles changed and people removed by owners and admins, Leave for anyone (not the last owner).
+  - **Invites:** an email and a role give a link to copy (7 days, revocable, refreshed when you invite again); open invites are listed with Copy link and Revoke.
+  - **Joining:** someone new signs up from the link straight into the workspace (no empty workspace of their own); someone with an account signs in and joins with one button; a wrong account is told whose invite it is.
+  - **Rules held by the worker:** a workspace keeps an owner; only owners make or change owners; members can't change member rows directly any more.
+- **Key files:** `supabase/migrations/20261107113512_members_invites.sql` (new, pushed with the owner's permission), `supabase/tests/database/members_invites.test.sql` (new, 13 checks); worker `app/members.py`, `app/models/members.py`, `app/main.py` (seven endpoints), `tests/test_members.py` (new); web `components/features/settings/members.tsx` (+ test), `app/(app)/settings/members/page.tsx`, `app/(app)/settings/_load.ts`, `app/api/orgs/members/route.ts`, `app/api/orgs/members/[memberId]/route.ts`, `app/api/orgs/invites/[inviteId]/route.ts`, `app/invite/[token]/page.tsx`, `components/features/auth/invite-forms.tsx`, `lib/members/{answer,actions}.ts`, `lib/validators/members.ts`, `lib/api/worker.ts`, `lib/auth/{actions,next}.ts` (+ test), `lib/links/public-base.ts`, `app/auth/callback/route.ts`, `app/(auth)/sign-in/page.tsx`, `components/features/auth/sign-in-form.tsx`, `lib/supabase/proxy.ts`, `components/app/settings-sidebar.tsx`, `components/app/org-switcher.tsx`; docs D129, MILESTONES (M6), CLAUDE.md layout.
+- **Schema changes:** table `invites`; the sign-up trigger joins invited sign-ups; members' writes to `org_members` revoked. **New dependencies:** none.
+- **Decisions:** D129 locked (D34 resolved).
+- **Deviations from the plan:** the Members list looks again every 15 s while invites are open (found while checking: a join didn't show until a reload). Sign-in now returns to where it came from (`?next=`), so an invite brings people back to itself.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner.
+
+
+### B6.2 — Account page
+- **Status:** complete (owner: "go and yes", the migration push permitted, 2026-11-07; not yet committed)
+- **Date:** 2026-11-07
+- **Summary:**
+  - **Settings → Account** is built (no longer Soon): your name, your sign-in email (shown, not changeable yet), a new password, and the theme for this browser.
+  - **Name:** saved to your profile; the app sidebar and Members show it.
+  - **Password:** the current one is checked first without touching your session; a wrong one is named by its field; after a change this browser stays signed in and other devices are signed out within the hour.
+  - **Profiles locked down:** people can change only their name and current workspace (to one they belong to); they can't delete or make profile rows.
+  - **Phones:** the settings column no longer runs past the panel's edge (all settings pages); the Members invite field no longer squashes.
+- **Key files:** `supabase/migrations/20261107192132_profile_writes.sql` (new, pushed with the owner's permission), `supabase/tests/database/profile_writes.test.sql` (new, 10 checks); web `app/(app)/settings/account/page.tsx`, `components/features/settings/account.tsx` (+ test), `lib/account/actions.ts`, `lib/validators/account.ts`, `components/features/settings/settings-page.tsx`, `components/features/settings/members.tsx`, `components/app/settings-sidebar.tsx`; docs D130, MILESTONES, CLAUDE.md layout.
+- **Schema changes:** profile policies and grants (no new columns). **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** D130 locked.
+- **Deviations from the plan:** two phone fixes outside the Account page, found while checking it: the shared settings column (every settings page overflowed by 21 px) and the Members invite field (B6.1). No name-length rule in the database (it could have failed an unusual sign-up); the app checks 1–80 characters.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner.

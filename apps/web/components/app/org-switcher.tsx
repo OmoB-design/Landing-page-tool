@@ -98,7 +98,7 @@ export function OrgSwitcher({
             <Link href="/settings">Settings</Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className={ITEM}>
-            <Link href="/settings">Invite and manage members</Link>
+            <Link href="/settings/members">Invite and manage members</Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuItem
