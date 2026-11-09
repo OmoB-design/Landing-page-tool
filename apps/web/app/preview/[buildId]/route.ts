@@ -7,6 +7,42 @@ import { publicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 /**
+ * A white highlight where the page is dark (owner, 2026-11-09: on a black page "the highlight
+ * colour blends with the dark page"): text selected over a dark background shows white with dark
+ * letters, also while the formatting bar has the focus. Elsewhere the browser's own highlight
+ * stays. Dark: the selected text is lighter than the first solid background behind it, or near
+ * white (over a photo). Part of both bridges below.
+ */
+const SELECTION_SHADE = `
+  var shade = document.createElement("style"), shadeFor = null, shadeDark = false;
+  (document.head || document.documentElement).appendChild(shade);
+  function lum(c) {
+    var m = /rgba?\\(([^)]*)\\)/.exec(c || "");
+    if (!m) return null;
+    var p = m[1].split(/[\\s,\\/]+/).filter(Boolean).map(Number);
+    if (p.length < 3 || (p.length > 3 && p[3] < 0.5)) return null;
+    var l = p.slice(0, 3).map(function (v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
+  }
+  function shadeSelection() {
+    var s = getSelection(), n = s && s.rangeCount && !s.isCollapsed ? s.anchorNode : null;
+    var el = n && n.nodeType === 3 ? n.parentElement : n;
+    if (!el || el.nodeType !== 1 || el === shadeFor) return;
+    shadeFor = el;
+    var text = lum(getComputedStyle(el).color), back = 1;
+    for (var at = el; at && at.nodeType === 1; at = at.parentElement) {
+      var b = lum(getComputedStyle(at).backgroundColor);
+      if (b !== null) { back = b; break; }
+    }
+    var dark = text !== null && (text > back || text > 0.7);
+    if (dark === shadeDark) return;
+    shadeDark = dark;
+    shade.textContent = dark ? "::selection{background-color:white !important;color:black !important}" : "";
+  }
+  document.addEventListener("selectionchange", shadeSelection);
+`;
+
+/**
  * Runs inside the review desk's preview (`?mode=edit`, D84): the worker marks every sentence
  * (`data-lp-frag`) and every paragraph (`data-lp-block`). Hovering a paragraph outlines it
  * (dashed), clicking tells the desk which one it is, and the desk can select one (solid outline)
@@ -16,7 +52,7 @@ import { createClient } from "@/lib/supabase/server";
 const DESK_BRIDGE = `(function () {
   var colour = "Highlight", selected = null, hovered = null;
   var style = document.createElement("style");
-  (document.head || document.documentElement).appendChild(style);
+  (document.head || document.documentElement).appendChild(style);${SELECTION_SHADE}
   function block(el) {
     for (; el && el !== document.documentElement; el = el.parentElement) {
       if (el.nodeType === 1 && el.hasAttribute("data-lp-block")) return el;
@@ -103,7 +139,7 @@ const WRITE_BRIDGE = `(function () {
   var outer = { key: null, block: null, image: null }, lastHover = "";
   var tabPick = null, tabHover = null, pill = null;
   var style = document.createElement("style");
-  (document.head || document.documentElement).appendChild(style);
+  (document.head || document.documentElement).appendChild(style);${SELECTION_SHADE}
   function send(data) { parent.postMessage(data, "*"); }
   function closest(el, attr) {
     for (; el && el !== document.documentElement; el = el.parentElement)

@@ -1638,3 +1638,17 @@ as new entries.
 - **Verification:** typecheck, lint, token check, 309 web tests; in the browser with a mock-mode build: a brand with one page (the list, the count, the row opens the page), a brand with none (the empty state; New page opens the wizard with that brand chosen).
 - **Owner confirmed:** no
 - **Next:** to agree with the owner.
+
+### B3.1k — A white highlight on dark pages
+- **Status:** complete (owner: "for the dark page can we do the highlight being white?", 2026-11-09; committed and pushed, 2026-11-09)
+- **Date:** 2026-11-09
+- **Summary:**
+  - **Found first:** the editor's canvas never set a highlight colour, so text selected for the formatting bar took the browser's own, which disappears on a black page.
+  - **Now:** text selected over a dark background shows white with dark letters, and stays visible while the formatting bar has the focus. Dark means the text is lighter than the first solid background behind it, or near white (a photo hero). Light parts of the page keep the browser's own highlight. The review desk's preview does the same.
+- **Key files:** `app/preview/[buildId]/route.ts` (`SELECTION_SHADE`, in both bridges); MILESTONES.
+- **Schema changes:** none. **Worker changes:** none. **New dependencies:** none.
+- **Decisions:** none.
+- **Deviations:** none.
+- **Verification:** typecheck, lint, token check, 309 web tests (one flaky failure on a first run, clean on the rerun); the editor's bridge run in Chromium on a test page: white on a black band, a photo-like band and a terracotta band; the browser's own on a white band (screenshots).
+- **Owner confirmed:** no
+- **Next:** to agree with the owner.
