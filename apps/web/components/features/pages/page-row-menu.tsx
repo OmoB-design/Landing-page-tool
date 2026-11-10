@@ -13,6 +13,7 @@ import { RowMoreIcon } from "@/components/ui/lp-icons";
 import type { BuildSummary } from "@/lib/validators/build";
 
 import { useDuplicatePage } from "../builds/use-duplicate-page";
+import { VariantsDialog } from "../offers/variants-dialog";
 import { MoveToTrashDialog } from "../trash/move-to-trash-dialog";
 
 const ITEM =
@@ -30,6 +31,8 @@ export function PageRowMenu({
   href,
   built = true,
   onDuplicated,
+  brandId = null,
+  offerId = null,
 }: {
   buildId: string;
   pageKey: string;
@@ -37,8 +40,12 @@ export function PageRowMenu({
   /** Built (to review, approved or published): only then can it be duplicated. */
   built?: boolean;
   onDuplicated?: (copy: BuildSummary) => void;
+  /** For Duplicate with offers (B7.3a): the page's brand and its offer. */
+  brandId?: string | null;
+  offerId?: string | null;
 }) {
   const [trashing, setTrashing] = useState(false);
+  const [variants, setVariants] = useState(false);
   const duplicating = useDuplicatePage(buildId, onDuplicated);
   return (
     <>
@@ -67,6 +74,15 @@ export function PageRowMenu({
           >
             Duplicate
           </DropdownMenuItem>
+          {brandId ? (
+            <DropdownMenuItem
+              className={ITEM}
+              disabled={!built}
+              onSelect={() => setVariants(true)}
+            >
+              Duplicate with offers…
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
             className={ITEM}
             onSelect={() => void navigator.clipboard?.writeText(pageKey)}
@@ -78,6 +94,19 @@ export function PageRowMenu({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {brandId ? (
+        <VariantsDialog
+          open={variants}
+          onOpenChange={setVariants}
+          buildId={buildId}
+          pageKey={pageKey}
+          brandId={brandId}
+          currentOfferId={offerId}
+          onMade={() =>
+            onDuplicated?.({ id: buildId, key: pageKey, status: "", title: "" })
+          }
+        />
+      ) : null}
       <MoveToTrashDialog
         open={trashing}
         onOpenChange={setTrashing}

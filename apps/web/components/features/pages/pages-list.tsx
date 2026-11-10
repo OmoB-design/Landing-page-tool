@@ -19,6 +19,7 @@ import {
   type PageGroupKey,
   type PageListItem,
   RESIDUE_MIN_SCORE,
+  copyLabel,
 } from "@/lib/pages/list";
 
 import { FolderRow } from "./folder-row";
@@ -51,6 +52,7 @@ export function PagesList({
               <PageRow
                 key={child.id}
                 page={child}
+                parentOffer={row.offerName ?? null}
                 level={1}
                 hide={hide}
                 branch={{
@@ -107,9 +109,12 @@ function PageRow({
   hide,
   nested = [],
   branch,
+  parentOffer = null,
   children,
 }: {
   page: PageListItem;
+  /** The original's offer: a copy selling another one says it (B7.3a). */
+  parentOffer?: string | null;
   level?: 0 | 1;
   hide: PageProperty[];
   /** The pages hanging under this one (its copies). */
@@ -127,7 +132,7 @@ function PageRow({
       title={
         // Under its original, a copy is its number: the original says the rest.
         level === 1 && page.copyNumber ? (
-          `Copy ${page.copyNumber}`
+          copyLabel(page.copyNumber, page.offerName ?? null, parentOffer)
         ) : (
           <>
             <PageTitle title={page.title} />
@@ -174,6 +179,8 @@ function PageRow({
           pageKey={page.key}
           href={href}
           built={BUILT.has(page.status)}
+          brandId={page.brandId ?? null}
+          offerId={page.offerId ?? null}
         />
       }
     >

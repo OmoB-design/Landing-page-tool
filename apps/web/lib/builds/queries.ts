@@ -56,7 +56,7 @@ export async function getOrgPages(
   let query = supabase
     .from("builds")
     .select(
-      "id, key, title, status, origin, cost_usd, created_at, updated_at, parent_build_id, copy_number, created_by, batch_id, template_id, residue:report->residue->>score, template:templates(type), product:products(name), brand:brands(name)",
+      "id, key, title, status, origin, cost_usd, created_at, updated_at, parent_build_id, copy_number, created_by, batch_id, template_id, brand_id, offer_id, offer_name:offer->>name, residue:report->residue->>score, template:templates(type), product:products(name), brand:brands(name)",
     )
     .eq("org_id", orgId)
     .is("deleted_at", null);
@@ -99,6 +99,9 @@ export async function getOrgPages(
     updatedAt: new Date(build.updated_at),
     parentId: build.parent_build_id,
     copyNumber: build.copy_number,
+    brandId: build.brand_id,
+    offerId: build.offer_id,
+    offerName: build.offer_name,
     batchId: build.batch_id,
     folderColor: build.batch_id ? colours.get(build.batch_id) : undefined,
     templateId: build.template_id,

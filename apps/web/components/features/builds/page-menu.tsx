@@ -14,6 +14,8 @@ import {
 import { RowMoreIcon } from "@/components/ui/lp-icons";
 import { Spinner } from "@/components/ui/spinner";
 
+import { ChangeOfferDialog } from "../offers/change-offer-dialog";
+import { VariantsDialog } from "../offers/variants-dialog";
 import { MoveToTrashDialog } from "../trash/move-to-trash-dialog";
 
 import { useDeskOptional } from "./desk-context";
@@ -25,7 +27,7 @@ const ITEM =
 
 /**
  * The build page's ⋯ (D141), last in its header: Back to review (once approved), Duplicate (a copy
- * as it is now, once it's built: B7.1, D144), Export (the page as one HTML file, when it's built;
+ * as it is now, once it's built: B7.1, D144), Duplicate with offers… and Change offer… (B7.3a), Export (the page as one HTML file, when it's built;
  * the ⋯ shows a spinner while it runs), Copy key and Move to Trash, which asks first and then goes
  * to Pages (D92). The menu is the page rows' (Figma: Page
  * List, Hover).
@@ -34,16 +36,23 @@ export function PageMenu({
   buildId,
   buildKey,
   ready,
+  brandId = null,
+  offerId = null,
 }: {
   buildId: string;
   buildKey: string;
   ready: boolean;
+  /** For Change offer and Duplicate with offers (B7.3a): the page's brand and its offer. */
+  brandId?: string | null;
+  offerId?: string | null;
 }) {
   const router = useRouter();
   const desk = useDeskOptional();
   const exporting = useExportPage(buildId, buildKey);
   const duplicating = useDuplicatePage(buildId);
   const [trashing, setTrashing] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [variants, setVariants] = useState(false);
   const approved = desk?.desk.build.status === "approved";
   const deskBusy =
     desk !== null && (desk.pending !== null || desk.redrafting !== null);
@@ -87,6 +96,24 @@ export function PageMenu({
           >
             {duplicating.busy ? "Duplicating…" : "Duplicate"}
           </DropdownMenuItem>
+          {brandId ? (
+            <DropdownMenuItem
+              className={ITEM}
+              disabled={!ready}
+              onSelect={() => setVariants(true)}
+            >
+              Duplicate with offers…
+            </DropdownMenuItem>
+          ) : null}
+          {brandId && desk ? (
+            <DropdownMenuItem
+              className={ITEM}
+              disabled={!ready || deskBusy || desk.redrafting !== null}
+              onSelect={() => setChanging(true)}
+            >
+              Change offer…
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
             className={ITEM}
             disabled={!ready || exporting.busy}
@@ -109,6 +136,27 @@ export function PageMenu({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {brandId && desk ? (
+        <ChangeOfferDialog
+          open={changing}
+          onOpenChange={setChanging}
+          buildId={buildId}
+          brandId={brandId}
+          currentOfferId={offerId}
+          baseVersion={desk.desk.build.page_version}
+          onStarted={() => void desk.reload()}
+        />
+      ) : null}
+      {brandId ? (
+        <VariantsDialog
+          open={variants}
+          onOpenChange={setVariants}
+          buildId={buildId}
+          pageKey={buildKey}
+          brandId={brandId}
+          currentOfferId={offerId}
+        />
+      ) : null}
       <MoveToTrashDialog
         open={trashing}
         onOpenChange={setTrashing}

@@ -250,7 +250,7 @@ def batch_state(org_id: UUID, batch_id: UUID) -> BatchState:
             """
             select b.id, b.key, b.title, b.status, b.created_at, b.template_id,
                    b.origin, b.cost_usd, b.created_by, b.updated_at, b.parent_build_id,
-                   b.copy_number,
+                   b.copy_number, b.brand_id, b.offer_id, b.offer->>'name' as offer_name,
                    b.report->'residue'->>'score' as residue,
                    t.name as template_name, t.type as template_type,
                    br.name as brand, p.name as product,
@@ -309,11 +309,14 @@ def batch_state(org_id: UUID, batch_id: UUID) -> BatchState:
             finished_at=r["finished_at"],
             parent_id=r["parent_build_id"],
             copy_number=r["copy_number"],
+            offer_id=r["offer_id"],
+            offer_name=r["offer_name"],
         )
         for r in rows
     ]
     return BatchState(
-        batch_id=batch_id, brand=rows[0]["brand"], product=rows[0]["product"],
+        batch_id=batch_id, brand=rows[0]["brand"], brand_id=rows[0]["brand_id"],
+        product=rows[0]["product"],
         created_at=rows[0]["created_at"], pages=pages,
         folder_color=folder["folder_color"] if folder else "red",
     )  # fmt: skip

@@ -91,6 +91,8 @@ export function redraftLabel(
       return redraft.section
         ? (labels[redraft.section] ?? sectionLabel(redraft.section))
         : "the page";
+    case "offer":
+      return "the offer";
   }
 }
 
@@ -100,6 +102,8 @@ export function inRedraft(
   paragraph: DeskParagraph,
 ): boolean {
   if (paragraph.locked) return false;
+  // Changing the offer (B7.3a) touches only the lines about the deal, found as it runs.
+  if (redraft.scope === "offer") return false;
   if (redraft.scope === "paragraph") return paragraph.number === redraft.block;
   // Lander (B3.1c) may change any line of what it was asked about, edited by hand or not.
   if (redraft.scope === "agent")

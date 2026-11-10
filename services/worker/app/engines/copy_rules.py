@@ -271,6 +271,37 @@ def redraft_prompt(
     )
 
 
+def offer_prompt(
+    chunk: list[Fragment],
+    everything: list[Fragment],
+    budgets: dict[str, int],
+    old_offer: str,
+    new_offer: str,
+    remove: dict[str, list[str]] | None = None,
+) -> str:
+    """The user turn for changing a page's offer (B7.3a): lines that mention the old offer, to
+    describe the new one instead, changing nothing else. `remove` names old facts a first try
+    left in a line."""
+    items = json.loads(chunk_prompt(chunk, everything, budgets).split("\n", 1)[1])
+    for item in items:
+        if remove and remove.get(item["id"]):
+            item["remove"] = remove[item["id"]]
+    return (
+        "The page's offer has changed.\nOLD OFFER:\n"
+        + old_offer
+        + "\nNEW OFFER:\n"
+        + new_offer
+        + "\nThese fragments mention the old offer. Rewrite each to describe the new offer "
+        "instead. Change only the words about the deal (its price, discount, code, gift, "
+        "shipping, deadline); keep every other word as it is, in the same order. Where the new "
+        "offer has nothing in place of something (no code, no discount), leave that part out "
+        "gracefully. Never mention a deal that isn't the new offer. If a fragment doesn't "
+        "actually mention the old offer, return its text unchanged. Where an item lists "
+        '"remove", none of those words may stay. Return one replacement for every id, each '
+        "within its max_chars.\n" + json.dumps(items, ensure_ascii=False)
+    )
+
+
 def shorten_prompt(over: list[tuple[Fragment, str, int]]) -> str:
     items = [
         {"id": f.id, "text": text, "max_chars": budget, "original": f.text}

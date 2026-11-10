@@ -1708,3 +1708,20 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** to agree with the owner (B7.3).
+
+### B7.3a — Change a page's offer, a batch's, and variants
+- **Status:** complete (owner: "go", 2026-11-10; committed and pushed, 2026-11-10)
+- **Date:** 2026-11-10
+- **Summary:**
+  - **Change offer…** on the build page: pick another offer (or none); the prices, badges, promo line, options and buttons follow at once, and Claude rewrites only the lines that state the old deal, as one undo step; the window shows each changed line before and after, and anything to check.
+  - **Guards** (agreed before building): code finds the mentions (including what the page's own price and badge slots said); other lines must come back exactly as they were or nothing saves; a line still stating the old deal gets a second try; old facts left, invented prices or percents, and rewrites that dropped more than the deal are listed; untouched lines that sound like a deal are listed to look at.
+  - **A batch:** Change offer on the batch screen, for the ticked pages (variants with another offer unticked), each with its progress and result.
+  - **Variants:** Duplicate with offers… on every page ⋯: one copy per ticked offer, each changed; the tree reads "Copy 2 · Ten off".
+  - **Builds hide sale parts** without a discount instead of removing them, so a later offer can show them; parts hidden by hand stay hidden.
+- **Key files:** worker `app/engines/offers.py` (facts, page_facts, mentions, leftovers, invented, dropped, deal_hint, apply_to_page, show_for_offer), `app/jobs/kinds/offer_apply.py` (new), `app/offer_change.py` (new), `app/engines/copy_rules.py` (offer_prompt), `app/engines/finalize.py` (hide, not remove), `app/desk.py` (the page job), `app/builds.py` + `app/models/build.py` (batch offer fields), `app/main.py` (endpoints), `app/jobs/registry.py`; tests `test_offers.py`, `test_offer_change.py` (new), `test_page_engines.py`, `test_template_import.py`; web `components/features/offers/change-offer-dialog.tsx`, `variants-dialog.tsx`, `batch-offer-dialog.tsx`, `offer-result.tsx` (new, + `offer-windows.test.tsx`), `lib/queries/offers.ts` (new), routes `api/builds/[buildId]/offer`, `api/builds/[buildId]/variants`, `api/builds/batch/[batchId]/offer`, `api/brands/[brandId]/offers` (new), `components/features/builds/page-menu.tsx`, `pages/page-row-menu.tsx`, `pages/pages-list.tsx`, `builds/batch-view.tsx`, `redraft-controls.tsx`, `lib/pages/list.ts` (copyLabel), `lib/builds/queries.ts`, `lib/builds/desk.ts`, `lib/validators/offer.ts`, `build.ts`, `desk.ts`, `lib/api/worker.ts`, `lib/jobs/job-titles.json`; docs D147, MILESTONES, DESIGN.
+- **Schema changes:** none. **New dependencies:** none.
+- **Decisions:** D147.
+- **Deviations:** the "sound like a deal" lines are found by code (deal words), not flagged by Claude (the reply format is one rewrite per line; code is predictable and free). Added after the live check: the "dropped more than the deal" check (a rewrite lost "a straightforward return policy") and old facts read from the page's own slots (pages built before offers show other prices than their recorded offer gives).
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** B7.3b (Approve and publish all), on the owner's go.

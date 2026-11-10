@@ -42,6 +42,7 @@ export type FolderColor = z.infer<typeof folderColorSchema>;
 export const batchStateSchema = z.object({
   batch_id: z.string(),
   brand: z.string(),
+  brand_id: z.string().nullable().catch(null),
   product: z.string(),
   created_at: z.string(),
   pages: z.array(
@@ -70,6 +71,9 @@ export const batchStateSchema = z.object({
       /** A copy (B7.1, D144): the family's first page, under which it nests, and its number. */
       parent_id: z.string().nullable().catch(null),
       copy_number: z.number().int().nullable().catch(null),
+      /** The offer it sells (B7.3a). */
+      offer_id: z.string().nullable().catch(null),
+      offer_name: z.string().nullable().catch(null),
     }),
   ),
   /** Its folder's colour in the Pages list (B3.5b), the team's pick; red until then. */

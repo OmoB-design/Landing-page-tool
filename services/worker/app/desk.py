@@ -157,7 +157,8 @@ def _next_seq(conn: Any, build_id: UUID) -> int:
 
 
 # Jobs that rewrite the page while the desk waits: a redraft, or a request to Lander (B3.1c, D106).
-PAGE_JOBS = ("redraft", "agent_turn")
+# Jobs that change the page itself, one at a time (a redraft, Lander, an offer change, B7.3a).
+PAGE_JOBS = ("redraft", "agent_turn", "offer_apply")
 
 
 def _redraft(conn: Any, build_id: UUID) -> dict[str, Any] | None:
@@ -351,6 +352,8 @@ def _state(
             status=redraft["status"],
             scope="agent"
             if redraft["kind"] == "agent_turn"
+            else "offer"
+            if redraft["kind"] == "offer_apply"
             else redraft["payload"].get("scope", "page"),
             section=redraft["payload"].get("section"),
             block=redraft["payload"].get("block"),

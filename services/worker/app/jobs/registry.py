@@ -16,6 +16,7 @@ from app.jobs.kinds import (
     image_ai,
     mobile_optimize,
     noop_demo,
+    offer_apply,
     product_briefing,
     product_fidelity,
     product_pull,
@@ -110,6 +111,16 @@ KINDS: dict[str, JobKind] = {
             payload_model=redraft.RedraftPayload,
             max_attempts=1,
             dedupe=redraft.dedupe_key,
+        ),
+        # Started by POST /builds/{id}/offer, a batch's offer change or variants (B7.3a, D147):
+        # shares the redraft's one-at-a-time key. One attempt: a lost worker means asking again.
+        JobKind(
+            name="offer_apply",
+            title="Change the offer",
+            handler=offer_apply.run,
+            payload_model=offer_apply.OfferApplyPayload,
+            max_attempts=1,
+            dedupe=offer_apply.dedupe_key,
         ),
         # Started by POST /builds/{id}/agent (B3.1c, D106): a request to Lander; shares the
         # redraft's one-at-a-time key, so a page never has both running.

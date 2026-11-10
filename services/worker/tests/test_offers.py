@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient
 
 from app.db import transaction
 from app.engines import offers
+from app.engines.fragments import dump
+from app.engines.html import parse
 from app.providers import storage
 from tests.conftest import DbUser, needs_db
 from tests.test_api import bearer, fake_jwks  # noqa: F401 (fake_jwks: autouse fixture)
@@ -193,3 +195,128 @@ def test_a_copy_keeps_its_originals_offer(
         ).fetchone()
     assert row is not None and str(row["offer_id"]) == offer_id and row["offer"] == snapshot
     storage.remove_folder("builds", f"{finished['org_id']}/{copy['id']}")
+
+
+# ── Changing a page's offer (B7.3a): facts, mentions, slots ─────────────────────────────────
+
+
+PRODUCT = {
+    "price": "145.00", "sale_price": None, "currency": "USD", "pull_source": "shopify_json",
+    "url": "https://fernway.example/products/market-tote",
+    "variants": [{"name": "Tan", "price": "145.00"}, {"name": "Black", "price": "150.00"}],
+}  # fmt: skip
+OLD = {
+    "name": "Autumn",
+    "price_change": "percent",
+    "price_value": "20",
+    "checkout": "code",
+    "code": "AUTUMN20",
+    "promo_text": "Autumn edit: 20% off this week",
+    "details": "Free shipping on every order, and a free leather strap. Ends Sunday.",
+}
+NEW = {"name": "Ten off", "price_change": "amount", "price_value": "10", "checkout": "automatic",
+       "code": None, "promo_text": "Ten dollars off, this week only", "details": None}  # fmt: skip
+
+PAGE = """
+<section data-lp-section="bar">
+  <p data-lp-promo>Autumn edit: <span data-lp-sale-percent>20% off</span></p>
+</section>
+<section data-lp-section="hero" data-lp-sale-only><h1>Save 20% on the Market Tote</h1></section>
+<section data-lp-section="body">
+  <p>I carried it for a month. At $116 it's the best bag I own.</p>
+  <p>It holds a laptop, groceries and a water bottle.</p>
+  <blockquote>"Used code AUTUMN20 and the strap came free!" — Dana</blockquote>
+  <p>Order before Sunday to get free shipping.</p>
+  <p>Our summer sale is long gone, but quality stays.</p>
+  <p>Price <span data-lp-price>$116.00</span> <s data-lp-compare-price>$145.00</s></p>
+  <ul>
+    <li><span data-lp-variant-name>Tan</span> <span data-lp-variant-price>$116.00</span></li>
+    <li><span data-lp-variant-name>Black</span> <span data-lp-variant-price>$120.00</span></li>
+  </ul>
+  <a data-lp-cta href="https://fernway.example/discount/AUTUMN20?redirect=/products/tote">
+    Get 20% off</a>
+  <div data-lp-sale-only data-lp-hidden style="display:none !important"><p>Hidden by hand</p></div>
+</section>
+"""
+
+
+def test_every_mention_of_the_old_offer_is_found_wherever_it_is() -> None:
+    old = offers.facts(OLD, PRODUCT)
+    lines = {f.text: offers.mentions(f.text, old) for f in dump(PAGE) if not f.locked}
+    found = {text for text, hits in lines.items() if hits}
+    assert "Save 20% on the Market Tote" in found  # a heading
+    assert "Get 20% off" in found  # a button
+    assert any("AUTUMN20" in text for text in found)  # a review quote
+    assert "I carried it for a month. At $116 it's the best bag I own." in found  # in a sentence
+    assert "Order before Sunday to get free shipping." in found  # the details' deadline
+    assert "It holds a laptop, groceries and a water bottle." not in found
+    # A deal that isn't this offer is only a hint to look at.
+    summer = "Our summer sale is long gone, but quality stays."
+    assert summer not in found and offers.deal_hint(summer)
+
+
+def test_leftovers_and_invented_deals_are_caught() -> None:
+    old, new = offers.facts(OLD, PRODUCT), offers.facts(NEW, PRODUCT)
+    assert offers.leftovers("Now $135, code AUTUMN20 still works", old, new) == ["AUTUMN20"]
+    assert offers.leftovers("Now $135.00, ten off", old, new) == []
+    before = "At $116 it's the best bag I own."
+    assert offers.invented("At $135.00 it's the best bag I own.", before, new) == []
+    assert offers.invented("Save 25% at $99.00 today", before, new) == ["25%", "$99.00"]
+
+
+def test_the_data_slots_follow_the_new_offer_both_ways() -> None:
+    html, stats = offers.apply_to_page(PAGE, PRODUCT, NEW)
+    soup = parse(html)
+    assert {t.get_text() for t in soup.select("[data-lp-price]")} == {"$135.00"}
+    assert soup.select_one("[data-lp-compare-price]").get_text() == "$145.00"  # type: ignore[union-attr]
+    assert soup.select_one("[data-lp-promo]").get_text() == "Ten dollars off, this week only"  # type: ignore[union-attr]
+    assert [t.get_text() for t in soup.select("[data-lp-variant-price]")] == ["$135.00", "$140.00"]
+    assert soup.select_one("a[data-lp-cta]")["href"] == PRODUCT["url"]  # type: ignore[index]
+    assert stats == {"prices": 1, "badges": 1, "options": 2, "links": 1}  # $10 off: a real 7%
+    # No discount at all: the sale parts hide (marked as the offer's), the price is the store's.
+    bare, _ = offers.apply_to_page(PAGE, PRODUCT, None)
+    soup = parse(bare)
+    hero = soup.select_one('[data-lp-section="hero"]')
+    assert hero is not None and hero.has_attr("data-lp-offer-hidden")
+    assert soup.select_one("[data-lp-compare-price]").has_attr("data-lp-hidden")  # type: ignore[union-attr]
+    # And back: the offer's own hiding comes off; the part hidden by hand stays hidden.
+    again, _ = offers.apply_to_page(bare, PRODUCT, OLD)
+    soup = parse(again)
+    hero = soup.select_one('[data-lp-section="hero"]')
+    assert hero is not None and not hero.has_attr("data-lp-hidden")
+    text = soup.find(string="Hidden by hand")
+    by_hand = text.parent.parent if text is not None and text.parent is not None else None
+    assert by_hand is not None
+    assert by_hand.has_attr("data-lp-hidden") and not by_hand.has_attr("data-lp-offer-hidden")
+    assert soup.select_one("a[data-lp-cta]")["href"] == (  # type: ignore[index]
+        "https://fernway.example/discount/AUTUMN20?redirect=/products/market-tote"
+    )
+
+
+def test_the_page_itself_says_what_its_deal_was() -> None:
+    # A page built before offers: $125 with a 15% badge, whatever its recorded offer gives now.
+    html = (
+        "<p>Now <span data-lp-price>$125.00</span> <s data-lp-compare-price>$145.00</s> "
+        "<b data-lp-sale-percent>15% off</b></p><p data-lp-promo>Oxblood: 15% off this week</p>"
+        "<p>I paid $125 and it was worth it.</p><p>15 percent off made it easy.</p>"
+    )
+    shown = offers.page_facts(html)
+    assert {"$125.00", "$125", "$145.00", "15%", "Oxblood: 15% off this week"} <= set(shown.exact)
+    found = offers.merged(offers.facts(OLD, PRODUCT), shown)
+    assert offers.mentions("I paid $125 and it was worth it.", found)
+    assert offers.mentions("15 percent off made it easy.", found)
+
+
+def test_a_rewrite_that_drops_more_than_the_deal_is_listed() -> None:
+    old = offers.facts(OLD, PRODUCT)
+    before = "Free shipping and a straightforward return policy mean there's no reason to wait."
+    after = "Ten dollars off, applied at checkout, means there's no reason to wait."
+    assert offers.dropped(before, after, old) == ["straightforward", "return", "policy"]
+    kept = "Ten dollars off and a straightforward return policy mean there's no reason to wait."
+    assert offers.dropped(before, kept, old) == []
+    # A price followed by a comma is the price, not something new.
+    new = offers.facts({"price_change": "amount", "price_value": "10"}, PRODUCT)
+    assert (
+        offers.invented("I paid $135, down from $145, gladly.", "I paid $116, down from $145.", new)
+        == []
+    )

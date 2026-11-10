@@ -20,6 +20,7 @@ from app import (
     images,
     members,
     mobile,
+    offer_change,
     publishing,
     qa,
     share,
@@ -314,6 +315,109 @@ def duplicate_build(build_id: UUID, body: DuplicateBuildRequest, user: CurrentUs
             status.HTTP_409_CONFLICT, "A page can be duplicated once it's built."
         ) from exc
     return BuildSummary.model_validate(copy)
+
+
+# ── Changing offers (B7.3a, D147) ────────────────────────────────────────────
+
+
+class OfferChangeRequest(BaseModel):
+    """POST /builds/{id}/offer: the offer the page should sell now (None: no offer)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    offer_id: UUID | None = None
+    base_version: int = Field(ge=1)
+
+
+class OfferChangeStarted(BaseModel):
+    job_id: UUID
+
+
+class BatchOfferRequest(BaseModel):
+    """POST /builds/batch/{id}/offer: the batch's chosen pages, to sell this offer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    offer_id: UUID | None = None
+    build_ids: list[UUID] = Field(min_length=1, max_length=40)
+
+
+class BatchOfferPage(BaseModel):
+    build_id: UUID
+    key: str
+    job_id: UUID | None = None
+    error: str | None = None
+
+
+class BatchOfferStarted(BaseModel):
+    pages: list[BatchOfferPage]
+
+
+class VariantsRequest(BaseModel):
+    """POST /builds/{id}/variants: one copy of the page per offer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    offer_ids: list[UUID] = Field(min_length=1, max_length=10)
+
+
+class Variant(BaseModel):
+    id: UUID
+    key: str
+    title: str
+    status: str
+    job_id: UUID
+    offer_id: UUID
+
+
+class VariantsMade(BaseModel):
+    copies: list[Variant]
+
+
+def _offer_call(fn: Any, *args: Any, **kwargs: Any) -> Any:
+    try:
+        return _desk_call(fn, *args, **kwargs)
+    except offer_change.OfferChangeError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    except builds.BuildNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That page isn't available.") from exc
+    except builds.BuildNotReadyError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "A page can be duplicated once it's built."
+        ) from exc
+
+
+@app.post("/builds/{build_id}/offer", status_code=status.HTTP_202_ACCEPTED)
+def change_offer(build_id: UUID, body: OfferChangeRequest, user: CurrentUser) -> OfferChangeStarted:
+    """Queues changing the page's offer (one desk change, B7.3a)."""
+    require_org_member(user, body.org_id)
+    job_id = _offer_call(
+        offer_change.start, body.org_id, build_id, user.id, body.offer_id, body.base_version
+    )
+    return OfferChangeStarted(job_id=job_id)
+
+
+@app.post("/builds/batch/{batch_id}/offer", status_code=status.HTTP_202_ACCEPTED)
+def change_batch_offer(
+    batch_id: UUID, body: BatchOfferRequest, user: CurrentUser
+) -> BatchOfferStarted:
+    """Queues the offer change on each chosen page of a batch; one that can't take it says why."""
+    require_org_member(user, body.org_id)
+    pages = _offer_call(
+        offer_change.start_batch, body.org_id, batch_id, user.id, body.offer_id, body.build_ids
+    )
+    return BatchOfferStarted(pages=[BatchOfferPage.model_validate(p) for p in pages])
+
+
+@app.post("/builds/{build_id}/variants", status_code=status.HTTP_201_CREATED)
+def make_variants(build_id: UUID, body: VariantsRequest, user: CurrentUser) -> VariantsMade:
+    """One copy of the page per offer, each changed to its offer (B7.3a)."""
+    require_org_member(user, body.org_id)
+    copies = _offer_call(offer_change.variants, body.org_id, build_id, user.id, body.offer_ids)
+    return VariantsMade(copies=[Variant.model_validate(c) for c in copies])
 
 
 # ── Review desk (BUILD_SPEC §11.1, D84) ──────────────────────────────────────

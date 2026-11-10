@@ -146,7 +146,12 @@ def test_sale_only_elements_need_a_sale() -> None:
         "<p>Body</p>"
     )
     out, stats = finalize_common(html, FinalizeInputs(brand_name="B", product_name="P"))
-    assert "ends tonight" not in out and stats["sale_only_removed"] == 1
+    bar = parse(out).select_one("[data-lp-sale-only]")
+    # Hidden, not removed (B7.3a): an offer with a discount can show it again.
+    assert (
+        bar is not None and bar.has_attr("data-lp-hidden") and bar.has_attr("data-lp-offer-hidden")
+    )
+    assert stats["sale_only_hidden"] == 1
     out, _ = finalize_common(
         html, FinalizeInputs(brand_name="B", product_name="P", sale_percent=20)
     )

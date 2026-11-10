@@ -115,11 +115,15 @@ class BatchPage(BaseModel):
     # A copy (B7.1, D144): the family's first page, under which it nests, and its number.
     parent_id: UUID | None = None
     copy_number: int | None = None
+    # The offer it sells (B7.3a), as it recorded it.
+    offer_id: UUID | None = None
+    offer_name: str | None = None
 
 
 class BatchState(BaseModel):
     batch_id: UUID
     brand: str
+    brand_id: UUID | None = None
     product: str
     created_at: datetime
     pages: list[BatchPage]

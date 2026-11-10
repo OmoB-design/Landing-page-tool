@@ -201,7 +201,13 @@ async function Build({
                 <ClientLink />
               </>
             ) : null}
-            <PageMenu buildId={build.id} buildKey={build.key} ready={ready} />
+            <PageMenu
+              buildId={build.id}
+              buildKey={build.key}
+              ready={ready}
+              brandId={build.brand?.id ?? null}
+              offerId={pageOfferSchema.safeParse(build.offer).data?.id ?? null}
+            />
           </div>
         }
       />

@@ -128,7 +128,9 @@ export function RedraftStatus() {
         <ShimmerText className="text-heading-02">
           {redrafting.redraft.scope === "agent"
             ? `Buddy is working on ${redraftLabel(redrafting.redraft, desk.sections)}…`
-            : `Redrafting ${redraftLabel(redrafting.redraft, desk.sections)}…`}
+            : redrafting.redraft.scope === "offer"
+              ? "Changing the offer…"
+              : `Redrafting ${redraftLabel(redrafting.redraft, desk.sections)}…`}
         </ShimmerText>
         <span className="text-type-caption-2 text-heading-05">
           {step && redrafting.job?.status === "running"

@@ -31,7 +31,7 @@ import { BuildSpinnerIcon } from "@/components/ui/lp-icons";
 import { Spinner } from "@/components/ui/spinner";
 import { MorphText } from "@/components/ui/text-morph";
 import { apiFetch } from "@/lib/api/client";
-import { RESIDUE_MIN_SCORE } from "@/lib/pages/list";
+import { RESIDUE_MIN_SCORE, copyLabel } from "@/lib/pages/list";
 import { cn } from "@/lib/utils";
 import {
   type BatchPage,
@@ -41,6 +41,8 @@ import {
   batchStateSchema,
   buildCreatedSchema,
 } from "@/lib/validators/build";
+
+import { BatchOfferDialog } from "../offers/batch-offer-dialog";
 
 import { BatchFrameCard, ordinal } from "./batch-frame";
 import { useBuildSteps } from "./build-steps";
@@ -102,6 +104,8 @@ export function BatchView({
   // Open by itself while anything builds; × and Progress decide after that.
   const [chosen, setChosen] = useState<boolean | null>(null);
   const sheetOpen = chosen ?? active;
+  const [changingOffer, setChangingOffer] = useState(false);
+  const anyReady = pages.some((p) => READY.has(p.status));
 
   return (
     <>
@@ -110,21 +114,33 @@ export function BatchView({
         crumb={{ label: "Pages", href: "/pages" }}
         actions={
           data ? (
-            <Button
-              variant="ghost"
-              size="compact"
-              aria-pressed={sheetOpen}
-              onClick={() => setChosen(!sheetOpen)}
-              className="h-7 gap-1.5 px-2 text-type-caption-1 text-heading-02"
-            >
-              {active ? (
-                <BuildSpinnerIcon className="size-3.5 animate-step-spin text-icon-nav-active motion-reduce:animate-step-spin-slow" />
+            <span className="flex items-center gap-1.5">
+              {data.brand_id && anyReady ? (
+                <Button
+                  variant="outline"
+                  size="compact"
+                  onClick={() => setChangingOffer(true)}
+                  className="h-7 px-2.5 text-type-caption-1"
+                >
+                  Change offer
+                </Button>
               ) : null}
-              Progress
-              <span className="text-heading-06 tabular-nums">
-                <MorphText>{`${ready}/${pages.length}`}</MorphText>
-              </span>
-            </Button>
+              <Button
+                variant="ghost"
+                size="compact"
+                aria-pressed={sheetOpen}
+                onClick={() => setChosen(!sheetOpen)}
+                className="h-7 gap-1.5 px-2 text-type-caption-1 text-heading-02"
+              >
+                {active ? (
+                  <BuildSpinnerIcon className="size-3.5 animate-step-spin text-icon-nav-active motion-reduce:animate-step-spin-slow" />
+                ) : null}
+                Progress
+                <span className="text-heading-06 tabular-nums">
+                  <MorphText>{`${ready}/${pages.length}`}</MorphText>
+                </span>
+              </Button>
+            </span>
           ) : null
         }
       />
@@ -156,6 +172,7 @@ export function BatchView({
                   creator={page.created_by === me.id ? me.name : "A teammate"}
                   onChanged={() => void batch.refetch()}
                   copies={copies.length}
+                  brandId={data.brand_id}
                 >
                   {copies.length > 0
                     ? copies.map((copy, index) => (
@@ -166,6 +183,8 @@ export function BatchView({
                             copy.created_by === me.id ? me.name : "A teammate"
                           }
                           onChanged={() => void batch.refetch()}
+                          brandId={data.brand_id}
+                          parentOffer={page.offer_name}
                           branch={{
                             first: index === 0,
                             last: index === copies.length - 1,
@@ -179,6 +198,14 @@ export function BatchView({
           </>
         )}
       </div>
+      {data ? (
+        <BatchOfferDialog
+          open={changingOffer}
+          onOpenChange={setChangingOffer}
+          batch={data}
+          onChanged={() => void batch.refetch()}
+        />
+      ) : null}
       <BatchSheet
         open={Boolean(data) && sheetOpen}
         pages={pages}
@@ -339,11 +366,17 @@ function BatchRow({
   onChanged,
   copies = 0,
   branch,
+  brandId = null,
+  parentOffer = null,
   children,
 }: {
   page: BatchPage;
   creator: string;
   onChanged: () => void;
+  /** For Duplicate with offers (B7.3a). */
+  brandId?: string | null;
+  /** The original's offer: a copy selling another one says it (B7.3a). */
+  parentOffer?: string | null;
   /** How many copies hang under it (B7.1). */
   copies?: number;
   branch?: { first: boolean; last: boolean };
@@ -382,7 +415,7 @@ function BatchRow({
       href={href}
       title={
         branch && page.copy_number ? (
-          `Copy ${page.copy_number}`
+          copyLabel(page.copy_number, page.offer_name, parentOffer)
         ) : copies > 0 ? (
           <>
             {page.template_name}
@@ -459,6 +492,8 @@ function BatchRow({
             href={href}
             built={isReady}
             onDuplicated={onChanged}
+            brandId={brandId}
+            offerId={page.offer_id}
           />
         </span>
       }

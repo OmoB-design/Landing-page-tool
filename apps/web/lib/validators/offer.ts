@@ -72,3 +72,79 @@ export const pageOfferSchema = z
   })
   .loose();
 export type PageOffer = z.infer<typeof pageOfferSchema>;
+
+// ── Changing offers (B7.3a, D147) ────────────────────────────────────────────
+
+/** One of a brand's live offers, for the Change offer and variants windows. */
+export const brandOfferSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  label: z.string(),
+  is_default: z.boolean(),
+});
+export type BrandOffer = z.infer<typeof brandOfferSchema>;
+export const brandOffersSchema = z.object({
+  offers: z.array(brandOfferSchema),
+});
+
+export const offerChangeStartedSchema = z.object({ job_id: z.string() });
+
+export const batchOfferStartedSchema = z.object({
+  pages: z.array(
+    z.object({
+      build_id: z.string(),
+      key: z.string(),
+      job_id: z.string().nullable().catch(null),
+      error: z.string().nullable().catch(null),
+    }),
+  ),
+});
+export type BatchOfferStarted = z.infer<typeof batchOfferStartedSchema>;
+
+export const variantsMadeSchema = z.object({
+  copies: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      title: z.string(),
+      status: z.string(),
+      job_id: z.string(),
+      offer_id: z.string(),
+    }),
+  ),
+});
+export type VariantsMade = z.infer<typeof variantsMadeSchema>;
+
+const line = z.object({
+  section: z.string().nullable().catch(null),
+  text: z.string(),
+});
+
+/** What an offer change did (the `offer_apply` job's result). */
+export const offerChangeResultSchema = z.object({
+  reason: z.string(),
+  offer: z.string().nullable().catch(null),
+  price: z.string().nullable().catch(null),
+  changed: z
+    .array(
+      z.object({
+        section: z.string().nullable().catch(null),
+        before: z.string(),
+        after: z.string(),
+      }),
+    )
+    .catch([]),
+  leftovers: z
+    .array(line.extend({ old: z.array(z.string()).catch([]) }))
+    .catch([]),
+  invented: z
+    .array(line.extend({ found: z.array(z.string()).catch([]) }))
+    .catch([]),
+  /** Lines whose rewrite dropped more than the deal's words (B7.3a). */
+  overreach: z
+    .array(line.extend({ dropped: z.array(z.string()).catch([]) }))
+    .catch([]),
+  hints: z.array(line).catch([]),
+  failed_chunks: z.number().catch(0),
+});
+export type OfferChangeResult = z.infer<typeof offerChangeResultSchema>;

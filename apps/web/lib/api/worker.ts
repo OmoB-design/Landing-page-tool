@@ -1,6 +1,13 @@
 import { z } from "zod";
 
 import {
+  type BatchOfferStarted,
+  type VariantsMade,
+  batchOfferStartedSchema,
+  offerChangeStartedSchema,
+  variantsMadeSchema,
+} from "@/lib/validators/offer";
+import {
   type BatchCreated,
   type BatchState,
   type BuildCreated,
@@ -297,6 +304,51 @@ export function duplicateBuild(
     body,
     buildSummarySchema,
     "Couldn't duplicate the page.",
+  );
+}
+
+/** Queues changing a page's offer (B7.3a; worker POST /builds/{id}/offer). */
+export function changeOffer(
+  accessToken: string,
+  buildId: string,
+  body: { org_id: string; offer_id: string | null; base_version: number },
+): Promise<z.infer<typeof offerChangeStartedSchema>> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/offer`,
+    accessToken,
+    body,
+    offerChangeStartedSchema,
+    "Couldn't change the offer.",
+  );
+}
+
+/** Queues the offer change on a batch's chosen pages (worker POST /builds/batch/{id}/offer). */
+export function changeBatchOffer(
+  accessToken: string,
+  batchId: string,
+  body: { org_id: string; offer_id: string | null; build_ids: string[] },
+): Promise<BatchOfferStarted> {
+  return postToWorker(
+    `/builds/batch/${encodeURIComponent(batchId)}/offer`,
+    accessToken,
+    body,
+    batchOfferStartedSchema,
+    "Couldn't change the offers.",
+  );
+}
+
+/** One copy of a page per offer, each changed to its offer (worker POST /builds/{id}/variants). */
+export function makeVariants(
+  accessToken: string,
+  buildId: string,
+  body: { org_id: string; offer_ids: string[] },
+): Promise<VariantsMade> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/variants`,
+    accessToken,
+    body,
+    variantsMadeSchema,
+    "Couldn't make the variants.",
   );
 }
 

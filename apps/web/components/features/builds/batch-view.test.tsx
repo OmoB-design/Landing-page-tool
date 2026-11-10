@@ -47,10 +47,13 @@ const page = {
   finished_at: null,
   parent_id: null,
   copy_number: null,
+  offer_id: null,
+  offer_name: null,
 };
 const STATE: BatchState = {
   batch_id: "b1",
   brand: "Lume",
+  brand_id: "br1",
   product: "Calm Serum",
   created_at: now,
   pages: [

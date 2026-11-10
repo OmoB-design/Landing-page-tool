@@ -29,6 +29,10 @@ export type PageListItem = {
   parentId: string | null;
   /** A copy's number in its family (B7.1, D144): "Copy 2". */
   copyNumber?: number | null;
+  /** Its brand and the offer it sells (B7.3a): for Duplicate with offers and "Copy 2 · Ten off". */
+  brandId?: string;
+  offerId?: string | null;
+  offerName?: string | null;
   createdBy: { name: string; isMe: boolean };
   /** Pages started together (B3.5, D115) share one; they show as a folder (B3.5b). */
   batchId?: string | null;
@@ -400,4 +404,14 @@ export function pagesHref(
   setDisplayParams(params, display);
   const query = params.toString();
   return query ? `/pages?${query}` : "/pages";
+}
+
+/** "Copy 2", or "Copy 2 · Ten off" for a variant selling another offer than its original (B7.3a). */
+export function copyLabel(
+  number: number,
+  offer: string | null,
+  parentOffer: string | null,
+): string {
+  const other = offer !== parentOffer;
+  return other ? `Copy ${number} · ${offer ?? "No offer"}` : `Copy ${number}`;
 }

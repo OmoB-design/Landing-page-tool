@@ -17,7 +17,8 @@ export const REDRAFT_SCOPES = [
   "unwritten",
 ] as const;
 /** What the page's running job rewrites: a redraft's scope, or "agent" for Lander (B3.1c). */
-export const PAGE_JOB_SCOPES = [...REDRAFT_SCOPES, "agent"] as const;
+// "offer": the page's offer being changed (B7.3a).
+export const PAGE_JOB_SCOPES = [...REDRAFT_SCOPES, "agent", "offer"] as const;
 
 /** The review desk's view of a finished build (worker GET /builds/{id}/desk, D84). */
 export const deskStateSchema = z.object({

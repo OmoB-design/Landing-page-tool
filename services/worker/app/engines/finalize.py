@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 from bs4 import BeautifulSoup, Comment, Tag
 
-from app.engines import mobile
+from app.engines import mobile, offers
 from app.engines.html import ensure_head, parse, serialize, set_text, text_nodes
 from app.engines.images import PLACEHOLDER
 
@@ -136,9 +136,12 @@ def finalize_common(html: str, inputs: FinalizeInputs) -> tuple[str, dict[str, o
     # 8. Sale labels, promo text and prices
     sale_only = soup.select("[data-lp-sale-only]") if not inputs.sale_percent else []
     for tag in sale_only:
-        tag.decompose()  # a sale bar, timer or "lowest price" flag needs a real sale
-    stats["sale_only_removed"] = len(sale_only)
-    stats["promo_removed"] = _drop_sale_promos(soup, inputs)
+        # A sale bar, timer or "lowest price" flag needs a real sale: hidden, not removed, so an
+        # offer with a discount can show it again (B7.3a).
+        if isinstance(tag, Tag):
+            offers.show_for_offer(tag, False)
+    stats["sale_only_hidden"] = len(sale_only)
+    stats["promo_hidden"] = _hide_sale_promos(soup, inputs)
     sale_tags = [t for t in soup.select("[data-lp-sale-percent]") if isinstance(t, Tag)]
     for tag in sale_tags:
         if inputs.sale_percent:
@@ -150,7 +153,7 @@ def finalize_common(html: str, inputs: FinalizeInputs) -> tuple[str, dict[str, o
                 else f"{inputs.sale_percent}%",
             )
         else:
-            tag.decompose()  # never show a discount the brand doesn't offer
+            offers.show_for_offer(tag, False)  # never show a discount there isn't
     for tag in soup.select("[data-lp-promo]"):
         if isinstance(tag, Tag) and inputs.promo_text:
             set_text(tag, inputs.promo_text)
@@ -166,7 +169,7 @@ def finalize_common(html: str, inputs: FinalizeInputs) -> tuple[str, dict[str, o
         if inputs.compare_price:
             set_text(tag, inputs.compare_price)
         else:
-            tag.decompose()
+            offers.show_for_offer(tag, False)
     stats["prices"] = prices
     stats["sale_labels"] = len(sale_tags) if inputs.sale_percent else 0
 
@@ -220,33 +223,23 @@ def fill_names(html: str, *, brand_name: str, product_name: str) -> str:
     return serialize(soup)
 
 
-def _drop_sale_promos(soup: BeautifulSoup, inputs: FinalizeInputs) -> int:
+def _hide_sale_promos(soup: BeautifulSoup, inputs: FinalizeInputs) -> int:
     """A promo line built around a discount (`[data-lp-promo]` holding a `[data-lp-sale-percent]`)
-    can't stand without one: with no sale, the brand's own promo text replaces it, or it goes,
-    and a section left with no text (an empty promo bar) goes with it."""
+    can't stand without one: with no sale, the offer's promo line replaces it, or it's hidden, with
+    its bar when nothing else in it shows (B7.3a: hidden, not removed, so a later discount can show
+    them again)."""
     if inputs.sale_percent:
         return 0
-    removed = 0
+    hidden = 0
     for promo in soup.select("[data-lp-promo]"):
-        if not promo.select_one("[data-lp-sale-percent]"):
+        if not isinstance(promo, Tag) or not promo.select_one("[data-lp-sale-percent]"):
             continue
         if inputs.promo_text:
             set_text(promo, inputs.promo_text)
             continue
-        section = (
-            promo
-            if promo.has_attr("data-lp-section")
-            else promo.find_parent(attrs={"data-lp-section": True})
-        )
-        promo.decompose()
-        removed += 1
-        if (
-            isinstance(section, Tag)
-            and not section.get_text(strip=True)
-            and not section.find("img")
-        ):
-            section.decompose()
-    return removed
+        offers.show_promo(promo, False)
+        hidden += 1
+    return hidden
 
 
 def _fill_usps(soup: BeautifulSoup, usps: list[str]) -> int:

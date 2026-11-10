@@ -339,8 +339,10 @@ def test_finalize_fills_names_prices_emails_selling_points_and_ctas() -> None:
     assert {t.get_text() for t in soup.select("[data-lp-product-name]")} == {"Drizzle"}
     assert {t.get_text() for t in soup.select("[data-lp-brand]")} == {"Graza"}
     assert {t.get_text() for t in soup.select("[data-lp-price]")} == {"$21.00"}
-    assert soup.select("[data-lp-compare-price]") == []  # not on sale: no struck-through price
-    assert soup.select("[data-lp-sale-percent]") == []  # the brand has no sale
+    hidden = "[data-lp-hidden][data-lp-offer-hidden]"  # hidden for now (B7.3a), not removed
+    compare = soup.select("[data-lp-compare-price]")
+    assert compare and all(t.has_attr("data-lp-hidden") for t in compare)  # not on sale
+    assert soup.select("[data-lp-sale-percent]") == soup.select(f"[data-lp-sale-percent]{hidden}")
     assert "help@fixture.example" not in out and "mailto:hello@graza.co" in out
     assert [t.get_text() for t in soup.select("[data-lp-usp-text]")] == INPUTS.usps
     assert len(soup.select("[data-lp-usps] svg")) == 4  # each row keeps its tick
@@ -360,11 +362,16 @@ def test_finalize_shows_sales_only_when_there_is_one() -> None:
     assert soup.select_one("[data-lp-promo]").get_text() == "Harvest sale: 10% off"  # type: ignore[union-attr]
 
 
-def test_a_discount_promo_goes_when_the_brand_has_no_sale() -> None:
+def test_a_discount_promo_hides_when_there_is_no_sale() -> None:
     out, stats = finalize_common(PAGE, INPUTS)
     soup = parse(out)
-    assert soup.select("[data-lp-promo]") == [] and stats["promo_removed"] == 1
-    assert soup.select('[data-lp-section="promo-bar"]') == []  # the empty bar went too
+    promo = soup.select_one("[data-lp-promo]")
+    assert promo is not None and promo.has_attr("data-lp-offer-hidden")
+    assert stats["promo_hidden"] == 1
+    bar = soup.select_one('[data-lp-section="promo-bar"]')  # the empty bar hides with it
+    assert (
+        bar is not None and bar.has_attr("data-lp-hidden") and bar.has_attr("data-lp-offer-hidden")
+    )
     out, _ = finalize_common(
         PAGE, FinalizeInputs(**{**INPUTS.__dict__, "promo_text": "Free shipping this week"})
     )
