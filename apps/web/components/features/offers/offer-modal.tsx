@@ -134,8 +134,16 @@ export function ListName({ children }: { children: ReactNode }) {
   );
 }
 
-/** The lists' rows 2 px apart, each its own tile (owner, 2026-11-10). */
-export const LIST = "flex flex-col gap-0.5";
+/**
+ * The lists' rows, each its own tile, 4 px apart: their edges sit outside them, so this leaves 2 to
+ * 3 px you can see between them (owner, 2026-11-10: "a visible spacing … that doesn't make it
+ * cramped").
+ */
+export const LIST = "flex flex-col gap-1";
+
+/** A list in its own well, as the first batch window drew its pages: grey, black in dark. */
+export const WELL =
+  "rounded-md bg-dashboard p-1 ring-half ring-stroke dark:bg-surface-primary";
 
 /**
  * One row of an offer window's list, framed on its own: white on the band (the card's grey in

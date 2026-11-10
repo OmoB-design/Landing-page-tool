@@ -24,6 +24,7 @@ import {
   ListName,
   OfferCard,
   OfferModal,
+  WELL,
   tile,
 } from "./offer-modal";
 
@@ -181,7 +182,11 @@ export function BatchOfferDialog({
         ) : (
           <div className="flex flex-col gap-1.5">
             <ListName>Pages</ListName>
-            <div role="group" aria-label="Pages to change" className={LIST}>
+            <div
+              role="group"
+              aria-label="Pages to change"
+              className={`${WELL} ${LIST}`}
+            >
               {ready.map((page) => {
                 const on = chosenPages.includes(page.id);
                 return (
