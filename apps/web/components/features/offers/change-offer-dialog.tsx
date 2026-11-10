@@ -245,15 +245,19 @@ export function OfferChoices({
             aria-checked={selected}
             onClick={() => onChange(option.id)}
             className={cn(
-              "flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-type-caption-1 ring-thin ring-stroke outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring",
-              selected && "bg-foreground-01 ring-stroke-strong",
+              "flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-type-caption-1 outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring",
+              // The chosen one in a solid ink frame, black (white in dark), so it stands out
+              // (owner, 2026-11-10).
+              selected
+                ? "bg-foreground-01 ring-1 ring-button-ink"
+                : "ring-thin ring-stroke",
             )}
           >
             <span
               aria-hidden
               className={cn(
                 "size-3 shrink-0 rounded-full ring-thin ring-stroke-strong",
-                selected && "bg-heading-01",
+                selected && "bg-button-ink ring-button-ink",
               )}
             />
             <span className="min-w-0 flex-1 truncate font-medium text-heading-01">
