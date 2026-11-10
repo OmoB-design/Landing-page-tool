@@ -3,12 +3,6 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { apiFetch } from "@/lib/api/client";
 import { isActive } from "@/lib/jobs/progress";
@@ -21,12 +15,20 @@ import {
   offerChangeStartedSchema,
 } from "@/lib/validators/offer";
 
+import {
+  CancelButton,
+  LIST,
+  ListName,
+  OfferCard,
+  OfferModal,
+  tile,
+} from "./offer-modal";
 import { OfferResult } from "./offer-result";
 
 const NONE = "none";
 
 /**
- * Change offer (B7.3a, D147; the build page's ⋯, drawn as the Invite modal): the brand's offers and
+ * Change offer (B7.3a, D147; the build page's ⋯, drawn as Settings → Connect a Shopify store): the brand's offers and
  * No offer, the page's own marked Now; Change offer starts the job, which the desk then follows
  * ("Changing the offer…", the toast with Undo) while this window shows its steps and, when it's
  * done, every line it rewrote before and after, anything to check, and the lines to look at.
@@ -50,20 +52,18 @@ export function ChangeOfferDialog({
   onStarted?: () => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-dvh gap-0 overflow-y-auto p-0 sm:max-w-md">
-        {open ? (
-          <ChangeOffer
-            buildId={buildId}
-            brandId={brandId}
-            currentOfferId={currentOfferId}
-            baseVersion={baseVersion}
-            onStarted={onStarted}
-            onClose={() => onOpenChange(false)}
-          />
-        ) : null}
-      </DialogContent>
-    </Dialog>
+    <OfferModal open={open} onOpenChange={onOpenChange}>
+      {open ? (
+        <ChangeOffer
+          buildId={buildId}
+          brandId={brandId}
+          currentOfferId={currentOfferId}
+          baseVersion={baseVersion}
+          onStarted={onStarted}
+          onClose={() => onOpenChange(false)}
+        />
+      ) : null}
+    </OfferModal>
   );
 }
 
@@ -127,60 +127,16 @@ function ChangeOffer({
   const step = job.data?.events.at(-1)?.message;
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col gap-5 px-6 pt-6 pb-6">
-        <div className="flex flex-col gap-1">
-          <DialogTitle className="text-type-body-small font-medium text-heading-01">
-            {result ? result.reason : "Change offer"}
-          </DialogTitle>
-          <DialogDescription className="text-type-caption-1 text-heading-05">
-            {result
-              ? "The page is back in review. Undo puts the old offer back."
-              : "The prices, promo line and buttons change to the new offer, and Claude rewrites only the lines about the deal. One undo step."}
-          </DialogDescription>
-        </div>
-        {result ? (
-          <OfferResult result={result} />
-        ) : jobId ? (
-          finished ? (
-            <p
-              role="alert"
-              className="text-type-caption-1 font-medium text-text-danger"
-            >
-              {finished.error?.message ?? "The offer didn’t change."}
-            </p>
-          ) : (
-            <p className="flex items-center gap-2 text-type-caption-1 text-heading-02">
-              <Spinner className="size-3.5" label="Changing the offer" />
-              {step ?? "Waiting for a worker"}…
-            </p>
-          )
-        ) : offers.isPending ? (
-          <p className="flex items-center gap-2 text-type-caption-1 text-heading-05">
-            <Spinner className="size-3.5" label="Loading offers" />
-            Loading the brand’s offers…
-          </p>
-        ) : (
-          <OfferChoices
-            offers={offers.data?.offers ?? []}
-            current={currentOfferId}
-            value={pick}
-            onChange={setChosen}
-          />
-        )}
-      </div>
-      <div className="flex items-center gap-2 px-6 py-4 divider-t-half">
-        {error ? (
-          <p
-            role="alert"
-            className="min-w-0 flex-1 text-type-caption-1 font-medium text-text-danger"
-          >
-            {error}
-          </p>
-        ) : (
-          <span className="flex-1" />
-        )}
-        {jobId ? (
+    <OfferCard
+      title={result ? result.reason : "Change offer"}
+      description={
+        result
+          ? "Back in review. Undo restores the old offer."
+          : "Only the deal changes: its prices, promo and lines."
+      }
+      error={error}
+      actions={
+        jobId ? (
           <Button
             type="button"
             size="compact"
@@ -191,14 +147,7 @@ function ChangeOffer({
           </Button>
         ) : (
           <>
-            <Button
-              type="button"
-              variant="outline"
-              size="compact"
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
+            <CancelButton onClick={onClose} />
             <Button
               type="button"
               size="compact"
@@ -211,9 +160,42 @@ function ChangeOffer({
               Change offer
             </Button>
           </>
-        )}
-      </div>
-    </div>
+        )
+      }
+    >
+      {result ? (
+        <OfferResult result={result} />
+      ) : jobId ? (
+        finished ? (
+          <p
+            role="alert"
+            className="text-type-caption-1 font-medium text-text-danger"
+          >
+            {finished.error?.message ?? "The offer didn’t change."}
+          </p>
+        ) : (
+          <p className="flex items-center gap-2 text-type-caption-1 text-heading-02">
+            <Spinner className="size-3.5" label="Changing the offer" />
+            {step ?? "Waiting for a worker"}…
+          </p>
+        )
+      ) : offers.isPending ? (
+        <p className="flex items-center gap-2 text-type-caption-1 text-heading-05">
+          <Spinner className="size-3.5" label="Loading offers" />
+          Loading the brand’s offers…
+        </p>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <ListName>Offer</ListName>
+          <OfferChoices
+            offers={offers.data?.offers ?? []}
+            current={currentOfferId}
+            value={pick}
+            onChange={setChosen}
+          />
+        </div>
+      )}
+    </OfferCard>
   );
 }
 
@@ -234,7 +216,7 @@ export function OfferChoices({
     { id: NONE, name: "No offer", label: "The store’s own price" },
   ];
   return (
-    <div role="radiogroup" aria-label="Offer" className="flex flex-col gap-1">
+    <div role="radiogroup" aria-label="Offer" className={LIST}>
       {options.map((option) => {
         const selected = option.id === value;
         return (
@@ -244,14 +226,7 @@ export function OfferChoices({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option.id)}
-            className={cn(
-              "flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-type-caption-1 outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring",
-              // The chosen one in a solid ink frame, black (white in dark), so it stands out
-              // (owner, 2026-11-10).
-              selected
-                ? "bg-foreground-01 ring-1 ring-button-ink"
-                : "ring-thin ring-stroke",
-            )}
+            className={tile(selected)}
           >
             <span
               aria-hidden
