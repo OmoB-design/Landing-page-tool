@@ -147,11 +147,12 @@ export const WELL =
 
 /**
  * One row of an offer window's list, framed on its own: white on the band (the card's grey in
- * dark); the chosen or ticked one with a firmer edge (its dot or box says which).
+ * dark); the chosen or ticked one without the frame (its dot or box says which).
  */
 export function tile(chosen: boolean): string {
   return cn(
     "flex items-center gap-2 rounded-md bg-surface-primary px-2.5 py-2 text-left text-type-caption-1 outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring dark:bg-surface-modal dark:hover:bg-foreground-02",
-    chosen ? "ring-1 ring-sub-text" : "ring-thin ring-stroke",
+    // The chosen or ticked one without an edge (owner, 2026-11-10): its dot or box says it.
+    !chosen && "ring-thin ring-stroke",
   );
 }
