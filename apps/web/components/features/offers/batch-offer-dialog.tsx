@@ -169,16 +169,20 @@ export function BatchOfferDialog({
         }
       >
         {started ? (
-          <ul aria-label="Pages" className={LIST}>
-            {started.pages.map((page) => (
-              <StartedRow
-                key={page.build_id}
-                name={page.key}
-                jobId={page.job_id}
-                error={page.error}
-              />
-            ))}
-          </ul>
+          // The pages' changes in the Pages list's well (owner, 2026-11-10).
+          <div className="flex flex-col gap-1.5">
+            <ListName>Pages</ListName>
+            <ul aria-label="Pages" className={`${WELL} ${LIST}`}>
+              {started.pages.map((page) => (
+                <StartedRow
+                  key={page.build_id}
+                  name={page.key}
+                  jobId={page.job_id}
+                  error={page.error}
+                />
+              ))}
+            </ul>
+          </div>
         ) : (
           <div className="flex flex-col gap-1.5">
             <ListName>Pages</ListName>
