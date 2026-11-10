@@ -224,7 +224,12 @@ export function OfferChoices({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option.id)}
-            className={tile(selected)}
+            // The chosen offer's stroke is drawn inside its edge, so the space below stays as it
+            // is (owner, 2026-11-10).
+            className={cn(
+              tile(selected),
+              selected && "ring-1 ring-sub-text ring-inset",
+            )}
           >
             <span
               aria-hidden
