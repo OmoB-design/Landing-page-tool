@@ -176,7 +176,11 @@ def _run(ctx: JobContext, payload: AgentPayload, reply: dict[str, Any]) -> dict[
             return images.own_styles(conn, payload.build_id)
 
     brief = copy_pass.brief(
-        inputs["template"], inputs["brand"], inputs["product"], inputs.get("wizard", {})
+        inputs["template"],
+        inputs["brand"],
+        inputs["product"],
+        inputs.get("wizard", {}),
+        inputs.get("offer"),
     )
     report = build["report"] or {}
     looks = 0

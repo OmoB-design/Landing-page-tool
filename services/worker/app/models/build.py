@@ -67,6 +67,8 @@ class BuildRequest(BaseModel):
     brand_id: UUID
     product_id: UUID
     wizard: BuildWizard = Field(default_factory=BuildWizard)
+    # The brand's offer the page sells (B7.2b, D146); none when left out.
+    offer_id: UUID | None = None
 
 
 MAX_BATCH = 20  # the workspace's hourly cap on builds, so one batch can never be more
@@ -82,6 +84,8 @@ class BatchRequest(BaseModel):
     brand_id: UUID
     product_id: UUID
     wizard: BuildWizard = Field(default_factory=BuildWizard)
+    # One offer for every page of the batch (B7.2b).
+    offer_id: UUID | None = None
 
 
 class BatchPage(BaseModel):

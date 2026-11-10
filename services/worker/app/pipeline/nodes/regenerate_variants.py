@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from app.engines import offers
 from app.engines.brand_parts import VariantUnit
 from app.engines.brand_parts import regenerate_variants as engine
 from app.engines.money import format_price
@@ -11,14 +12,20 @@ from app.pipeline.state import BuildState
 
 @node("regenerate_variants", "Built the product options")
 def regenerate_variants(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
-    product = state["product"]
+    product, offer = state["product"], state.get("offer")
     currency = product["currency"]
+    # Each option's price with the page's offer taken off, as the page's own price (B7.2b).
     units = [
-        VariantUnit(v["name"], format_price(v["price"], currency), v["image_url"])
+        VariantUnit(
+            v["name"], format_price(offers.discounted(v["price"], offer), currency), v["image_url"]
+        )
         for v in product["variants"]
     ] or [
         VariantUnit(
-            product["name"], format_price(product["sale_price"] or product["price"], currency)
+            product["name"],
+            format_price(
+                offers.page_prices(product["price"], product["sale_price"], offer).now, currency
+            ),
         )
     ]
     html, stats = engine(read_page(state), units)

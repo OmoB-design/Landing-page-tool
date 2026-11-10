@@ -175,6 +175,8 @@ class CopyBrief:
     brand_context: str | None = None
     voice_examples: list[str] = field(default_factory=list)
     cta: str | None = None
+    # The page's offer (B7.2b, D146): the deal in plain facts (engines/offers.brief), or None.
+    offer: str | None = None
     targeting: str | None = None
     template_type: str = "other"
     template_rules: str = ""
@@ -215,6 +217,8 @@ def brief_parts(brief: CopyBrief) -> list[str]:
         parts.append("Lines in the brand's voice: " + " | ".join(brief.voice_examples[:3]))
     if brief.cta:
         parts.append(f"Preferred button text: {brief.cta}")
+    if brief.offer:
+        parts.append(f"OFFER:\n{brief.offer}")
     if brief.targeting:
         parts.append(f"OPERATOR TARGETING:\n{brief.targeting}")
     parts.append(FIXED_RULES)

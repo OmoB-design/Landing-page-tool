@@ -1,7 +1,8 @@
 """The publish gate (BUILD_SPEC §12.1, D4, D87). Pure.
 
-Before every publish: copy the build couldn't write, high-risk claims, placeholder images and, for
-clones, a residue score under the threshold or any mention of the source brand (B2.3) block it.
+Before every publish: copy the build couldn't write, high-risk claims, an offer price the store
+won't charge (B7.2b), placeholder images and, for clones, a residue score under the threshold or
+any mention of the source brand (B2.3) block it.
 The user may publish anyway after confirming
 the reasons (recorded on the publication), except placeholder images, which can be published only
 while the org's testing switch is on.
@@ -35,6 +36,10 @@ def blockers(
     if high:
         claims = "1 claim is" if high == 1 else f"{high} claims are"
         found.append(Blocker("claims", f"{claims} marked Fix in the claim check.", True))
+    # B7.2b (D146): the page shows its offer's price, but nothing makes the store charge it.
+    checkout = (((report.get("finalize") or {}).get("offer")) or {}).get("checkout_warning")
+    if checkout:
+        found.append(Blocker("offer_checkout", str(checkout), True))
     if mock_images:
         found.append(
             Blocker(

@@ -31,6 +31,8 @@ class FinalizeInputs:
     support_email: str | None = None
     brand_url: str | None = None
     product_url: str | None = None
+    # Where the buttons go when it isn't the product's page: the offer's checkout link (B7.2b).
+    cta_url: str | None = None
     price: str | None = None  # what the customer pays now, formatted
     compare_price: str | None = None  # the regular price, only when on sale
     usps: list[str] = field(default_factory=list)
@@ -176,7 +178,7 @@ def finalize_common(html: str, inputs: FinalizeInputs) -> tuple[str, dict[str, o
         for tag in soup.select(f"[{attr}]"):
             if isinstance(tag, Tag):
                 set_text(tag, value)
-    cta_url = inputs.product_url or inputs.brand_url
+    cta_url = inputs.cta_url or inputs.product_url or inputs.brand_url
     ctas = 0
     if cta_url:
         for tag in soup.select("[data-lp-cta]"):

@@ -3,17 +3,18 @@
 import { type ViewTab, ViewTabs } from "@/components/app/view-tabs";
 import { WithPathname } from "@/components/app/with-pathname";
 
-type BrandSection = "overview" | "products" | "pages" | "dna";
+type BrandSection = "overview" | "products" | "offers" | "pages" | "dna";
 
 const SECTIONS: { id: BrandSection; label: string; path: string }[] = [
   { id: "overview", label: "Overview", path: "" },
   { id: "products", label: "Products", path: "/products" },
+  { id: "offers", label: "Offers", path: "/offers" },
   { id: "pages", label: "Pages", path: "/pages" },
   { id: "dna", label: "Brand DNA", path: "/dna" },
 ];
 
 /**
- * A brand's sections (Figma Brands Details): Overview, Products, Pages and Brand DNA as underline
+ * A brand's sections (Figma Brands Details): Overview, Products, Offers (B7.2a), Pages and Brand DNA as underline
  * tabs on a hairline, the current one in Heading-01 over the 2 px line, the others Heading-04.
  * The current one follows the URL, so a product page keeps Products underlined.
  */

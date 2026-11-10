@@ -1,4 +1,5 @@
 import { assetUrls } from "@/lib/products/queries";
+import { priceChangeLabel } from "@/lib/offers/form";
 import { formatPrice } from "@/lib/products/form";
 import { createClient } from "@/lib/supabase/server";
 import { getLibraryTemplates, getOrgTemplates } from "@/lib/templates/queries";
@@ -20,6 +21,16 @@ export type WizardProduct = {
   price: string | null;
   imageUrl: string | null;
   facts: { description: boolean; specs: number; usps: number; images: number };
+};
+
+/** One of a brand's live offers, for the Offer picker (B7.2b). */
+export type WizardOffer = {
+  id: string;
+  brandId: string;
+  name: string;
+  /** "20% off", "$15 off" or "No price change". */
+  label: string;
+  isDefault: boolean;
 };
 
 export type WizardTemplate = {
@@ -52,7 +63,7 @@ function paletteColours(palette: unknown): WizardBrand["colours"] {
  * copywriter has for each) and the templates it can build from. */
 export async function getWizardData(orgId: string) {
   const supabase = await createClient();
-  const [brands, products, library, own] = await Promise.all([
+  const [brands, products, library, own, offers] = await Promise.all([
     supabase
       .from("brands")
       .select("id, name, voice, brand_md, positioning, palette")
@@ -69,6 +80,13 @@ export async function getWizardData(orgId: string) {
       .order("name"),
     getLibraryTemplates(),
     getOrgTemplates(orgId),
+    supabase
+      .from("offers")
+      .select("id, brand_id, name, price_change, price_value, is_default")
+      .eq("org_id", orgId)
+      .is("archived_at", null)
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: true }),
   ]);
   if (brands.error)
     throw new Error(`Could not load brands: ${brands.error.message}`);
@@ -84,7 +102,28 @@ export async function getWizardData(orgId: string) {
     [...firstImage.values()].filter((id): id is string => Boolean(id)),
   );
   const brandIds = new Set(brands.data.map((b) => b.id));
+  // A brand's money, for "$15 off": its first product's currency (USD without one).
+  const currency = new Map<string, string>();
+  for (const p of products.data)
+    if (p.currency && !currency.has(p.brand_id))
+      currency.set(p.brand_id, p.currency);
   return {
+    offers: (offers.data ?? []).map((o): WizardOffer => ({
+      id: o.id,
+      brandId: o.brand_id,
+      name: o.name,
+      label: priceChangeLabel(
+        {
+          price_change:
+            o.price_change === "percent" || o.price_change === "amount"
+              ? o.price_change
+              : "none",
+          price_value: o.price_value === null ? null : Number(o.price_value),
+        },
+        currency.get(o.brand_id) ?? "USD",
+      ),
+      isDefault: o.is_default,
+    })),
     brands: brands.data.map((b): WizardBrand => ({
       id: b.id,
       name: b.name,

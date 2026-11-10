@@ -15,6 +15,7 @@ from typing import Any
 import structlog
 
 from app.engines import copy_rules as rules
+from app.engines import offers
 from app.engines.fragments import Fragment
 from app.providers import anthropic
 
@@ -82,11 +83,14 @@ def parallel(calls: list[Callable[[], dict[str, str]]]) -> list[dict[str, str] |
     return results
 
 
-def extra_locked(brand: dict[str, Any], product: dict[str, Any]) -> tuple[str, ...]:
+def extra_locked(
+    brand: dict[str, Any], product: dict[str, Any], offer: dict[str, Any] | None = None
+) -> tuple[str, ...]:
     """Slots the pipeline fills from data rather than the copy pass: selling points (when the
-    product has some) and the promo line (the brand's promo text, or removed with no sale)."""
+    product has some) and the promo line (the offer's, or removed without a discount: B7.2b)."""
     extra: list[str] = ["data-lp-usp-text"] if product["usps"] else []
-    if brand["promo_text"] or not brand["sale_percent"]:
+    prices = offers.page_prices(product["price"], product["sale_price"], offer)
+    if (offer or {}).get("promo_text") or not prices.percent:
         extra.append("data-lp-promo")
     return tuple(extra)
 
@@ -96,15 +100,20 @@ def brief(
     brand: dict[str, Any],
     product: dict[str, Any],
     wizard: dict[str, Any],
+    offer: dict[str, Any] | None = None,
 ) -> rules.CopyBrief:
-    """The copy brief from the build's inputs (load_inputs.read_inputs)."""
+    """The copy brief from the build's inputs (load_inputs.read_inputs), with the page's offer
+    (B7.2b): its price and the OFFER block, so the words sell this deal and no other."""
     instructions = template["instructions"]
+    prices = offers.page_prices(product["price"], product["sale_price"], offer)
+    linked = offers.checkout_url(product["url"], offer, source=product.get("pull_source"))
     return rules.CopyBrief(
         brand_name=brand["name"],
         product_name=product["name"],
         language=brand["language"],
+        offer=offers.brief(offer, prices, product["currency"], linked=linked is not None),
         product_facts={
-            "price": product["sale_price"] or product["price"],
+            "price": None if prices.now is None else str(prices.now),
             "currency": product["currency"],
             "description": product["description"],
             "selling_points": product["usps"],

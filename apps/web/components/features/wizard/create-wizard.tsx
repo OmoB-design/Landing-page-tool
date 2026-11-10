@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { WizardArrowIcon } from "@/components/ui/lp-icons";
 import { Spinner } from "@/components/ui/spinner";
 import { createBatch, createPage } from "@/lib/builds/actions";
+import { chosenOffer } from "@/lib/wizard/offer";
 import type { WizardData } from "@/lib/wizard/queries";
 import {
   type StepId,
@@ -202,7 +203,11 @@ export function CreateWizard({ data }: { data: WizardData }) {
   const build = () => {
     if (state.batch) {
       // "Build with every template" (B3.5): all the pages start together, then the batch screen.
-      const batch = batchPayload(state, briefing.briefing);
+      const batch = batchPayload(
+        state,
+        briefing.briefing,
+        chosenOffer(data, state)?.id ?? null,
+      );
       if (!batch) {
         setBuildError("Choose a brand, product and templates first.");
         return;
@@ -215,7 +220,11 @@ export function CreateWizard({ data }: { data: WizardData }) {
       });
       return;
     }
-    const payload = wizardPayload(state, briefing.briefing);
+    const payload = wizardPayload(
+      state,
+      briefing.briefing,
+      chosenOffer(data, state)?.id ?? null,
+    );
     if (!payload) {
       setBuildError("Choose a brand, product and template first.");
       return;

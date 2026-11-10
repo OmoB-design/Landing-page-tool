@@ -12,9 +12,11 @@ const event = (data: JobEvent["data"]): JobEvent => ({
 });
 
 describe("jobTitle", () => {
-  it("names known kinds and humanises others", () => {
+  it("names kinds as the worker does (B7.1a) and humanises unknown ones", () => {
     expect(jobTitle("noop_demo")).toBe("Demo job");
-    expect(jobTitle("brand_autofetch")).toBe("Brand autofetch");
+    expect(jobTitle("agent_turn")).toBe("Buddy");
+    expect(jobTitle("qa")).toBe("Preview check");
+    expect(jobTitle("new_kind")).toBe("New kind");
   });
 });
 

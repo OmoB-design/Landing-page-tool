@@ -80,7 +80,7 @@ def run(ctx: JobContext) -> dict[str, Any]:
     inputs, template_html = read_inputs(org_id, payload.build_id)
     template, brand, product = inputs["template"], inputs["brand"], inputs["product"]
     html = desk._page(build)
-    fragments = dump(html, extra_locked=copy_pass.extra_locked(brand, product))
+    fragments = dump(html, extra_locked=copy_pass.extra_locked(brand, product, inputs.get("offer")))
     template_fragments = dump(template_html)
     edited = set((build["report"] or {}).get("desk", {}).get("edited", []))
     targets, kept = engine.targets(
@@ -102,7 +102,7 @@ def run(ctx: JobContext) -> dict[str, Any]:
     caps = [LengthCap.model_validate(c) for c in instructions.get("length_caps", [])]
     budgets = engine.budgets(fragments, template_fragments, targets, caps)
     system = rules.system_prompt(
-        copy_pass.brief(template, brand, product, inputs.get("wizard", {}))
+        copy_pass.brief(template, brand, product, inputs.get("wizard", {}), inputs.get("offer"))
     )
     lines = f"{len(targets)} line{'' if len(targets) == 1 else 's'}"
     ctx.progress(f"Writing {lines}", data={"step": 1, "total": TOTAL})

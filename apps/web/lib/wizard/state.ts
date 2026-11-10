@@ -128,6 +128,8 @@ export type WizardState = {
   step: StepId;
   brand: string | null;
   product: string | null;
+  /** The offer the page sells (B7.2b): an offer's id, "none", or null for the brand's default. */
+  offer: string | null;
   template: string | null;
   ai: boolean;
   styles: ImageStyle[];
@@ -203,6 +205,7 @@ export function parseWizard(params: Params): WizardState {
     ),
     brand: id("brand"),
     product: id("product"),
+    offer: params.get("offer") === "none" ? "none" : id("offer"),
     template: id("template"),
     batch: params.get("batch") === "1",
     templates: [
@@ -236,6 +239,7 @@ export function wizardSearch(state: WizardState): string {
   if (state.step !== "product") params.set("step", state.step);
   if (state.brand) params.set("brand", state.brand);
   if (state.product) params.set("product", state.product);
+  if (state.offer) params.set("offer", state.offer);
   if (state.template) params.set("template", state.template);
   if (state.batch) {
     params.set("batch", "1");
@@ -289,6 +293,7 @@ export type WizardPayload = {
   template_id: string;
   brand_id: string;
   product_id: string;
+  offer_id: string | null;
   wizard: {
     author_type: AuthorType;
     ai_images: boolean;
@@ -302,16 +307,19 @@ export type WizardPayload = {
 };
 
 /** The build payload (BUILD_SPEC §9). The audience goes to the copywriter with its description
- * from the briefing ("Name: who they are"). Null until brand, product and template are chosen. */
+ * from the briefing ("Name: who they are"); `offerId` is the offer chosen (`chosenOffer`, B7.2b).
+ * Null until brand, product and template are chosen. */
 export function wizardPayload(
   state: WizardState,
   briefing: Briefing | null,
+  offerId: string | null = null,
 ): WizardPayload | null {
   if (!state.brand || !state.product || !state.template) return null;
   return {
     template_id: state.template,
     brand_id: state.brand,
     product_id: state.product,
+    offer_id: offerId,
     wizard: wizardChoices(state, briefing),
   };
 }
@@ -324,6 +332,7 @@ export type BatchPayload = Omit<WizardPayload, "template_id"> & {
 export function batchPayload(
   state: WizardState,
   briefing: Briefing | null,
+  offerId: string | null = null,
 ): BatchPayload | null {
   if (!state.brand || !state.product || state.templates.length === 0)
     return null;
@@ -331,6 +340,7 @@ export function batchPayload(
     template_ids: state.templates,
     brand_id: state.brand,
     product_id: state.product,
+    offer_id: offerId,
     wizard: wizardChoices(state, briefing),
   };
 }

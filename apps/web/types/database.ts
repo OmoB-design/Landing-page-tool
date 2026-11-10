@@ -485,6 +485,8 @@ export type Database = {
           id: string
           key: string
           mock_images: boolean
+          offer: Json | null
+          offer_id: string | null
           org_id: string
           origin: Database["public"]["Enums"]["template_origin"]
           page_version: number
@@ -519,6 +521,8 @@ export type Database = {
           id?: string
           key: string
           mock_images?: boolean
+          offer?: Json | null
+          offer_id?: string | null
           org_id: string
           origin: Database["public"]["Enums"]["template_origin"]
           page_version?: number
@@ -553,6 +557,8 @@ export type Database = {
           id?: string
           key?: string
           mock_images?: boolean
+          offer?: Json | null
+          offer_id?: string | null
           org_id?: string
           origin?: Database["public"]["Enums"]["template_origin"]
           page_version?: number
@@ -575,6 +581,13 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builds_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
             referencedColumns: ["id"]
           },
           {
@@ -1060,6 +1073,75 @@ export type Database = {
           },
           {
             foreignKeyName: "oauth_states_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offers: {
+        Row: {
+          archived_at: string | null
+          brand_id: string
+          checkout: string
+          code: string | null
+          created_at: string
+          created_by: string | null
+          details: string | null
+          id: string
+          is_default: boolean
+          name: string
+          org_id: string
+          price_change: string
+          price_value: number | null
+          promo_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          brand_id: string
+          checkout?: string
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          details?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          org_id: string
+          price_change?: string
+          price_value?: number | null
+          promo_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          brand_id?: string
+          checkout?: string
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          details?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          org_id?: string
+          price_change?: string
+          price_value?: number | null
+          promo_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
@@ -1748,6 +1830,7 @@ export type Database = {
       is_org_admin: { Args: { target_org: string }; Returns: boolean }
       is_org_member: { Args: { target_org: string }; Returns: boolean }
       is_org_member_path: { Args: { object_name: string }; Returns: boolean }
+      make_default_offer: { Args: { target: string }; Returns: undefined }
     }
     Enums: {
       build_status:

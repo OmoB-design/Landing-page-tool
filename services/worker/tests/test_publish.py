@@ -37,6 +37,17 @@ def test_the_gate_lists_what_blocks_and_what_may_be_passed() -> None:
     assert not gate.can_publish(found, override=False) and gate.can_publish(found, override=True)
 
 
+def test_an_offer_price_the_store_wont_charge_needs_publish_anyway() -> None:
+    warning = "Autumn shows $16.80, but … the store will still charge $21.00."
+    report = {"finalize": {"offer": {"name": "Autumn", "checkout_warning": warning}}}
+    found = gate.blockers(report, mock_images=False, origin="owned", allow_placeholders=False)
+    assert [(b.code, b.message, b.overridable) for b in found] == [
+        ("offer_checkout", warning, True)
+    ]
+    applied = {"finalize": {"offer": {"name": "Autumn", "checkout_warning": None}}}
+    assert gate.blockers(applied, mock_images=False, origin="owned", allow_placeholders=False) == []
+
+
 def test_placeholder_images_pass_only_with_the_testing_switch() -> None:
     off = gate.blockers({}, mock_images=True, origin="owned", allow_placeholders=False)
     assert not gate.can_publish(off, override=True)

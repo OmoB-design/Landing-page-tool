@@ -33,10 +33,20 @@ import { CollapsibleSection, PanelSection } from "./panel-section";
  * What the pipeline did and what needs attention (BUILD_SPEC §10.6; Figma Build, the right panel
  * under the steps): the facts, the copy changes, the claims check and the reminders.
  */
-export function BuildReport({ report }: { report: Report }) {
+export function BuildReport({
+  report,
+  costUsd,
+  offer,
+}: {
+  report: Report;
+  /** The page's own spend so far (`builds.cost_usd`): a copy's Cost (B7.1a). */
+  costUsd?: number;
+  /** The offer the page sells, by name (B7.2b, `builds.offer`); null for none. */
+  offer?: string | null;
+}) {
   return (
     <>
-      <Facts rows={reportFacts(report)} />
+      <Facts rows={reportFacts(report, costUsd, offer)} />
       <CopyChanges changes={report.copy.review} />
       {report.mode === "cloned" ? (
         <SourceLeaks residue={report.residue ?? null} />
@@ -444,7 +454,11 @@ function RedraftUnwritten() {
 }
 
 /** The report's facts, as the frame lists them, values in sentence case. */
-function reportFacts(report: Report): [string, string][] {
+function reportFacts(
+  report: Report,
+  costUsd?: number,
+  offer?: string | null,
+): [string, string][] {
   const { images, copy, brand, layout } = report;
   const sections =
     [
@@ -455,6 +469,9 @@ function reportFacts(report: Report): [string, string][] {
       .join("; ") || "in the template's order";
   return [
     ["Template", report.template.name],
+    ...(offer !== undefined
+      ? ([["Offer", offer ?? "None"]] as [string, string][])
+      : []),
     [
       "Copy",
       copy.skipped
@@ -485,8 +502,16 @@ function reportFacts(report: Report): [string, string][] {
       "Removed terms",
       copy.purged_terms.map((t) => t.term).join(", ") || "none",
     ],
-    ["Cost", formatCost(report.cost.total_usd)],
-    // A copy (B7.1, D144): these facts are its original's build; the copy itself cost nothing.
+    // A copy's Cost is its own (B7.1a): nothing to make, then whatever it's spent since (Buddy,
+    // redrafts); the other facts are its original's build, which "Copied from" names.
+    [
+      "Cost",
+      formatCost(
+        report.copied_from && costUsd !== undefined
+          ? costUsd
+          : report.cost.total_usd,
+      ),
+    ],
     ...(report.copied_from
       ? ([["Copied from", report.copied_from.key]] as [string, string][])
       : []),

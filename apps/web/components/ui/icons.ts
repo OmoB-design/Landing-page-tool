@@ -4,6 +4,7 @@ export type { LucideIcon as Icon } from "lucide-react";
 export {
   CircleAlert as AlertIcon,
   ArrowLeft as BackIcon,
+  BadgePercent as OfferIcon,
   PersonStanding as AnatomyIcon,
   Aperture as ApertureIcon,
   Brush as BrushIcon,

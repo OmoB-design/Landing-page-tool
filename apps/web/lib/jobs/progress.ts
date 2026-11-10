@@ -1,11 +1,12 @@
 import type { JobEvent, JobStatus } from "@/lib/validators/jobs";
 
-/** Display names for job kinds (services/worker/app/jobs/registry.py has the same titles). */
-const JOB_TITLES: Record<string, string> = {
-  noop_demo: "Demo job",
-  qa: "Preview check",
-  template_clone: "Page clone",
-};
+import titles from "./job-titles.json";
+
+/**
+ * Display names for job kinds: the worker's registry titles (services/worker/app/jobs/registry.py),
+ * kept identical by the worker's test_job_titles.py (B7.1a).
+ */
+const JOB_TITLES: Record<string, string> = titles;
 
 export function jobTitle(kind: string): string {
   if (JOB_TITLES[kind]) return JOB_TITLES[kind];

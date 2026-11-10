@@ -58,7 +58,6 @@ describe("brand form mapping", () => {
       prefix: "LUM",
       voice_examples: "One\n\n  Two  \n",
       palette_primary: "#E4572E",
-      sale_percent: "20",
     });
     expect(row).toMatchObject({
       name: "Lumé",
@@ -66,7 +65,6 @@ describe("brand form mapping", () => {
       voice_examples: ["One", "Two"],
       palette: { primary: "#e4572e", dark: null, tint: null, accent: null },
       fonts: { heading: null, body: null },
-      sale_percent: 20,
       support_email: null,
     });
   });
@@ -80,7 +78,6 @@ describe("brandFormSchema", () => {
     [{ prefix: "TOOLONG" }, "prefix"],
     [{ palette_primary: "red" }, "palette_primary"],
     [{ url: "lumeskin" }, "url"],
-    [{ sale_percent: "120" }, "sale_percent"],
     [{ support_email: "nope" }, "support_email"],
     [{ language: "english!" }, "language"],
     [{ name: " " }, "name"],

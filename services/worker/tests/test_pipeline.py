@@ -433,3 +433,68 @@ def test_export_writes_one_self_contained_file(
     assert exported.count("data:image/png;base64,") >= 2  # logo and product photo
     assert job["result"]["inlined"] >= 3 and job["result"]["failed"] == []
     storage.remove("builds", [build["working_html_path"], build["export_html_path"]])
+
+
+OFFER = {"name": "Autumn", "price_change": "percent", "price_value": "20", "checkout": "code",
+         "code": "SAVE20", "promo_text": "Autumn edit", "details": "Free strap"}  # fmt: skip
+
+
+# ── A page built with an offer (B7.2b, D146), in mock mode ──────────────────────────────────
+
+
+def _with_offer(build_id: uuid.UUID, offer: dict[str, Any], product_id: uuid.UUID) -> None:
+    with transaction() as conn:
+        conn.execute(
+            "update builds set offer = %(o)s where id = %(b)s", {"o": Jsonb(offer), "b": build_id}
+        )
+        conn.execute(
+            "update products set pull_source = 'shopify_json' where id = %(p)s", {"p": product_id}
+        )
+
+
+@needs_db
+def test_a_page_built_with_an_offer_sells_it(
+    user: DbUser, fast_settings: Settings, library_template: uuid.UUID,
+    brand_and_product: tuple[uuid.UUID, uuid.UUID, str, str],
+) -> None:  # fmt: skip
+    brand_id, product_id, _, _ = brand_and_product
+    build_id, job_id = new_build(user, library_template, brand_id, product_id)
+    _with_offer(build_id, {**OFFER, "id": str(uuid.uuid4()), "code": "SAVE20"}, product_id)
+    run_once(fast_settings)
+    assert job_row(job_id)["status"] == "succeeded", job_row(job_id)["error"]
+    build = build_row(build_id)
+    html = storage.download("builds", build["working_html_path"]).decode()
+    storage.remove("builds", [build["working_html_path"]])
+    soup = parse(html)
+    assert {t.get_text() for t in soup.select("[data-lp-price]")} == {"$16.80"}
+    assert {t.get_text() for t in soup.select("[data-lp-compare-price]")} == {"$21.00"}
+    assert all("20%" in t.get_text() for t in soup.select("[data-lp-sale-percent]"))
+    assert [t.get_text() for t in soup.select("[data-lp-variant-price]")] == ["$16.80", "$33.60"]
+    assert soup.select_one("[data-lp-promo]").get_text() == "Autumn edit"  # type: ignore[union-attr]
+    links = {a.get("href") for a in soup.select("a[data-lp-cta]")}
+    assert links == {"https://www.graza.test/discount/SAVE20?redirect=/products/drizzle"}
+    assert not any("store will still charge" in w for w in build["report"]["warnings"])
+    assert build["report"]["finalize"]["offer"] == {
+        "name": "Autumn", "price": "$16.80", "regular": "$21.00", "checkout_link": True,
+        "checkout_warning": None,
+    }  # fmt: skip
+
+
+@needs_db
+def test_a_price_cut_nothing_applies_at_checkout_is_flagged_in_the_report(
+    user: DbUser, fast_settings: Settings, library_template: uuid.UUID,
+    brand_and_product: tuple[uuid.UUID, uuid.UUID, str, str],
+) -> None:  # fmt: skip
+    brand_id, product_id, _, _ = brand_and_product
+    build_id, job_id = new_build(user, library_template, brand_id, product_id)
+    bare = {**OFFER, "id": str(uuid.uuid4()), "checkout": "none", "code": None}
+    _with_offer(build_id, bare, product_id)
+    run_once(fast_settings)
+    assert job_row(job_id)["status"] == "succeeded", job_row(job_id)["error"]
+    build = build_row(build_id)
+    storage.remove("builds", [build["working_html_path"]])
+    assert (
+        "Autumn shows $16.80, but it has no discount code and isn't applied automatically at "
+        "checkout: the store will still charge $21.00."
+    ) in build["report"]["warnings"]
+    assert build["report"]["finalize"]["offer"]["checkout_warning"].startswith("Autumn shows")

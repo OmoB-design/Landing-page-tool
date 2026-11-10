@@ -29,6 +29,8 @@ class BuildState(TypedDict, total=False):
     product: dict[str, Any]
     wizard: dict[str, Any]
     targeting: dict[str, Any]
+    # The page's offer as it records it (B7.2b, D146: `builds.offer`), or None.
+    offer: dict[str, Any] | None
     competitors: list[dict[str, Any]]  # Top 5 ranking builds (B2.4a): Competitor, as JSON
     comparison: dict[str, Any]  # Top 5 ranking builds (B2.4b): Comparison, as JSON
 

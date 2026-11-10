@@ -184,11 +184,12 @@ def create_build(body: BuildRequest, user: CurrentUser) -> BuildCreated:
             brand_id=body.brand_id,
             product_id=body.product_id,
             wizard=body.wizard,
+            offer_id=body.offer_id,
             created_by=user.id,
         )
     except builds.BuildInputsMissingError as exc:
         raise HTTPException(
-            status.HTTP_404_NOT_FOUND, "That template, brand or product isn't available."
+            status.HTTP_404_NOT_FOUND, "That template, brand, product or offer isn't available."
         ) from exc
     except builds.TemplateNotReadyError as exc:
         raise HTTPException(
@@ -219,6 +220,7 @@ def create_batch(body: BatchRequest, user: CurrentUser) -> BatchCreated:
             brand_id=body.brand_id,
             product_id=body.product_id,
             wizard=body.wizard,
+            offer_id=body.offer_id,
             created_by=user.id,
         )
     except builds.BuildInputsMissingError as exc:

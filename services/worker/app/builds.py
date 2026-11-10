@@ -78,6 +78,31 @@ def _product(conn: Any, org_id: UUID, brand_id: UUID, product_id: UUID) -> dict[
     return dict(product)
 
 
+OFFER_FIELDS = "id, name, price_change, price_value, checkout, code, promo_text, details"
+
+
+def _offer(conn: Any, org_id: UUID, brand_id: UUID, offer_id: UUID | None) -> dict[str, Any] | None:
+    """The brand's offer as a page records it (B7.2b, D146: `builds.offer`), so editing the offer
+    later doesn't change the page by itself. Only a live offer of this brand."""
+    if offer_id is None:
+        return None
+    row = conn.execute(
+        f"""
+        select {OFFER_FIELDS} from offers
+        where id = %(id)s and org_id = %(o)s and brand_id = %(b)s and archived_at is null
+        """,
+        {"id": offer_id, "o": org_id, "b": brand_id},
+    ).fetchone()
+    if row is None:
+        raise BuildInputsMissingError
+    offer = dict(row)
+    return {
+        **offer,
+        "id": str(offer["id"]),
+        "price_value": None if offer["price_value"] is None else str(offer["price_value"]),
+    }
+
+
 def _add_build(
     conn: Any,
     *,
@@ -88,6 +113,7 @@ def _add_build(
     wizard: BuildWizard,
     created_by: UUID | None,
     batch_id: UUID | None = None,
+    offer: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], Job]:
     """The build row with its key (only the worker allocates keys, D27, D57) and its `build` job,
     in the caller's transaction."""
@@ -102,9 +128,10 @@ def _add_build(
         """
         insert into builds (org_id, brand_id, product_id, template_id, template_version, key,
                             origin, status, title, wizard, targeting, mock_images,
-                            created_by, batch_id, created_at)
+                            created_by, batch_id, offer_id, offer, created_at)
         values (%(o)s, %(b)s, %(p)s, %(t)s, %(v)s, %(key)s, %(origin)s, 'queued', %(title)s,
-                %(wizard)s, %(targeting)s, %(mock)s, %(user)s, %(batch)s, clock_timestamp())
+                %(wizard)s, %(targeting)s, %(mock)s, %(user)s, %(batch)s, %(offer_id)s,
+                %(offer)s, clock_timestamp())
         returning id, key, status, title
         """,
         {
@@ -114,6 +141,8 @@ def _add_build(
             "wizard": Jsonb(wizard.model_dump(mode="json")),
             "targeting": Jsonb(targeting.compose(wizard.model_dump(mode="json"))),
             "mock": get_settings().lp_mock_images, "user": created_by, "batch": batch_id,
+            "offer_id": offer["id"] if offer else None,
+            "offer": Jsonb(offer) if offer else None,
         },
     ).fetchone()  # fmt: skip
     assert build is not None
@@ -138,14 +167,16 @@ def create_build(
     product_id: UUID,
     wizard: BuildWizard,
     created_by: UUID | None,
+    offer_id: UUID | None = None,
 ) -> tuple[dict[str, Any], Job]:
-    """One page: its build and job in one transaction."""
+    """One page: its build and job in one transaction, with the offer it sells (B7.2b)."""
     with transaction() as conn:
         template = _template(conn, org_id, template_id)
         product = _product(conn, org_id, brand_id, product_id)
+        offer = _offer(conn, org_id, brand_id, offer_id)
         return _add_build(
             conn, org_id=org_id, template=template, product=product, brand_id=brand_id,
-            wizard=wizard, created_by=created_by,
+            wizard=wizard, created_by=created_by, offer=offer,
         )  # fmt: skip
 
 
@@ -165,6 +196,7 @@ def create_batch(
     product_id: UUID,
     wizard: BuildWizard,
     created_by: UUID | None,
+    offer_id: UUID | None = None,
 ) -> tuple[UUID, list[tuple[dict[str, Any], Job]]]:
     """A page from each template for one product (B3.5, D115), all in one transaction: every
     template is checked first and nothing is started unless they all can be, within the hourly
@@ -174,6 +206,7 @@ def create_batch(
     batch_id = uuid4()
     with transaction() as conn:
         product = _product(conn, org_id, brand_id, product_id)
+        offer = _offer(conn, org_id, brand_id, offer_id)
         templates = [_template(conn, org_id, t) for t in chosen]
         room = queue.remaining(conn, org_id, KINDS["build"].name)
         if room is not None and len(templates) > room:
@@ -195,6 +228,7 @@ def create_batch(
                     wizard=wizard,
                     created_by=created_by,
                     batch_id=batch_id,
+                    offer=offer,
                 )
             )
     return batch_id, made
@@ -382,7 +416,7 @@ def duplicate_build(*, org_id: UUID, build_id: UUID, created_by: UUID | None) ->
             """
             select id, key, brand_id, product_id, template_id, template_version, parent_build_id,
                    origin, status, title, wizard, targeting, report, working_html_path,
-                   page_version, mock_images, batch_id
+                   page_version, mock_images, batch_id, offer_id, offer
             from builds
             where id = %(b)s and org_id = %(o)s and deleted_at is null
             for update
@@ -435,11 +469,11 @@ def duplicate_build(*, org_id: UUID, build_id: UUID, created_by: UUID | None) ->
             insert into builds (id, org_id, brand_id, product_id, template_id, template_version,
                                 parent_build_id, copy_number, key, origin, status, title, wizard,
                                 targeting, report, working_html_path, page_version, mock_images,
-                                created_by, batch_id, created_at)
+                                created_by, batch_id, offer_id, offer, created_at)
             values (%(id)s, %(o)s, %(brand)s, %(product)s, %(template)s, %(version)s, %(root)s,
                     %(n)s, %(key)s, %(origin)s, 'needs_review', %(title)s, %(wizard)s,
                     %(targeting)s, %(report)s, %(path)s, 1, %(mock)s, %(user)s, %(batch)s,
-                    clock_timestamp())
+                    %(offer_id)s, %(offer)s, clock_timestamp())
             returning id, key, status, title
             """,
             {
@@ -450,6 +484,8 @@ def duplicate_build(*, org_id: UUID, build_id: UUID, created_by: UUID | None) ->
                 "wizard": Jsonb(source["wizard"]), "targeting": Jsonb(source["targeting"]),
                 "report": Jsonb(report), "path": path, "mock": source["mock_images"],
                 "user": created_by, "batch": root["batch_id"],
+                "offer_id": source["offer_id"],
+                "offer": Jsonb(source["offer"]) if source["offer"] is not None else None,
             },
         ).fetchone()  # fmt: skip
         assert copy is not None

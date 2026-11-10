@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/lp-icons";
 import { cn } from "@/lib/utils";
 import type { Briefing } from "@/lib/validators/product";
+import { chosenOffer } from "@/lib/wizard/offer";
 import type { WizardData, WizardTemplate } from "@/lib/wizard/queries";
 import {
   AGE_RANGES,
@@ -148,7 +149,7 @@ export function ProductStep({
         placeholder="Choose a brand"
         value={state.brand}
         options={data.brands.map((b) => ({ value: b.id, label: b.name }))}
-        onValueChange={(brand) => update({ brand, product: null })}
+        onValueChange={(brand) => update({ brand, product: null, offer: null })}
       />
       <SelectField
         label="Product"
@@ -162,6 +163,9 @@ export function ProductStep({
         onValueChange={(product) => update({ product })}
         disabled={!state.brand || products.length === 0}
       />
+      {state.brand ? (
+        <OfferPick data={data} state={state} update={update} />
+      ) : null}
       {state.brand && products.length === 0 ? (
         <p className="text-type-caption-1 font-medium text-heading-05 sm:col-span-2">
           This brand has no products yet.{" "}
@@ -174,6 +178,53 @@ export function ProductStep({
           .
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * The offer the page sells (B7.2b, D146), beside Brand and Product: the brand's default chosen,
+ * its other offers and No offer; with none yet, a link to add one on the brand's Offers tab.
+ */
+function OfferPick({
+  data,
+  state,
+  update,
+}: {
+  data: WizardData;
+  state: WizardState;
+  update: Update;
+}) {
+  const offers = data.offers.filter((o) => o.brandId === state.brand);
+  const chosen = chosenOffer(data, state);
+  const manage = `/brands/${state.brand}/offers`;
+  return (
+    <div className="flex flex-col gap-1.5 sm:col-span-2">
+      <SelectField
+        label="Offer"
+        placeholder="No offer"
+        value={chosen?.id ?? "none"}
+        options={[
+          ...offers.map((o) => ({
+            value: o.id,
+            label: `${o.name} · ${o.label}`,
+          })),
+          { value: "none", label: "No offer" },
+        ]}
+        onValueChange={(offer) => update({ offer })}
+      />
+      <p className="text-type-caption-1 font-medium text-heading-05">
+        {offers.length === 0
+          ? "This brand has no offers yet. "
+          : "The deal the page sells. "}
+        <Link
+          href={manage}
+          className="text-heading-01 underline underline-offset-2 hover:text-sub-text"
+        >
+          {offers.length === 0 ? "Add one" : "Manage offers"}
+        </Link>
+        .
+      </p>
     </div>
   );
 }

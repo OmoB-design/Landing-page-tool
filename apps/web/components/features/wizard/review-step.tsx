@@ -1,6 +1,7 @@
 "use client";
 
 import { SelectField } from "@/components/app/select-field";
+import { chosenOffer } from "@/lib/wizard/offer";
 import type { WizardData } from "@/lib/wizard/queries";
 import {
   AUTHOR_TYPES,
@@ -27,6 +28,7 @@ export function ReviewStep({
 }) {
   const brand = data.brands.find((b) => b.id === state.brand);
   const product = data.products.find((p) => p.id === state.product);
+  const offer = chosenOffer(data, state);
   const template = data.templates.find((t) => t.id === state.template);
   // A batch's pages (B3.5), in the gallery's order.
   const ticked = state.batch
@@ -43,6 +45,7 @@ export function ReviewStep({
   const rows: [string, string][] = [
     ["Brand", brand?.name ?? "—"],
     ["Product", product?.name ?? "—"],
+    ["Offer", offer ? `${offer.name} · ${offer.label}` : "No offer"],
     state.batch
       ? [
           "Templates",

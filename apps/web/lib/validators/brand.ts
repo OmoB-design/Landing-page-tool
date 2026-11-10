@@ -43,17 +43,7 @@ export const brandFormSchema = z.object({
   palette_accent: hex,
   font_heading: text(80),
   font_body: text(80),
-  sale_percent: z
-    .string()
-    .trim()
-    .refine(
-      (value) =>
-        value === "" || (/^\d{1,3}$/.test(value) && Number(value) <= 100),
-      {
-        error: "Use a whole number from 0 to 100.",
-      },
-    ),
-  promo_text: text(120),
+  // Sale percent and Promo text moved to the brand's offers (B7.2a, D146).
   support_email: z
     .string()
     .trim()

@@ -27,13 +27,15 @@ REVIEW_LIMIT = 300
 def copy_rewrite(state: BuildState, ctx: PipelineContext) -> dict[str, Any]:
     brand, product, template = state["brand"], state["product"], state["template"]
     html = fill_names(read_page(state), brand_name=brand["name"], product_name=product["name"])
-    fragments = dump(html, extra_locked=copy_pass.extra_locked(brand, product))
+    fragments = dump(html, extra_locked=copy_pass.extra_locked(brand, product, state.get("offer")))
     targets = rules.rewritable(fragments)
     instructions = template["instructions"]
     caps = [LengthCap.model_validate(c) for c in instructions.get("length_caps", [])]
     budgets = {f.id: rules.length_budget(f, caps) for f in targets}
     strict = state["origin"] == "cloned"
-    system = rules.system_prompt(copy_pass.brief(template, brand, product, state.get("wizard", {})))
+    system = rules.system_prompt(
+        copy_pass.brief(template, brand, product, state.get("wizard", {}), state.get("offer"))
+    )
 
     # 1-3. Draft chunk by chunk, re-prompt unchanged lines (strict), shorten long ones.
     result = copy_pass.run(

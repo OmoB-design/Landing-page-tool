@@ -40,6 +40,7 @@ import { usePublish } from "./publish-context";
 
 const OVERRIDE_LABELS: Record<string, string> = {
   copy_error: "copy still in the template’s words",
+  offer_checkout: "an offer price the store won’t charge",
   claims: "claims marked Fix",
   placeholder_images: "placeholder images",
   residue: "the source brand still visible",

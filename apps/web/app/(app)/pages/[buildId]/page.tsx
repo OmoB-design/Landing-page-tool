@@ -11,6 +11,7 @@ import {
   BuildPreviewSkeleton,
 } from "@/components/features/builds/build-preview";
 import { BuildReport } from "@/components/features/builds/build-report";
+import { pageOfferSchema } from "@/lib/validators/offer";
 import {
   BuildSteps,
   BuildStepsCard,
@@ -136,7 +137,13 @@ async function Build({
         templateType={build.templateType}
         status={build.status}
       />
-      {build.report ? <BuildReport report={build.report} /> : null}
+      {build.report ? (
+        <BuildReport
+          report={build.report}
+          costUsd={Number(build.cost_usd)}
+          offer={pageOfferSchema.safeParse(build.offer).data?.name ?? null}
+        />
+      ) : null}
     </>
   );
   const page = (desk: boolean, publish: boolean) => (

@@ -281,6 +281,8 @@ export const createPageSchema = z.object({
   template_id: z.uuid(),
   brand_id: z.uuid(),
   product_id: z.uuid(),
+  /** The brand's offer the page sells (B7.2b, D146); null for none. */
+  offer_id: z.uuid().nullable().default(null),
   wizard: z.object({
     author_type: z.enum(["writer", "customer", "influencer", "expert"]),
     ai_images: z.boolean(),

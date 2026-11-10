@@ -1668,5 +1668,43 @@ as new entries.
 - **Decisions:** D144 locked; D145 (split testing as M8) recorded as planned.
 - **Deviations from the plan:** the plan said no schema change; Copy 1, 2, 3 (asked for after the plan) needs `copy_number`. Copies of a batch page join the batch, so they're inside its folder and on its screen. The copy takes the preview screenshots instead of a fresh check (a fresh check's tray card covered the toast's Open).
 - **Verification:** see the Build Report.
-- **Owner confirmed:** no
+- **Owner confirmed:** yes (2026-11-10: "i have tested, they look good")
 - **Next:** to agree with the owner (B7.2 Offers on the brand).
+
+
+### B7.1a — B7.1's loose ends
+- **Status:** complete (owner: "1. yes … go", 2026-11-10; committed and pushed, 2026-11-10)
+- **Date:** 2026-11-10
+- **Summary:** a copy's Details shows its own Cost; toasts lie one above the other instead of stacked behind each other (a progress toast covered a copy's Open); the jobs tray names every job as the worker does ("Buddy", "Publish to Vercel"…), from one shared file the worker's tests keep in step.
+- **Key files:** `components/features/builds/build-report.tsx` (+ test), `app/(app)/pages/[buildId]/page.tsx`, `components/app/toaster.tsx`, `lib/jobs/job-titles.json` (new), `lib/jobs/progress.ts` (+ test), worker `tests/test_job_titles.py` (new); docs D144a, MILESTONES.
+- **Schema changes:** none. **Worker changes:** a test only. **New dependencies:** none.
+- **Decisions:** D144a.
+- **Deviations:** the toast fix is sonner's `expand` (the "tray card" was itself a toast), not an offset.
+- **Verification:** see the Build Report (B7.2b's).
+- **Owner confirmed:** no
+- **Next:** B7.2a.
+
+### B7.2a — Offers on the brand
+- **Status:** complete (owner: "go", 2026-11-10; committed and pushed, 2026-11-10)
+- **Date:** 2026-11-10
+- **Summary:** a brand's Offers tab: saved offers (name; no price change, percent or amount off; a discount code or applied at checkout; the promo line; details for the copy; the default for new pages), listed in the Products tab's style with Edit, Make default and Archive; New/Edit in the Invite modal's style. Brand DNA's Sale percent and Promo text moved to a default "Current offer" for the brands that had them (the demo brands), their pages linked to it.
+- **Key files:** `supabase/migrations/20261110120429_offers.sql`, `20261110120702_offers_price_check.sql`, `supabase/tests/database/offers.test.sql`; `app/(app)/brands/[brandId]/offers/page.tsx`, `components/features/offers/offers-view.tsx`, `offer-dialog.tsx` (+ test), `lib/offers/form.ts` (+ test), `queries.ts`, `actions.ts`, `lib/validators/offer.ts`, `components/app/brand-tabs.tsx`, `components/ui/icons.ts` (OfferIcon), `components/features/brands/brand-form.tsx`, `lib/brands/form.ts`, `lib/validators/brand.ts`, `types/database.ts`; docs D146, MILESTONES, DESIGN.
+- **Schema changes:** `offers` (RLS, member grants, one default per brand, `make_default_offer`), `builds.offer_id`, `builds.offer`; applied to the cloud dev project. The follow-up migration fixes the price check (a percent or amount off with no value got through).
+- **Worker changes:** none in B7.2a. **New dependencies:** none.
+- **Decisions:** D146.
+- **Deviations:** removed a leftover worker-test org from the dev database (a slow run's cleanup had failed; it broke the tenant isolation test).
+- **Verification:** see the Build Report (B7.2b's).
+- **Owner confirmed:** no
+- **Next:** B7.2b.
+
+### B7.2b — Pages built with an offer
+- **Status:** complete (owner: "use real build. and go.", 2026-11-10; committed and pushed, 2026-11-10)
+- **Date:** 2026-11-10
+- **Summary:** New page picks the offer (the brand's default chosen); batches share it; Duplicate keeps it; the page records it. The build shows the offer's price off the store's current price with the regular one struck through, the real discount on the sale badges, sale-only parts only with a real discount, the offer's promo line, and on Shopify stores with a code, Shopify's discount link on every button; the copy brief carries the offer (and nothing else). A price cut nothing applies at checkout is a report warning and a Publish check (Publish anyway). Details shows the offer.
+- **Key files:** worker `app/engines/offers.py` (new), `app/pipeline/nodes/finalize_common.py`, `regenerate_variants.py`, `load_inputs.py`, `copy_rewrite.py`, `app/pipeline/copy_pass.py`, `app/engines/copy_rules.py`, `app/engines/finalize.py`, `app/jobs/kinds/redraft.py`, `agent_turn.py`, `app/publish/gate.py`, `app/builds.py`, `app/models/build.py`, `app/main.py`, `app/pipeline/state.py`, tests `test_offers.py` (new), `test_pipeline.py`, `test_publish.py`; web `lib/wizard/offer.ts` (new, + test), `lib/wizard/queries.ts`, `lib/wizard/state.ts`, `components/features/wizard/steps.tsx`, `review-step.tsx`, `create-wizard.tsx`, `lib/validators/build.ts`, `lib/builds/queries.ts`, `components/features/builds/publish-controls.tsx`; docs D146, MILESTONES.
+- **Schema changes:** none beyond B7.2a's. **New dependencies:** none.
+- **Decisions:** D146.
+- **Deviations:** the checkout warning is a Publish check that needs Publish anyway (as claims and placeholders), not only a note.
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner (B7.3).

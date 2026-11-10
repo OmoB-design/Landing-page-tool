@@ -123,8 +123,6 @@ def read_inputs(
             else None,
             "support_email": brand["support_email"],
             "cta_text": brand["cta_text"],
-            "sale_percent": brand["sale_percent"],
-            "promo_text": brand["promo_text"],
             "meta_title": brand["meta_title"],
             "meta_description": brand["meta_description"],
         },
@@ -133,6 +131,8 @@ def read_inputs(
             "name": product["name"],
             "url": product["url"],
             "currency": product["currency"],
+            # Where it was read from: "shopify_json" lets a page's buttons apply a code (B7.2b).
+            "pull_source": product["pull_source"],
             "price": _money(product["price"]),
             "sale_price": _money(product["sale_price"]),
             "description": product["description"],
@@ -153,6 +153,9 @@ def read_inputs(
         },
         "wizard": build["wizard"] or {},
         "targeting": build["targeting"] or {},
+        # The page's offer (B7.2b, D146), as it was chosen for the page: it decides the prices,
+        # the promo bar, the buttons' link and what the copy says about the deal.
+        "offer": build["offer"],
     }
     return inputs, html
 

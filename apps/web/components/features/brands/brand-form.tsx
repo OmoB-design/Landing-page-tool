@@ -164,16 +164,8 @@ export function BrandForm({
           </div>
         </Section>
 
-        <Section title="Offer and contact">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextField
-              form={form}
-              name="sale_percent"
-              label="Sale percent"
-              description="0 to 100, optional."
-            />
-            <TextField form={form} name="promo_text" label="Promo text" />
-          </div>
+        {/* The offer (Sale percent, Promo text) moved to the Offers tab (B7.2a, D146). */}
+        <Section title="Contact">
           <TextField
             form={form}
             name="support_email"
