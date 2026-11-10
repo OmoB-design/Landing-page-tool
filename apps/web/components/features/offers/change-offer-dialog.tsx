@@ -15,14 +15,7 @@ import {
   offerChangeStartedSchema,
 } from "@/lib/validators/offer";
 
-import {
-  CancelButton,
-  LIST,
-  ListName,
-  OfferCard,
-  OfferModal,
-  tile,
-} from "./offer-modal";
+import { CancelButton, LIST, OfferCard, OfferModal, tile } from "./offer-modal";
 import { OfferResult } from "./offer-result";
 
 const NONE = "none";
@@ -135,6 +128,26 @@ function ChangeOffer({
           : "Only the deal changes: its prices, promo and lines."
       }
       error={error}
+      band={
+        jobId
+          ? undefined
+          : {
+              title: "Offer",
+              content: offers.isPending ? (
+                <p className="flex items-center gap-2 text-heading-05">
+                  <Spinner className="size-3.5" label="Loading offers" />
+                  Loading the brand’s offers…
+                </p>
+              ) : (
+                <OfferChoices
+                  offers={offers.data?.offers ?? []}
+                  current={currentOfferId}
+                  value={pick}
+                  onChange={setChosen}
+                />
+              ),
+            }
+      }
       actions={
         jobId ? (
           <Button
@@ -179,22 +192,7 @@ function ChangeOffer({
             {step ?? "Waiting for a worker"}…
           </p>
         )
-      ) : offers.isPending ? (
-        <p className="flex items-center gap-2 text-type-caption-1 text-heading-05">
-          <Spinner className="size-3.5" label="Loading offers" />
-          Loading the brand’s offers…
-        </p>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <ListName>Offer</ListName>
-          <OfferChoices
-            offers={offers.data?.offers ?? []}
-            current={currentOfferId}
-            value={pick}
-            onChange={setChosen}
-          />
-        </div>
-      )}
+      ) : null}
     </OfferCard>
   );
 }
@@ -232,7 +230,7 @@ export function OfferChoices({
               aria-hidden
               className={cn(
                 "size-3 shrink-0 rounded-full ring-thin ring-stroke-strong",
-                selected && "bg-button-ink ring-button-ink",
+                selected && "bg-heading-01 ring-heading-01",
               )}
             />
             <span className="min-w-0 flex-1 truncate font-medium text-heading-01">

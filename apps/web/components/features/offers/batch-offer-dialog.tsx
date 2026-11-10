@@ -146,6 +146,26 @@ export function BatchOfferDialog({
             </>
           )
         }
+        band={
+          started
+            ? undefined
+            : {
+                title: "Offer",
+                content: offers.isPending ? (
+                  <p className="flex items-center gap-2 text-heading-05">
+                    <Spinner className="size-3.5" label="Loading offers" />
+                    Loading the brand’s offers…
+                  </p>
+                ) : (
+                  <OfferChoices
+                    offers={offers.data?.offers ?? []}
+                    current={current}
+                    value={pick}
+                    onChange={setChosen}
+                  />
+                ),
+              }
+        }
       >
         {started ? (
           <ul aria-label="Pages" className={LIST}>
@@ -158,59 +178,40 @@ export function BatchOfferDialog({
               />
             ))}
           </ul>
-        ) : offers.isPending ? (
-          <p className="flex items-center gap-2 text-type-caption-1 text-heading-05">
-            <Spinner className="size-3.5" label="Loading offers" />
-            Loading the brand’s offers…
-          </p>
         ) : (
-          <>
-            <div className="flex flex-col gap-1.5">
-              <ListName>Offer</ListName>
-              <OfferChoices
-                offers={offers.data?.offers ?? []}
-                current={current}
-                value={pick}
-                onChange={setChosen}
-              />
+          <div className="flex flex-col gap-1.5">
+            <ListName>Pages</ListName>
+            <div role="group" aria-label="Pages to change" className={LIST}>
+              {ready.map((page) => {
+                const on = chosenPages.includes(page.id);
+                return (
+                  <label key={page.id} className={`${tile(on)} cursor-pointer`}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(event) =>
+                        setTicked(
+                          event.target.checked
+                            ? [...chosenPages, page.id]
+                            : chosenPages.filter((id) => id !== page.id),
+                        )
+                      }
+                      className="size-3.5 accent-spot-500-blue"
+                    />
+                    <span className="w-14 shrink-0 font-medium text-heading-01">
+                      {page.key}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-heading-02">
+                      {pageName(page)}
+                    </span>
+                    <span className="shrink-0 text-sub-text">
+                      {page.offer_name ?? "No offer"}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
-            <div className="flex flex-col gap-1.5">
-              <ListName>Pages</ListName>
-              <div role="group" aria-label="Pages to change" className={LIST}>
-                {ready.map((page) => {
-                  const on = chosenPages.includes(page.id);
-                  return (
-                    <label
-                      key={page.id}
-                      className={`${tile(on)} cursor-pointer`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={on}
-                        onChange={(event) =>
-                          setTicked(
-                            event.target.checked
-                              ? [...chosenPages, page.id]
-                              : chosenPages.filter((id) => id !== page.id),
-                          )
-                        }
-                        className="size-3.5 accent-spot-500-blue"
-                      />
-                      <span className="w-14 shrink-0 font-medium text-heading-01">
-                        {page.key}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-heading-02">
-                        {pageName(page)}
-                      </span>
-                      <span className="shrink-0 text-sub-text">
-                        {page.offer_name ?? "No offer"}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </>
+          </div>
         )}
       </OfferCard>
     </OfferModal>

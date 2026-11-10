@@ -10,14 +10,7 @@ import { apiFetch } from "@/lib/api/client";
 import { useBrandOffers } from "@/lib/queries/offers";
 import { variantsMadeSchema } from "@/lib/validators/offer";
 
-import {
-  CancelButton,
-  LIST,
-  ListName,
-  OfferCard,
-  OfferModal,
-  tile,
-} from "./offer-modal";
+import { CancelButton, LIST, OfferCard, OfferModal, tile } from "./offer-modal";
 
 /**
  * Duplicate with offers (B7.3a, D147; a page's ⋯; drawn as Settings → Connect a Shopify store):
@@ -108,19 +101,18 @@ export function VariantsDialog({
             </Button>
           </>
         }
-      >
-        {offers.isPending ? (
-          <p className="flex items-center gap-2 text-type-caption-1 text-heading-05">
-            <Spinner className="size-3.5" label="Loading offers" />
-            Loading the brand’s offers…
-          </p>
-        ) : others.length === 0 ? (
-          <p className="text-type-caption-1 text-heading-05">
-            The brand has no other offers yet. Add some on its Offers tab.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            <ListName>Offers</ListName>
+        band={{
+          title: "Offers",
+          content: offers.isPending ? (
+            <p className="flex items-center gap-2 text-heading-05">
+              <Spinner className="size-3.5" label="Loading offers" />
+              Loading the brand’s offers…
+            </p>
+          ) : others.length === 0 ? (
+            <p className="text-heading-05">
+              The brand has no other offers yet. Add some on its Offers tab.
+            </p>
+          ) : (
             <div role="group" aria-label="Offers" className={LIST}>
               {others.map((offer) => {
                 const on = ticked.includes(offer.id);
@@ -151,9 +143,9 @@ export function VariantsDialog({
                 );
               })}
             </div>
-          </div>
-        )}
-      </OfferCard>
+          ),
+        }}
+      />
     </OfferModal>
   );
 }

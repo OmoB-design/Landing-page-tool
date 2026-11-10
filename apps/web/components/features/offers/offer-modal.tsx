@@ -49,13 +49,19 @@ export function OfferCard({
   description,
   error,
   actions,
+  band,
   children,
 }: {
   title: string;
   description: string;
   error?: string | null;
   actions: ReactNode;
-  children: ReactNode;
+  /**
+   * The offer list, in a band across the card as the Shopify window's steps (Dashboard grey, black
+   * in dark), so it stands out from the card (owner, 2026-11-10).
+   */
+  band?: { title: string; content: ReactNode };
+  children?: ReactNode;
 }) {
   return (
     <ModalFrame className="max-h-dvh">
@@ -75,8 +81,16 @@ export function OfferCard({
             </DialogDescription>
           </div>
         </div>
-        <div className="flex min-h-0 flex-col gap-6 overflow-y-auto px-6 pt-5 pb-4 divider-t-half">
-          {children}
+        <div className="flex min-h-0 flex-col overflow-y-auto">
+          {band ? (
+            <section className="flex flex-col gap-2 bg-dashboard px-6 py-4 text-type-caption-1 divider-y-half dark:bg-surface-primary">
+              <h3 className="font-medium text-heading-02">{band.title}</h3>
+              {band.content}
+            </section>
+          ) : null}
+          {children ? (
+            <div className="flex flex-col gap-6 p-6">{children}</div>
+          ) : null}
         </div>
       </ModalCard>
       <div className="flex shrink-0 items-center gap-2 px-6 py-4">
@@ -124,14 +138,12 @@ export function ListName({ children }: { children: ReactNode }) {
 export const LIST = "flex flex-col gap-0.5";
 
 /**
- * One row of an offer window's list, framed on its own; the chosen (or ticked) one in a solid ink
- * frame, black (white in dark), so it stands out (owner, 2026-11-10).
+ * One row of an offer window's list, framed on its own: white on the band (the card's grey in
+ * dark); the chosen or ticked one with a firmer edge (its dot or box says which).
  */
 export function tile(chosen: boolean): string {
   return cn(
-    "flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-type-caption-1 outline-none focus-visible:ring-2 focus-visible:ring-ring",
-    chosen
-      ? "bg-foreground-01 ring-1 ring-button-ink"
-      : "ring-thin ring-stroke hover:bg-foreground-01",
+    "flex items-center gap-2 rounded-md bg-surface-primary px-2.5 py-2 text-left text-type-caption-1 outline-none hover:bg-foreground-01 focus-visible:ring-2 focus-visible:ring-ring dark:bg-surface-modal dark:hover:bg-foreground-02",
+    chosen ? "ring-1 ring-sub-text" : "ring-thin ring-stroke",
   );
 }
