@@ -108,6 +108,9 @@ class BatchPage(BaseModel):
     updated_at: datetime
     started_at: datetime | None  # its build job's, for the time it's been building
     finished_at: datetime | None
+    # A copy (B7.1, D144): the family's first page, under which it nests, and its number.
+    parent_id: UUID | None = None
+    copy_number: int | None = None
 
 
 class BatchState(BaseModel):

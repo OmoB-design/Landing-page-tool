@@ -293,6 +293,27 @@ def retry_build(build_id: UUID, body: RetryBuildRequest, user: CurrentUser) -> B
     return BuildCreated(build=BuildSummary.model_validate(build), job=job)
 
 
+class DuplicateBuildRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+
+
+@app.post("/builds/{build_id}/duplicate", status_code=status.HTTP_201_CREATED)
+def duplicate_build(build_id: UUID, body: DuplicateBuildRequest, user: CurrentUser) -> BuildSummary:
+    """A copy of a finished page as it is now (B7.1, D144), nested under the family's first page."""
+    require_org_member(user, body.org_id)
+    try:
+        copy = builds.duplicate_build(org_id=body.org_id, build_id=build_id, created_by=user.id)
+    except builds.BuildNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That page isn't available.") from exc
+    except builds.BuildNotReadyError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "A page can be duplicated once it's built."
+        ) from exc
+    return BuildSummary.model_validate(copy)
+
+
 # ── Review desk (BUILD_SPEC §11.1, D84) ──────────────────────────────────────
 
 PAGE_CHANGED_ELSEWHERE = (

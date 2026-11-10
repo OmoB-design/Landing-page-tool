@@ -149,13 +149,31 @@ export function BatchView({
               </span>
             </div>
             <ul aria-label="Pages in this batch" className="mt-3 flex flex-col">
-              {pages.map((page) => (
+              {families(pages).map(({ page, copies }) => (
                 <BatchRow
                   key={page.id}
                   page={page}
                   creator={page.created_by === me.id ? me.name : "A teammate"}
-                  onRetried={() => void batch.refetch()}
-                />
+                  onChanged={() => void batch.refetch()}
+                  copies={copies.length}
+                >
+                  {copies.length > 0
+                    ? copies.map((copy, index) => (
+                        <BatchRow
+                          key={copy.id}
+                          page={copy}
+                          creator={
+                            copy.created_by === me.id ? me.name : "A teammate"
+                          }
+                          onChanged={() => void batch.refetch()}
+                          branch={{
+                            first: index === 0,
+                            last: index === copies.length - 1,
+                          }}
+                        />
+                      ))
+                    : null}
+                </BatchRow>
               ))}
             </ul>
           </>
@@ -295,14 +313,41 @@ export function BatchViewSkeleton() {
   );
 }
 
+/**
+ * The batch's pages as families (B7.1, D144): each copy under the page it was copied from, in
+ * the order made; one whose original isn't in the batch any more stands on its own.
+ */
+export function families(
+  pages: BatchPage[],
+): { page: BatchPage; copies: BatchPage[] }[] {
+  const ids = new Set(pages.map((page) => page.id));
+  const nested = (page: BatchPage) =>
+    page.parent_id !== null && ids.has(page.parent_id);
+  return pages
+    .filter((page) => !nested(page))
+    .map((page) => ({
+      page,
+      copies: pages
+        .filter((copy) => copy.parent_id === page.id)
+        .sort((a, b) => (a.copy_number ?? 0) - (b.copy_number ?? 0)),
+    }));
+}
+
 function BatchRow({
   page,
   creator,
-  onRetried,
+  onChanged,
+  copies = 0,
+  branch,
+  children,
 }: {
   page: BatchPage;
   creator: string;
-  onRetried: () => void;
+  onChanged: () => void;
+  /** How many copies hang under it (B7.1). */
+  copies?: number;
+  branch?: { first: boolean; last: boolean };
+  children?: ReactNode;
 }) {
   const queryClient = useQueryClient();
   const [retrying, setRetrying] = useState(false);
@@ -322,7 +367,7 @@ function BatchRow({
         method: "POST",
       });
       await queryClient.invalidateQueries({ queryKey: ["batch"] });
-      onRetried();
+      onChanged();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Couldn’t try again.",
@@ -335,7 +380,30 @@ function BatchRow({
   return (
     <ListRow
       href={href}
-      title={page.template_name}
+      title={
+        branch && page.copy_number ? (
+          `Copy ${page.copy_number}`
+        ) : copies > 0 ? (
+          <>
+            {page.template_name}
+            <span className="ml-2 text-type-caption-1 font-normal text-sub-text tabular-nums">
+              {copies === 1 ? "1 copy" : `${copies} copies`}
+            </span>
+          </>
+        ) : (
+          page.template_name
+        )
+      }
+      level={branch ? 1 : 0}
+      branch={branch}
+      fold={
+        copies > 0
+          ? {
+              show: `Show the pages under ${page.key}`,
+              hide: `Hide the pages under ${page.key}`,
+            }
+          : undefined
+      }
       leading={
         <span className="flex w-23.75 shrink-0 items-center gap-1.5">
           <TypeGlyph type={page.template_type} size="md" />
@@ -385,10 +453,18 @@ function BatchRow({
               Try again
             </Button>
           ) : null}
-          <PageRowMenu buildId={page.id} pageKey={page.key} href={href} />
+          <PageRowMenu
+            buildId={page.id}
+            pageKey={page.key}
+            href={href}
+            built={isReady}
+            onDuplicated={onChanged}
+          />
         </span>
       }
-    />
+    >
+      {children}
+    </ListRow>
   );
 }
 

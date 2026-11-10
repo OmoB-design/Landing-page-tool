@@ -8,6 +8,7 @@ import {
   PersonAvatar,
   RelativeTime,
   ScoreChip,
+  StatusBadge,
 } from "@/components/app/row-meta";
 import { StatusGlyph } from "@/components/app/status-glyph";
 import { TypeGlyph } from "@/components/app/type-glyph";
@@ -25,7 +26,8 @@ import { PageRowMenu } from "./page-row-menu";
 
 /**
  * Pages in their groups (status by default; Display can group by template type or creator, or
- * not at all), re-builds nested under their original. `hide` turns row details off.
+ * not at all), copies hanging under their original as a tree (B7.1, D144). `hide` turns row
+ * details off.
  */
 export function PagesList({
   groups,
@@ -43,10 +45,19 @@ export function PagesList({
   }
   const rows = (group: PageGroup) =>
     group.rows.map((row) => (
-      <PageRow key={row.id} page={row} hide={hide}>
+      <PageRow key={row.id} page={row} hide={hide} nested={row.children}>
         {row.children.length > 0
-          ? row.children.map((child) => (
-              <PageRow key={child.id} page={child} level={1} hide={hide} />
+          ? row.children.map((child, index) => (
+              <PageRow
+                key={child.id}
+                page={child}
+                level={1}
+                hide={hide}
+                branch={{
+                  first: index === 0,
+                  last: index === row.children.length - 1,
+                }}
+              />
             ))
           : null}
       </PageRow>
@@ -88,15 +99,22 @@ function GroupGlyph({ groupKey }: { groupKey: PageGroupKey }) {
   }
 }
 
+const BUILT = new Set(["needs_review", "approved", "published"]);
+
 function PageRow({
   page,
   level = 0,
   hide,
+  nested = [],
+  branch,
   children,
 }: {
   page: PageListItem;
   level?: 0 | 1;
   hide: PageProperty[];
+  /** The pages hanging under this one (its copies). */
+  nested?: PageListItem[];
+  branch?: { first: boolean; last: boolean };
   children?: ReactNode;
 }) {
   // A batch's pages as one folder row (B3.5b).
@@ -106,8 +124,27 @@ function PageRow({
   return (
     <ListRow
       href={href}
-      title={<PageTitle title={page.title} />}
+      title={
+        // Under its original, a copy is its number: the original says the rest.
+        level === 1 && page.copyNumber ? (
+          `Copy ${page.copyNumber}`
+        ) : (
+          <>
+            <PageTitle title={page.title} />
+            <CopiesNote page={page} nested={nested} />
+          </>
+        )
+      }
       level={level}
+      branch={branch}
+      fold={
+        nested.length > 0
+          ? {
+              show: `Show the pages under ${page.key}`,
+              hide: `Hide the pages under ${page.key}`,
+            }
+          : undefined
+      }
       leading={
         // Figma: the glyph and key take the first 107 px (95 + the row's 12 px gap).
         <span className="flex w-23.75 shrink-0 items-center gap-1.5">
@@ -119,6 +156,7 @@ function PageRow({
       }
       meta={
         <>
+          {level === 1 ? <StatusBadge status={page.status} /> : null}
           {page.residueScore !== null ? (
             <ScoreChip score={page.residueScore} min={RESIDUE_MIN_SCORE} />
           ) : null}
@@ -130,7 +168,14 @@ function PageRow({
           ) : null}
         </>
       }
-      actions={<PageRowMenu buildId={page.id} pageKey={page.key} href={href} />}
+      actions={
+        <PageRowMenu
+          buildId={page.id}
+          pageKey={page.key}
+          href={href}
+          built={BUILT.has(page.status)}
+        />
+      }
     >
       {children}
     </ListRow>
@@ -138,21 +183,50 @@ function PageRow({
 }
 
 /**
- * "Template · Product" as Figma draws it: the two parts with a 4 px foreground-02 dot between
- * them, 6 px either side. Titles without the separator show as they are.
+ * How many copies hang under a page, after its title (B7.1): "3 copies", and how many of them
+ * wait for review when the page itself doesn't (its group doesn't say so for them).
+ */
+function CopiesNote({
+  page,
+  nested,
+}: {
+  page: PageListItem;
+  nested: PageListItem[];
+}) {
+  const copies = nested.filter((child) => child.copyNumber).length;
+  if (copies === 0) return null;
+  const waiting =
+    page.status === "needs_review"
+      ? 0
+      : nested.filter((child) => child.status === "needs_review").length;
+  return (
+    <span className="ml-2 text-type-caption-1 font-normal text-sub-text tabular-nums">
+      {copies === 1 ? "1 copy" : `${copies} copies`}
+      {waiting > 0 ? ` · ${waiting} to review` : ""}
+    </span>
+  );
+}
+
+/**
+ * "Template · Product" as Figma draws it: the parts with a 4 px foreground-02 dot between them,
+ * 6 px either side (a copy's title has a third: "Copy 2"). Titles without the separator show as
+ * they are.
  */
 function PageTitle({ title }: { title: string }) {
-  const at = title.indexOf(" · ");
-  if (at === -1) return title;
-  return (
-    <>
-      {title.slice(0, at)}
-      <span
-        aria-hidden
-        className="mx-1.5 inline-block size-1 rounded-full bg-foreground-02 align-middle"
-      />
-      <span className="sr-only">, </span>
-      {title.slice(at + 3)}
-    </>
-  );
+  const parts = title.split(" · ");
+  if (parts.length === 1) return title;
+  return parts.map((part, index) => (
+    <span key={index}>
+      {index > 0 ? (
+        <>
+          <span
+            aria-hidden
+            className="mx-1.5 inline-block size-1 rounded-full bg-foreground-02 align-middle"
+          />
+          <span className="sr-only">, </span>
+        </>
+      ) : null}
+      {part}
+    </span>
+  ));
 }

@@ -475,6 +475,7 @@ export type Database = {
           approved_copy_version: number | null
           batch_id: string | null
           brand_id: string
+          copy_number: number | null
           cost_usd: number
           created_at: string
           created_by: string | null
@@ -508,6 +509,7 @@ export type Database = {
           approved_copy_version?: number | null
           batch_id?: string | null
           brand_id: string
+          copy_number?: number | null
           cost_usd?: number
           created_at?: string
           created_by?: string | null
@@ -541,6 +543,7 @@ export type Database = {
           approved_copy_version?: number | null
           batch_id?: string | null
           brand_id?: string
+          copy_number?: number | null
           cost_usd?: number
           created_at?: string
           created_by?: string | null
@@ -692,6 +695,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "integrations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          org_id: string
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["member_role"]
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          org_id: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["member_role"]
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          org_id?: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["member_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"

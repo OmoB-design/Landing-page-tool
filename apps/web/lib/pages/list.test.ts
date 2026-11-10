@@ -75,13 +75,61 @@ describe("groupPagesByStatus", () => {
     expect(group?.rows[0]?.children.map((c) => c.id)).toEqual(["child"]);
   });
 
-  it("keeps a re-build top-level when its original is in another group", () => {
+  it("keeps copies with their original, in its group, Copy 1 first (B7.1)", () => {
     const groups = groupPagesByStatus([
-      page({ id: "parent", status: "published" }),
-      page({ id: "child", status: "needs_review", parentId: "parent" }),
+      page({ id: "original", status: "published" }),
+      page({
+        id: "c2",
+        status: "needs_review",
+        parentId: "original",
+        copyNumber: 2,
+      }),
+      page({
+        id: "c1",
+        status: "approved",
+        parentId: "original",
+        copyNumber: 1,
+      }),
+      page({ id: "other", status: "needs_review" }),
     ]);
-    const review = groups.find((g) => g.id === "needs_review");
-    expect(review?.rows.map((r) => r.id)).toEqual(["child"]);
+    expect(groups.map((g) => [g.id, g.count])).toEqual([
+      ["needs_review", 1],
+      ["published", 3],
+    ]);
+    const published = groups.find((g) => g.id === "published");
+    expect(published?.rows[0]?.children.map((c) => c.id)).toEqual(["c1", "c2"]);
+  });
+
+  it("shows a copy on its own when its original isn't in the list (filtered out, in Trash)", () => {
+    const groups = groupPagesByStatus(
+      filterPages(
+        [
+          page({ id: "original", status: "published" }),
+          page({ id: "copy", parentId: "original", copyNumber: 1 }),
+        ],
+        { ...NO_FILTERS, status: ["needs_review"] },
+      ),
+    );
+    expect(groups.map((g) => g.rows.map((r) => r.id))).toEqual([["copy"]]);
+  });
+
+  it("nests copies under their original when grouped by type or creator too", () => {
+    const pages = [
+      page({ id: "original", createdBy: { name: "Ada", isMe: true } }),
+      page({
+        id: "copy",
+        parentId: "original",
+        copyNumber: 1,
+        createdBy: { name: "Bo", isMe: false },
+      }),
+    ];
+    for (const group of ["type", "creator"] as const) {
+      const groups = groupPages(pages, { group, order: "updated" });
+      expect(groups.map((g) => g.rows.map((r) => r.id))).toEqual([
+        ["original"],
+      ]);
+      expect(groups[0]?.rows[0]?.children.map((c) => c.id)).toEqual(["copy"]);
+    }
   });
 
   it("returns no groups for no pages", () => {

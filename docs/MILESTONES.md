@@ -161,6 +161,20 @@ From the state-machine audit (2026-11-07): the app behaves the same, but stops m
 - B6.8 App speed. *Done 2026-11-08 (D138): the main pages measured live; Home's looping scenes rest after two loops (its idle CPU from a fifth of a core to none); dictation keeps the newest words in view.*
 - B6.9 A brand's Pages tab. *Done 2026-11-08 (D143): the brand's pages as Pages lists them (by status, batches as folders, each row's ⋯), their count and New page with the brand chosen; the empty state only when there are none (it was a placeholder since B0.5).*
 
+## M7 — Offers and variants
+
+Owner, 2026-11-10, from two questions on the launch post: change an offer once and have every page using it update; duplicate a winning page and swap only its offer.
+
+- B7.1 Duplicate page. *Done 2026-11-10 (D144): Duplicate in every page ⋯ (a copy as it is now, free, in Needs review, under the family's first page, "Copy N"); copies hang under their original as a tree in the Pages lists and on a batch's screen, with a fold chevron.*
+- B7.2 Offers on the brand. A brand Offers tab: saved offers (name, a price change of none, % off or amount off, the promo line, details for the copy such as free shipping, a gift, a code or a deadline, and a discount code); New page asks which offer; each page remembers its offer. Existing pages get an offer made from their brand's Sale percent and Promo text (owner, 2026-11-10). A price cut must match checkout: on Shopify stores the page's buttons can use Shopify's discount link (`/discount/CODE?redirect=…`), or the store's own sale price; with neither, a warning before publishing ("the store will still charge…").
+- B7.3 Change a page's offer, a folder's, and variants. ⋯ → Change offer on a page or a batch folder (every page in it at once): the slots filled from data change directly, the lines that mention the offer get a small rewrite (the redraft's copy pass, about $0.01–0.03 a page), one undo step per page. Duplicate can make one copy per chosen offer. **Approve and publish all** approves every updated page and publishes again those that were live; pages that were never live stay unpublished (owner, 2026-11-10); a clone that fails its gates is skipped with the reason; one failure doesn't stop the rest. New builds keep sale-only parts hidden instead of removed, so a later sale can show them.
+- B7.4 Update every page using an offer. Editing an offer that pages use offers "Update the N pages that use it": progress per page, then Approve and publish all.
+
+## M8 — Testing (planned, D145)
+
+- B8.1 Split link and results on Vercel-published pages: one link, each visitor kept on their version, visitors and button clicks per version, who's ahead.
+- B8.2 Purchases per version through Shopify orders (needs the LP Shopify app).
+
 ## v3 — Someday
 
 Blank-canvas block builder.

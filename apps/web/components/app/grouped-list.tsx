@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type KeyboardEvent, type ReactNode, useRef } from "react";
+import { type KeyboardEvent, type ReactNode, useRef, useState } from "react";
 
 import {
   Collapsible,
@@ -126,15 +126,21 @@ type ListRowProps = {
   actions?: ReactNode;
   /** 1 for a child row (re-build or variant), indented 32 px. */
   level?: 0 | 1;
+  /** A child row's place among its siblings: draws its branch from the parent (B7.1). */
+  branch?: { first: boolean; last: boolean };
   /** Nested child rows. */
   children?: ReactNode;
+  /** Children that fold away under a chevron in the row's left gutter, with its two labels. */
+  fold?: { show: string; hide: string };
   /** A mouse came onto the row or left it (a batch folder's animation, B3.5b). */
   onHoverChange?: (hovered: boolean) => void;
 };
 
 /**
  * One 48 px row (Figma: Page List): 16 px in, a hairline below, foreground-01 on hover. The
- * whole row is a link, with an optional menu after it, 12 px from the meta.
+ * whole row is a link, with an optional menu after it, 12 px from the meta. A parent's children
+ * hang from it as a tree (B7.1, owner 2026-11-10: "a branch line connector from the original to
+ * all the duplicates"), and can fold away under a chevron in the gutter.
  */
 export function ListRow({
   href,
@@ -143,11 +149,14 @@ export function ListRow({
   meta,
   actions,
   level = 0,
+  branch,
   children,
+  fold,
   onHoverChange,
 }: ListRowProps) {
+  const [open, setOpen] = useState(true);
   return (
-    <li>
+    <li className={branch ? "relative" : undefined}>
       <div
         // A mouse only: touch fires hover on tap.
         onPointerEnter={
@@ -160,8 +169,24 @@ export function ListRow({
             ? (event) => event.pointerType === "mouse" && onHoverChange(false)
             : undefined
         }
-        className="group/row flex h-12 items-center gap-3 pr-4 divider-b-thin hover:bg-foreground-01"
+        className="group/row relative flex h-12 items-center gap-3 pr-4 divider-b-thin hover:bg-foreground-01"
       >
+        {fold && children ? (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={open ? fold.hide : fold.show}
+            onClick={() => setOpen(!open)}
+            className="absolute inset-y-0 left-0 z-10 flex w-4 items-center justify-center text-icon-system outline-none hover:text-heading-01 focus-visible:text-heading-01 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          >
+            <GroupChevronIcon
+              className={cn(
+                "transition-transform duration-150 ease-out motion-reduce:transition-none",
+                !open && "-rotate-90",
+              )}
+            />
+          </button>
+        ) : null}
         <Link
           href={href}
           data-list-nav=""
@@ -182,7 +207,34 @@ export function ListRow({
         </Link>
         {actions ? <div className="flex shrink-0">{actions}</div> : null}
       </div>
-      {children ? <ul role="list">{children}</ul> : null}
+      {branch ? <Branch {...branch} /> : null}
+      {children && (open || !fold) ? <ul role="list">{children}</ul> : null}
     </li>
+  );
+}
+
+/**
+ * A child's branch (B7.1; Linear's sub-issue tree, drawn in the list's own hairlines): from just
+ * under the parent's type glyph (its middle, 28 px in) down to the child's middle, turning on a
+ * 6 px curve to stop 4 px short of the child's glyph (48 px in); the line goes on down to the next
+ * child unless this is the last.
+ */
+function Branch({ first, last }: { first: boolean; last: boolean }) {
+  return (
+    <>
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute left-7 w-4 rounded-bl-sm border-b border-l border-tree-line",
+          first ? "-top-2.5 h-8.5" : "top-0 h-6",
+        )}
+      />
+      {last ? null : (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-6 bottom-0 left-7 border-l border-tree-line"
+        />
+      )}
+    </>
   );
 }

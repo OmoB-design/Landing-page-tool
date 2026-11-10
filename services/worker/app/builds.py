@@ -1,13 +1,16 @@
 """Creating a build (BUILD_SPEC §9 step 6): the build row with its key and its `build` job, in
 one transaction. Used by POST /builds and the smoke-build command; a batch (B3.5) makes a page
 from each of several templates in one go. Retrying a failed build queues
-its `build` job again (POST /builds/{id}/retry)."""
+its `build` job again (POST /builds/{id}/retry). Duplicating a finished page (B7.1) makes a copy
+of it as it is now, numbered under the family's first page (POST /builds/{id}/duplicate)."""
 
+import re
 from typing import Any
 from uuid import UUID, uuid4
 
 from psycopg.types.json import Jsonb
 
+from app import qa
 from app.config import get_settings
 from app.db import transaction
 from app.engines import targeting
@@ -16,6 +19,7 @@ from app.jobs.models import Job
 from app.jobs.registry import KINDS
 from app.models.build import BatchPage, BatchState, BuildWizard, FolderColor
 from app.models.template import RANKING_TYPE
+from app.providers import storage
 
 
 class BuildInputsMissingError(Exception):
@@ -36,6 +40,10 @@ class BuildNotFoundError(Exception):
 
 class BuildNotFailedError(Exception):
     """Only a failed build can be retried (one that is queued or building is still going)."""
+
+
+class BuildNotReadyError(Exception):
+    """Only a finished page (to review, approved or published) can be duplicated."""
 
 
 def _template(conn: Any, org_id: UUID, template_id: UUID) -> dict[str, Any]:
@@ -207,7 +215,8 @@ def batch_state(org_id: UUID, batch_id: UUID) -> BatchState:
         rows = conn.execute(
             """
             select b.id, b.key, b.title, b.status, b.created_at, b.template_id,
-                   b.origin, b.cost_usd, b.created_by, b.updated_at,
+                   b.origin, b.cost_usd, b.created_by, b.updated_at, b.parent_build_id,
+                   b.copy_number,
                    b.report->'residue'->>'score' as residue,
                    t.name as template_name, t.type as template_type,
                    br.name as brand, p.name as product,
@@ -264,6 +273,8 @@ def batch_state(org_id: UUID, batch_id: UUID) -> BatchState:
             updated_at=r["updated_at"],
             started_at=r["started_at"],
             finished_at=r["finished_at"],
+            parent_id=r["parent_build_id"],
+            copy_number=r["copy_number"],
         )
         for r in rows
     ]
@@ -343,3 +354,133 @@ def retry_build(
             conn=conn,
         )
     return dict(updated), job
+
+
+DUPLICABLE = ("needs_review", "approved", "published")
+COPY_SUFFIX = re.compile(r" · Copy \d+$")
+# What a copy takes of its page's competitors (the ranking path's rows), all but the ids.
+COMPETITOR_COLUMNS = (
+    "rank, url, status, error, label, name, vendor, currency, price, sale_price, image_asset_id, "
+    "summary, claims, rating, rating_best, rating_count, reviews, pull_source, warnings, pulled_at"
+)
+
+
+def duplicate_build(*, org_id: UUID, build_id: UUID, created_by: UUID | None) -> dict[str, Any]:
+    """A copy of a finished page as it is now (B7.1, D144): a new key, its own copy of the page
+    file (copied on the storage server), the report (with where it came from, and the preview
+    check's screenshots copied when they show the page as it is now; otherwise it's checked
+    afresh), the wizard's answers, targeting and the ranking path's competitors. It starts in
+    Needs review and costs nothing. Undo history, Lander's conversations, image versions,
+    approval, publishing and client links stay with the page it came from.
+
+    A copy nests under the family's first page, even when the page copied is itself a copy (one
+    level), and sits in that page's batch folder, numbered in the order made: "<title> · Copy 2".
+    The first page's row is locked while the number is taken, so copies made at once get
+    different numbers."""
+    with transaction() as conn:
+        source = conn.execute(
+            """
+            select id, key, brand_id, product_id, template_id, template_version, parent_build_id,
+                   origin, status, title, wizard, targeting, report, working_html_path,
+                   page_version, mock_images, batch_id
+            from builds
+            where id = %(b)s and org_id = %(o)s and deleted_at is null
+            for update
+            """,
+            {"b": build_id, "o": org_id},
+        ).fetchone()
+        if source is None:
+            raise BuildNotFoundError
+        if source["status"] not in DUPLICABLE or not source["working_html_path"]:
+            raise BuildNotReadyError
+        root = source
+        if source["parent_build_id"] is not None:
+            parent = conn.execute(
+                """
+                select id, title, batch_id, copy_number from builds
+                where id = %(p)s and org_id = %(o)s
+                for update
+                """,
+                {"p": source["parent_build_id"], "o": org_id},
+            ).fetchone()
+            root = parent or source
+        number = conn.execute(
+            """
+            select coalesce(max(copy_number), 0) + 1 as n from builds
+            where parent_build_id = %(r)s and org_id = %(o)s
+            """,
+            {"r": root["id"], "o": org_id},
+        ).fetchone()
+        assert number is not None
+        key = conn.execute(
+            "select allocate_build_key(%(b)s) as key", {"b": source["brand_id"]}
+        ).fetchone()
+        assert key is not None
+        copy_id = uuid4()
+        folder = f"{org_id}/{copy_id}"
+        path = f"{folder}/pages/v1.html"
+        storage.copy("builds", source["working_html_path"], path)
+        report = dict(source["report"] or {})
+        # Its screenshots show this page too: copied when they're of the page as it is now,
+        # otherwise a fresh check is queued below.
+        shots = _copy_shots(report.pop("qa", None), source["page_version"], folder)
+        if shots is not None:
+            report["qa"] = shots
+        report["copied_from"] = {
+            "id": str(source["id"]), "key": source["key"], "version": source["page_version"],
+        }  # fmt: skip
+        title = f"{COPY_SUFFIX.sub('', root['title'])} · Copy {number['n']}"
+        copy = conn.execute(
+            """
+            insert into builds (id, org_id, brand_id, product_id, template_id, template_version,
+                                parent_build_id, copy_number, key, origin, status, title, wizard,
+                                targeting, report, working_html_path, page_version, mock_images,
+                                created_by, batch_id, created_at)
+            values (%(id)s, %(o)s, %(brand)s, %(product)s, %(template)s, %(version)s, %(root)s,
+                    %(n)s, %(key)s, %(origin)s, 'needs_review', %(title)s, %(wizard)s,
+                    %(targeting)s, %(report)s, %(path)s, 1, %(mock)s, %(user)s, %(batch)s,
+                    clock_timestamp())
+            returning id, key, status, title
+            """,
+            {
+                "id": copy_id, "o": org_id, "brand": source["brand_id"],
+                "product": source["product_id"], "template": source["template_id"],
+                "version": source["template_version"], "root": root["id"], "n": number["n"],
+                "key": key["key"], "origin": source["origin"], "title": title,
+                "wizard": Jsonb(source["wizard"]), "targeting": Jsonb(source["targeting"]),
+                "report": Jsonb(report), "path": path, "mock": source["mock_images"],
+                "user": created_by, "batch": root["batch_id"],
+            },
+        ).fetchone()  # fmt: skip
+        assert copy is not None
+        conn.execute(
+            f"""
+            insert into build_competitors (org_id, build_id, {COMPETITOR_COLUMNS})
+            select org_id, %(copy)s, {COMPETITOR_COLUMNS} from build_competitors
+            where build_id = %(b)s and org_id = %(o)s
+            """,
+            {"copy": copy_id, "b": source["id"], "o": org_id},
+        )
+        if shots is None:
+            qa.enqueue(conn, org_id, copy_id, created_by)
+    return dict(copy)
+
+
+def _copy_shots(record: Any, version: int, folder: str) -> dict[str, Any] | None:
+    """The page's preview check for its copy (version 1, its first): the screenshots copied into
+    the copy's folder, when they show the page as it is now. None when there are none to copy,
+    they're of an earlier version or a file is missing: the copy is then checked afresh."""
+    if not isinstance(record, dict) or record.get("version") != version:
+        return None
+    shots = dict(record, version=1)
+    try:
+        for name in ("desktop", "phone"):
+            shot = record.get(name)
+            if not isinstance(shot, dict) or not shot.get("path"):
+                return None
+            destination = f"{folder}/qa-{name}.jpg"
+            storage.copy("builds", str(shot["path"]), destination)
+            shots[name] = {**shot, "path": destination}
+    except storage.StorageError:
+        return None
+    return shots

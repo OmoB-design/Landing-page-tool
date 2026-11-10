@@ -10,7 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RowMoreIcon } from "@/components/ui/lp-icons";
+import type { BuildSummary } from "@/lib/validators/build";
 
+import { useDuplicatePage } from "../builds/use-duplicate-page";
 import { MoveToTrashDialog } from "../trash/move-to-trash-dialog";
 
 const ITEM =
@@ -19,19 +21,25 @@ const ITEM =
 /**
  * The ⋯ at the end of a page row (Figma: Page List, Hover) and its menu: an 18 px button on
  * foreground-03, shown on row hover, keyboard focus or touch; the menu is 132 px with 2 px
- * padding, 6 px corners, a 0.7 px stroke-strong outline and the pop shadow. Move to Trash asks
- * first (D92).
+ * padding, 6 px corners, a 0.7 px stroke-strong outline and the pop shadow. Duplicate makes a copy
+ * once the page is built (B7.1, D144); Move to Trash asks first (D92).
  */
 export function PageRowMenu({
   buildId,
   pageKey,
   href,
+  built = true,
+  onDuplicated,
 }: {
   buildId: string;
   pageKey: string;
   href: string;
+  /** Built (to review, approved or published): only then can it be duplicated. */
+  built?: boolean;
+  onDuplicated?: (copy: BuildSummary) => void;
 }) {
   const [trashing, setTrashing] = useState(false);
+  const duplicating = useDuplicatePage(buildId, onDuplicated);
   return (
     <>
       <DropdownMenu>
@@ -51,6 +59,13 @@ export function PageRowMenu({
         >
           <DropdownMenuItem asChild className={ITEM}>
             <Link href={href}>Open</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className={ITEM}
+            disabled={!built || duplicating.busy}
+            onSelect={duplicating.start}
+          >
+            Duplicate
           </DropdownMenuItem>
           <DropdownMenuItem
             className={ITEM}

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { PagesList } from "@/components/features/pages/pages-list";
@@ -53,6 +53,59 @@ describe("PagesList", () => {
     render(<PagesList groups={groupPagesByStatus(samplePages(now, "Ada"))} />);
     const parent = screen.getByRole("link", { name: /LUM-45/ }).closest("li");
     expect(within(parent!).getByRole("link", { name: /LUM-98/ })).toBeTruthy();
+  });
+
+  it("hangs copies under their original as a tree that folds away (B7.1)", () => {
+    const base = samplePages(now, "Ada")[0];
+    if (!base) throw new Error("no sample");
+    const original = {
+      ...base,
+      id: "o",
+      key: "WRN-1",
+      title: "Advertorial · Saddle Bag",
+      status: "published" as const,
+    };
+    const copy = (n: number, status: "needs_review" | "approved") => ({
+      ...original,
+      id: `c${n}`,
+      key: `WRN-${n + 4}`,
+      title: `Advertorial · Saddle Bag · Copy ${n}`,
+      status,
+      parentId: "o",
+      copyNumber: n,
+    });
+    render(
+      <PagesList
+        groups={groupPagesByStatus([
+          original,
+          copy(2, "approved"),
+          copy(1, "needs_review"),
+        ])}
+      />,
+    );
+    const row = screen.getByRole("link", { name: /WRN-1/ });
+    expect(row.textContent).toContain("2 copies · 1 to review");
+    const family = row.closest("li")!;
+    const copies = within(family)
+      .getAllByRole("link", { name: /Copy/ })
+      .map((link) => link.textContent);
+    expect(copies).toEqual([
+      expect.stringContaining("WRN-5Copy 1Ready to review"),
+      expect.stringContaining("WRN-6Copy 2Approved"),
+    ]);
+    // Their group is the original's, and counts them.
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
+    ).toEqual(["Published3"]);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Hide the pages under WRN-1" }),
+    );
+    expect(screen.queryByRole("link", { name: /Copy 1/ })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show the pages under WRN-1" }),
+    );
+    expect(screen.getByRole("link", { name: /Copy 1/ })).toBeTruthy();
   });
 
   it("shows an empty state when there are no pages", () => {

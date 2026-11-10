@@ -314,6 +314,8 @@
      dark (owner, 2026-11-04). */
   /* Scrollbars (owner, 2026-11-04): a soft thumb, a step darker on hover. */
   --color-scrollbar: var(--grey-200);
+  /* Page tree branches (B7.1): a copy's line to its original, a step stronger than the dividers. */
+  --color-tree-line: var(--grey-200);
   --color-scrollbar-hover: var(--grey-300);
   --color-highlight-purple-500: var(--purple-500);
   --color-highlight-yellow-50: var(--yellow-50);
@@ -646,6 +648,7 @@
   --color-lander-aura-2: var(--blue-700);
   --color-lander-aura-3: var(--pink-850);
   --color-scrollbar: var(--grey-800);
+  --color-tree-line: var(--grey-800);
   --color-scrollbar-hover: var(--grey-700);
   --color-highlight-yellow-50: var(--yellow-700);
   --color-highlight-yellow-150: var(--amber-850);
@@ -742,6 +745,7 @@
   --color-lander-aura-2: var(--blue-150);
   --color-lander-aura-3: var(--pink-150);
   --color-scrollbar: var(--grey-200);
+  --color-tree-line: var(--grey-200);
   --color-scrollbar-hover: var(--grey-300);
   --color-highlight-yellow-50: var(--yellow-50);
   --color-highlight-yellow-150: var(--amber-50);

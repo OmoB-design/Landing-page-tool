@@ -1652,3 +1652,21 @@ as new entries.
 - **Verification:** typecheck, lint, token check, 309 web tests (one flaky failure on a first run, clean on the rerun); the editor's bridge run in Chromium on a test page: white on a black band, a photo-like band and a terracotta band; the browser's own on a white band (screenshots).
 - **Owner confirmed:** no
 - **Next:** to agree with the owner.
+
+### B7.1 — Duplicate page, and copies as a tree
+- **Status:** complete (owner: "go. and yes on the existing styles, you can look at how linear does theirs. yes, never live pages should be kept unpublished.", 2026-11-10; committed and pushed, 2026-11-10)
+- **Date:** 2026-11-10
+- **Summary:**
+  - **Duplicate** in every page ⋯ (Pages, a brand's Pages tab, a batch's screen) and on the build page's ⋯: a copy of the page as it is now, made at once and free, in Needs review, with a new key; the toast names it and offers Open. It keeps the report (plus "Copied from" in Details), the wizard's answers, targeting, competitors and, when current, the preview screenshots; it leaves undo history, Lander chats, image versions, approval, publishing and client links behind.
+  - **The family:** copies hang under the family's first page (a copy of a copy joins it: one level), in its batch folder, numbered Copy 1, 2, 3 (not reused while a copy exists, in Trash too).
+  - **The tree:** in the Pages lists and on a batch's screen, copies sit under their original in its group, each with its status pill and "Copy N"; the original says "3 copies · 1 to review"; a hairline runs from the original's glyph and curves into each copy; a chevron in the gutter folds them away. A copy whose original isn't listed shows on its own.
+  - **Also:** the job tray says "Preview check" (it said "Qa").
+- **Key files:** worker `app/builds.py` (`duplicate_build`, `_copy_shots`; batch state's `parent_id`, `copy_number`), `app/main.py` (`POST /builds/{id}/duplicate`), `app/providers/storage.py` (`copy`), `app/models/build.py`, `tests/test_duplicate.py` (new); web `app/api/builds/[buildId]/duplicate/route.ts` (new), `components/features/builds/use-duplicate-page.ts` (new), `page-menu.tsx`, `pages/page-row-menu.tsx`, `pages/pages-list.tsx`, `builds/batch-view.tsx`, `builds/build-report.tsx`, `components/app/grouped-list.tsx` (`branch`, `fold`), `components/app/row-meta.tsx` (`StatusBadge`), `lib/pages/list.ts` (`nestCopies`), `lib/builds/queries.ts`, `lib/validators/build.ts`, `lib/api/worker.ts`, `lib/jobs/progress.ts`, `app/globals.css` (`tree-line`), `types/database.ts`; docs D144, D145, MILESTONES (M7, M8), BUILD_SPEC §17 note, DESIGN.
+- **Schema changes:** `builds.copy_number` (int, nullable) and a unique index on (`parent_build_id`, `copy_number`): migration `20261110103326_page_copies.sql`, applied to the cloud dev project.
+- **Worker changes:** yes (the endpoint above); Railway needs a deploy (a push to main) before the live site can duplicate.
+- **New dependencies:** none.
+- **Decisions:** D144 locked; D145 (split testing as M8) recorded as planned.
+- **Deviations from the plan:** the plan said no schema change; Copy 1, 2, 3 (asked for after the plan) needs `copy_number`. Copies of a batch page join the batch, so they're inside its folder and on its screen. The copy takes the preview screenshots instead of a fresh check (a fresh check's tray card covered the toast's Open).
+- **Verification:** see the Build Report.
+- **Owner confirmed:** no
+- **Next:** to agree with the owner (B7.2 Offers on the brand).

@@ -3,6 +3,7 @@ import type { JobEvent, JobStatus } from "@/lib/validators/jobs";
 /** Display names for job kinds (services/worker/app/jobs/registry.py has the same titles). */
 const JOB_TITLES: Record<string, string> = {
   noop_demo: "Demo job",
+  qa: "Preview check",
   template_clone: "Page clone",
 };
 

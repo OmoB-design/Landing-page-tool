@@ -4,11 +4,13 @@ import {
   type BatchCreated,
   type BatchState,
   type BuildCreated,
+  type BuildSummary,
   type FolderColor,
   batchCreatedSchema,
   batchFolderSchema,
   batchStateSchema,
   buildCreatedSchema,
+  buildSummarySchema,
 } from "@/lib/validators/build";
 import {
   type Analytics,
@@ -279,6 +281,22 @@ export function retryBuild(
     body,
     buildCreatedSchema,
     "Could not retry the build.",
+  );
+}
+
+/** A copy of a finished page as it is now, nested under the family's first page (B7.1, D144;
+ * worker POST /builds/{id}/duplicate). */
+export function duplicateBuild(
+  accessToken: string,
+  buildId: string,
+  body: { org_id: string },
+): Promise<BuildSummary> {
+  return postToWorker(
+    `/builds/${encodeURIComponent(buildId)}/duplicate`,
+    accessToken,
+    body,
+    buildSummarySchema,
+    "Couldn't duplicate the page.",
   );
 }
 

@@ -16,6 +16,10 @@ export const buildCreatedSchema = z.object({
 });
 export type BuildCreated = z.infer<typeof buildCreatedSchema>;
 
+/** A copy of a page (B7.1, D144; worker POST /builds/{id}/duplicate), in Needs review. */
+export const buildSummarySchema = buildCreatedSchema.shape.build;
+export type BuildSummary = z.infer<typeof buildSummarySchema>;
+
 /** A batch started (B3.5, D115; worker POST /builds/batch): a page from each chosen template. */
 export const batchCreatedSchema = z.object({
   batch_id: z.string(),
@@ -63,6 +67,9 @@ export const batchStateSchema = z.object({
       updated_at: z.string(),
       started_at: z.string().nullable().catch(null),
       finished_at: z.string().nullable().catch(null),
+      /** A copy (B7.1, D144): the family's first page, under which it nests, and its number. */
+      parent_id: z.string().nullable().catch(null),
+      copy_number: z.number().int().nullable().catch(null),
     }),
   ),
   /** Its folder's colour in the Pages list (B3.5b), the team's pick; red until then. */
@@ -253,6 +260,12 @@ export const buildReportSchema = z.object({
   competitors: z.array(reportCompetitorSchema).nullish().catch(null),
   /** Top 5 ranking builds only (B2.4b): "Our take" and the comparison table. */
   comparison: reportComparisonSchema.nullish().catch(null),
+  /** A copy (B7.1, D144): the page it was copied from, and that page's version then. */
+  copied_from: z
+    .object({ id: z.string(), key: z.string() })
+    .loose()
+    .nullish()
+    .catch(null),
   source: z
     .object({ host: z.string().nullish(), name: z.string().nullish() })
     .loose()

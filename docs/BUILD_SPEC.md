@@ -710,7 +710,7 @@ Reports; never changes the page. Counts: source brand name in visible text and a
 ## 17. Non-goals for v1
 
 - Blank-canvas block builder (v3).
-- A/B testing, analytics on published pages, traffic splitting.
+- A/B testing, analytics on published pages, traffic splitting. *(Owner, 2026-11-10: split testing moves into scope as M8, D145.)*
 - Custom domains managed in-app (users configure domains in Vercel/Shopify).
 - Ad creative generation, media buying, billing (other tools in the reference codebase; out of scope).
 - Public Shopify App Store listing.

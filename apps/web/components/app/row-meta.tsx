@@ -3,6 +3,8 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { ScoreShieldIcon } from "@/components/ui/lp-icons";
 import { cn } from "@/lib/utils";
 
+import { StatusGlyph, type StatusGlyphKind } from "./status-glyph";
+
 // Small labels shown in list rows (DESIGN.md §3, "Right side of each row").
 
 /** Human key such as LUM-23, in muted tabular figures. */
@@ -19,6 +21,30 @@ export function OriginBadge({ origin }: { origin: "owned" | "cloned" }) {
   return (
     <span className="flex shrink-0 items-center rounded-sm px-1.5 text-type-caption-1 text-sub-text ring-thin ring-stroke">
       {origin === "cloned" ? "Cloned" : "Owned"}
+    </span>
+  );
+}
+
+const STATUS_WORDS: Record<StatusGlyphKind, string> = {
+  building: "Building",
+  needs_review: "Ready to review",
+  approved: "Approved",
+  published: "Published",
+  failed: "Failed",
+};
+
+/**
+ * A page's status where the group doesn't say it (B7.1: a copy under its original sits in the
+ * original's group): the batch screen's neutral pill, the status icon at 12 px and its words.
+ */
+export function StatusBadge({ status }: { status: string }) {
+  const kind: StatusGlyphKind =
+    status === "queued" ? "building" : (status as StatusGlyphKind);
+  if (!(kind in STATUS_WORDS)) return null;
+  return (
+    <span className="flex shrink-0 items-center gap-1 rounded-sm px-1.5 text-type-caption-1 whitespace-nowrap text-heading-03 ring-thin ring-stroke">
+      <StatusGlyph status={kind} className="size-3" iconClassName="size-3" />
+      {STATUS_WORDS[kind]}
     </span>
   );
 }

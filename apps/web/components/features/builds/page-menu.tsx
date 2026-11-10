@@ -17,15 +17,17 @@ import { Spinner } from "@/components/ui/spinner";
 import { MoveToTrashDialog } from "../trash/move-to-trash-dialog";
 
 import { useDeskOptional } from "./desk-context";
+import { useDuplicatePage } from "./use-duplicate-page";
 import { useExportPage } from "./use-export-page";
 
 const ITEM =
   "rounded-xsm px-1 py-0.5 text-type-caption-1 font-medium text-heading-02 focus:bg-foreground-03 focus:text-heading-02";
 
 /**
- * The build page's ⋯ (D141), last in its header: Back to review (once approved), Export (the page
- * as one HTML file, when it's built; the ⋯ shows a spinner while it runs), Copy key and Move to
- * Trash, which asks first and then goes to Pages (D92). The menu is the page rows' (Figma: Page
+ * The build page's ⋯ (D141), last in its header: Back to review (once approved), Duplicate (a copy
+ * as it is now, once it's built: B7.1, D144), Export (the page as one HTML file, when it's built;
+ * the ⋯ shows a spinner while it runs), Copy key and Move to Trash, which asks first and then goes
+ * to Pages (D92). The menu is the page rows' (Figma: Page
  * List, Hover).
  */
 export function PageMenu({
@@ -40,6 +42,7 @@ export function PageMenu({
   const router = useRouter();
   const desk = useDeskOptional();
   const exporting = useExportPage(buildId, buildKey);
+  const duplicating = useDuplicatePage(buildId);
   const [trashing, setTrashing] = useState(false);
   const approved = desk?.desk.build.status === "approved";
   const deskBusy =
@@ -77,6 +80,13 @@ export function PageMenu({
               Back to review
             </DropdownMenuItem>
           ) : null}
+          <DropdownMenuItem
+            className={ITEM}
+            disabled={!ready || duplicating.busy}
+            onSelect={duplicating.start}
+          >
+            {duplicating.busy ? "Duplicating…" : "Duplicate"}
+          </DropdownMenuItem>
           <DropdownMenuItem
             className={ITEM}
             disabled={!ready || exporting.busy}

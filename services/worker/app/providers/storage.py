@@ -91,6 +91,18 @@ def download(bucket: str, path: str) -> bytes:
     return _send("GET", f"{_base()}/object/{bucket}/{path}", "download", headers=_headers()).content
 
 
+def copy(bucket: str, source: str, destination: str) -> None:
+    """Copies a file within a bucket on the storage server (nothing downloaded): a page's copy
+    takes its page and screenshots this way (B7.1)."""
+    _send(
+        "POST",
+        f"{_base()}/object/copy",
+        "copy",
+        json={"bucketId": bucket, "sourceKey": source, "destinationKey": destination},
+        headers=_headers(),
+    )
+
+
 def remove(bucket: str, paths: list[str]) -> None:
     _send(
         "DELETE",

@@ -13,7 +13,7 @@ import { PAGE_ASIDE } from "@/components/app/page-aside";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { BatchState } from "@/lib/validators/build";
 
-import { BatchView } from "./batch-view";
+import { BatchView, families } from "./batch-view";
 
 vi.mock("@/components/app/page-header", () => ({
   PageHeader: ({ title, actions }: { title: string; actions?: unknown }) => (
@@ -45,6 +45,8 @@ const page = {
   updated_at: now,
   started_at: null,
   finished_at: null,
+  parent_id: null,
+  copy_number: null,
 };
 const STATE: BatchState = {
   batch_id: "b1",
@@ -245,5 +247,29 @@ describe("batch page (B3.5b, B3.5c)", () => {
         .getByRole("radio", { name: "Blue" })
         .getAttribute("aria-checked"),
     ).toBe("true");
+  });
+});
+
+describe("families (B7.1)", () => {
+  it("puts each copy under the page it was copied from, in the order made", () => {
+    const [first] = STATE.pages;
+    if (!first) throw new Error("no page");
+    const copy = (id: string, n: number, parent = "p1") => ({
+      ...first,
+      id,
+      key: id,
+      parent_id: parent,
+      copy_number: n,
+    });
+    const rows = families([
+      ...STATE.pages,
+      copy("x2", 2),
+      copy("x1", 1),
+      copy("lost", 1, "gone"),
+    ]);
+    expect(rows.map((r) => [r.page.id, r.copies.map((c) => c.id)])).toEqual([
+      ...STATE.pages.map((p) => [p.id, p.id === "p1" ? ["x1", "x2"] : []]),
+      ["lost", []],
+    ]);
   });
 });

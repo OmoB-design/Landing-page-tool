@@ -25,8 +25,10 @@ export type PageListItem = {
   costUsd: number;
   createdAt: Date;
   updatedAt: Date;
-  /** Set for a re-build or variant, which nests under the original. */
+  /** Set for a re-build or a copy, which nests under the original (the family's first page). */
   parentId: string | null;
+  /** A copy's number in its family (B7.1, D144): "Copy 2". */
+  copyNumber?: number | null;
   createdBy: { name: string; isMe: boolean };
   /** Pages started together (B3.5, D115) share one; they show as a folder (B3.5b). */
   batchId?: string | null;
@@ -169,41 +171,64 @@ const COMPARE: Record<
     b.costUsd - a.costUsd || b.updatedAt.getTime() - a.updatedAt.getTime(),
 };
 
-/** One group's rows in order, each re-build nested under its original when both are in it. */
+/**
+ * Copies and re-builds nest under their original whenever it's in the list (B7.1, D144: the
+ * family stays together, in the original's group, each copy with its own status), in the order
+ * they were made (Copy 1, Copy 2…). One whose original isn't there (filtered out, in Trash) stays
+ * a row of its own, so nothing is hidden.
+ */
+export function nestCopies(pages: PageListItem[]): {
+  tops: PageListItem[];
+  under: Map<string, PageListItem[]>;
+} {
+  const ids = new Set(pages.map((page) => page.id));
+  const under = new Map<string, PageListItem[]>();
+  const tops: PageListItem[] = [];
+  for (const page of pages) {
+    if (page.parentId !== null && ids.has(page.parentId))
+      under.set(page.parentId, [...(under.get(page.parentId) ?? []), page]);
+    else tops.push(page);
+  }
+  for (const children of under.values())
+    children.sort(
+      (a, b) =>
+        (a.copyNumber ?? Infinity) - (b.copyNumber ?? Infinity) ||
+        a.createdAt.getTime() - b.createdAt.getTime(),
+    );
+  return { tops, under };
+}
+
+/** One group's rows in order, each with the copies and re-builds nested under it. */
 function buildGroup(
   id: string,
   key: PageGroupKey,
   label: string,
   pages: PageListItem[],
   order: PageOrdering,
+  under: Map<string, PageListItem[]>,
 ): PageGroup[] {
   if (pages.length === 0) return [];
-  const members = [...pages].sort(COMPARE[order]);
-  const ids = new Set(members.map((page) => page.id));
-  const isNested = (page: PageListItem) =>
-    page.parentId !== null && ids.has(page.parentId);
-  const rows = members
-    .filter((page) => !isNested(page))
-    .map((page) => ({
-      ...page,
-      children: members.filter((child) => child.parentId === page.id),
-    }));
-  return [{ id, key, label, count: members.length, rows }];
+  const rows = [...pages]
+    .sort(COMPARE[order])
+    .map((page) => ({ ...page, children: under.get(page.id) ?? [] }));
+  const count = rows.reduce((sum, row) => sum + 1 + row.children.length, 0);
+  return [{ id, key, label, count, rows }];
 }
 
 /**
  * Groups pages as Display says (status by default; template type; creator, you first; or one
- * ungrouped list) and orders each group (last updated by default; newest first; cost). Each
- * re-build nests under its original when both are in the same group; a child whose original is
- * elsewhere or missing stays a top-level row so nothing is hidden. Empty groups are left out.
+ * ungrouped list) and orders each group (last updated by default; newest first; cost). Copies and
+ * re-builds nest under their original, in its group (nestCopies). Empty groups are left out.
  */
 export function groupPages(
-  pages: PageListItem[],
+  all: PageListItem[],
   display: Pick<PageDisplay, "group" | "order"> = DEFAULT_DISPLAY,
 ): PageGroup[] {
   const { order } = display;
   // A batch's pages share a folder (B3.5b), except grouped by template type, where they differ.
-  if (display.group !== "type") pages = foldBatches(pages);
+  const { tops: pages, under } = nestCopies(
+    display.group === "type" ? all : foldBatches(all),
+  );
   switch (display.group) {
     case "status":
       return STATUS_GROUPS.flatMap((group) =>
@@ -213,6 +238,7 @@ export function groupPages(
           group.label,
           pages.filter((page) => group.statuses.includes(page.status)),
           order,
+          under,
         ),
       );
     case "type": {
@@ -226,6 +252,7 @@ export function groupPages(
           typeLabel(type),
           pages.filter((page) => page.templateType === type),
           order,
+          under,
         ),
       );
     }
@@ -245,11 +272,19 @@ export function groupPages(
           person.isMe ? `${person.name} (you)` : person.name,
           pages.filter((page) => page.createdBy.name === person.name),
           order,
+          under,
         ),
       );
     }
     case "none":
-      return buildGroup("all", { kind: "all" }, "All pages", pages, order);
+      return buildGroup(
+        "all",
+        { kind: "all" },
+        "All pages",
+        pages,
+        order,
+        under,
+      );
   }
 }
 

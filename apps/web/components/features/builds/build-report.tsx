@@ -486,6 +486,10 @@ function reportFacts(report: Report): [string, string][] {
       copy.purged_terms.map((t) => t.term).join(", ") || "none",
     ],
     ["Cost", formatCost(report.cost.total_usd)],
+    // A copy (B7.1, D144): these facts are its original's build; the copy itself cost nothing.
+    ...(report.copied_from
+      ? ([["Copied from", report.copied_from.key]] as [string, string][])
+      : []),
   ];
 }
 

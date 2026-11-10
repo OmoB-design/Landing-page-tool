@@ -11,6 +11,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DeskState } from "@/lib/validators/desk";
 
+import { toast } from "@/components/app/toaster";
+
 import { DeskProvider } from "./desk-context";
 import { PageMenu } from "./page-menu";
 
@@ -85,11 +87,12 @@ afterEach(() => {
 });
 
 describe("The build page's ⋯ (D141)", () => {
-  it("has Back to review once the page is approved, then Export, Copy key, Move to Trash", async () => {
+  it("has Back to review once the page is approved, then Duplicate, Export, Copy key, Move to Trash", async () => {
     const onChange = vi.fn();
     renderMenu({ status: "approved", onChange });
     expect(items()).toEqual([
       "Back to review",
+      "Duplicate",
       "Export",
       "Copy key",
       "Move to Trash",
@@ -105,19 +108,60 @@ describe("The build page's ⋯ (D141)", () => {
 
   it("has no Back to review while the page needs review, or without the desk", () => {
     renderMenu({ status: "needs_review" });
-    expect(items()).toEqual(["Export", "Copy key", "Move to Trash"]);
+    expect(items()).toEqual([
+      "Duplicate",
+      "Export",
+      "Copy key",
+      "Move to Trash",
+    ]);
     cleanup();
     renderMenu({});
-    expect(items()).toEqual(["Export", "Copy key", "Move to Trash"]);
+    expect(items()).toEqual([
+      "Duplicate",
+      "Export",
+      "Copy key",
+      "Move to Trash",
+    ]);
   });
 
-  it("can't export before the page is built", () => {
+  it("can't export or duplicate before the page is built", () => {
     renderMenu({ ready: false });
-    expect(
-      screen
-        .getByRole("menuitem", { name: "Export" })
-        .hasAttribute("data-disabled"),
-    ).toBe(true);
+    for (const name of ["Export", "Duplicate"])
+      expect(
+        screen.getByRole("menuitem", { name }).hasAttribute("data-disabled"),
+      ).toBe(true);
+  });
+
+  it("duplicates the page and offers to open the copy (B7.1)", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: "b9",
+            key: "LUM-9",
+            status: "needs_review",
+            title: "Page · Copy 1",
+          }),
+          { status: 201 },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderMenu({});
+    fireEvent.click(screen.getByRole("menuitem", { name: "Duplicate" }));
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        "LUM-9 made",
+        expect.objectContaining({
+          description: "Page · Copy 1",
+          action: expect.objectContaining({ label: "Open" }),
+        }),
+      ),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/builds/b1/duplicate",
+      expect.objectContaining({ method: "POST" }),
+    );
+    vi.unstubAllGlobals();
   });
 
   it("copies the page's key", async () => {
