@@ -458,6 +458,7 @@
   --spacing-settings-wide: 929px; /* Settings → Trash: Quality's wider column for a table (max-w-settings-wide, D92) */
   --spacing-menu-display: 200px; /* Pages → Display menu (w-menu-display); not in a frame yet */
   --spacing-menu-row: 132px; /* Figma All Pages: the row ⋯ menu (w-menu-row) */
+  --spacing-menu-page: 160px; /* a page's ⋯ menus (w-menu-page): "Duplicate with offers…" on one line (owner, 2026-11-11) */
   --spacing-home-card: 285px; /* Figma Home: a getting-started card (w-home-card) */
   --spacing-lander-bar: 376px; /* the page editor's floating composer, as Sidekick's (w-lander-bar; B3.1b, D105) */
   --spacing-lander-panel: 356px; /* Lander's chat panel (w-lander-panel), fixed: Sidekick's width */

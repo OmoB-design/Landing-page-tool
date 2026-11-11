@@ -37,6 +37,7 @@ export function MoveToTrashDialog({
   id,
   name,
   onMoved,
+  onChanged,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,6 +47,9 @@ export function MoveToTrashDialog({
   name: string;
   /** After it moved (e.g. leave its page); by default the current page refreshes. */
   onMoved?: () => void;
+  /** After it moved and after Undo brought it back, beside the refresh: a list the refresh
+   * doesn't read again (one kept by React Query, as the batch screen's). */
+  onChanged?: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -56,6 +60,7 @@ export function MoveToTrashDialog({
     if (result.ok) {
       toast.success(`${name} restored`);
       router.refresh();
+      onChanged?.();
     } else toast.error(result.error ?? "Couldn’t restore it.");
   };
 
@@ -72,6 +77,7 @@ export function MoveToTrashDialog({
       });
       if (onMoved) onMoved();
       else router.refresh();
+      onChanged?.();
     });
 
   return (

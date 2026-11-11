@@ -27,7 +27,12 @@ def _offer(conn: Any, org_id: UUID, brand_id: UUID, offer_id: UUID | None) -> di
 
 
 def _enqueue(
-    conn: Any, org_id: UUID, build: dict[str, Any], user_id: UUID | None, offer_id: UUID | None
+    conn: Any,
+    org_id: UUID,
+    build: dict[str, Any],
+    user_id: UUID | None,
+    offer_id: UUID | None,
+    extra: dict[str, Any] | None = None,
 ) -> UUID:
     try:
         with conn.transaction():  # a savepoint: another page job started this moment wins
@@ -38,6 +43,7 @@ def _enqueue(
                     "build_id": str(build["id"]),
                     "base_version": build["page_version"],
                     "offer_id": str(offer_id) if offer_id else None,
+                    **(extra or {}),
                 },
                 created_by=user_id,
                 dedupe_key=f"redraft:{build['id']}",
@@ -104,7 +110,10 @@ def start_batch(
 def variants(
     org_id: UUID, build_id: UUID, user_id: UUID | None, offer_ids: list[UUID]
 ) -> list[dict[str, Any]]:
-    """One copy of the page per offer (Duplicate, B7.1), each then changed to its offer."""
+    """One copy of the page per offer (Duplicate, B7.1), each then changed to its offer. A copy
+    names its offer at once, so the lists say "Copy 2 · Ten off" while its page is changed (owner,
+    2026-11-11); the job is told the deal the page still states, and puts the copy's offer back to
+    it if the change doesn't happen."""
     with transaction() as conn:
         brand = conn.execute(
             "select brand_id from builds where id = %(b)s and org_id = %(o)s",
@@ -117,9 +126,47 @@ def variants(
     made: list[dict[str, Any]] = []
     for offer_id in dict.fromkeys(offer_ids):
         copy = builds.duplicate_build(org_id=org_id, build_id=build_id, created_by=user_id)
-        job_id = start(org_id, copy["id"], user_id, offer_id, base_version=1)
+        with transaction() as conn:
+            build = desk._load(conn, org_id, copy["id"], lock=True)
+            desk._check(conn, build, 1)
+            stated = conn.execute(
+                "select offer from builds where id = %(b)s and org_id = %(o)s",
+                {"b": copy["id"], "o": org_id},
+            ).fetchone()
+            offer = _offer(conn, org_id, build["brand_id"], offer_id)
+            conn.execute(
+                "update builds set offer_id = %(oid)s, offer = %(offer)s "
+                "where id = %(b)s and org_id = %(o)s",
+                {
+                    "oid": offer["id"] if offer else None,
+                    "offer": Jsonb(offer) if offer else None,
+                    "b": copy["id"], "o": org_id,
+                },
+            )  # fmt: skip
+            job_id = _enqueue(
+                conn, org_id, build, user_id, offer_id,
+                extra={"from_offer": stated["offer"] if stated else None},
+            )  # fmt: skip
         made.append({**copy, "job_id": job_id, "offer_id": offer_id})
     return made
+
+
+def put_back(org_id: UUID, build_id: UUID, offer: dict[str, Any] | None) -> None:
+    """A copy whose offer change didn't happen names the deal its page still states again (its
+    offer by id only while that offer is still there)."""
+    with transaction() as conn:
+        conn.execute(
+            """
+            update builds set offer = %(offer)s,
+                   offer_id = (select id from offers where id = %(oid)s and org_id = %(o)s)
+            where id = %(b)s and org_id = %(o)s
+            """,
+            {
+                "oid": offer.get("id") if offer else None,
+                "offer": Jsonb(offer) if offer else None,
+                "b": build_id, "o": org_id,
+            },
+        )  # fmt: skip
 
 
 def save(

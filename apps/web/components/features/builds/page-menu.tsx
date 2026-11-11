@@ -78,7 +78,7 @@ export function PageMenu({
         <DropdownMenuContent
           align="end"
           sideOffset={5}
-          className="flex w-menu-row flex-col gap-0.5 rounded-sm bg-surface-modal p-0.5 shadow-float edge-hairline"
+          className="flex w-menu-page flex-col gap-0.5 rounded-sm bg-surface-modal p-0.5 shadow-float edge-hairline"
         >
           {approved ? (
             <DropdownMenuItem

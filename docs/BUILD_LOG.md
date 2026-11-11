@@ -1725,3 +1725,15 @@ as new entries.
 - **Verification:** see the Build Report.
 - **Owner confirmed:** no
 - **Next:** B7.3b (Approve and publish all), on the owner's go.
+
+### Fixes after B7.3b — Trash on the batch screen, a variant's offer at once, a wider page menu
+- **Status:** complete (owner, 2026-11-11)
+- **Date:** 2026-11-11
+- **Summary:**
+  - **Move to Trash on a batch's screen:** the row leaves at once, and comes back on Undo, without a reload (that list is kept by React Query, which the page refresh didn't read again; `PageRowMenu`/`MoveToTrashDialog` take `onChanged`).
+  - **Duplicate with offers:** each copy names its offer as it's made, so the lists say "Copy 3 · Ten off" at once instead of after a reload. The `offer_apply` job is told the deal the page still states (`from_offer`), and if the change fails the copy names that deal again (by id only while that offer still exists).
+  - **A page's ⋯ menus** (rows and the build page) are 160 px (`w-menu-page`), so "Duplicate with offers…" sits on one line.
+- **Key files:** worker `app/offer_change.py` (`variants`, `put_back`), `app/jobs/kinds/offer_apply.py`, `tests/test_offer_change.py`; web `components/features/pages/page-row-menu.tsx`, `components/features/trash/move-to-trash-dialog.tsx`, `components/features/builds/batch-view.tsx`, `components/features/builds/page-menu.tsx`, `app/globals.css`.
+- **Schema changes:** none. **New dependencies:** none.
+- **Verification:** worker ruff, format and mypy clean; `test_offer_change.py` 4 passed (new: a variant names its offer at once, and gets the old one back when its change fails); web typecheck, lint, tokens, prettier, 333 tests pass. In the browser (throwaway account, mock worker): menu 160 px with every item on one line; "Copy 3 · Ten off" showed with the toast, no reload; a trashed row left at once and came back on Undo; the copy's offer job succeeded. Account deleted afterwards.
+- **Owner confirmed:** no

@@ -228,3 +228,64 @@ def test_a_batch_and_variants_start_the_same_change(
     assert row is not None and str(row["parent_build_id"]) == tote["id"]
     assert row["offer"]["name"] == "Ten off"
     storage.remove_folder("builds", f"{tote['org_id']}/{copy['id']}")
+
+
+def test_a_variant_names_its_offer_at_once_and_gets_the_old_one_back_if_the_change_fails(
+    client: TestClient, user: DbUser, tote: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The lists say "Copy 2 · Ten off" as soon as the copy is made (owner, 2026-11-11), while its
+    page still states Autumn: the job rewrites Autumn's lines, or names Autumn again if it fails."""
+    monkeypatch.setattr(copy_pass, "ask", scripted([], miss_code_first=False))
+    with transaction() as conn:
+        conn.execute(
+            "update brands set next_build_number = 2 where id = "
+            "(select brand_id from builds where id = %(b)s)",
+            {"b": tote["id"]},
+        )
+
+    def make() -> dict[str, Any]:
+        made = client.post(
+            f"/builds/{tote['id']}/variants",
+            json={"org_id": tote["org_id"], "offer_ids": [tote["offer_id"]]},
+            headers=bearer(user),
+        )
+        assert made.status_code == 201, made.text
+        copy: dict[str, Any] = made.json()["copies"][0]
+        with transaction() as conn:
+            row = conn.execute(
+                "select offer_id, offer, working_html_path from builds where id = %(b)s",
+                {"b": copy["id"]},
+            ).fetchone()
+        assert row is not None and str(row["offer_id"]) == tote["offer_id"]
+        assert row["offer"]["name"] == "Ten off"  # before its job has run
+        return {**copy, "path": row["working_html_path"]}
+
+    # A change that fails: the copy names Autumn again, as its page still does.
+    def leaky(html: str, *args: Any, **kwargs: Any) -> Any:
+        out, applied = reinject(html, *args, **kwargs)
+        return out.replace("It holds a laptop", "It carries a laptop"), applied
+
+    monkeypatch.setattr(offer_apply, "reinject", leaky)
+    failed = make()
+    assert run_offer_job()["status"] == "failed"
+    with transaction() as conn:
+        row = conn.execute(
+            "select offer_id, offer from builds where id = %(b)s", {"b": failed["id"]}
+        ).fetchone()
+    assert row is not None and row["offer"]["name"] == "Autumn"
+    assert row["offer_id"] is None  # Autumn isn't one of the brand's offers any more
+
+    # One that works: Autumn's lines (its code too) were found from what the page stated.
+    monkeypatch.setattr(offer_apply, "reinject", reinject)
+    done = make()
+    job = run_offer_job()
+    assert job["status"] == "succeeded", job["error"]
+    assert '"Ten off at checkout, easy." Dana' in {c["after"] for c in job["result"]["changed"]}
+    with transaction() as conn:
+        path = conn.execute(
+            "select working_html_path from builds where id = %(b)s", {"b": done["id"]}
+        ).fetchone()
+    assert path is not None
+    assert "AUTUMN20" not in storage.download("builds", path["working_html_path"]).decode()
+    for copy in (failed, done):
+        storage.remove_folder("builds", f"{tote['org_id']}/{copy['id']}")

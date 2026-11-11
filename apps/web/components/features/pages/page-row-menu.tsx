@@ -21,9 +21,11 @@ const ITEM =
 
 /**
  * The ⋯ at the end of a page row (Figma: Page List, Hover) and its menu: an 18 px button on
- * foreground-03, shown on row hover, keyboard focus or touch; the menu is 132 px with 2 px
- * padding, 6 px corners, a 0.7 px stroke-strong outline and the pop shadow. Duplicate makes a copy
- * once the page is built (B7.1, D144); Move to Trash asks first (D92).
+ * foreground-03, shown on row hover, keyboard focus or touch; the menu is 160 px (Figma's 132 px
+ * fits no "Duplicate with offers…", owner 2026-11-11) with 2 px padding, 6 px corners, a 0.7 px
+ * stroke-strong outline and the pop shadow. Duplicate makes a copy once the page is built (B7.1,
+ * D144); Move to Trash asks first (D92). `onChanged` reads a list kept by React Query again (the
+ * batch screen's) after a copy, a move to Trash or its Undo; the others refresh by themselves.
  */
 export function PageRowMenu({
   buildId,
@@ -31,6 +33,7 @@ export function PageRowMenu({
   href,
   built = true,
   onDuplicated,
+  onChanged,
   brandId = null,
   offerId = null,
 }: {
@@ -40,6 +43,8 @@ export function PageRowMenu({
   /** Built (to review, approved or published): only then can it be duplicated. */
   built?: boolean;
   onDuplicated?: (copy: BuildSummary) => void;
+  /** After a move to Trash or its Undo: for a list the page refresh doesn't read again. */
+  onChanged?: () => void;
   /** For Duplicate with offers (B7.3a): the page's brand and its offer. */
   brandId?: string | null;
   offerId?: string | null;
@@ -62,7 +67,7 @@ export function PageRowMenu({
         <DropdownMenuContent
           align="end"
           sideOffset={5}
-          className="flex w-menu-row flex-col gap-0.5 rounded-sm bg-surface-modal p-0.5 shadow-float edge-hairline"
+          className="flex w-menu-page flex-col gap-0.5 rounded-sm bg-surface-modal p-0.5 shadow-float edge-hairline"
         >
           <DropdownMenuItem asChild className={ITEM}>
             <Link href={href}>Open</Link>
@@ -113,6 +118,7 @@ export function PageRowMenu({
         kind="page"
         id={buildId}
         name={pageKey}
+        onChanged={onChanged}
       />
     </>
   );

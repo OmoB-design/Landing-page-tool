@@ -46,6 +46,9 @@ class OfferApplyPayload(BaseModel):
     build_id: UUID
     base_version: int = Field(ge=1)
     offer_id: UUID | None = None
+    # The deal the page states now, when the page's record already names the new offer (a copy
+    # made by Duplicate with offers names its offer at once); put back if the change fails.
+    from_offer: dict[str, Any] | None = None
 
 
 def dedupe_key(payload: OfferApplyPayload) -> str:
@@ -84,6 +87,17 @@ def run(ctx: JobContext) -> dict[str, Any]:
     from app import offer_change
 
     payload = OfferApplyPayload.model_validate(ctx.job.payload)
+    try:
+        return _run(ctx, payload)
+    except Exception:
+        if "from_offer" in payload.model_fields_set:
+            offer_change.put_back(ctx.job.org_id, payload.build_id, payload.from_offer)
+        raise
+
+
+def _run(ctx: JobContext, payload: OfferApplyPayload) -> dict[str, Any]:
+    from app import offer_change
+
     org_id = ctx.job.org_id
     changed_elsewhere = UserFacingError(
         "The page changed before the offer was changed, so nothing was saved.",
@@ -99,7 +113,8 @@ def run(ctx: JobContext) -> dict[str, Any]:
 
     inputs, template_html = read_inputs(org_id, payload.build_id)
     template, brand, product = inputs["template"], inputs["brand"], inputs["product"]
-    old = inputs.get("offer")
+    stated = "from_offer" in payload.model_fields_set
+    old = payload.from_offer if stated else inputs.get("offer")
     try:
         with transaction() as conn:
             new = offer_change._offer(conn, org_id, build["brand_id"], payload.offer_id)

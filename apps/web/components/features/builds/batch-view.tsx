@@ -492,6 +492,7 @@ function BatchRow({
             href={href}
             built={isReady}
             onDuplicated={onChanged}
+            onChanged={onChanged}
             brandId={brandId}
             offerId={page.offer_id}
           />
