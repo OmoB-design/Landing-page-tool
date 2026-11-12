@@ -44,6 +44,8 @@ import {
 
 import { BatchOfferDialog } from "../offers/batch-offer-dialog";
 
+import { PublishAllDialog } from "./publish-all-dialog";
+
 import { BatchFrameCard, ordinal } from "./batch-frame";
 import { useBuildSteps } from "./build-steps";
 import { PageRowMenu } from "../pages/page-row-menu";
@@ -105,6 +107,8 @@ export function BatchView({
   const [chosen, setChosen] = useState<boolean | null>(null);
   const sheetOpen = chosen ?? active;
   const [changingOffer, setChangingOffer] = useState(false);
+  const [publishingAll, setPublishingAll] = useState(false);
+  const toReview = pages.filter((p) => p.status === "needs_review").length;
   const anyReady = pages.some((p) => READY.has(p.status));
 
   return (
@@ -123,6 +127,16 @@ export function BatchView({
                   className="h-7 px-2.5 text-type-caption-1"
                 >
                   Change offer
+                </Button>
+              ) : null}
+              {anyReady ? (
+                <Button
+                  variant="outline"
+                  size="compact"
+                  onClick={() => setPublishingAll(true)}
+                  className="h-7 px-2.5 text-type-caption-1"
+                >
+                  Approve and publish all
                 </Button>
               ) : null}
               <Button
@@ -156,6 +170,24 @@ export function BatchView({
         ) : (
           <>
             <BatchTop batch={data} ready={ready} />
+            {toReview > 0 ? (
+              // After an offer change or edits (B7.3b): the pages waiting, and the one action.
+              <div className="mb-2 flex items-center justify-between gap-3 rounded-md bg-foreground-01 py-2 pr-2 pl-3 text-type-caption-1">
+                <span className="font-medium text-heading-02">
+                  {toReview === 1
+                    ? "1 page to review"
+                    : `${toReview} pages to review`}
+                </span>
+                <Button
+                  variant="ink"
+                  size="compact"
+                  onClick={() => setPublishingAll(true)}
+                  className="h-7 px-2.5 text-type-caption-1"
+                >
+                  Approve and publish all
+                </Button>
+              </div>
+            ) : null}
             <div className="flex h-9 items-center gap-1.5 divider-b-thin">
               <span className="text-type-body-small font-medium text-heading-01">
                 Pages
@@ -198,6 +230,14 @@ export function BatchView({
           </>
         )}
       </div>
+      {data ? (
+        <PublishAllDialog
+          open={publishingAll}
+          onOpenChange={setPublishingAll}
+          scope={{ kind: "batch", id: data.batch_id }}
+          onChanged={() => void batch.refetch()}
+        />
+      ) : null}
       {data ? (
         <BatchOfferDialog
           open={changingOffer}

@@ -44,12 +44,33 @@ CHECK_ATTEMPTS = 6
 CHECK_WAIT_SECONDS = 2.0
 
 
+class AlsoPage(BaseModel):
+    """Another page of the brand going out in the same deployment (B7.3b: Approve and publish
+    all), each with its own publication."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    build_id: UUID
+    publication_id: UUID
+    page_version: int
+
+
 class PublishVercelPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     build_id: UUID
     publication_id: UUID
     page_version: int
+    also: list[AlsoPage] = []
+
+    def pages(self) -> list[AlsoPage]:
+        """Every page this job puts live: the first, then the others."""
+        first = AlsoPage(
+            build_id=self.build_id,
+            publication_id=self.publication_id,
+            page_version=self.page_version,
+        )
+        return [first, *self.also]
 
 
 def dedupe_key(payload: PublishVercelPayload) -> str:
@@ -68,9 +89,13 @@ def _fail(publication_id: UUID, org_id: UUID, message: str) -> None:
         )
 
 
-def _brand_pages(conn: Any, org_id: UUID, brand_id: UUID, build_id: UUID) -> dict[str, str]:
+def _brand_pages(
+    conn: Any, org_id: UUID, brand_id: UUID, build_id: UUID | list[UUID]
+) -> dict[str, str]:
     """The brand's other live pages: builds whose newest finished Vercel publication is a publish
-    (not an unpublish), with the page it published."""
+    (not an unpublish), with the page it published (`build_id`: the page or pages going out now,
+    left out)."""
+    leave_out = build_id if isinstance(build_id, list) else [build_id]
     rows = conn.execute(
         """
         select * from (
@@ -78,11 +103,11 @@ def _brand_pages(conn: Any, org_id: UUID, brand_id: UUID, build_id: UUID) -> dic
           from publications p join builds b on b.id = p.build_id
           where p.org_id = %(o)s and b.brand_id = %(brand)s and b.deleted_at is null
             and p.destination = 'vercel' and p.status in ('succeeded', 'unpublished')
-            and p.build_id <> %(b)s
+            and p.build_id <> all(%(b)s)
           order by p.build_id, p.created_at desc
         ) latest where status = 'succeeded'
         """,
-        {"o": org_id, "brand": brand_id, "b": build_id},
+        {"o": org_id, "brand": brand_id, "b": leave_out},
     ).fetchall()
     return {r["key"]: r["html_path"] for r in rows if r["html_path"]}
 
@@ -120,67 +145,97 @@ def _answers(url: str, want: int = 200) -> int:
 def run(ctx: JobContext) -> dict[str, Any]:
     payload = PublishVercelPayload.model_validate(ctx.job.payload)
     org_id = ctx.job.org_id
+    ids = [page.publication_id for page in payload.pages()]
+
+    def fail_all(message: str) -> None:
+        for publication_id in ids:
+            _fail(publication_id, org_id, message)
+
     try:
         return _publish(ctx, payload, org_id)
     except storage.StorageError as exc:
-        _fail(payload.publication_id, org_id, STORAGE_FAILED)
+        fail_all(STORAGE_FAILED)
         raise UserFacingError(STORAGE_FAILED, code="storage") from exc
     except VercelError as exc:
-        _fail(payload.publication_id, org_id, exc.message)
+        fail_all(exc.message)
         raise UserFacingError(exc.message, code="vercel") from exc
     except UserFacingError as exc:
-        _fail(payload.publication_id, org_id, exc.message)
+        fail_all(exc.message)
         raise
     except JobInterrupted:
         raise  # the worker is stopping: the job goes back to the queue and resumes; not a failure
     except Exception:
-        _fail(payload.publication_id, org_id, "Something went wrong while publishing.")
+        fail_all("Something went wrong while publishing.")
         raise
 
 
 def _publish(ctx: JobContext, payload: PublishVercelPayload, org_id: UUID) -> dict[str, Any]:
+    """Puts one page live, or several of a brand in one deployment (B7.3b), each as it was
+    approved; a page edited since is left out (its publication fails, the others go)."""
     started = time.monotonic()
+    wanted = payload.pages()
     with transaction() as conn:
-        build = conn.execute(
-            """
-            select b.id, b.key, b.brand_id, b.working_html_path, b.page_version, b.status,
-                   br.prefix
-            from builds b join brands br on br.id = b.brand_id
-            where b.id = %(b)s and b.org_id = %(o)s and b.deleted_at is null
-            """,
-            {"b": payload.build_id, "o": org_id},
-        ).fetchone()
+        rows = {
+            r["id"]: dict(r)
+            for r in conn.execute(
+                """
+                select b.id, b.key, b.brand_id, b.working_html_path, b.page_version, b.status,
+                       br.prefix
+                from builds b join brands br on br.id = b.brand_id
+                where b.id = any(%(b)s) and b.org_id = %(o)s and b.deleted_at is null
+                """,
+                {"b": [page.build_id for page in wanted], "o": org_id},
+            ).fetchall()
+        }
         integration = conn.execute(
             "select vault_secret_id, meta from integrations "
             "where org_id = %(o)s and kind = 'vercel'",
             {"o": org_id},
         ).fetchone()
         token = vault.read(conn, integration["vault_secret_id"]) if integration else None
-        others = _brand_pages(conn, org_id, build["brand_id"], build["id"]) if build else {}
-    if build is None or not build["working_html_path"]:
-        raise UserFacingError("That page isn't there any more.", code="build_missing")
-    if not publishing.approved_as_pressed(build, payload.page_version):
+    going: list[tuple[AlsoPage, dict[str, Any]]] = []
+    for page in wanted:
+        build = rows.get(page.build_id)
+        if build is None or not build["working_html_path"]:
+            if len(wanted) == 1:
+                raise UserFacingError("That page isn't there any more.", code="build_missing")
+            _fail(page.publication_id, org_id, "That page isn't there any more.")
+        elif not publishing.approved_as_pressed(build, page.page_version):
+            if len(wanted) == 1:
+                raise UserFacingError(publishing.EDITED_SINCE, code="page_changed")
+            _fail(page.publication_id, org_id, publishing.EDITED_SINCE)
+        else:
+            going.append((page, build))
+    if not going:
         raise UserFacingError(publishing.EDITED_SINCE, code="page_changed")
     if integration is None or not token:
         raise UserFacingError("Vercel isn't connected any more. Connect it in Settings.")
+    first = going[0][1]
+    with transaction() as conn:
+        others = _brand_pages(conn, org_id, first["brand_id"], [b["id"] for _, b in going])
 
-    html = storage.download(BUCKET, build["working_html_path"]).decode("utf-8")
-    with transaction() as conn:  # the share image from the preview check (B3.3a)
-        html = with_share_image(html, qa.share_url(conn, build["id"]))
-    exported, stats = export_page(html, resolver(org_id))
-    html_path = (
-        f"{build_prefix(str(org_id), str(build['id']))}/published/{payload.publication_id}.html"
-    )
-    storage.upload(BUCKET, html_path, exported.encode("utf-8"), "text/html; charset=utf-8")
-    pages = {build["key"]: exported}
-    for key, path in others.items():
-        pages[key] = storage.download(BUCKET, path).decode("utf-8")
-    ctx.progress("Packed the page", data={"step": 1, "total": TOTAL})
+    pages: dict[str, str] = {}
+    paths: dict[UUID, str] = {}
+    inlined: dict[UUID, Any] = {}
+    for page, build in going:
+        html = storage.download(BUCKET, build["working_html_path"]).decode("utf-8")
+        with transaction() as conn:  # the share image from the preview check (B3.3a)
+            html = with_share_image(html, qa.share_url(conn, build["id"]))
+        exported, stats = export_page(html, resolver(org_id))
+        path = f"{build_prefix(str(org_id), str(build['id']))}/published/{page.publication_id}.html"
+        storage.upload(BUCKET, path, exported.encode("utf-8"), "text/html; charset=utf-8")
+        pages[build["key"]] = exported
+        paths[page.publication_id] = path
+        inlined[page.publication_id] = stats.get("inlined")
+    for key, other in others.items():
+        pages[key] = storage.download(BUCKET, other).decode("utf-8")
+    packed = "Packed the page" if len(going) == 1 else f"Packed {len(going)} pages"
+    ctx.progress(packed, data={"step": 1, "total": TOTAL})
 
     meta = dict(integration["meta"] or {})
     client = publishing.vercel_client(token, meta.get("team_id"))
     try:
-        project = _project(client, meta, build["brand_id"], build["prefix"])
+        project = _project(client, meta, first["brand_id"], first["prefix"])
         with transaction() as conn:
             conn.execute(
                 "update integrations set meta = %(m)s where org_id = %(o)s and kind = 'vercel'",
@@ -195,44 +250,59 @@ def _publish(ctx: JobContext, payload: PublishVercelPayload, org_id: UUID) -> di
     finally:
         client.close()
     host = production_host(ready, project)
-    url = f"https://{host}/{site.page_path(build['key'])}"
     ctx.progress(
         "Vercel finished the deployment", data={"step": 4, "total": TOTAL}, check_stop=False
     )
 
-    status = _answers(url)
-    if status != 200:
-        raise UserFacingError(
-            f"Vercel deployed the page, but {url} answered {status or 'nothing'}: it may still "
-            "need a login (Deployment Protection) or a minute to appear."
-        )
     seconds = round(time.monotonic() - started)
-    with transaction() as conn:
-        conn.execute(
-            """
-            update publications set status = 'succeeded', url = %(url)s,
-                   details = coalesce(details, '{}'::jsonb) || %(d)s
-            where id = %(p)s and org_id = %(o)s
-            """,
-            {
-                "url": url, "p": payload.publication_id, "o": org_id,
-                "d": Jsonb({
-                    "deployment_id": ready.get("id"), "project": project, "host": host,
-                    "html_path": html_path, "seconds": seconds, "pages": len(pages),
-                    "inlined": stats.get("inlined"),
-                }),
-            },
-        )  # fmt: skip
-        conn.execute(
-            """
-            update builds set status = 'published'
-            where id = %(b)s and org_id = %(o)s and page_version = %(v)s
-              and status in ('approved', 'published')
-            """,
-            {"b": build["id"], "o": org_id, "v": payload.page_version},
-        )
-    ctx.progress("The page is live", data={"step": 5, "total": TOTAL}, check_stop=False)
-    return {"build_id": str(build["id"]), "url": url, "project": project, "seconds": seconds}
+    urls: dict[str, str] = {}
+    for page, build in going:
+        url = f"https://{host}/{site.page_path(build['key'])}"
+        status = _answers(url)
+        if status != 200:
+            message = (
+                f"Vercel deployed the page, but {url} answered {status or 'nothing'}: it may "
+                "still need a login (Deployment Protection) or a minute to appear."
+            )
+            if len(going) == 1:
+                raise UserFacingError(message)
+            _fail(page.publication_id, org_id, message)
+            continue
+        urls[str(build["id"])] = url
+        with transaction() as conn:
+            conn.execute(
+                """
+                update publications set status = 'succeeded', url = %(url)s,
+                       details = coalesce(details, '{}'::jsonb) || %(d)s
+                where id = %(p)s and org_id = %(o)s
+                """,
+                {
+                    "url": url, "p": page.publication_id, "o": org_id,
+                    "d": Jsonb({
+                        "deployment_id": ready.get("id"), "project": project, "host": host,
+                        "html_path": paths[page.publication_id], "seconds": seconds,
+                        "pages": len(pages), "inlined": inlined[page.publication_id],
+                    }),
+                },
+            )  # fmt: skip
+            conn.execute(
+                """
+                update builds set status = 'published'
+                where id = %(b)s and org_id = %(o)s and page_version = %(v)s
+                  and status in ('approved', 'published')
+                """,
+                {"b": build["id"], "o": org_id, "v": page.page_version},
+            )
+    live = "The page is live" if len(urls) == 1 else f"{len(urls)} pages are live"
+    ctx.progress(live, data={"step": 5, "total": TOTAL}, check_stop=False)
+    first_id = str(going[0][1]["id"])
+    return {
+        "build_id": first_id,
+        "url": urls.get(first_id),
+        "urls": urls,
+        "project": project,
+        "seconds": seconds,
+    }
 
 
 # ── unpublish (D89) ───────────────────────────────────────────────────────────

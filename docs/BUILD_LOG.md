@@ -1726,6 +1726,21 @@ as new entries.
 - **Owner confirmed:** no
 - **Next:** B7.3b (Approve and publish all), on the owner's go.
 
+### B7.3b — Approve and publish all
+- **Status:** complete (owner: "continue the next build phase", 2026-11-10)
+- **Date:** 2026-11-10
+- **Summary:**
+  - **A batch's screen:** Approve and publish all in the header, and a "2 pages to review" bar with the same action while pages wait.
+  - **The window** lists each page with what will happen: approve and go live again where it was live, publish again, approve only (never live, or can't go live, with why), nothing, or skipped; ticks what it can act on; one Publish anyway for checks that may be passed.
+  - **Starting it** approves the chosen pages, sends each brand's Vercel pages out in one deployment (so they go live together and can't overwrite each other) and each Shopify page on its own; a page that can't go says why, the others go on; the window follows each page to Live, or why not with Try again.
+- **Key files:** worker `app/publish_all.py` (new), `app/publishing.py` (`start_vercel_many`), `app/jobs/kinds/publish_vercel.py` (several pages in one deployment), `app/main.py`; tests `test_publish.py`; web `components/features/builds/publish-all-dialog.tsx` (+ test, new), `components/features/builds/batch-view.tsx`, `components/features/offers/offer-modal.tsx` (icon), `app/api/builds/batch/[batchId]/publish-all/route.ts` (new), `lib/api/worker.ts`, `lib/validators/publishing.ts`; docs D148, MILESTONES.
+- **Schema changes:** none. **New dependencies:** none.
+- **Decisions:** D148.
+- **Deviations:** none.
+- **Verification:** worker ruff, format, mypy clean, pytest 533 passed; web typecheck, lint, tokens, prettier, vitest 333 passed, `pnpm e2e` passed; in the browser (throwaway account, mock worker) the batch bar and the window's plan rows. Publishing ran against fake Vercel and Shopify in the tests, not real ones.
+- **Owner confirmed:** no
+- **Next:** B7.4 (update every page using an offer), on the owner's go.
+
 ### Fixes after B7.3b — Trash on the batch screen, a variant's offer at once, a wider page menu
 - **Status:** complete (owner, 2026-11-11)
 - **Date:** 2026-11-11
@@ -1737,3 +1752,21 @@ as new entries.
 - **Schema changes:** none. **New dependencies:** none.
 - **Verification:** worker ruff, format and mypy clean; `test_offer_change.py` 4 passed (new: a variant names its offer at once, and gets the old one back when its change fails); web typecheck, lint, tokens, prettier, 333 tests pass. In the browser (throwaway account, mock worker): menu 160 px with every item on one line; "Copy 3 · Ten off" showed with the toast, no reload; a trashed row left at once and came back on Undo; the copy's offer job succeeded. Account deleted afterwards.
 - **Owner confirmed:** no
+
+### B7.4 — Update every page using an offer
+- **Status:** complete (owner: "go", 2026-11-11)
+- **Date:** 2026-11-11
+- **Summary:**
+  - **After an offer is edited:** if pages selling it now say something it no longer does, the edit window becomes **Update the N pages that use it**: the out-of-date pages ticked, the others saying why not, "About 2¢ a page", **Update N pages** or **Not now**.
+  - **Updating** is Change offer's job on each page, from its record of the offer to the offer now ("Updated Ten off to its new terms", one undo step, back to review); a page already up to date is left alone.
+  - **The window follows each page** (place in line, step, "Updated · 3 lines rewritten, 1 to check" with Check it, or why not with Try again; "6 of 20 updated"), can be closed and reopened from the offer's ⋯ **Update pages…**, and ends with **Approve and publish all** for the offer's pages (any batch).
+  - **The Offers tab** row says "3 pages · 2 out of date" or "Updating 14 pages…". Renaming an offer needs no update: the lists show its current name.
+  - **Risks handled:** out of date is defined once, in the database (`offer_out_of_date`, `brand_offer_usage`); Undo and Redo put the page's offer record back with the page (`build_snapshots.offer`), for Change offer, Duplicate with offers and the update; the wait is shown and walking away is safe.
+- **Key files:** migration `supabase/migrations/20261111081446_offer_updates.sql`, pgTAP `supabase/tests/database/offer_updates.test.sql`; worker `app/offer_change.py` (`pages_using`, `update_pages`), `app/desk.py` (`offer_record`, `put_offer`, Undo/Redo), `app/publish_all.py` (any list of pages; skips pages being changed), `app/jobs/kinds/offer_apply.py`, `app/builds.py`, `app/main.py` (`/offers/{id}/pages`, `/offers/{id}/publish-all`), tests `test_offer_change.py`, `test_publish.py`; web `components/features/offers/update-pages-dialog.tsx` (+ test, new), `offers-view.tsx` (+ test), `offer-modal.tsx` (note), `builds/publish-all-dialog.tsx` (a batch's or an offer's pages), `app/api/offers/[offerId]/pages` and `/publish-all` (new), `lib/offers/{queries,actions,form}.ts`, `lib/builds/queries.ts`, `lib/api/worker.ts`, `lib/validators/offer.ts`, `types/database.ts` (regenerated).
+- **Schema changes:** `build_snapshots.offer` (jsonb); functions `offer_out_of_date(jsonb, offers)` and `brand_offer_usage(uuid)` (members only). Applied to the cloud dev project (`pnpm db:push`), types regenerated.
+- **New dependencies:** none.
+- **Decisions:** D149.
+- **Deviations:** none. Found while checking: the page list's name for a copy is "Copy N" (as the batch windows), and the runner's first step reads "Starting".
+- **Verification:** worker ruff, format, mypy clean, pytest 536 passed and 1 failed: the tenant-isolation pgTAP, broken by a test workspace an interrupted earlier run left behind (removed; `pnpm test:db` then 7 passed). Web typecheck, lint, tokens, prettier, vitest 337 passed (the update window's tests again after the last polish), `pnpm e2e` passed. In the browser (throwaway account, mock worker, deleted afterwards): editing Ten off opened Update the 3 pages, Not now left "3 pages · 3 out of date", Update pages… reopened it, the pages went Waiting · 1st in line → Starting → Updated, then Approve and publish all listed them.
+- **Owner confirmed:** no
+- **Next:** the owner tests B7.3b, the fixes after it, and B7.4 together; then M8 (A/B testing), on the owner's go.

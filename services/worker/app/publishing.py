@@ -545,6 +545,85 @@ def start_publish(
     return publishing_state(org_id, build_id)
 
 
+def start_vercel_many(
+    org_id: UUID,
+    pages: list[tuple[UUID, int]],
+    user_id: UUID | None,
+    override: bool,
+) -> UUID:
+    """Several approved pages of one brand to Vercel in one deployment (B7.3b): a publication per
+    page (with any override), one job. Each page is checked as start_publish checks one; the
+    caller has done so already, so a refusal here stops them all."""
+    with transaction() as conn:
+        publications: list[tuple[UUID, UUID, int]] = []
+        brands: set[UUID] = set()
+        for build_id, version in pages:
+            build = _load(conn, org_id, build_id, lock=True)
+            if build["page_version"] != version:
+                raise PublishConflictError
+            if build["status"] not in PUBLISHABLE:
+                raise PublishError(f"{build['key']} isn't approved.")
+            pending = conn.execute(
+                "select 1 from publications where build_id = %(b)s and status = 'pending'",
+                {"b": build_id},
+            ).fetchone()
+            if pending:
+                raise PublishError(f"{build['key']} is being published already.")
+            found = _blockers(build)
+            if not gate.can_publish(found, override=override):
+                raise PublishError(f"{build['key']} can't be published: " + found[0].message)
+            brands.add(build["brand_id"])
+            row = conn.execute(
+                """
+                insert into publications (org_id, build_id, destination, status, gate_overridden,
+                                          override_reasons, details, created_by)
+                values (%(o)s, %(b)s, 'vercel', 'pending', %(over)s, %(reasons)s, %(details)s,
+                        %(u)s)
+                returning id
+                """,
+                {
+                    "o": org_id, "b": build_id, "over": bool(found),
+                    "reasons": Jsonb([b.code for b in found]) if found else None,
+                    "details": Jsonb({"page_version": version}), "u": user_id,
+                },
+            ).fetchone()  # fmt: skip
+            assert row is not None
+            publications.append((build_id, row["id"], version))
+        if len(brands) != 1:
+            raise PublishError("One deployment carries one brand's pages.")
+        if not conn.execute(
+            "select 1 from integrations where org_id = %(o)s and kind = 'vercel'", {"o": org_id}
+        ).fetchone():
+            raise PublishError("Connect Vercel in Settings first.")
+        first, *rest = publications
+        try:
+            job, _ = queue.enqueue(
+                org_id=org_id,
+                kind=PUBLISH_KINDS["vercel"],
+                payload={
+                    "build_id": str(first[0]),
+                    "publication_id": str(first[1]),
+                    "page_version": first[2],
+                    "also": [
+                        {"build_id": str(b), "publication_id": str(pub), "page_version": v}
+                        for b, pub, v in rest
+                    ],
+                },
+                created_by=user_id,
+                dedupe_key=f"publish:{first[0]}",
+                build_id=first[0],
+                max_attempts=1,
+                conn=conn,
+            )
+        except errors.UniqueViolation as exc:
+            raise PublishError("These pages are being published already.") from exc
+        conn.execute(
+            "update publications set job_id = %(j)s where id = any(%(p)s)",
+            {"j": job.id, "p": [pub for _, pub, _ in publications]},
+        )
+    return job.id
+
+
 def start_unpublish(
     org_id: UUID, build_id: UUID, user_id: UUID | None, destination: str = "vercel"
 ) -> PublishingState:

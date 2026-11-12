@@ -17,6 +17,10 @@ export type OfferRow = {
   is_default: boolean;
   /** Pages (not in Trash) built with it. */
   pages: number;
+  /** Of those, the ones whose record of it says what it no longer does (B7.4, D149). */
+  outOfDate: number;
+  /** And the ones being updated now. */
+  updating: number;
 };
 
 export const EMPTY_OFFER: OfferFormValues = {

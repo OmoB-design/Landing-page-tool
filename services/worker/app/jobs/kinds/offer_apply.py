@@ -227,7 +227,15 @@ def _run(ctx: JobContext, payload: OfferApplyPayload) -> dict[str, Any]:
 
     # 4. Saved as one change.
     name = (new or {}).get("name")
-    reason = f"Changed the offer to {name}" if name else "Removed the offer"
+    # The same offer with new terms (B7.4: the offer was edited), or another offer.
+    same = bool(old and new and str(old.get("id")) == str(new.get("id")))
+    reason = (
+        f"Updated {name} to its new terms"
+        if same
+        else f"Changed the offer to {name}"
+        if name
+        else "Removed the offer"
+    )
     cta = offers.checkout_url(product.get("url"), new, source=product.get("pull_source"))
     try:
         version = offer_change.save(
@@ -239,6 +247,9 @@ def _run(ctx: JobContext, payload: OfferApplyPayload) -> dict[str, Any]:
             reason,
             new,
             _record(new, product, cta),
+            before={"offer_id": (payload.from_offer or {}).get("id"), "offer": payload.from_offer}
+            if stated
+            else None,
         )
     except desk.DeskConflictError as exc:
         raise changed_elsewhere from exc

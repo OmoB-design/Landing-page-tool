@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -41,16 +42,20 @@ const OFFER: OfferRow = {
   details: null,
   is_default: true,
   pages: 3,
+  outOfDate: 0,
+  updating: 0,
 };
 
 const view = (offers: OfferRow[]) =>
   render(
-    <OffersView
-      brandId="b1"
-      brandName="Wrenfield"
-      offers={offers}
-      currency="USD"
-    />,
+    <QueryClientProvider client={new QueryClient()}>
+      <OffersView
+        brandId="b1"
+        brandName="Wrenfield"
+        offers={offers}
+        currency="USD"
+      />
+    </QueryClientProvider>,
   );
 
 describe("The Offers tab (B7.2a)", () => {
@@ -166,10 +171,38 @@ describe("The Offers tab (B7.2a)", () => {
     );
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Edit", "Archive"]);
+    ).toEqual(["Edit", "Update pages…", "Archive"]);
     fireEvent.click(screen.getByRole("menuitem", { name: "Archive" }));
     expect(screen.getByText("Archive Autumn 20%?")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
     await waitFor(() => expect(archiveOffer).toHaveBeenCalledWith("o1"));
+  });
+
+  it("says how many pages are out of date, and after an edit offers to update them (B7.4)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ offer_id: "o1", name: "Autumn 20%", pages: [] }),
+          ),
+      ),
+    );
+    vi.mocked(updateOffer).mockResolvedValueOnce({
+      ok: true,
+      id: "o1",
+      outOfDate: 2,
+    });
+    view([
+      { ...OFFER, outOfDate: 2 },
+      { ...OFFER, id: "o2", name: "Ten off", is_default: false, updating: 1 },
+    ]);
+    expect(screen.getByText("· 2 out of date", { exact: false })).toBeTruthy();
+    expect(screen.getByText("Updating 1 page…")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Autumn 20%" }));
+    const form = screen.getByRole("form", { name: "Edit offer" });
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Pages using Autumn 20%")).toBeTruthy();
+    vi.unstubAllGlobals();
   });
 });

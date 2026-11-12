@@ -105,6 +105,17 @@ def tote(finished: dict[str, Any]) -> dict[str, Any]:
     return {**finished, "offer_id": str(new["id"])}
 
 
+def offer_of(page: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None, dict[str, Any]]:
+    """The page's record of its offer, its offer's id and its report."""
+    with transaction() as conn:
+        row = conn.execute(
+            "select offer, offer_id, report from builds where id = %(b)s", {"b": page["id"]}
+        ).fetchone()
+    assert row is not None
+    offer_id = str(row["offer_id"]) if row["offer_id"] else None
+    return row["offer"], offer_id, row["report"] or {}
+
+
 def run_offer_job() -> dict[str, Any]:
     runner = Runner(get_settings(), kinds=KINDS, worker_id=f"test-{uuid.uuid4().hex[:6]}")
     claimed = queue.claim(runner.worker_id, 5, ["offer_apply"])
@@ -167,6 +178,15 @@ def test_only_the_lines_about_the_old_offer_change_and_the_change_is_one_step(
 
     undone = post(client, user, tote, "undo", base_version=state["build"]["page_version"])
     assert undone.status_code == 200 and fragment(undone.json(), "Save 20% on the Market Tote")
+    # Undo put the old offer back with the old page (B7.4, D149), and Redo the new one.
+    offer, offer_id, report = offer_of(tote)
+    assert offer is not None and offer["name"] == "Autumn" and offer_id is None
+    assert "offer" not in (report.get("finalize") or {})
+    redone = post(client, user, tote, "redo", base_version=undone.json()["build"]["page_version"])
+    assert redone.status_code == 200, redone.text
+    offer, offer_id, report = offer_of(tote)
+    assert offer is not None and offer["name"] == "Ten off" and offer_id == tote["offer_id"]
+    assert report["finalize"]["offer"]["price"] == "$135.00"
 
 
 def test_nothing_is_saved_if_other_lines_would_change(
@@ -287,5 +307,94 @@ def test_a_variant_names_its_offer_at_once_and_gets_the_old_one_back_if_the_chan
         ).fetchone()
     assert path is not None
     assert "AUTUMN20" not in storage.download("builds", path["working_html_path"]).decode()
+    # Undo on the copy: Autumn's page, and Autumn again in its record.
+    copy_page = {"id": done["id"], "org_id": tote["org_id"]}
+    version = desk(client, user, copy_page)["build"]["page_version"]
+    assert post(client, user, copy_page, "undo", base_version=version).status_code == 200
+    offer, _, _ = offer_of(copy_page)
+    assert offer is not None and offer["name"] == "Autumn"
     for copy in (failed, done):
         storage.remove_folder("builds", f"{tote['org_id']}/{copy['id']}")
+
+
+def test_editing_an_offer_updates_the_pages_that_sell_it(
+    client: TestClient, user: DbUser, tote: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B7.4 (D149): once Ten off is edited, the page selling it is out of date; updating it is the
+    same change, from the page's record of Ten off to Ten off as it is now; then it's up to date,
+    and Undo makes it out of date again."""
+    monkeypatch.setattr(copy_pass, "ask", scripted([], miss_code_first=False))
+    version = desk(client, user, tote)["build"]["page_version"]
+    assert change(client, user, tote, version).status_code == 202
+    assert run_offer_job()["status"] == "succeeded"
+    offer = tote["offer_id"]
+
+    def listed() -> dict[str, Any]:
+        got = client.get(
+            f"/offers/{offer}/pages", params={"org_id": tote["org_id"]}, headers=bearer(user)
+        )
+        assert got.status_code == 200, got.text
+        page: dict[str, Any] = got.json()["pages"][0]
+        return page
+
+    assert listed()["out_of_date"] is False
+    with transaction() as conn:
+        conn.execute(
+            "update offers set price_value = 15, promo_text = 'Fifteen dollars off' "
+            "where id = %(id)s",
+            {"id": offer},
+        )
+    page = listed()
+    assert page["out_of_date"] is True and page["reason"] is None
+    assert page["key"] == "LUM-1" and page["job"]["status"] == "succeeded"  # the change above
+
+    def update() -> Any:
+        return client.post(
+            f"/offers/{offer}/pages",
+            json={"org_id": tote["org_id"], "build_ids": [tote["id"]]},
+            headers=bearer(user),
+        )
+
+    started = update()
+    assert started.status_code == 202, started.text
+    assert started.json()["pages"][0]["job_id"]
+    waiting = listed()["job"]
+    assert waiting["status"] == "queued" and waiting["waiting"] == 1
+
+    def rewrite(system: str, prompt: str) -> dict[str, str]:
+        items = json.loads(prompt[prompt.find("\n[") + 1 :])
+        out = {}
+        for item in items:
+            text = str(item["text"])
+            for old, new in [("$135", "$130"), ("7%", "10%")]:
+                text = text.replace(old, new)
+            out[item["id"]] = text
+        return out
+
+    monkeypatch.setattr(copy_pass, "ask", rewrite)
+    job = run_offer_job()
+    assert job["status"] == "succeeded", job["error"]
+    assert job["result"]["reason"] == "Updated Ten off to its new terms"
+    recorded, _, report = offer_of(tote)
+    assert recorded is not None and recorded["price_value"] == "15.00"
+    assert report["finalize"]["offer"]["price"] == "$130.00"
+    page = listed()
+    assert page["out_of_date"] is False
+    assert page["job"]["changed"] == len(job["result"]["changed"]) and page["job"]["checks"] == 0
+    again = update()
+    assert again.status_code == 202 and again.json()["pages"][0]["error"] == "It's up to date."
+
+    # Undo: the page and its record of Ten off as they were, so it's out of date again.
+    state = desk(client, user, tote)
+    assert state["snapshots"][0]["reason"] == "Updated Ten off to its new terms"
+    undone = post(client, user, tote, "undo", base_version=state["build"]["page_version"])
+    assert undone.status_code == 200
+    assert listed()["out_of_date"] is True
+
+    # An offer that's gone (archived) has no pages to update.
+    with transaction() as conn:
+        conn.execute("update offers set archived_at = now() where id = %(id)s", {"id": offer})
+    gone = client.get(
+        f"/offers/{offer}/pages", params={"org_id": tote["org_id"]}, headers=bearer(user)
+    )
+    assert gone.status_code == 404

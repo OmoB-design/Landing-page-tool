@@ -142,3 +142,54 @@ export const publishSchema = z.object({
   destination: z.enum(["vercel", "shopify_page", "shopify_editable"]),
   override: z.boolean().default(false),
 });
+
+// ── Approve and publish all (B7.3b, D148) ────────────────────────────────────
+
+export const PUBLISH_ALL_ACTIONS = [
+  "approve_and_publish",
+  "approve",
+  "publish",
+  "none",
+  "skip",
+] as const;
+
+export const publishAllPlanSchema = z.object({
+  pages: z.array(
+    z.object({
+      build_id: z.string(),
+      key: z.string(),
+      title: z.string(),
+      copy_number: z.number().int().nullable().catch(null),
+      status: z.string(),
+      page_version: z.number().int(),
+      action: z.enum(PUBLISH_ALL_ACTIONS).catch("skip"),
+      destinations: z.array(z.string()).catch([]),
+      reason: z.string().nullable().catch(null),
+      gate: z
+        .array(
+          z.object({
+            code: z.string(),
+            message: z.string(),
+            overridable: z.boolean(),
+          }),
+        )
+        .catch([]),
+    }),
+  ),
+  needs_override: z.boolean().catch(false),
+});
+export type PublishAllPlan = z.infer<typeof publishAllPlanSchema>;
+export type PublishAllPage = PublishAllPlan["pages"][number];
+
+export const publishAllStartedSchema = z.object({
+  pages: z.array(
+    z.object({
+      build_id: z.string(),
+      key: z.string(),
+      approved: z.boolean(),
+      jobs: z.record(z.string(), z.string()).catch({}),
+      error: z.string().nullable().catch(null),
+    }),
+  ),
+});
+export type PublishAllStarted = z.infer<typeof publishAllStartedSchema>;

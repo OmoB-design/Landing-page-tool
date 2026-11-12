@@ -15,6 +15,8 @@ export type OfferActionResult = {
   id?: string;
   /** The saved offer is now the brand's default. */
   isDefault?: boolean;
+  /** Saved: how many pages selling it now say something it no longer does (B7.4). */
+  outOfDate?: number;
   error?: string;
   fieldErrors?: Partial<Record<keyof OfferFormValues, string[]>>;
 };
@@ -86,13 +88,19 @@ export async function updateOffer(
     })
     .eq("id", offerId)
     .is("archived_at", null)
-    .select("id, is_default")
+    .select("id, is_default, brand_id")
     .maybeSingle();
   if (error) return { error: `Couldn't save the offer: ${error.message}` };
   if (!data) return { error: "That offer isn't available." };
+  // The pages it leaves out of date, so the Offers tab can offer to update them (B7.4).
+  const usage = await supabase.rpc("brand_offer_usage", {
+    brand: data.brand_id,
+  });
+  const outOfDate =
+    usage.data?.find((row) => row.offer_id === offerId)?.out_of_date ?? 0;
   if (parsed.data.is_default && !data.is_default)
-    return makeDefaultOffer(offerId);
-  return { ok: true, id: offerId };
+    return { ...(await makeDefaultOffer(offerId)), outOfDate };
+  return { ok: true, id: offerId, outOfDate };
 }
 
 /** The offer new pages start with (the brand's old default stops being it). */

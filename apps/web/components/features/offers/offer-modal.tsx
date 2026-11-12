@@ -50,8 +50,12 @@ export function OfferCard({
   error,
   actions,
   band,
+  icon: Icon = OfferIcon,
+  note,
   children,
 }: {
+  /** The header's tile (the offer's tag; Approve and publish all's upload arrow). */
+  icon?: typeof OfferIcon;
   title: string;
   description: string;
   error?: string | null;
@@ -61,6 +65,8 @@ export function OfferCard({
    * in dark), so it stands out from the card (owner, 2026-11-10).
    */
   band?: { title: string; content: ReactNode };
+  /** A quiet line beside the actions (what it costs), when there's no error. */
+  note?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -69,7 +75,7 @@ export function OfferCard({
         <div className="flex shrink-0 flex-col items-center gap-3 px-6 pt-6 pb-6 text-center">
           <div className="rounded-md bg-dashboard p-0.5 ring-half ring-stroke dark:bg-surface-primary">
             <div className="flex size-10 items-center justify-center rounded-sm bg-surface-primary ring-half ring-stroke dark:bg-foreground-02">
-              <OfferIcon aria-hidden className="size-5 text-heading-01" />
+              <Icon aria-hidden className="size-5 text-heading-01" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
@@ -100,6 +106,10 @@ export function OfferCard({
             className="min-w-0 flex-1 text-type-caption-1 font-medium text-text-danger"
           >
             {error}
+          </p>
+        ) : note ? (
+          <p className="min-w-0 flex-1 text-type-caption-1 text-heading-05">
+            {note}
           </p>
         ) : (
           <span className="flex-1" />

@@ -430,6 +430,7 @@ export type Database = {
           html_path: string
           id: string
           merge_key: string | null
+          offer: Json | null
           reason: string
           redo: boolean
           seq: number
@@ -441,6 +442,7 @@ export type Database = {
           html_path: string
           id?: string
           merge_key?: string | null
+          offer?: Json | null
           reason: string
           redo?: boolean
           seq: number
@@ -452,6 +454,7 @@ export type Database = {
           html_path?: string
           id?: string
           merge_key?: string | null
+          offer?: Json | null
           reason?: string
           redo?: boolean
           seq?: number
@@ -1827,10 +1830,26 @@ export type Database = {
           spend_usd: number
         }[]
       }
+      brand_offer_usage: {
+        Args: { brand: string }
+        Returns: {
+          offer_id: string
+          out_of_date: number
+          pages: number
+          updating: number
+        }[]
+      }
       is_org_admin: { Args: { target_org: string }; Returns: boolean }
       is_org_member: { Args: { target_org: string }; Returns: boolean }
       is_org_member_path: { Args: { object_name: string }; Returns: boolean }
       make_default_offer: { Args: { target: string }; Returns: undefined }
+      offer_out_of_date: {
+        Args: {
+          current_offer: Database["public"]["Tables"]["offers"]["Row"]
+          page_offer: Json
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       build_status:

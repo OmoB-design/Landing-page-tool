@@ -2,9 +2,11 @@ import { z } from "zod";
 
 import {
   type BatchOfferStarted,
+  type OfferPages,
   type VariantsMade,
   batchOfferStartedSchema,
   offerChangeStartedSchema,
+  offerPagesSchema,
   variantsMadeSchema,
 } from "@/lib/validators/offer";
 import {
@@ -79,9 +81,13 @@ import {
 } from "@/lib/validators/members";
 import {
   type IntegrationsState,
+  type PublishAllPlan,
+  type PublishAllStarted,
   type PublishingState,
   type ShopifyTemplate,
   integrationsStateSchema,
+  publishAllPlanSchema,
+  publishAllStartedSchema,
   publishingStateSchema,
   shopifyTemplateSchema,
 } from "@/lib/validators/publishing";
@@ -349,6 +355,84 @@ export function makeVariants(
     body,
     variantsMadeSchema,
     "Couldn't make the variants.",
+  );
+}
+
+/** What Approve and publish all would do with a batch's pages (B7.3b; worker GET
+ * /builds/batch/{id}/publish-all). */
+/** Whose pages Approve and publish all acts on: a batch's (B7.3b) or an offer's (B7.4). */
+export type PublishAllScope = { kind: "batch" | "offer"; id: string };
+
+function publishAllPath(scope: PublishAllScope): string {
+  const id = encodeURIComponent(scope.id);
+  return scope.kind === "batch"
+    ? `/builds/batch/${id}/publish-all`
+    : `/offers/${id}/publish-all`;
+}
+
+/** What Approve and publish all would do with each page (worker GET …/publish-all). */
+export function getPublishAllPlan(
+  accessToken: string,
+  orgId: string,
+  scope: PublishAllScope,
+): Promise<PublishAllPlan> {
+  return callWorker(
+    "GET",
+    `${publishAllPath(scope)}?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    publishAllPlanSchema,
+    "Couldn't read what would be published.",
+  );
+}
+
+/** Approves the chosen pages and puts them live again where they were (worker POST
+ * …/publish-all). */
+export function startPublishAll(
+  accessToken: string,
+  scope: PublishAllScope,
+  body: { org_id: string; build_ids: string[]; override: boolean },
+): Promise<PublishAllStarted> {
+  return postToWorker(
+    publishAllPath(scope),
+    accessToken,
+    body,
+    publishAllStartedSchema,
+    "Couldn't approve and publish the pages.",
+  );
+}
+
+// ── Update every page using an offer (worker /offers/{id}/pages, B7.4, D149) ──
+
+/** The pages selling an offer: out of date or not, why one can't be updated now, and the
+ * latest offer change on each. */
+export function getOfferPages(
+  accessToken: string,
+  orgId: string,
+  offerId: string,
+): Promise<OfferPages> {
+  return callWorker(
+    "GET",
+    `/offers/${encodeURIComponent(offerId)}/pages?org_id=${encodeURIComponent(orgId)}`,
+    accessToken,
+    undefined,
+    offerPagesSchema,
+    "Couldn't read the pages using this offer.",
+  );
+}
+
+/** Updates the chosen pages to the offer as it is now, each on its own. */
+export function startOfferPages(
+  accessToken: string,
+  offerId: string,
+  body: { org_id: string; build_ids: string[] },
+): Promise<BatchOfferStarted> {
+  return postToWorker(
+    `/offers/${encodeURIComponent(offerId)}/pages`,
+    accessToken,
+    body,
+    batchOfferStartedSchema,
+    "Couldn't update the pages.",
   );
 }
 

@@ -250,7 +250,8 @@ def batch_state(org_id: UUID, batch_id: UUID) -> BatchState:
             """
             select b.id, b.key, b.title, b.status, b.created_at, b.template_id,
                    b.origin, b.cost_usd, b.created_by, b.updated_at, b.parent_build_id,
-                   b.copy_number, b.brand_id, b.offer_id, b.offer->>'name' as offer_name,
+                   b.copy_number, b.brand_id, b.offer_id,
+                   coalesce(cur.name, b.offer->>'name') as offer_name,
                    b.report->'residue'->>'score' as residue,
                    t.name as template_name, t.type as template_type,
                    br.name as brand, p.name as product,
@@ -263,6 +264,7 @@ def batch_state(org_id: UUID, batch_id: UUID) -> BatchState:
             join templates t on t.id = b.template_id
             join brands br on br.id = b.brand_id
             join products p on p.id = b.product_id
+            left join offers cur on cur.id = b.offer_id
             left join lateral (
               select id, status, created_at, started_at, finished_at, error from jobs
               where build_id = b.id and kind = %(kind)s order by created_at desc limit 1

@@ -423,3 +423,252 @@ def test_unpublishing_takes_the_page_down_and_keeps_the_history(
             ).fetchall()
         ]
     storage.remove("builds", paths)
+
+
+# ── Approve and publish all (B7.3b, D148) ─────────────────────────────────────
+
+
+def _batch_page(
+    org: str, first: dict[str, Any], key: str, status: str, batch: uuid.UUID, user: DbUser
+) -> str:
+    """Another page of the finished page's brand, in the batch."""
+    page_id = uuid.uuid4()
+    path = f"{org}/{page_id}/working.html"
+    storage.upload(
+        "builds", path, f"<html><body><h1>{key}</h1></body></html>".encode(), "text/html"
+    )
+    with transaction() as conn:
+        conn.execute(
+            """
+            insert into builds (id, org_id, brand_id, product_id, template_id, template_version,
+                                key, origin, status, title, wizard, working_html_path, report,
+                                created_by, batch_id)
+            values (%(id)s, %(o)s, %(b)s, %(p)s, %(t)s, %(v)s, %(key)s, 'owned', %(s)s, %(key)s,
+                    '{}', %(path)s, '{}', %(u)s, %(batch)s)
+            """,
+            {
+                "id": page_id, "o": org, "b": first["brand_id"], "p": first["product_id"],
+                "t": first["template_id"], "v": first["template_version"], "key": key,
+                "s": status, "path": path, "u": user.id, "batch": batch,
+            },
+        )  # fmt: skip
+    return str(page_id)
+
+
+def _was_live(org: str, build_id: str, version: int) -> None:
+    """The page went live on Vercel at `version` (its published copy kept, as publishing does)."""
+    path = f"{org}/{build_id}/published/{uuid.uuid4()}.html"
+    storage.upload("builds", path, b"<html><body>old</body></html>", "text/html")
+    with transaction() as conn:
+        conn.execute(
+            """
+            insert into publications (org_id, build_id, destination, status, url, details)
+            values (%(o)s, %(b)s, 'vercel', 'succeeded', 'https://x.test', %(d)s)
+            """,
+            {
+                "o": org,
+                "b": build_id,
+                "d": json.dumps({"page_version": version, "html_path": path}),
+            },
+        )
+
+
+def _all(client: TestClient, user: DbUser, org: str, batch: uuid.UUID, **body: Any) -> Any:
+    if body:
+        return client.post(
+            f"/builds/batch/{batch}/publish-all", json={"org_id": org, **body}, headers=bearer(user)
+        )
+    return client.get(
+        f"/builds/batch/{batch}/publish-all", params={"org_id": org}, headers=bearer(user)
+    )
+
+
+@needs_db
+def test_approve_and_publish_all_plans_each_page_and_sends_a_brand_out_together(
+    client: TestClient, user: DbUser, finished: dict[str, Any], fake_vercel: FakeVercel
+) -> None:
+    org = finished["org_id"]
+    assert connect(client, user, org).status_code == 200
+    batch = uuid.uuid4()
+    with transaction() as conn:
+        first = conn.execute(
+            "update builds set batch_id = %(batch)s, page_version = 2 where id = %(b)s returning *",
+            {"batch": batch, "b": finished["id"]},
+        ).fetchone()
+    assert first is not None
+    # LUM-1 was live at version 1 and was edited since (needs review); LUM-2 was live and was
+    # approved again after an edit; LUM-3 was never live; LUM-4 is still building; LUM-5 is live
+    # and up to date.
+    _was_live(org, finished["id"], 1)
+    lum2 = _batch_page(org, first, "LUM-2", "approved", batch, user)
+    _was_live(org, lum2, 0)
+    lum3 = _batch_page(org, first, "LUM-3", "needs_review", batch, user)
+    lum4 = _batch_page(org, first, "LUM-4", "building", batch, user)
+    lum5 = _batch_page(org, first, "LUM-5", "published", batch, user)
+    _was_live(org, lum5, 1)
+
+    planned = _all(client, user, org, batch)
+    assert planned.status_code == 200, planned.text
+    actions = {p["key"]: (p["action"], p["destinations"]) for p in planned.json()["pages"]}
+    assert actions == {
+        "LUM-1": ("approve_and_publish", ["vercel"]),
+        "LUM-2": ("publish", ["vercel"]),
+        "LUM-3": ("approve", []),  # never live: approved only
+        "LUM-4": ("skip", []),
+        "LUM-5": ("none", []),
+    }
+
+    ids = [finished["id"], lum2, lum3, lum4, lum5]
+    started = _all(client, user, org, batch, build_ids=ids)
+    assert started.status_code == 202, started.text
+    pages = {p["key"]: p for p in started.json()["pages"]}
+    assert pages["LUM-1"]["approved"] and pages["LUM-3"]["approved"]
+    assert not pages["LUM-2"]["approved"]  # it was approved already
+    job = pages["LUM-1"]["jobs"]["vercel"]
+    assert pages["LUM-2"]["jobs"]["vercel"] == job  # one deployment for the brand
+    assert pages["LUM-3"]["jobs"] == {} and pages["LUM-4"]["error"] == "Still building."
+
+    assert run_publish()["status"] == "succeeded"
+    assert len(fake_vercel.deployed) == 1
+    files = {f["file"] for f in fake_vercel.deployed[0]["files"]}
+    assert {"lum-1.html", "lum-2.html", "lum-5.html"} <= files and "lum-3.html" not in files
+    with transaction() as conn:
+        statuses = {
+            r["key"]: r["status"]
+            for r in conn.execute(
+                "select key, status from builds where batch_id = %(b)s", {"b": batch}
+            ).fetchall()
+        }
+        kept = [
+            r["details"]["html_path"]
+            for r in conn.execute(
+                "select details from publications where org_id = %(o)s and status = 'succeeded'",
+                {"o": org},
+            ).fetchall()
+        ]
+    assert statuses == {
+        "LUM-1": "published", "LUM-2": "published", "LUM-3": "approved",
+        "LUM-4": "building", "LUM-5": "published",
+    }  # fmt: skip
+    storage.remove("builds", kept)
+    for page in (lum2, lum3, lum4, lum5):
+        storage.remove_folder("builds", f"{org}/{page}")
+
+
+@needs_db
+def test_checks_that_may_be_passed_need_publish_anyway_for_all(
+    client: TestClient, user: DbUser, finished: dict[str, Any], fake_vercel: FakeVercel
+) -> None:
+    org = finished["org_id"]
+    assert connect(client, user, org).status_code == 200
+    batch = uuid.uuid4()
+    with transaction() as conn:
+        conn.execute(
+            """
+            update builds set batch_id = %(batch)s, page_version = 2,
+                   report = '{"compliance": {"high_risk_count": 1}}'
+            where id = %(b)s
+            """,
+            {"batch": batch, "b": finished["id"]},
+        )
+    _was_live(org, finished["id"], 1)
+    plan = _all(client, user, org, batch).json()
+    assert plan["needs_override"] is True
+    assert [b["code"] for b in plan["pages"][0]["gate"]] == ["claims"]
+
+    without = _all(client, user, org, batch, build_ids=[finished["id"]])
+    page = without.json()["pages"][0]
+    assert page["approved"] and page["jobs"] == {} and "Publish anyway" in page["error"]
+
+    # Approved now: publish again, passing the check.
+    again = _all(client, user, org, batch, build_ids=[finished["id"]], override=True)
+    assert again.json()["pages"][0]["jobs"]["vercel"]
+    assert run_publish()["status"] == "succeeded"
+    with transaction() as conn:
+        row = conn.execute(
+            """
+            select gate_overridden, override_reasons, details from publications
+            where build_id = %(b)s and status = 'succeeded' order by created_at desc limit 1
+            """,
+            {"b": finished["id"]},
+        ).fetchone()
+        old = conn.execute(
+            "select details from publications where build_id = %(b)s", {"b": finished["id"]}
+        ).fetchall()
+    assert row is not None and row["gate_overridden"] and row["override_reasons"] == ["claims"]
+    storage.remove(
+        "builds", [r["details"]["html_path"] for r in old if r["details"].get("html_path")]
+    )
+
+
+@needs_db
+def test_an_offers_pages_are_planned_and_sent_out_together_from_any_batch(
+    client: TestClient, user: DbUser, finished: dict[str, Any], fake_vercel: FakeVercel
+) -> None:
+    """B7.4 (D149): Approve and publish all for the pages selling an offer, whatever batch they're
+    in; a page still being changed waits; a page selling another offer isn't one of them."""
+    org = finished["org_id"]
+    assert connect(client, user, org).status_code == 200
+    with transaction() as conn:
+        first = conn.execute(
+            "update builds set batch_id = %(batch)s, page_version = 2 where id = %(b)s returning *",
+            {"batch": uuid.uuid4(), "b": finished["id"]},
+        ).fetchone()
+        assert first is not None
+        offers = [
+            conn.execute(
+                "insert into offers (org_id, brand_id, name) values (%(o)s, %(b)s, %(n)s) "
+                "returning id",
+                {"o": org, "b": first["brand_id"], "n": name},
+            ).fetchone()["id"]  # type: ignore[index]
+            for name in ("Ten off", "Free strap")
+        ]
+    _was_live(org, finished["id"], 1)
+    lum2 = _batch_page(org, first, "LUM-2", "approved", uuid.uuid4(), user)  # another batch
+    _was_live(org, lum2, 0)
+    lum3 = _batch_page(org, first, "LUM-3", "needs_review", uuid.uuid4(), user)
+    lum4 = _batch_page(org, first, "LUM-4", "needs_review", uuid.uuid4(), user)
+    with transaction() as conn:
+        for page, offer in ((finished["id"], 0), (lum2, 0), (lum3, 0), (lum4, 1)):
+            conn.execute(
+                "update builds set offer_id = %(offer)s where id = %(b)s",
+                {"offer": offers[offer], "b": page},
+            )
+        conn.execute(
+            "insert into jobs (org_id, kind, payload, status, build_id, queue) "
+            "values (%(o)s, 'offer_apply', '{}', 'running', %(b)s, 'test-elsewhere')",
+            {"o": org, "b": lum3},
+        )
+
+    def call(**body: Any) -> Any:
+        url = f"/offers/{offers[0]}/publish-all"
+        if body:
+            return client.post(url, json={"org_id": org, **body}, headers=bearer(user))
+        return client.get(url, params={"org_id": org}, headers=bearer(user))
+
+    planned = call()
+    assert planned.status_code == 200, planned.text
+    actions = {p["key"]: (p["action"], p["reason"]) for p in planned.json()["pages"]}
+    assert actions == {
+        "LUM-1": ("approve_and_publish", None),
+        "LUM-2": ("publish", None),
+        "LUM-3": ("skip", "It's being changed now."),
+    }
+    started = call(build_ids=[finished["id"], lum2])
+    assert started.status_code == 202, started.text
+    pages = {p["key"]: p for p in started.json()["pages"]}
+    assert pages["LUM-1"]["jobs"]["vercel"] == pages["LUM-2"]["jobs"]["vercel"]
+    assert run_publish()["status"] == "succeeded"
+    assert len(fake_vercel.deployed) == 1
+    with transaction() as conn:
+        conn.execute("delete from jobs where build_id = %(b)s", {"b": lum3})
+        kept = [
+            r["details"]["html_path"]
+            for r in conn.execute(
+                "select details from publications where org_id = %(o)s and status = 'succeeded'",
+                {"o": org},
+            ).fetchall()
+        ]
+    storage.remove("builds", kept)
+    for page in (lum2, lum3, lum4):
+        storage.remove_folder("builds", f"{org}/{page}")

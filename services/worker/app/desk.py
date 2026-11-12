@@ -100,6 +100,7 @@ def _load(conn: Any, org_id: UUID, build_id: UUID, *, lock: bool = False) -> dic
         f"""
         select b.id, b.org_id, b.brand_id, b.template_id, b.status, b.page_version,
                b.working_html_path, b.approved_at, b.approved_by, b.report, b.wizard,
+               b.offer_id, b.offer,
                (select j.id from jobs j
                 where j.build_id = b.id and j.kind = any(%(kinds)s)
                   and j.status in ('queued', 'running')
@@ -123,7 +124,7 @@ def _snapshots(conn: Any, build_id: UUID, *, redo: bool = False) -> list[dict[st
         dict(r)
         for r in conn.execute(
             """
-            select seq, html_path, reason, created_at, created_by, merge_key,
+            select seq, html_path, reason, created_at, created_by, merge_key, offer,
                    created_at > now() - make_interval(secs => %(window)s) as recent
             from build_snapshots
             where build_id = %(b)s and redo = %(redo)s order by seq desc
@@ -137,7 +138,7 @@ def _all_snapshots(conn: Any, build_id: UUID) -> tuple[list[dict[str, Any]], lis
     """The undo snapshots and the pages kept for Redo, newest first, in one round trip."""
     rows = conn.execute(
         """
-        select seq, html_path, reason, created_at, created_by, merge_key, redo,
+        select seq, html_path, reason, created_at, created_by, merge_key, redo, offer,
                created_at > now() - make_interval(secs => %(window)s) as recent
         from build_snapshots where build_id = %(b)s order by seq desc
         """,
@@ -146,6 +147,43 @@ def _all_snapshots(conn: Any, build_id: UUID) -> tuple[list[dict[str, Any]], lis
     undo = [dict(r) for r in rows if not r["redo"]]
     redo = [dict(r) for r in rows if r["redo"]]
     return undo, redo
+
+
+def offer_record(build: dict[str, Any]) -> dict[str, Any]:
+    """The page's offer as an undo step keeps it (B7.4, D149): its offer, its record of it, and
+    the report's record of the deal the page shows (prices, checkout)."""
+    return {
+        "offer_id": str(build["offer_id"]) if build.get("offer_id") else None,
+        "offer": build.get("offer"),
+        "report_offer": ((build.get("report") or {}).get("finalize") or {}).get("offer"),
+    }
+
+
+def put_offer(conn: Any, org_id: UUID, build_id: UUID, record: dict[str, Any]) -> None:
+    """Puts a page's offer record back (Undo, Redo, a change that didn't happen): its offer by id
+    only while that offer is still there, and the report's record when the record has one."""
+    offer = record.get("offer")
+    offer_id = record.get("offer_id") or (offer or {}).get("id")
+    report_offer = record.get("report_offer")
+    conn.execute(
+        """
+        update builds set offer = %(offer)s,
+               offer_id = (select id from offers where id = %(oid)s and org_id = %(o)s),
+               report = case
+                 when not %(has_report)s then report
+                 when %(report_offer)s::jsonb is null then report #- '{finalize,offer}'
+                 else jsonb_set(report, '{finalize}', coalesce(report->'finalize', '{}'::jsonb)
+                                || jsonb_build_object('offer', %(report_offer)s::jsonb))
+               end
+        where id = %(b)s and org_id = %(o)s
+        """,
+        {
+            "offer": Jsonb(offer) if offer else None, "oid": offer_id,
+            "has_report": "report_offer" in record,
+            "report_offer": Jsonb(report_offer) if report_offer else None,
+            "b": build_id, "o": org_id,
+        },
+    )  # fmt: skip
 
 
 def _next_seq(conn: Any, build_id: UUID) -> int:
@@ -459,6 +497,7 @@ def _change(
     clear_copy_error: bool = False,
     merge_key: str | None = None,
     keep_redo: bool = False,
+    offer: dict[str, Any] | None = None,
 ) -> list[str]:
     """Saves a change: the current page becomes the newest snapshot (`reason` says what the change
     does), the build points at the new page (`html` to store, or an existing `html_path`), its
@@ -468,7 +507,10 @@ def _change(
 
     A new change drops the pages kept for Redo (`keep_redo` is Redo itself). With `merge_key`
     (typing in the editor, D104), a save that follows the same person's save of the same line
-    within a minute joins that undo step instead of taking a new snapshot."""
+    within a minute joins that undo step instead of taking a new snapshot.
+
+    `offer`: the page's offer record before a change that changes its offer (B7.4, D149), kept on
+    the undo step so Undo puts it back with the page."""
     version = build["page_version"] + 1
     if html is not None:
         html_path = f"{build['org_id']}/{build['id']}/pages/v{version}.html"
@@ -507,12 +549,14 @@ def _change(
         )
         conn.execute(
             """
-            insert into build_snapshots (build_id, seq, html_path, reason, created_by, merge_key)
-            values (%(b)s, %(seq)s, %(path)s, %(reason)s, %(user)s, %(merge)s)
+            insert into build_snapshots (build_id, seq, html_path, reason, created_by, merge_key,
+                                         offer)
+            values (%(b)s, %(seq)s, %(path)s, %(reason)s, %(user)s, %(merge)s, %(offer)s)
             """,
             {
                 "b": build["id"], "seq": seq, "path": build["working_html_path"],
                 "reason": reason, "user": user_id, "merge": merge_key,
+                "offer": Jsonb(offer) if offer is not None else None,
             },
         )  # fmt: skip
         superseded = []
@@ -719,7 +763,8 @@ def set_status(
 
 def undo(org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int) -> DeskState:
     """Puts back the page before the last change and drops its snapshot. The page it undid is
-    kept for Redo (B3.1a) until the next new change."""
+    kept for Redo (B3.1a) until the next new change. Undoing an offer change puts the old offer
+    back too (B7.4, D149), and the Redo step keeps the new one."""
     with transaction() as conn:
         build = _load(conn, org_id, build_id, lock=True)
         _check(conn, build, base_version)
@@ -740,12 +785,13 @@ def undo(org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int) 
         )
         conn.execute(
             """
-            insert into build_snapshots (build_id, seq, html_path, reason, created_by, redo)
-            values (%(b)s, %(seq)s, %(path)s, %(reason)s, %(user)s, true)
+            insert into build_snapshots (build_id, seq, html_path, reason, created_by, redo, offer)
+            values (%(b)s, %(seq)s, %(path)s, %(reason)s, %(user)s, true, %(offer)s)
             """,
             {
                 "b": build_id, "seq": _next_seq(conn, build_id),
                 "path": build["working_html_path"], "reason": newest["reason"], "user": user_id,
+                "offer": Jsonb(offer_record(build)) if newest["offer"] is not None else None,
             },
         )  # fmt: skip
         redos = _snapshots(conn, build_id, redo=True)
@@ -769,6 +815,8 @@ def undo(org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int) 
             """,
             {"path": newest["html_path"], "report": Jsonb(report), "b": build_id, "o": org_id},
         )
+        if newest["offer"] is not None:
+            put_offer(conn, org_id, build_id, newest["offer"])
         in_use = {
             newest["html_path"],
             *(s["html_path"] for s in snapshots[1:]),
@@ -794,7 +842,10 @@ def redo(org_id: UUID, build_id: UUID, user_id: UUID | None, base_version: int) 
         stale = _change(
             conn, build, reason=top["reason"], user_id=user_id, html_path=top["html_path"],
             keep_redo=True,
+            offer=offer_record(build) if top["offer"] is not None else None,
         )  # fmt: skip
+        if top["offer"] is not None:
+            put_offer(conn, org_id, build_id, top["offer"])
     return _finish(org_id, build_id, stale)
 
 

@@ -101,6 +101,38 @@ export const batchOfferStartedSchema = z.object({
 });
 export type BatchOfferStarted = z.infer<typeof batchOfferStartedSchema>;
 
+/** A page selling an offer, for Update the N pages that use it (B7.4, D149): out of date or
+ * not, why it can't be updated now, and its latest offer change (place in line, step, outcome). */
+export const offerPageSchema = z.object({
+  build_id: z.string(),
+  key: z.string(),
+  title: z.string(),
+  product: z.string(),
+  copy_number: z.number().nullable().catch(null),
+  status: z.string(),
+  out_of_date: z.boolean(),
+  reason: z.string().nullable().catch(null),
+  job: z
+    .object({
+      id: z.string(),
+      status: z.string(),
+      step: z.string().nullable().catch(null),
+      waiting: z.number().nullable().catch(null),
+      error: z.string().nullable().catch(null),
+      changed: z.number().nullable().catch(null),
+      checks: z.number().nullable().catch(null),
+    })
+    .nullable()
+    .catch(null),
+});
+export type OfferPage = z.infer<typeof offerPageSchema>;
+export const offerPagesSchema = z.object({
+  offer_id: z.string(),
+  name: z.string(),
+  pages: z.array(offerPageSchema),
+});
+export type OfferPages = z.infer<typeof offerPagesSchema>;
+
 export const variantsMadeSchema = z.object({
   copies: z.array(
     z.object({

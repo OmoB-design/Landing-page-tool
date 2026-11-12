@@ -21,6 +21,7 @@ from app import (
     members,
     mobile,
     offer_change,
+    publish_all,
     publishing,
     qa,
     share,
@@ -418,6 +419,113 @@ def make_variants(build_id: UUID, body: VariantsRequest, user: CurrentUser) -> V
     require_org_member(user, body.org_id)
     copies = _offer_call(offer_change.variants, body.org_id, build_id, user.id, body.offer_ids)
     return VariantsMade(copies=[Variant.model_validate(c) for c in copies])
+
+
+# ── Update every page using an offer (B7.4, D149) ───────────────────────────
+
+# An offer's pages can be more than a batch's.
+MAX_OFFER_PAGES = 200
+
+
+class OfferPagesRequest(BaseModel):
+    """POST /offers/{id}/pages: the chosen pages selling the offer, to update to it as it is now."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    build_ids: list[UUID] = Field(min_length=1, max_length=MAX_OFFER_PAGES)
+
+
+OFFER_GONE = "That offer isn't available any more."
+
+
+@app.get("/offers/{offer_id}/pages")
+def offer_pages(offer_id: UUID, org_id: UUID, user: CurrentUser) -> offer_change.OfferPages:
+    """The pages selling the offer: out of date or not, can be updated now or why not, and the
+    latest offer change on each (its place in line, its step, or how it ended)."""
+    require_org_member(user, org_id)
+    try:
+        return offer_change.pages_using(org_id, offer_id)
+    except offer_change.OfferNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, OFFER_GONE) from exc
+
+
+@app.post("/offers/{offer_id}/pages", status_code=status.HTTP_202_ACCEPTED)
+def update_offer_pages(
+    offer_id: UUID, body: OfferPagesRequest, user: CurrentUser
+) -> BatchOfferStarted:
+    """Queues the update on each chosen page; one that can't take it says why."""
+    require_org_member(user, body.org_id)
+    try:
+        pages = _offer_call(
+            offer_change.update_pages, body.org_id, offer_id, user.id, body.build_ids
+        )
+    except offer_change.OfferNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, OFFER_GONE) from exc
+    return BatchOfferStarted(pages=[BatchOfferPage.model_validate(p) for p in pages])
+
+
+# ── Approve and publish all (B7.3b, D148) ────────────────────────────────────
+
+
+class PublishAllRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: UUID
+    build_ids: list[UUID] = Field(min_length=1, max_length=40)
+    override: bool = False
+
+
+@app.get("/builds/batch/{batch_id}/publish-all")
+def publish_all_plan(batch_id: UUID, org_id: UUID, user: CurrentUser) -> publish_all.PublishAllPlan:
+    """What Approve and publish all would do with each of the batch's pages."""
+    require_org_member(user, org_id)
+    try:
+        return publish_all.plan(org_id, batch_id)
+    except publishing.PublishNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That batch isn't available.") from exc
+
+
+@app.post("/builds/batch/{batch_id}/publish-all", status_code=status.HTTP_202_ACCEPTED)
+def publish_all_start(
+    batch_id: UUID, body: PublishAllRequest, user: CurrentUser
+) -> publish_all.PublishAllStarted:
+    """Approves the chosen pages and puts them live again where they were live."""
+    require_org_member(user, body.org_id)
+    try:
+        planned = publish_all.plan(body.org_id, batch_id)
+        return publish_all.start(body.org_id, planned, user.id, body.build_ids, body.override)
+    except publishing.PublishNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That batch isn't available.") from exc
+
+
+class OfferPublishAllRequest(PublishAllRequest):
+    build_ids: list[UUID] = Field(min_length=1, max_length=MAX_OFFER_PAGES)
+
+
+@app.get("/offers/{offer_id}/publish-all")
+def offer_publish_all_plan(
+    offer_id: UUID, org_id: UUID, user: CurrentUser
+) -> publish_all.PublishAllPlan:
+    """What Approve and publish all would do with each page selling the offer (B7.4)."""
+    require_org_member(user, org_id)
+    try:
+        return publish_all.plan_offer(org_id, offer_id)
+    except publishing.PublishNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No pages sell that offer.") from exc
+
+
+@app.post("/offers/{offer_id}/publish-all", status_code=status.HTTP_202_ACCEPTED)
+def offer_publish_all_start(
+    offer_id: UUID, body: OfferPublishAllRequest, user: CurrentUser
+) -> publish_all.PublishAllStarted:
+    """Approves the chosen pages selling the offer and puts them live again where they were."""
+    require_org_member(user, body.org_id)
+    try:
+        planned = publish_all.plan_offer(body.org_id, offer_id)
+        return publish_all.start(body.org_id, planned, user.id, body.build_ids, body.override)
+    except publishing.PublishNotFoundError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No pages sell that offer.") from exc
 
 
 # ── Review desk (BUILD_SPEC §11.1, D84) ──────────────────────────────────────

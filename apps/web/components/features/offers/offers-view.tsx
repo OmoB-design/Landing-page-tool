@@ -39,6 +39,7 @@ import {
 import type { OfferFormValues } from "@/lib/validators/offer";
 
 import { OfferDialog } from "./offer-dialog";
+import { UpdatePagesDialog } from "./update-pages-dialog";
 
 const ITEM =
   "rounded-xsm px-1 py-0.5 text-type-caption-1 font-medium text-heading-02 focus:bg-foreground-03 focus:text-heading-02";
@@ -49,8 +50,10 @@ type Editing = { offer: OfferRow | null } | null;
  * A brand's Offers tab (B7.2a, D146; no Figma frame, drawn from the Products and Pages tabs): a bar
  * with how many offers there are and New offer, then a 48 px row per offer: its tag, the name
  * (Default beside the one new pages start with), the promo line, how the customer gets it, the
- * price change and how many pages use it, then the ⋯ (Edit, Make default, Archive). A row opens
- * Edit. Without offers, the empty state offers New offer.
+ * price change and how many pages use it (and how many are out of date, or being updated), then
+ * the ⋯ (Edit, Update pages…, Make default, Archive). A row opens Edit. Saving an edit that leaves
+ * pages out of date opens Update the N pages that use it (B7.4, D149). Without offers, the empty
+ * state offers New offer.
  */
 export function OffersView({
   brandId,
@@ -66,6 +69,10 @@ export function OffersView({
   const router = useRouter();
   const [editing, setEditing] = useState<Editing>(null);
   const [archiving, setArchiving] = useState<OfferRow | null>(null);
+  const [updatingPages, setUpdatingPages] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   // Whether the brand has a default already: from the list, or from a save the list hasn't caught
   // up with yet (a second New offer straight after the first mustn't think there's none).
@@ -83,6 +90,8 @@ export function OffersView({
       toast.success(offer ? "Offer saved" : `${values.name} added`);
       if (result.error) toast.error(result.error);
       router.refresh();
+      if (offer && (result.outOfDate ?? 0) > 0)
+        setUpdatingPages({ id: offer.id, name: values.name });
     }
     return result;
   };
@@ -141,6 +150,9 @@ export function OffersView({
                     offer={offer}
                     currency={currency}
                     onEdit={() => setEditing({ offer })}
+                    onUpdatePages={() =>
+                      setUpdatingPages({ id: offer.id, name: offer.name })
+                    }
                     onMakeDefault={() => void makeDefault(offer)}
                     onArchive={() => setArchiving(offer)}
                   />
@@ -150,6 +162,14 @@ export function OffersView({
           </div>
         </>
       )}
+      {updatingPages ? (
+        <UpdatePagesDialog
+          open
+          onOpenChange={(open) => (open ? null : setUpdatingPages(null))}
+          offerId={updatingPages.id}
+          offerName={updatingPages.name}
+        />
+      ) : null}
       <OfferDialog
         open={editing !== null}
         onOpenChange={(open) => (open ? null : setEditing(null))}
@@ -213,12 +233,14 @@ function OfferListRow({
   offer,
   currency,
   onEdit,
+  onUpdatePages,
   onMakeDefault,
   onArchive,
 }: {
   offer: OfferRow;
   currency: string;
   onEdit: () => void;
+  onUpdatePages: () => void;
   onMakeDefault: () => void;
   onArchive: () => void;
 }) {
@@ -259,8 +281,19 @@ function OfferListRow({
           <span className="text-type-caption-1 font-medium text-heading-02 tabular-nums">
             {priceChangeLabel(offer, currency)}
           </span>
-          <span className="w-16 text-right text-type-caption-1 text-sub-text tabular-nums">
-            {offer.pages === 1 ? "1 page" : `${offer.pages} pages`}
+          <span className="min-w-16 text-right text-type-caption-1 text-sub-text tabular-nums">
+            {offer.updating > 0 ? (
+              <span className="font-medium text-heading-02">
+                {`Updating ${offer.updating} ${offer.updating === 1 ? "page" : "pages"}…`}
+              </span>
+            ) : (
+              <>
+                {offer.pages === 1 ? "1 page" : `${offer.pages} pages`}
+                {offer.outOfDate > 0 ? (
+                  <span className="font-medium text-heading-02">{` · ${offer.outOfDate} out of date`}</span>
+                ) : null}
+              </>
+            )}
           </span>
         </span>
       </button>
@@ -282,6 +315,11 @@ function OfferListRow({
           <DropdownMenuItem className={ITEM} onSelect={onEdit}>
             Edit
           </DropdownMenuItem>
+          {offer.pages > 0 ? (
+            <DropdownMenuItem className={ITEM} onSelect={onUpdatePages}>
+              Update pages…
+            </DropdownMenuItem>
+          ) : null}
           {offer.is_default ? null : (
             <DropdownMenuItem className={ITEM} onSelect={onMakeDefault}>
               Make default
