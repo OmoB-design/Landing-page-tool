@@ -16,6 +16,7 @@ import { ListRow } from "@/components/app/grouped-list";
 import { PageHeader } from "@/components/app/page-header";
 import {
   CostLabel,
+  OfferBadge,
   OriginBadge,
   PersonAvatar,
   RelativeTime,
@@ -31,7 +32,7 @@ import { BuildSpinnerIcon } from "@/components/ui/lp-icons";
 import { Spinner } from "@/components/ui/spinner";
 import { MorphText } from "@/components/ui/text-morph";
 import { apiFetch } from "@/lib/api/client";
-import { RESIDUE_MIN_SCORE, copyLabel } from "@/lib/pages/list";
+import { RESIDUE_MIN_SCORE } from "@/lib/pages/list";
 import { cn } from "@/lib/utils";
 import {
   type BatchPage,
@@ -216,7 +217,6 @@ export function BatchView({
                           }
                           onChanged={() => void batch.refetch()}
                           brandId={data.brand_id}
-                          parentOffer={page.offer_name}
                           branch={{
                             first: index === 0,
                             last: index === copies.length - 1,
@@ -407,7 +407,6 @@ function BatchRow({
   copies = 0,
   branch,
   brandId = null,
-  parentOffer = null,
   children,
 }: {
   page: BatchPage;
@@ -415,8 +414,6 @@ function BatchRow({
   onChanged: () => void;
   /** For Duplicate with offers (B7.3a). */
   brandId?: string | null;
-  /** The original's offer: a copy selling another one says it (B7.3a). */
-  parentOffer?: string | null;
   /** How many copies hang under it (B7.1). */
   copies?: number;
   branch?: { first: boolean; last: boolean };
@@ -455,7 +452,7 @@ function BatchRow({
       href={href}
       title={
         branch && page.copy_number ? (
-          copyLabel(page.copy_number, page.offer_name, parentOffer)
+          `Copy ${page.copy_number}`
         ) : copies > 0 ? (
           <>
             {page.template_name}
@@ -494,6 +491,7 @@ function BatchRow({
           {page.residue_score !== null ? (
             <ScoreChip score={page.residue_score} min={RESIDUE_MIN_SCORE} />
           ) : null}
+          {page.offer_name ? <OfferBadge name={page.offer_name} /> : null}
           <OriginBadge origin={page.origin} />
           <span className="text-type-caption-1 text-sub-text tabular-nums">
             {building ? (

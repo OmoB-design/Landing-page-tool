@@ -1770,3 +1770,10 @@ as new entries.
 - **Verification:** worker ruff, format, mypy clean, pytest 536 passed and 1 failed: the tenant-isolation pgTAP, broken by a test workspace an interrupted earlier run left behind (removed; `pnpm test:db` then 7 passed). Web typecheck, lint, tokens, prettier, vitest 337 passed (the update window's tests again after the last polish), `pnpm e2e` passed. In the browser (throwaway account, mock worker, deleted afterwards): editing Ten off opened Update the 3 pages, Not now left "3 pages · 3 out of date", Update pages… reopened it, the pages went Waiting · 1st in line → Starting → Updated, then Approve and publish all listed them.
 - **Owner confirmed:** no
 - **Next:** the owner tests B7.3b, the fixes after it, and B7.4 together; then M8 (A/B testing), on the owner's go.
+
+### Fix after B7.4 — every page of a batch shows its offer
+- **Status:** complete (owner, 2026-11-12: "i changed all of the pages to ten off, and i can't see the tag on the folder page for all the pages")
+- **Summary:** a batch's screen showed an offer only on a copy selling another offer than its original ("Copy 2 · Ten off"), so with every page on Ten off no row said it. Now every page with an offer has an offer tag (the offer icon and its current name, drawn as the Owned badge) beside its status; a copy's title is just "Copy 2". The Pages lists keep "Copy 2 · Ten off" for a copy selling another offer.
+- **Key files:** `apps/web/components/app/row-meta.tsx` (`OfferBadge`), `apps/web/components/features/builds/batch-view.tsx` (+ test).
+- **Verification:** web typecheck, lint, tokens, prettier; batch screen tests 12 passed (new: every page tagged, copies too). In the browser (throwaway account, deleted afterwards), light and dark: BRE-1 and its Copy 1 and Copy 2 each show "Ten off".
+- **Owner confirmed:** no

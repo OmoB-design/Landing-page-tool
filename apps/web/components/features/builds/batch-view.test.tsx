@@ -254,6 +254,41 @@ describe("batch page (B3.5b, B3.5c)", () => {
 });
 
 describe("families (B7.1)", () => {
+  it("tags every page with the offer it sells, copies too (owner, 2026-11-12)", async () => {
+    const [first] = STATE.pages;
+    if (!first) throw new Error("no page");
+    const offered = { ...first, offer_id: "o1", offer_name: "Ten off" };
+    const state = {
+      ...STATE,
+      pages: [
+        offered,
+        {
+          ...offered,
+          id: "c1",
+          key: "LUM-9",
+          parent_id: first.id,
+          copy_number: 1,
+        },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(state), { status: 200 })),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <BatchView batchId="b1" me={{ id: "me", name: "Ada" }} />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+    const rows = within(
+      await screen.findByRole("list", { name: "Pages in this batch" }),
+    );
+    expect(rows.getAllByTitle("Ten off")).toHaveLength(2);
+    expect(rows.getByText("Copy 1")).toBeTruthy();
+  });
+
   it("puts each copy under the page it was copied from, in the order made", () => {
     const [first] = STATE.pages;
     if (!first) throw new Error("no page");

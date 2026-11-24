@@ -1,5 +1,6 @@
 import { formatDistanceToNowStrict } from "date-fns";
 
+import { OfferIcon } from "@/components/ui/icons";
 import { ScoreShieldIcon } from "@/components/ui/lp-icons";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,22 @@ export function OriginBadge({ origin }: { origin: "owned" | "cloned" }) {
   return (
     <span className="flex shrink-0 items-center rounded-sm px-1.5 text-type-caption-1 text-sub-text ring-thin ring-stroke">
       {origin === "cloned" ? "Cloned" : "Owned"}
+    </span>
+  );
+}
+
+/**
+ * The deal a page sells (its offer's current name), as the Owned badge with the offer tag
+ * (owner, 2026-11-12: every page of a batch shows its offer, not only a copy selling another).
+ */
+export function OfferBadge({ name }: { name: string }) {
+  return (
+    <span
+      title={name}
+      className="flex max-w-32 shrink-0 items-center gap-1 rounded-sm px-1.5 text-type-caption-1 text-sub-text ring-thin ring-stroke"
+    >
+      <OfferIcon aria-hidden className="size-3 shrink-0" />
+      <span className="truncate">{name}</span>
     </span>
   );
 }
