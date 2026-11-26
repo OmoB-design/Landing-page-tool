@@ -1,0 +1,30 @@
+{
+  "slug": "sales-keyword-match",
+  "name": "Sales page: search keyword match",
+  "type": "long_form",
+  "description": "A long single-product sales page for search traffic: the headline says the visitor's search back, then proof in numbers, why it's different, how it works, the key ingredient, what you'll notice over eight weeks, what's inside, who it's for, the product box, reviews, FAQ, a final offer and a buy bar that stays on screen.",
+  "source_palette": {
+    "primary": "#2f3a36",
+    "dark": "#1c2422",
+    "tint": "#eef1ec",
+    "accent": "#b9876a"
+  },
+  "sections": [
+    { "key": "top-bar", "role": "other", "label": "Shipping and offer bar", "removable": true, "duplicable": false },
+    { "key": "header", "role": "other", "label": "Header", "removable": false, "duplicable": false },
+    { "key": "hero", "role": "hero", "label": "Keyword headline and buy", "removable": false, "duplicable": false },
+    { "key": "proof", "role": "social_proof", "label": "Proof in numbers", "removable": true, "duplicable": false },
+    { "key": "different", "role": "mechanism", "label": "Why it's different", "removable": true, "duplicable": false },
+    { "key": "how-it-works", "role": "benefits", "label": "How it works", "removable": true, "duplicable": false },
+    { "key": "key-ingredient", "role": "mechanism", "label": "The key ingredient", "removable": true, "duplicable": true },
+    { "key": "timeline", "role": "benefits", "label": "What you'll notice", "removable": true, "duplicable": false },
+    { "key": "ingredients", "role": "ingredients", "label": "What's inside", "removable": true, "duplicable": false },
+    { "key": "made-for-you", "role": "other", "label": "Made for you if", "removable": true, "duplicable": false },
+    { "key": "product", "role": "offer", "label": "Product box", "removable": false, "duplicable": false },
+    { "key": "reviews", "role": "testimonials", "label": "Reviews", "removable": true, "duplicable": false },
+    { "key": "faq", "role": "faq", "label": "Questions", "removable": true, "duplicable": false },
+    { "key": "final-cta", "role": "footer_cta", "label": "Final offer", "removable": true, "duplicable": false },
+    { "key": "footer", "role": "other", "label": "Footer", "removable": false, "duplicable": false },
+    { "key": "buy-bar", "role": "cta", "label": "Buy bar", "removable": true, "duplicable": false }
+  ]
+}

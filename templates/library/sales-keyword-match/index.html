@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retinol Serum for Beginners | Nuvael Overnight Renewal Serum</title>
+<meta name="description" content="A gentle retinol serum for beginners: encapsulated retinal with ceramides for smoother, brighter-looking skin without the redness.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Brand (swapped per brand at build time) */
+    --lp-primary: #2f3a36;
+    --lp-primary-dark: #1c2422;
+    --lp-tint: #eef1ec;
+    --lp-accent: #b9876a;
+    --lp-on-primary: #ffffff;
+    --lp-on-accent: #1c2422;
+    --lp-on-dark: #ffffff;
+    --lp-heading-font: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --lp-body-font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    /* Page neutrals (the template's own) */
+    --paper: #faf9f6;
+    --card: #ffffff;
+    --ink: #1d2120;
+    --muted: #5d6562;
+    --line: #e5e5df;
+    --star: #c59a3f;
+    --radius: 20px;
+    --radius-lg: 28px;
+    --wrap: 1120px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--lp-body-font);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 84px; /* room for the buy bar */
+  }
+  img { display: block; max-width: 100%; height: auto; }
+  a { color: inherit; }
+  h1, h2, h3 {
+    font-family: var(--lp-heading-font);
+    font-weight: 400;
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 { font-size: 44px; }
+  h2 { font-size: 36px; }
+  h3 { font-size: 24px; }
+  p { margin: 0; }
+  .wrap { width: 100%; max-width: var(--wrap); margin: 0 auto; padding: 0 20px; }
+  .section { padding: 72px 0; }
+  .kicker {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .lede { font-size: 17px; color: var(--muted); max-width: 560px; }
+  .center { text-align: center; }
+  .center .lede { margin-left: auto; margin-right: auto; }
+  .head { display: grid; gap: 14px; margin-bottom: 40px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 56px;
+    padding: 0 30px;
+    border-radius: 999px;
+    background: var(--lp-primary);
+    color: var(--lp-on-primary);
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    text-align: center;
+    transition: transform .15s ease, background .15s ease;
+  }
+  .btn:hover { background: var(--lp-primary-dark); }
+  .btn:active { transform: scale(.98); }
+  .btn-block { width: 100%; }
+  .btn svg { width: 18px; height: 18px; }
+
+  /* Stars */
+  .stars { display: inline-flex; gap: 2px; color: var(--star); }
+  .stars svg { width: 16px; height: 16px; }
+  .rating { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); }
+  .rating strong { color: var(--ink); font-weight: 700; }
+
+  /* Ticks */
+  .ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .ticks li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+  .ticks svg { flex: none; width: 20px; height: 20px; margin-top: 2px; color: var(--lp-primary); }
+
+  /* 1. Top bar */
+  .topbar {
+    background: var(--lp-primary-dark);
+    color: var(--lp-on-dark);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .topbar .wrap { display: flex; justify-content: center; gap: 18px; padding-top: 10px; padding-bottom: 10px; flex-wrap: wrap; text-align: center; }
+  .topbar .sep { opacity: .45; }
+
+  /* 2. Header */
+  .header { border-bottom: 1px solid var(--line); background: var(--paper); }
+  .header .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .header img { height: 22px; width: auto; }
+  .header nav { display: none; gap: 28px; font-size: 14px; font-weight: 600; }
+  .header nav a { text-decoration: none; color: var(--muted); }
+  .header nav a:hover { color: var(--ink); }
+  .header .shop { font-size: 14px; font-weight: 700; text-decoration: none; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--ink); }
+
+  /* 3. Hero */
+  .hero { padding: 36px 0 72px; }
+  .hero-grid { display: grid; gap: 28px; grid-template-areas: "copy" "media" "buy"; }
+  .hero-copy { grid-area: copy; display: grid; gap: 18px; }
+  .hero-media { grid-area: media; position: relative; }
+  .hero-media img { width: 100%; aspect-ratio: 4 / 4.2; object-fit: cover; border-radius: var(--radius-lg); }
+  .hero-media .chip {
+    position: absolute; left: 16px; bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 14px;
+    background: rgba(255, 255, 255, .92);
+    backdrop-filter: blur(6px);
+    font-size: 13px; font-weight: 600;
+  }
+  .hero-media .chip img { width: 36px; height: 36px; border-radius: 50%; aspect-ratio: 1; }
+  .hero-buy { grid-area: buy; display: grid; gap: 18px; }
+  .price { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .price .now { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+  .price s { font-size: 18px; color: var(--muted); }
+  .badge {
+    display: inline-block;
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--lp-accent); color: var(--lp-on-accent);
+    font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .guarantee-line { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); }
+  .guarantee-line svg { width: 18px; height: 18px; flex: none; }
+
+  /* 4. Proof */
+  .proof { background: var(--lp-tint); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 16px; }
+  .stat { text-align: center; display: grid; gap: 4px; }
+  .stat .num { font-family: var(--lp-heading-font); font-size: 44px; line-height: 1; }
+  .stat .label { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .badges { list-style: none; margin: 40px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .badges li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--line);
+    font-size: 14px; font-weight: 600;
+  }
+  .badges svg { width: 18px; height: 18px; color: var(--lp-primary); }
+
+  /* 5. Why it's different */
+  .split { display: grid; gap: 32px; align-items: center; }
+  .split img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-lg); }
+  .split .copy { display: grid; gap: 16px; }
+  .split .copy p { color: var(--muted); font-size: 17px; }
+
+  /* 6. How it works */
+  .steps { display: grid; gap: 16px; }
+  .step {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 28px; display: grid; gap: 10px;
+  }
+  .step .n { font-family: var(--lp-heading-font); font-size: 56px; line-height: .9; color: var(--lp-accent); }
+  .step p { color: var(--muted); }
+
+  /* 7. Key ingredient */
+  .feature { background: var(--lp-primary-dark); color: var(--lp-on-dark); }
+  .feature .kicker { color: inherit; opacity: .7; }
+  .feature .split .copy p { color: inherit; opacity: .82; }
+  .feature .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+  .feature .facts div { border-top: 1px solid currentColor; padding-top: 12px; }
+  .feature .facts strong { display: block; font-family: var(--lp-heading-font); font-weight: 400; font-size: 32px; line-height: 1.1; }
+  .feature .facts span { font-size: 14px; opacity: .8; }
+
+  /* 8. Timeline */
+  .timeline { background: var(--lp-tint); }
+  .weeks { display: grid; gap: 16px; }
+  .week {
+    position: relative;
+    background: var(--card); border-radius: var(--radius); padding: 28px;
+    display: grid; gap: 10px;
+    border: 1px solid var(--line);
+  }
+  .week .when { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lp-primary); }
+  .week .bar { height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .week .bar span { display: block; height: 100%; background: var(--lp-accent); border-radius: 4px; }
+  .week p { color: var(--muted); }
+  .note { margin-top: 24px; font-size: 13px; color: var(--muted); text-align: center; }
+
+  /* 9. Ingredients */
+  .ingredients { display: grid; gap: 12px; }
+  .ingredient {
+    display: grid; grid-template-columns: 52px 1fr; gap: 16px; align-items: start;
+    padding: 22px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line);
+  }
+  .dot {
+    width: 52px; height: 52px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--lp-tint); color: var(--lp-primary);
+    font-family: var(--lp-heading-font); font-size: 22px;
+  }
+  .ingredient h3 { font-family: var(--lp-body-font); font-size: 17px; font-weight: 700; letter-spacing: 0; line-height: 1.3; }
+  .ingredient p { font-size: 15px; color: var(--muted); margin-top: 4px; }
+
+  /* 10. Made for you if */
+  .fit { display: grid; gap: 32px; align-items: start; }
+  .fit .ticks li { font-size: 17px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .fit .ticks li:last-child { border-bottom: 0; }
+  .quote {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 28px; display: grid; gap: 18px;
+  }
+  .quote blockquote { margin: 0; font-family: var(--lp-heading-font); font-size: 26px; line-height: 1.25; }
+  .who { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+  .who img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+  .who strong { display: block; font-weight: 700; }
+  .who span { color: var(--muted); }
+
+  /* 11. Product box */
+  .product { background: var(--card); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .pbox { display: grid; gap: 32px; }
+  .gallery { display: grid; gap: 12px; }
+  .gallery .main { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-lg); background: var(--lp-tint); }
+  .gallery .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .gallery .thumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 14px; }
+  .pinfo { display: grid; gap: 18px; align-content: start; }
+  .pinfo h2 { font-size: 36px; }
+  .included { border-top: 1px solid var(--line); padding-top: 18px; }
+  .secure { font-size: 13px; color: var(--muted); text-align: center; }
+
+  /* 12. Reviews */
+  .reviews-grid { display: grid; gap: 16px; }
+  .review {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px; display: grid; gap: 14px; align-content: start;
+  }
+  .review h3 { font-family: var(--lp-body-font); font-size: 17px; font-weight: 700; letter-spacing: 0; line-height: 1.35; }
+  .review p { color: var(--muted); font-size: 15px; }
+  .summary { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 8px; font-size: 15px; color: var(--muted); }
+  .summary strong { font-size: 18px; color: var(--ink); }
+
+  /* 13. FAQ */
+  .faq .wrap { max-width: 800px; }
+  .faq details { border-bottom: 1px solid var(--line); }
+  .faq summary {
+    list-style: none; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    padding: 22px 0; font-size: 17px; font-weight: 600;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after {
+    content: ""; flex: none; width: 12px; height: 12px;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: rotate(45deg) translate(-3px, -3px); transition: transform .2s ease;
+  }
+  .faq details[open] summary::after { transform: rotate(-135deg) translate(-3px, -3px); }
+  .faq details p { padding: 0 0 22px; color: var(--muted); max-width: 680px; }
+
+  /* 14. Final CTA */
+  .final { background: var(--lp-tint); }
+  .final .card {
+    display: grid; gap: 22px; justify-items: center; text-align: center;
+    background: var(--card); border-radius: var(--radius-lg); padding: 44px 24px;
+    border: 1px solid var(--line);
+  }
+  .final .card img { width: 180px; aspect-ratio: 1; object-fit: cover; border-radius: 50%; }
+  .final .card .btn { width: 100%; max-width: 380px; }
+
+  /* 15. Footer */
+  .footer { background: var(--lp-primary-dark); color: var(--lp-on-dark); padding: 48px 0 40px; font-size: 13px; }
+  .footer .wrap { display: grid; gap: 18px; }
+  .footer .brand { font-family: var(--lp-heading-font); font-size: 28px; letter-spacing: 0.08em; }
+  .footer nav { display: flex; flex-wrap: wrap; gap: 18px; }
+  .footer nav a { text-decoration: none; opacity: .8; }
+  .footer .legal { opacity: .6; max-width: 720px; }
+
+  /* Buy bar (stays on screen) */
+  .buybar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    background: rgba(255, 255, 255, .96);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, .06);
+  }
+  .buybar .wrap { display: flex; align-items: center; gap: 14px; padding-top: 10px; padding-bottom: 10px; }
+  .buybar img { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; }
+  .buybar .what { flex: 1; min-width: 0; display: grid; line-height: 1.3; }
+  .buybar .name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .buybar .meta { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .buybar .meta strong { color: var(--ink); }
+  .buybar .btn { min-height: 48px; padding: 0 22px; font-size: 15px; }
+  .buybar .meta .stars svg { width: 12px; height: 12px; }
+  .buybar .hide-sm { display: none; }
+
+  @media (min-width: 640px) {
+    .stats { grid-template-columns: repeat(4, 1fr); }
+    .ingredients { grid-template-columns: 1fr 1fr; }
+    .buybar .hide-sm { display: inline; }
+  }
+
+  @media (min-width: 960px) {
+    h1 { font-size: 64px; }
+    h2 { font-size: 48px; }
+    .section { padding: 112px 0; }
+    .header nav { display: flex; }
+    .hero { padding: 56px 0 112px; }
+    .hero-grid {
+      grid-template-columns: 1.02fr .98fr;
+      grid-template-areas: "copy media" "buy media";
+      column-gap: 64px; row-gap: 32px;
+      align-items: start;
+    }
+    .hero-copy { align-self: end; }
+    .hero-media img { aspect-ratio: 4 / 4.6; }
+    .hero-buy .btn { width: auto; min-width: 280px; }
+    .split { grid-template-columns: 1fr 1fr; gap: 72px; }
+    .split.flip .copy { order: 2; }
+    .steps, .weeks, .reviews-grid { grid-template-columns: repeat(3, 1fr); }
+    .ingredients { grid-template-columns: repeat(3, 1fr); }
+    .fit { grid-template-columns: 1.1fr .9fr; gap: 72px; }
+    .pbox { grid-template-columns: 1fr 1fr; gap: 72px; }
+    .pinfo h2 { font-size: 44px; }
+    .final .card { padding: 72px 48px; }
+    .footer .wrap { grid-template-columns: 1fr auto; align-items: center; }
+    .footer .legal { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1. Shipping and offer bar -->
+<div class="topbar" data-lp-section="top-bar" data-lp-role="other">
+  <div class="wrap">
+    <span>Free shipping on orders over $50</span>
+    <span class="sep" aria-hidden="true" data-lp-sale-only>•</span>
+    <span data-lp-promo>First-timer offer: <span data-lp-sale-percent>20%</span> off your first bottle</span>
+  </div>
+</div>
+
+<!-- 2. Header -->
+<header class="header" data-lp-section="header" data-lp-role="other">
+  <div class="wrap">
+    <img data-lp-logo src="assets/logo.svg" alt="Nuvael" width="132" height="28">
+    <nav aria-label="Page">
+      <a href="#how">How it works</a>
+      <a href="#ingredients">Ingredients</a>
+      <a href="#reviews">Reviews</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="shop" href="#product" data-lp-cta>Shop</a>
+  </div>
+</header>
+
+<main>
+
+<!-- 3. Hero: the search term, said back -->
+<section class="hero" data-lp-section="hero" data-lp-role="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="kicker">Gentle night serum · <span data-lp-brand>Nuvael</span></p>
+      <h1>A retinol serum for beginners that skips the redness.</h1>
+      <p class="lede">Encapsulated retinal releases slowly while you sleep, so you get smoother, brighter-looking skin without the peeling most first-timers quit over.</p>
+      <div class="rating">
+        <span class="stars" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        </span>
+        <span><strong>4.8</strong> from 2,140 reviews</span>
+      </div>
+    </div>
+    <div class="hero-media">
+      <img data-lp-product src="assets/product.jpg" alt="Overnight Renewal Serum bottle with its dropper" width="1440" height="1160">
+      <div class="chip">
+        <img data-lp-person src="assets/person-1.jpg" alt="" width="36" height="36">
+        <span>“No flaking, even in week one.”</span>
+      </div>
+    </div>
+    <div class="hero-buy">
+      <div class="price">
+        <span class="now" data-lp-price>$58</span>
+        <s data-lp-compare-price>$72</s>
+        <span class="badge" data-lp-sale-only>Save <span data-lp-sale-percent>20%</span></span>
+      </div>
+      <a class="btn btn-block" href="#product" data-lp-cta><span>Get <span data-lp-product-name>Overnight Renewal Serum</span></span>
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>
+      </a>
+      <ul class="ticks" data-lp-usps>
+        <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg><span data-lp-usp-text>Dermatologist tested on sensitive skin</span></li>
+        <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg><span data-lp-usp-text>Fragrance free, vegan and cruelty-free</span></li>
+        <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg><span data-lp-usp-text>About two months in every bottle</span></li>
+      </ul>
+      <p class="guarantee-line">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M10 2 3.5 4.5v5c0 4 2.8 6.9 6.5 8.5 3.7-1.6 6.5-4.5 6.5-8.5v-5z"/></svg>
+        60-night money-back trial
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Proof in numbers -->
+<section class="section proof" data-lp-section="proof" data-lp-role="social_proof">
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat"><span class="num">4.8</span><span class="label">Average rating</span></div>
+      <div class="stat"><span class="num">2,140</span><span class="label">Verified reviews</span></div>
+      <div class="stat"><span class="num">60</span><span class="label">Night trial</span></div>
+      <div class="stat"><span class="num">0</span><span class="label">Fragrance added</span></div>
+    </div>
+    <ul class="badges">
+      <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>Dermatologist tested</li>
+      <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>Fragrance free</li>
+      <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>Vegan</li>
+      <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>Cruelty-free</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 5. Why it's different -->
+<section class="section" data-lp-section="different" data-lp-role="mechanism">
+  <div class="wrap split">
+    <div class="copy">
+      <p class="kicker">Why it's different</p>
+      <h2>Not your usual retinol.</h2>
+      <p>Most retinol serums hit your skin all at once. That's why first-timers get dry patches and give up by week two.</p>
+      <p>This one wraps a gentle retinal in tiny lipid capsules that open through the night, with ceramides that keep your skin barrier calm while it works.</p>
+    </div>
+    <img data-lp-scene src="assets/scene-textures.jpg" alt="Three serum textures side by side" width="1400" height="800" loading="lazy">
+  </div>
+</section>
+
+<!-- 6. How it works -->
+<section class="section" id="how" data-lp-section="how-it-works" data-lp-role="benefits">
+  <div class="wrap">
+    <div class="head center">
+      <p class="kicker">How it works</p>
+      <h2>Three steps, once a night.</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="n" data-lp-number>1</span>
+        <h3>Cleanse and pat dry</h3>
+        <p>Start on clean, completely dry skin. Damp skin takes in retinoids faster than it needs to.</p>
+      </div>
+      <div class="step">
+        <span class="n" data-lp-number>2</span>
+        <h3>Press in two drops</h3>
+        <p>Warm two drops between your fingertips and press them over your face, avoiding the eye area.</p>
+      </div>
+      <div class="step">
+        <span class="n" data-lp-number>3</span>
+        <h3>Wake up, then SPF</h3>
+        <p>Your moisturiser in the morning, then sunscreen. Start every other night for the first two weeks.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. The key ingredient -->
+<section class="section feature" data-lp-section="key-ingredient" data-lp-role="mechanism">
+  <div class="wrap split flip">
+    <div class="copy">
+      <p class="kicker">The key ingredient</p>
+      <h2>Encapsulated retinal.</h2>
+      <p>Retinal is one step closer to the form your skin actually uses, so a lower dose does the work. The capsule sets the pace, releasing it slowly over the night instead of all at once.</p>
+      <div class="facts">
+        <div><strong>0.1%</strong><span>retinal, released slowly</span></div>
+        <div><strong>3</strong><span>barrier-calming ceramides</span></div>
+      </div>
+    </div>
+    <img data-lp-scene src="assets/scene-hands-dropper.jpg" alt="Drops of serum on a palm from a glass dropper" width="1400" height="934" loading="lazy">
+  </div>
+</section>
+
+<!-- 8. What you'll notice -->
+<section class="section timeline" data-lp-section="timeline" data-lp-role="benefits">
+  <div class="wrap">
+    <div class="head center">
+      <p class="kicker">What you'll notice</p>
+      <h2>Your first eight weeks.</h2>
+    </div>
+    <div class="weeks">
+      <div class="week">
+        <span class="when">Week 1</span>
+        <div class="bar" aria-hidden="true"><span style="width: 18%"></span></div>
+        <h3>Softer, no tightness</h3>
+        <p>Skin feels comfortable after the first nights, with none of the sting you may expect from retinol.</p>
+      </div>
+      <div class="week">
+        <span class="when">Week 4</span>
+        <div class="bar" aria-hidden="true"><span style="width: 55%"></span></div>
+        <h3>Smoother texture</h3>
+        <p>Rough patches look smoother and makeup sits better through the day.</p>
+      </div>
+      <div class="week">
+        <span class="when">Week 8</span>
+        <div class="bar" aria-hidden="true"><span style="width: 100%"></span></div>
+        <h3>A more even glow</h3>
+        <p>Tone looks more even and brighter, and fine lines look softer.</p>
+      </div>
+    </div>
+    <p class="note" data-lp-lock>How most customers describe their first two months. Everyone's skin is different.</p>
+  </div>
+</section>
+
+<!-- 9. Ingredients -->
+<section class="section" id="ingredients" data-lp-section="ingredients" data-lp-role="ingredients">
+  <div class="wrap">
+    <div class="head center">
+      <p class="kicker">What's inside</p>
+      <h2>Six ingredients, each with a job.</h2>
+      <p class="lede">No fragrance, no essential oils, nothing just for show.</p>
+    </div>
+    <div class="ingredients">
+      <div class="ingredient"><span class="dot" data-lp-number>1</span><div><h3>Encapsulated retinal</h3><p>Renews the look of skin overnight, released slowly so it stays gentle.</p></div></div>
+      <div class="ingredient"><span class="dot" data-lp-number>2</span><div><h3>Ceramide NP</h3><p>Helps keep the skin barrier strong while retinal works.</p></div></div>
+      <div class="ingredient"><span class="dot" data-lp-number>3</span><div><h3>Squalane</h3><p>A light, non-greasy oil that keeps skin supple.</p></div></div>
+      <div class="ingredient"><span class="dot" data-lp-number>4</span><div><h3>Panthenol</h3><p>Soothes and holds moisture in where skin feels dry.</p></div></div>
+      <div class="ingredient"><span class="dot" data-lp-number>5</span><div><h3>Bisabolol</h3><p>From chamomile, calms skin that's prone to redness.</p></div></div>
+      <div class="ingredient"><span class="dot" data-lp-number>6</span><div><h3>Hyaluronic acid</h3><p>Draws in water for a plumper, smoother feel.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10. Made for you if -->
+<section class="section" data-lp-section="made-for-you" data-lp-role="other">
+  <div class="wrap fit">
+    <div>
+      <div class="head">
+        <p class="kicker">Made for you if</p>
+        <h2>You've wanted retinol, without the fallout.</h2>
+      </div>
+      <ul class="ticks">
+        <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>You've been curious about retinol but worried about redness.</li>
+        <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>You tried one before and stopped because of peeling.</li>
+        <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>Your skin is sensitive or dries out easily.</li>
+        <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>You want one step at night, not a ten-step routine.</li>
+        <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>You're noticing uneven texture or your first fine lines.</li>
+      </ul>
+    </div>
+    <figure class="quote" style="margin: 0">
+      <span class="stars" aria-label="5 out of 5 stars">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+      </span>
+      <blockquote>“I'd given up on retinol twice. This is the first one I've used for months without a single flaky patch.”</blockquote>
+      <figcaption class="who">
+        <img data-lp-person src="assets/person-2.jpg" alt="" width="44" height="44">
+        <span><strong>Hannah R.</strong><span>Verified buyer, sensitive skin</span></span>
+      </figcaption>
+      <a class="btn btn-block" href="#product" data-lp-cta>Try it for 60 nights</a>
+    </figure>
+  </div>
+</section>
+
+<!-- 11. Product box -->
+<section class="section product" id="product" data-lp-section="product" data-lp-role="offer">
+  <div class="wrap pbox">
+    <div class="gallery">
+      <img class="main" data-lp-product src="assets/product.jpg" alt="Overnight Renewal Serum" width="1440" height="1160" loading="lazy">
+      <div class="thumbs">
+        <img data-lp-scene src="assets/scene-mirror.jpg" alt="Applying serum in the mirror" width="1400" height="934" loading="lazy">
+        <img data-lp-scene src="assets/scene-hands-dropper.jpg" alt="Serum drops on a palm" width="1400" height="934" loading="lazy">
+        <img data-lp-scene src="assets/scene-textures.jpg" alt="Serum textures" width="1400" height="800" loading="lazy">
+      </div>
+    </div>
+    <div class="pinfo">
+      <p class="kicker"><span data-lp-brand>Nuvael</span></p>
+      <h2 data-lp-product-name>Overnight Renewal Serum</h2>
+      <div class="rating">
+        <span class="stars" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        </span>
+        <span><strong>4.8</strong> from 2,140 reviews</span>
+      </div>
+      <p class="lede">A gentle night serum with encapsulated retinal, ceramides and squalane. Made for first-time retinol users and sensitive skin.</p>
+      <div class="price">
+        <span class="now" data-lp-price>$58</span>
+        <s data-lp-compare-price>$72</s>
+        <span class="badge" data-lp-sale-only>Save <span data-lp-sale-percent>20%</span></span>
+      </div>
+      <a class="btn btn-block" href="#product" data-lp-cta>Add to cart</a>
+      <div class="included">
+        <ul class="ticks">
+          <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>30 ml bottle, about two months of nightly use</li>
+          <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>Free shipping on orders over $50</li>
+          <li><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 10.5 4 4 8-9"/></svg>60-night money-back trial, even on an empty bottle</li>
+        </ul>
+      </div>
+      <p class="secure">Secure checkout · Ships in 1–2 business days</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12. Reviews -->
+<section class="section" id="reviews" data-lp-section="reviews" data-lp-role="testimonials">
+  <div class="wrap">
+    <div class="head center">
+      <p class="kicker">Reviews</p>
+      <h2>Loved by 2,140 first-timers.</h2>
+      <div class="summary">
+        <span class="stars" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        </span>
+        <span><strong>4.8</strong> out of 5</span>
+      </div>
+    </div>
+    <div class="reviews-grid">
+      <article class="review">
+        <span class="stars" aria-label="5 out of 5 stars">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        </span>
+        <h3>Finally, a retinol I can use every night</h3>
+        <p>I started every other night like it says. By week three I was using it nightly with no dryness at all. My skin just looks smoother.</p>
+        <div class="who"><img data-lp-person src="assets/person-1.jpg" alt="" width="44" height="44"><span><strong>Maya L.</strong><span>Verified buyer</span></span></div>
+      </article>
+      <article class="review">
+        <span class="stars" aria-label="5 out of 5 stars">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        </span>
+        <h3>Gentle enough for my rosacea-prone skin</h3>
+        <p>I was nervous, but there was no stinging. It feels like a light oil and sinks in fast. Two months in and I've already reordered.</p>
+        <div class="who"><img data-lp-person src="assets/person-2.jpg" alt="" width="44" height="44"><span><strong>Claire D.</strong><span>Verified buyer</span></span></div>
+      </article>
+      <article class="review">
+        <span class="stars" aria-label="5 out of 5 stars">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L10 14.9l-5.3 2.8 1-5.9L1.5 7.7l5.9-.8z"/></svg>
+        </span>
+        <h3>The texture is the best part</h3>
+        <p>No pilling under makeup the next morning, no greasy pillow. My foundation goes on more evenly than it has in years.</p>
+        <div class="who"><img data-lp-person src="assets/person-3.jpg" alt="" width="44" height="44"><span><strong>Sofia M.</strong><span>Verified buyer</span></span></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 13. FAQ -->
+<section class="section faq" id="faq" data-lp-section="faq" data-lp-role="faq">
+  <div class="wrap">
+    <div class="head center">
+      <p class="kicker">Questions</p>
+      <h2>Everything you want to know.</h2>
+    </div>
+    <details open>
+      <summary>Is it okay for sensitive skin?</summary>
+      <p>Yes. The retinal is released slowly and paired with ceramides and bisabolol, and the formula has no fragrance or essential oils. Start every other night for the first two weeks.</p>
+    </details>
+    <details>
+      <summary>How often should I use it?</summary>
+      <p>Every other night for two weeks, then nightly if your skin feels comfortable. Two drops cover the whole face.</p>
+    </details>
+    <details>
+      <summary>Can I use it with vitamin C or exfoliating acids?</summary>
+      <p>Use vitamin C in the morning and this serum at night. Skip strong acid exfoliants on the same night while your skin gets used to it.</p>
+    </details>
+    <details>
+      <summary>When will I see a difference?</summary>
+      <p>Most people say their skin feels softer in the first week and looks smoother by week four. Give it a full eight weeks for tone.</p>
+    </details>
+    <details>
+      <summary>Do I need sunscreen?</summary>
+      <p>Yes. Retinoids make skin more sensitive to the sun, so wear SPF 30 or higher every morning.</p>
+    </details>
+    <details>
+      <summary>Can I use it while pregnant or breastfeeding?</summary>
+      <p>Retinoids aren't recommended during pregnancy or breastfeeding. Please ask your doctor first.</p>
+    </details>
+    <details>
+      <summary>What if it doesn't suit me?</summary>
+      <p>You have 60 nights to try it. If you're not happy, we'll refund you, even if the bottle is empty.</p>
+    </details>
+  </div>
+</section>
+
+<!-- 14. Final CTA -->
+<section class="section final" data-lp-section="final-cta" data-lp-role="footer_cta">
+  <div class="wrap">
+    <div class="card">
+      <img data-lp-product src="assets/product.jpg" alt="Overnight Renewal Serum" width="1440" height="1160" loading="lazy">
+      <h2>Start your first retinol tonight.</h2>
+      <p class="lede">Smoother, brighter-looking skin without the redness, or your money back.</p>
+      <div class="price" style="justify-content: center">
+        <span class="now" data-lp-price>$58</span>
+        <s data-lp-compare-price>$72</s>
+        <span class="badge" data-lp-sale-only>Save <span data-lp-sale-percent>20%</span></span>
+      </div>
+      <a class="btn" href="#product" data-lp-cta><span>Get <span data-lp-product-name>Overnight Renewal Serum</span></span></a>
+      <p class="guarantee-line">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M10 2 3.5 4.5v5c0 4 2.8 6.9 6.5 8.5 3.7-1.6 6.5-4.5 6.5-8.5v-5z"/></svg>
+        60-night money-back trial · Free shipping over $50
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- 15. Footer -->
+<footer class="footer" data-lp-section="footer" data-lp-role="other">
+  <div class="wrap">
+    <span class="brand" data-lp-brand>Nuvael</span>
+    <nav aria-label="Footer">
+      <a href="#how">How it works</a>
+      <a href="#ingredients">Ingredients</a>
+      <a href="#reviews">Reviews</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <p class="legal" data-lp-lock>These statements describe cosmetic effects only. Results vary from person to person.</p>
+  </div>
+</footer>
+
+<!-- Buy bar: stays on screen -->
+<div class="buybar" data-lp-section="buy-bar" data-lp-role="cta">
+  <div class="wrap">
+    <img data-lp-product src="assets/product.jpg" alt="" width="48" height="48">
+    <div class="what">
+      <span class="name" data-lp-product-name>Overnight Renewal Serum</span>
+      <span class="meta">
+        <strong data-lp-price>$58</strong>
+        <s class="hide-sm" data-lp-compare-price>$72</s>
+        <span class="hide-sm">· 4.8 ★ (2,140)</span>
+      </span>
+    </div>
+    <a class="btn" href="#product" data-lp-cta>Add to cart</a>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1777,3 +1777,27 @@ as new entries.
 - **Key files:** `apps/web/components/app/row-meta.tsx` (`OfferBadge`), `apps/web/components/features/builds/batch-view.tsx` (+ test).
 - **Verification:** web typecheck, lint, tokens, prettier; batch screen tests 12 passed (new: every page tagged, copies too). In the browser (throwaway account, deleted afterwards), light and dark: BRE-1 and its Copy 1 and Copy 2 each show "Ten off".
 - **Owner confirmed:** no
+
+### B9.1 — Sales page: search keyword match (template)
+- **Status:** complete (owner: "sign it off", 2026-11-24)
+- **Date:** 2026-11-24
+- **Summary:**
+  - **M9 started** (owner, 2026-11-24): a study of CSS Digital's ten landing pages (structures and angles only, `docs/reference/template-patterns-css-digital.md`), Claude designing each template in code, the owner reviewing it in the browser, the finished design copied into Figma (D150).
+  - **The template** (`templates/library/sales-keyword-match`, type `long_form`): 16 sections from the keyword-match blueprint (offer bar, header, keyword hero with price and buy, proof numbers and trust badges, why it's different, how it works, the key ingredient, a "your first eight weeks" timeline instead of before/after photos, what's inside, made for you if, product box, reviews, FAQ, final offer, footer, a buy bar fixed to the bottom). Instrument Serif and Manrope, slate green and clay through the `--lp-*` brand variables; the markup contract throughout (prices and the offer's promo bar, sale-only parts, product, scene and person images, brand and product names, selling points, numbered steps, locked legal lines).
+  - **Sample brand** Nuvael (made up) with Unsplash photos (`CREDITS.md`); the product shot is a free stock bottle whose own label was moved to the bottle's centre and reprinted with the Nuvael text, following its curve, light and grain (owner's notes on drafts 1–2).
+  - **Reviewed** as a private web page through three drafts; in the library (`seed_library`, version 1, 16 sections) and so in the live gallery.
+  - **Figma:** the LP file's new "Template library" page, section "B9.1 · Sales page: search keyword match": desktop (1280) and phone (390) designs as editable auto-layout layers (real text, image fills), colour variables named after the brand slots (collection "Template · Sales keyword match"), local components (button with an optional arrow, stars, tick line, save badge, review card) and the photo strip.
+- **Key files:** `templates/library/sales-keyword-match/` (`index.html`, `template.json`, `instructions.json`, `CREDITS.md`, `assets/`); docs `reference/template-patterns-css-digital.md`, D150, MILESTONES (M9).
+- **Schema changes:** none. **New dependencies:** none.
+- **Deviations:** none from the plan. No quantity picker (buy links can't carry one); no before/after photos or award logos (they'd be invented for every brand).
+- **Verification:** both JSON files validate against the worker's models; the Issues tab check finds nothing (one note: the sample brand's name, removed by builds); worker template tests 88 passed (editor map and Shopify theme run over every library template); the Shopify editor map: 16 sections, 142 texts, 14 pictures, all editable. A mock build for BREZ succeeded (its colours, name, price without a sale, its selling points). The real-copy build ran but rewrote nothing: the local `ANTHROPIC_API_KEY` in `services/worker/.env` is refused ("invalid x-api-key"; nothing charged); the live worker has its own key.
+- **Owner confirmed:** yes (design signed off, 2026-11-24)
+- **Next:** a real-copy build on the live site (or locally once the key is renewed); then B9.2 (advertorial: the switch).
+
+### Fix — Next.js 16.4.6 (security)
+- **Status:** complete (owner, 2026-11-26: "fix the next.js")
+- **Date:** 2026-11-26
+- **Summary:** `next` and `eslint-config-next` 16.4.3 → 16.4.6 (the latest stable, same minor; React 19.3.0 unchanged). It closes the seven moderate Next.js advisories `pnpm audit` listed for ≤ 16.4.4 (use cache / root param cache leaks, SVG rejection bypass in image optimization, HttpOnly cookie exposure on Edge routes, cross-client response injection when self-hosted). Other audit findings (shadcn's tooling: systeminformation, qs, minimatch) are untouched; they are not in the app's runtime.
+- **Key files:** `apps/web/package.json`, `pnpm-lock.yaml`.
+- **Verification:** web typecheck, lint, vitest passed; `pnpm --filter web build` passed on 16.4.6; `pnpm audit` lists no Next.js advisory.
+- **Owner confirmed:** no

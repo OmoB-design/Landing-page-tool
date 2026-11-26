@@ -1,0 +1,29 @@
+{
+  "copy_rules": "A long sales page for one product, read by someone who searched for it. The H1 says their search back in plain words (the product's main search term, e.g. 'retinol serum for beginners', 'cooling blanket for hot sleepers') and promises the result. Section headings are short statements ending with a full stop. Adapt each section to the product's category: 'The key ingredient' becomes its key material, technology or feature; 'What's inside' lists its six main ingredients, materials or parts, each with one job; 'What you'll notice' describes the first week, first month and second month of use in cautious, everyday terms (no medical claims, no guaranteed results). 'Made for you if' lines are second-person situations. Ratings, review counts, customer numbers and percentages come only from the brand's facts: when there are none, write those lines without numbers (e.g. 'Loved by first-timers'). Reviews are short, specific and plain-spoken. FAQ answers are two or three sentences.",
+  "length_caps": [
+    { "match": "h1", "max_chars": 60 },
+    { "match": "h2", "max_chars": 49 },
+    { "match": "h3", "max_chars": 45 },
+    { "match": ".kicker", "max_chars": 31 },
+    { "match": ".lede", "max_chars": 163 },
+    { "match": ".btn", "max_chars": 31 },
+    { "match": ".step p", "max_chars": 109 },
+    { "match": ".week p", "max_chars": 110 },
+    { "match": ".ingredient p", "max_chars": 79 },
+    { "match": ".ticks li", "max_chars": 68 },
+    { "match": ".badges li", "max_chars": 23 },
+    { "match": ".stat .label", "max_chars": 18 },
+    { "match": ".review p", "max_chars": 147 },
+    { "match": ".quote blockquote", "max_chars": 118 },
+    { "match": "summary", "max_chars": 55 },
+    { "match": ".faq details p", "max_chars": 199 },
+    { "match": ".split .copy p", "max_chars": 202 },
+    { "match": ".topbar span", "max_chars": 50 },
+    { "match": ".secure", "max_chars": 50 }
+  ],
+  "image_rules": "Soft, natural-light photos: the product on a clean surface, close-ups of its texture or material, and hands using it at home. No before/after photos and no people presented as results.",
+  "generic_images": [],
+  "keep_images": [],
+  "forbidden_terms": ["Nuvael", "NUVAEL"],
+  "notes": "Designed in code for Lander (B9.1, D150) from the structure of a search keyword-match sales page (pattern study: docs/reference/template-patterns-css-digital.md); no third-party copy, images or design. The sample brand Nuvael is made up. Photos are from Unsplash (CREDITS.md); the product shot is a stock bottle with the Nuvael label printed onto its own label. The stats row, ratings and review counts are sample figures the copy pass replaces from the brand's facts. The timeline note and the footer line are locked (data-lp-lock). No quantity picker: the buy buttons go to the product or discount link, which can't carry a quantity. The buy bar is fixed to the bottom of the screen; the body keeps 84 px of padding for it."
+}

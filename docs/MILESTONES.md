@@ -171,6 +171,18 @@ Owner, 2026-11-10, from two questions on the launch post: change an offer once a
 - B7.3 Change a page's offer, a folder's, and variants. *Split (owner, 2026-11-10): B7.3a the change, a batch's and variants, done 2026-11-10 (D147); B7.3b Approve and publish all (one Vercel deployment per brand, Shopify per page), done 2026-11-10 (D148).* ⋯ → Change offer on a page or a batch folder (every page in it at once): the slots filled from data change directly, the lines that mention the offer get a small rewrite (the redraft's copy pass, about $0.01–0.03 a page), one undo step per page. Duplicate can make one copy per chosen offer. **Approve and publish all** approves every updated page and publishes again those that were live; pages that were never live stay unpublished (owner, 2026-11-10); a clone that fails its gates is skipped with the reason; one failure doesn't stop the rest. New builds keep sale-only parts hidden instead of removed, so a later sale can show them.
 - B7.4 Update every page using an offer. *Done 2026-11-11 (D149), with its risks handled (one database definition of out of date, Undo restores the offer, the wait shown and safe to walk away from).* Editing an offer that pages use offers "Update the N pages that use it": progress per page, then Approve and publish all.
 
+## M9 — Template library
+
+Owner, 2026-11-24: learn the structures and angles of strong landing pages (a study of CSS Digital's work, `docs/reference/template-patterns-css-digital.md`) and grow Lander's own library from them; Claude designs each template in code (no Figma handover), the owner reviews it in the browser, and the finished design is copied into the LP Figma file's "Template library" page (D150). Comes before M8.
+
+- B9.1 Sales page: search keyword match (`long_form`, warm/search traffic). The first long-form template. *Done 2026-11-24 (D150): designed in code with the made-up brand Nuvael and Unsplash photos, signed off by the owner in the browser, in the library, mirrored in Figma (Template library page).*
+- B9.2 Advertorial: the switch ("X not working? here's what people switch to", a comparison at its heart).
+- B9.3 Listicle: loud sale with a vs table.
+- B9.4 Sales page: video match (`long_form`, YouTube traffic; a variant picker and the offer's deal line).
+- B9.5 Advertorial: a parent's story (long first-person story; a starter set mid-story and a full kit at the end).
+- B9.6 Listicle: editorial premium (seven longer reasons, a trial offer).
+- Later: bundle offers (quantity tiers, buy X get Y, subscribe & save through Shopify cart links), which unlock a product page template; then a collection page (pages for several products) and a quiz (a quiz engine).
+
 ## M8 — Testing (planned, D145)
 
 - B8.1 Split link and results on Vercel-published pages: one link, each visitor kept on their version, visitors and button clicks per version, who's ahead.
